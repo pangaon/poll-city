@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import prisma from "@/lib/db/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 const SECRET = process.env.NEXTAUTH_SECRET ?? "dev-secret";
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "auth");
+  if (limited) return limited;
+
   try {
     const { officialId, email, campaignSlug } = await req.json();
 

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const createScriptSchema = z.object({
+  campaignId: z.string().min(1),
+  name: z.string().min(1).max(200),
+  scriptType: z.enum(["supporter", "persuadable", "opposition", "general"]).default("general"),
+  openingLine: z.string().min(1).max(2000),
+  keyMessages: z.array(z.string().max(500)).max(5).default([]),
+  issueResponses: z.record(z.string(), z.string().max(2000)).default({}),
+  closingAsk: z.string().min(1).max(2000),
+  literature: z.string().max(500).nullish(),
+});
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -18,15 +30,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const body = await req.json().catch(() => null) as {
-    campaignId?: string; name?: string; scriptType?: "supporter" | "persuadable" | "opposition" | "general";
-    openingLine?: string; keyMessages?: string[]; issueResponses?: Record<string, string>;
-    closingAsk?: string; literature?: string;
-  } | null;
-
-  if (!body?.campaignId || !body.name?.trim() || !body.openingLine?.trim() || !body.closingAsk?.trim()) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const raw = await req.json().catch(() => null);
+  const parsed = createScriptSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
+  const body = parsed.data;
 
   const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } } });
   if (!membership || !["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "VOLUNTEER_LEADER"].includes(membership.role)) {
@@ -37,10 +46,10 @@ export async function POST(req: NextRequest) {
     data: {
       campaignId: body.campaignId,
       name: body.name.trim(),
-      scriptType: body.scriptType ?? "general",
+      scriptType: body.scriptType,
       openingLine: body.openingLine.trim(),
-      keyMessages: (body.keyMessages ?? []).filter((m) => m.trim()).slice(0, 5),
-      issueResponses: body.issueResponses ?? {},
+      keyMessages: body.keyMessages.filter((m) => m.trim()).slice(0, 5),
+      issueResponses: body.issueResponses,
       closingAsk: body.closingAsk.trim(),
       literature: body.literature?.trim() || null,
     },

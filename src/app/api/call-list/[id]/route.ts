@@ -72,6 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     return NextResponse.json({ error: "Unsupported call-list item type" }, { status: 400 });
   } catch (e) {
-    return NextResponse.json({ error: "Update failed", detail: (e as Error).message }, { status: 500 });
+    console.error("Call list update failed:", e);
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 }

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
+  const limited = rateLimit(req, "read");
+  if (limited) return limited;
+
   const { searchParams } = req.nextUrl;
   const search = searchParams.get("search") ?? "";
   const province = searchParams.get("province") ?? "";

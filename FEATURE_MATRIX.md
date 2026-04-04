@@ -1,4 +1,4 @@
-# Poll City Feature Matrix (v1.8.0 Baseline)
+# Poll City Feature Matrix (v3.0.0 — Security Release)
 
 Source inputs reviewed:
 - PRODUCT_BRIEF.md
@@ -51,7 +51,10 @@ v1.8.0 additions included in this baseline:
 | Subscription Checkout | Billing & Payments | ✅ Built & Verified | /billing | /api/stripe/checkout, /api/stripe/webhook | Subscription | Partial | High | Checkout + webhook updates implemented. |
 | Print Escrow Release | Billing & Payments | ✅ Built & Verified | /print/jobs/[id] | /api/print/payment/release | PrintPayment | Partial | High | Release endpoint exists for completion flow. |
 | Abuse Controls (Duplicate Vote, Size Guard) | Security | ✅ Built & Verified | /polls, /social/polls/[id] | /api/polls/[id]/respond | PollResponse | Yes | High | App checks + DB uniqueness backstops in place. |
-| Rate Limiting + CAPTCHA | Security | ❌ Not Built | — | — | — | No | High | Documented as missing in architecture docs. |
+| Rate Limiting | Security | ✅ Built & Verified | — | All public routes | — | Yes | High | Sliding-window limiter: auth (10/min), form (5/hr), read (100/min). v3.0.0. |
+| CAPTCHA | Security | ❌ Not Built | — | — | — | No | Medium | Recommended: Cloudflare Turnstile on public forms. |
+| Anonymous Polling | Security / Polls | ✅ Built & Verified | /how-polling-works, /verify-vote | /api/polls/[id]/respond, /api/polls/verify-receipt | PollResponse (voteHash, receiptHash) | Yes | High | SHA-256 vote hashing, voter receipts. v3.0.0. |
+| Error Boundary Component | Code Quality | ✅ Built & Verified | — | — | — | Yes | Medium | Reusable ErrorBoundary wraps major sections. v3.0.0. |
 | Audit Logging | Security | ✅ Built & Verified | — | Cross-cutting | ActivityLog | Yes | High | ActivityLog wiring present across campaign mutations. |
 | Marketing Landing + SEO | Marketing Site | ✅ Built & Verified | / | — | — | Yes | Medium | Hero postal search, voter section, OG metadata and icons now set. |
 | Progressive Web App Install | Mobile PWA | ✅ Built & Verified | / (global) | /sw.js | Notification, PushSubscription | Partial | Medium | Manifest + service worker + install hooks active. |

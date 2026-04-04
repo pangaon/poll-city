@@ -17,6 +17,9 @@ const PUBLIC_PATHS = [
   "/privacy-policy",
   "/pricing",
   "/officials",
+  "/how-polling-works",
+  "/verify-vote",
+  "/api/polls/verify-receipt",
 ];
 
 function isPublicPath(path: string) {

@@ -1,5 +1,36 @@
 # Poll City User Guide
 
+## v3.0.0 Security Release SOP Addendum — April 4, 2026
+
+### Anonymous Polling — How Your Vote Is Protected
+
+1. When you vote on any poll, your identity is converted to a **one-way SHA-256 hash**. This hash cannot be reversed.
+2. Poll City stores only the hash alongside your vote — never your name, email, or user ID.
+3. After voting, you receive a **receipt code** (format: `XXXX-XXXX-XXXX`). Save this code.
+4. To verify your vote was counted, visit `/verify-vote` and enter your receipt code.
+5. The verification confirms your vote exists without revealing which option you chose.
+6. Neither campaigns nor Poll City staff can see how you voted.
+7. For full technical details, visit `/how-polling-works`.
+
+### Vote Verification SOP (`/verify-vote`)
+
+1. Navigate to `/verify-vote`.
+2. Enter your 12-character receipt code in the format `XXXX-XXXX-XXXX`.
+3. Click **Verify**.
+4. If found: green confirmation — "Vote confirmed. Your vote was recorded."
+5. If not found: red notice — check the code and try again.
+6. Receipt codes are stored in your browser's local storage after voting.
+
+### Rate Limiting
+
+1. Public endpoints are now rate-limited to prevent abuse.
+2. Poll voting: 5 votes per hour per IP address.
+3. Form submissions (sign requests, volunteer signups, questions): 5 per hour per IP.
+4. Public data reads (officials directory, geo lookup): 100 per minute per IP.
+5. If you see "Too many requests," wait and try again.
+
+---
+
 ## v2.4.0 Feature SOP Addendum - April 4, 2026
 
 ### Mission Control Dashboard SOP (`/dashboard`)

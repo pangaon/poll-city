@@ -4,6 +4,7 @@ import prisma from "@/lib/db/prisma";
 import { createHash } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth-options";
+import { rateLimit } from "@/lib/rate-limit";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,29 @@ function getIp(req: NextRequest): string {
   );
 }
 
+// ── Anonymous polling helpers ─────────────────────────────────────────────────
+// voteHash = SHA-256(pollId + identifier + POLL_ANONYMITY_SALT)
+// This hash prevents double-voting without storing voter identity.
+// It cannot be reversed to find the voter.
+
+function generateVoteHash(pollId: string, identifier: string): string {
+  const salt = process.env.POLL_ANONYMITY_SALT ?? process.env.NEXTAUTH_SECRET ?? "poll-city-anon";
+  return createHash("sha256").update(`vote:${pollId}:${identifier}:${salt}`).digest("hex");
+}
+
+// receiptHash — given to voter so they can verify their vote was counted.
+// SHA-256(pollId + random nonce). Nonce is shown to voter; hash is stored.
+function generateReceipt(pollId: string): { receiptCode: string; receiptHash: string } {
+  const nonce = createHash("sha256")
+    .update(`${pollId}:${Date.now()}:${Math.random()}`)
+    .digest("hex")
+    .slice(0, 12)
+    .toUpperCase();
+  const receiptCode = `${nonce.slice(0, 4)}-${nonce.slice(4, 8)}-${nonce.slice(8, 12)}`;
+  const receiptHash = createHash("sha256").update(`receipt:${receiptCode}`).digest("hex");
+  return { receiptCode, receiptHash };
+}
+
 // ── Visibility guard ─────────────────────────────────────────────────────────
 
 async function enforceVisibility(
@@ -85,6 +109,9 @@ export async function POST(
     return NextResponse.json({ error: "Request body too large" }, { status: 413 });
   }
 
+  const limited = rateLimit(req, "form");
+  if (limited) return limited;
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -112,6 +139,10 @@ export async function POST(
   const session = await getServerSession(authOptions);
   const sessionUserId = session?.user?.id ?? null;
   const ipHash = hashIp(getIp(req));
+
+  // Anonymous vote hash: prevents double-voting without storing identity
+  const voterIdentifier = sessionUserId ?? ipHash ?? `anon-${Date.now()}`;
+  const voteHash = generateVoteHash(params.id, voterIdentifier);
   const validOptionIds = new Set(poll.options.map((o) => o.id));
 
   // Geo fields — sanitized, not trusted for anything security-sensitive
@@ -141,33 +172,21 @@ export async function POST(
       return NextResponse.json({ error: "No valid swipe responses (check optionId and direction values)" }, { status: 422 });
     }
 
-    // Duplicate check: has this user/IP already responded to this poll?
-    if (sessionUserId) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, userId: sessionUserId },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "You have already responded to this poll" }, { status: 409 });
-    } else if (ipHash) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, ipHash },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "A response from this device/network was already recorded" }, { status: 409 });
-    }
+    // Anonymous duplicate check via one-way hash
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
 
-    // skipDuplicates: true is meaningful here for authenticated users:
-    // The partial DB index "poll_responses_swipe_vote_uniq" (see prisma/setup-indexes.sql)
-    // prevents duplicate (pollId, userId, optionId) rows. skipDuplicates silently ignores
-    // any row that would violate it, rather than throwing. For anonymous users, it is inert.
+    const receipt = generateReceipt(params.id);
+
     const swipeDupError = await runWithDuplicateProtection(async () => {
       await prisma.$transaction([
         prisma.pollResponse.createMany({
-          data: validSwipes.map((r) => ({
+          data: validSwipes.map((r, idx) => ({
             pollId: params.id,
-            userId: sessionUserId,
             optionId: r.optionId,
             value: r.direction,
+            voteHash: idx === 0 ? voteHash : null,
+            receiptHash: idx === 0 ? receipt.receiptHash : null,
             postalCode,
             ward,
             riding,
@@ -183,7 +202,7 @@ export async function POST(
     });
     if (swipeDupError) return swipeDupError;
 
-    return NextResponse.json({ data: { recorded: validSwipes.length } }, { status: 201 });
+    return NextResponse.json({ data: { recorded: validSwipes.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
   // ── RANKED ────────────────────────────────────────────────────────────────
@@ -209,34 +228,27 @@ export async function POST(
       return NextResponse.json({ error: "No valid ranked responses (check optionId and rank values)" }, { status: 422 });
     }
 
-    if (sessionUserId) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, userId: sessionUserId },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
-    } else if (ipHash) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, ipHash },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "A response from this device/network was already recorded" }, { status: 409 });
-    }
+    // Anonymous duplicate check via one-way hash
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+
+    const receipt = generateReceipt(params.id);
 
     const rankedDupError = await runWithDuplicateProtection(async () => {
       await prisma.$transaction([
         prisma.pollResponse.createMany({
-          data: validRanked.map((r) => ({
+          data: validRanked.map((r, idx) => ({
             pollId: params.id,
-            userId: sessionUserId,
             optionId: r.optionId,
             rank: r.rank,
+            voteHash: idx === 0 ? voteHash : null,
+            receiptHash: idx === 0 ? receipt.receiptHash : null,
             postalCode,
             ward,
             riding,
             ipHash,
           })),
-          skipDuplicates: true, // DB partial index poll_responses_swipe_vote_uniq enforces uniqueness
+          skipDuplicates: true,
         }),
         prisma.poll.update({
           where: { id: params.id },
@@ -246,7 +258,7 @@ export async function POST(
     });
     if (rankedDupError) return rankedDupError;
 
-    return NextResponse.json({ data: { recorded: validRanked.length } }, { status: 201 });
+    return NextResponse.json({ data: { recorded: validRanked.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
   // ── BINARY ────────────────────────────────────────────────────────────────
@@ -256,31 +268,23 @@ export async function POST(
       return NextResponse.json({ error: `value must be one of: ${Array.from(BINARY_VALUES).join(", ")}` }, { status: 422 });
     }
 
-    if (sessionUserId) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, userId: sessionUserId },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
-    } else if (ipHash) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, ipHash },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "A response from this device/network was already recorded" }, { status: 409 });
-    }
+    // Anonymous duplicate check via one-way hash
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+
+    const receipt = generateReceipt(params.id);
 
     const binaryDupError = await runWithDuplicateProtection(async () => {
       await prisma.$transaction([
         prisma.pollResponse.create({
-          data: { pollId: params.id, userId: sessionUserId, value, postalCode, ward, riding, ipHash },
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, value, postalCode, ward, riding, ipHash },
         }),
         prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
       ]);
     });
     if (binaryDupError) return binaryDupError;
 
-    return NextResponse.json({ data: { recorded: 1 } }, { status: 201 });
+    return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
   // ── MULTIPLE CHOICE ───────────────────────────────────────────────────────
@@ -293,31 +297,23 @@ export async function POST(
       return NextResponse.json({ error: "optionId does not belong to this poll" }, { status: 422 });
     }
 
-    if (sessionUserId) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, userId: sessionUserId },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
-    } else if (ipHash) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, ipHash },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "A response from this device/network was already recorded" }, { status: 409 });
-    }
+    // Anonymous duplicate check via one-way hash
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+
+    const receipt = generateReceipt(params.id);
 
     const mcDupError = await runWithDuplicateProtection(async () => {
       await prisma.$transaction([
         prisma.pollResponse.create({
-          data: { pollId: params.id, userId: sessionUserId, optionId, postalCode, ward, riding, ipHash },
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, optionId, postalCode, ward, riding, ipHash },
         }),
         prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
       ]);
     });
     if (mcDupError) return mcDupError;
 
-    return NextResponse.json({ data: { recorded: 1 } }, { status: 201 });
+    return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
   // ── SLIDER ────────────────────────────────────────────────────────────────
@@ -337,31 +333,23 @@ export async function POST(
 
     const value = String(Math.round(numericValue)); // store as integer string
 
-    if (sessionUserId) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, userId: sessionUserId },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
-    } else if (ipHash) {
-      const existing = await prisma.pollResponse.findFirst({
-        where: { pollId: params.id, ipHash },
-        select: { id: true },
-      });
-      if (existing) return NextResponse.json({ error: "A response from this device/network was already recorded" }, { status: 409 });
-    }
+    // Anonymous duplicate check via one-way hash
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+
+    const receipt = generateReceipt(params.id);
 
     const sliderDupError = await runWithDuplicateProtection(async () => {
       await prisma.$transaction([
         prisma.pollResponse.create({
-          data: { pollId: params.id, userId: sessionUserId, value, postalCode, ward, riding, ipHash },
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, value, postalCode, ward, riding, ipHash },
         }),
         prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
       ]);
     });
     if (sliderDupError) return sliderDupError;
 
-    return NextResponse.json({ data: { recorded: 1 } }, { status: 201 });
+    return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
   // Unknown poll type
@@ -457,17 +445,22 @@ export async function GET(
 /*
  * RACE CONDITION — DOCUMENTED LIMITATION
  *
- * For authenticated users: application-layer findFirst + write is race-prone.
- * Two concurrent requests from the same session can both pass the duplicate check
- * before either commits. The partial unique indexes in prisma/setup-indexes.sql
- * provide a DB-level backstop:
- *   - poll_responses_single_vote_uniq: prevents duplicate (pollId, userId) where optionId IS NULL
- *   - poll_responses_swipe_vote_uniq:  prevents duplicate (pollId, userId, optionId) where both NOT NULL
- * If setup-indexes.sql has not been run, only app-layer protection exists.
- * George: run `npm run db:indexes` after `npx prisma db push`.
+ * Anonymous polling uses a voteHash (SHA-256 of pollId + voter identifier + salt)
+ * stored in a unique column on PollResponse. This provides a DB-level backstop
+ * against duplicate votes for both authenticated and anonymous users.
  *
- * For anonymous users: no DB backstop. ipHash check is app-layer only.
- * VPN users can bypass it. This is a known, accepted limitation.
+ * The app-layer findUnique check before the write is still race-prone:
+ * two concurrent requests can both pass the check before either commits.
+ * The unique constraint on voteHash catches this at the DB level, and
+ * runWithDuplicateProtection converts the P2002 error into a 409 response.
+ *
+ * For multi-row poll types (swipe, ranked), only the first row carries the
+ * voteHash. This is sufficient because the duplicate check runs before the
+ * transaction, and the unique constraint prevents a second batch from inserting
+ * a row with the same voteHash.
+ *
+ * Voter receipts (receiptCode shown to user, receiptHash stored in DB) allow
+ * voters to verify their vote was recorded without revealing their identity.
  *
  * UNLISTED POLLS
  * Visibility "unlisted" = accessible to anyone with the poll ID.

@@ -548,6 +548,9 @@ model Contact {
   @@index([lastName, firstName])
   @@index([supportLevel])
   @@index([postalCode])
+  @@index([email])
+  @@index([phone])
+  @@index([campaignId, supportLevel])
   @@map("contacts")
 }
 
@@ -736,6 +739,8 @@ model VolunteerProfile {
   shiftSignups    VolunteerShiftSignup[]
   submittedExpenses VolunteerExpense[]
 
+  @@index([campaignId])
+  @@index([isActive])
   @@map("volunteer_profiles")
 }
 
@@ -793,31 +798,34 @@ model PollOption {
 model PollResponse {
   id           String      @id @default(cuid())
   pollId       String
-  userId       String?     // null = public (unauthenticated) response
+  // ANONYMOUS POLLING: userId is kept for backward compatibility but new responses
+  // use voteHash (SHA-256 of pollId + voterId + secret salt) for duplicate prevention.
+  // userId is NOT used to trace votes — only voteHash is checked.
+  userId       String?     // DEPRECATED — kept for legacy data; new responses store null or hash only
   optionId     String?     // for multiple choice / ranked
   value        String?     // for binary (yes/no/left/right) or slider (0-100)
   rank         Int?        // for ranked polls
-  // Geo snapshot at time of response (self-reported or derived from postal code)
+  // Anonymous vote hash: SHA-256(pollId + identifier + POLL_ANONYMITY_SALT)
+  // Cannot be reversed to find the voter. Prevents double-voting.
+  voteHash     String?     @unique
+  // Voter receipt: SHA-256(pollId + optionId/value + random nonce)
+  // Given to voter after voting so they can verify their vote was counted.
+  receiptHash  String?     @unique
+  // Geo snapshot — aggregate only, never linked to identity
   postalCode   String?
   ward         String?
   riding       String?
   // Rate limiting only — NOT stored for identity. Hashed before storage.
-  ipHash       String?     // SHA-256 of IP+salt — used only for spam prevention, not identification
+  ipHash       String?
   createdAt    DateTime    @default(now())
 
   poll         Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
   option       PollOption? @relation(fields: [optionId], references: [id])
   user         User?       @relation(fields: [userId], references: [id])
 
-  // Duplicate vote prevention uses two layers:
-  // 1. Application layer: findFirst check before every insert (see polls/[id]/respond/route.ts)
-  // 2. Database layer: partial unique indexes in prisma/setup-indexes.sql (run via npm run db:indexes)
-  //    - poll_responses_single_vote_uniq: (pollId, userId) WHERE userId IS NOT NULL AND optionId IS NULL
-  //    - poll_responses_swipe_vote_uniq:  (pollId, userId, optionId) WHERE both IS NOT NULL
-  // Prisma schema.prisma does not support partial indexes — they are applied via setup-indexes.sql.
-  // If setup-indexes.sql has not been run, the DB backstop is absent and only app-layer protection applies.
   @@index([pollId])
   @@index([postalCode])
+  @@index([voteHash])
   @@map("poll_responses")
 }
 
@@ -1172,6 +1180,8 @@ model ElectionResult {
 
   @@index([jurisdiction, electionDate])
   @@index([electionDate, electionType])
+  @@index([jurisdiction])
+  @@index([candidateName])
   @@map("election_results")
 }
 

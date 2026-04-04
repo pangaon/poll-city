@@ -1,6 +1,6 @@
 # Poll City Security Blueprint
 
-Version: v1.6.1  
+Version: v3.0.0  
 Date: 2026-04-04  
 Master reference: PRODUCT_BRIEF.md
 
@@ -229,37 +229,50 @@ Security recommendation:
 
 - Add centralized security telemetry and alert rules for auth abuse, unusual exports, and cross-tenant anomaly patterns.
 
-## 11. Current Gaps and Mandatory Next Controls
+## 11. v3.0.0 Security Audit — Findings and Fixes (April 4, 2026)
 
-Critical controls identified in architecture/security docs:
+Comprehensive OWASP-style audit completed. Full details in `docs/SECURITY_AUDIT_REPORT.md`.
 
-- Rate limiting across public and authenticated endpoints.
-- CAPTCHA on anonymous/public abuse-prone submissions.
-- Export guardrails and large-export alerting.
-- Upload hardening (MIME validation, malware scanning).
-- Complete campaign deletion and lifecycle retention controls.
-- Session refresh/invalidation improvements after campaign context changes.
-- Moderation workflow defaults for public Q&A content.
+### Fixed in v3.0.0:
+- ✅ **Rate limiting:** Sliding-window limiter with 3 tiers (auth/form/read) applied to all public endpoints
+- ✅ **Authentication gaps:** 2 unauthenticated mutation endpoints fixed (volunteer shift check-in, shift reminders)
+- ✅ **Upload hardening:** Magic byte validation added; campaign membership verified before upload
+- ✅ **Error message disclosure:** Raw error messages removed from API responses
+- ✅ **Input validation:** Zod schemas added to all remaining unvalidated endpoints
+- ✅ **Anonymous polling:** SHA-256 vote hashing system replaces userId storage in PollResponse
+- ✅ **Voter receipt system:** Zero-knowledge vote verification via receipt codes
+- ✅ **Database indexes:** Performance indexes added for Contact, ElectionResult, VolunteerProfile, PollResponse
+- ✅ **IDOR fix:** Volunteer shift check-in verifies signupId belongs to target shift
+
+### Remaining Gaps:
+- CAPTCHA on anonymous/public abuse-prone submissions (recommended: Cloudflare Turnstile)
+- Export guardrails and large-export alerting
+- Complete campaign deletion and lifecycle retention controls
+- Session refresh/invalidation improvements after campaign context changes
+- Moderation workflow defaults for public Q&A content
 
 ## 12. Security Implementation Roadmap
 
-### Phase A (immediate)
+### Phase A — COMPLETED (v3.0.0)
 
-- Enforce endpoint-level rate limits.
-- Add CAPTCHA for anonymous writes.
-- Complete moderation defaults and review queue for public questions.
+- ✅ Enforce endpoint-level rate limits (sliding window, 3 tiers)
+- ✅ Fix all authentication gaps
+- ✅ Harden upload verification (magic bytes + membership check)
+- ✅ Implement anonymous polling with cryptographic vote hashing
+- ✅ Add voter receipt verification system
 
 ### Phase B (short-term)
 
-- Add export frequency guardrails and privileged alerts.
-- Harden upload verification and scanning path.
-- Add consent revocation and communication preference center.
+- Add CAPTCHA for anonymous writes (Cloudflare Turnstile recommended)
+- Add export frequency guardrails and privileged alerts
+- Add consent revocation and communication preference center
 
 ### Phase C (operational maturity)
 
-- Security dashboard and alerting automation.
-- Secret rotation runbooks and periodic verification.
-- Formal recurring control reviews against OWASP and privacy obligations.
+- Security dashboard and alerting automation
+- Secret rotation runbooks and periodic verification
+- Formal recurring control reviews against OWASP and privacy obligations
+- Upgrade Next.js to v15+ to resolve critical dependency vulnerability
 
 ## 13. Security Decision Register (Condensed)
 
@@ -282,6 +295,14 @@ Critical controls identified in architecture/security docs:
 - Decision: push notification security with VAPID keypair.  
   Reason: authenticated push signing and delivery trust.  
   Status: implemented.
+
+- Decision: anonymous polling with SHA-256 vote hashing.  
+  Reason: voter trust requires provable anonymity — userId must never be stored alongside vote.  
+  Status: implemented v3.0.0. See docs/ANONYMOUS_POLLING_TECHNICAL.md.
+
+- Decision: sliding-window rate limiting with tiered thresholds.  
+  Reason: prevent abuse of public endpoints (DDoS, scraping, email spam).  
+  Status: implemented v3.0.0. Three tiers: auth (10/min), form (5/hr), read (100/min).
 
 ## 14. Relationship to Master Documentation
 

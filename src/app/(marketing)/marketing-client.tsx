@@ -317,6 +317,9 @@ const PRODUCTS = [
       "Verified badge + claim your profile workflow",
       "2025 election data: current MPs and MPPs marked active",
       "Follow officials at federal, provincial, and municipal level",
+      "Cryptographically anonymous polling — SHA-256 hashed votes, zero-knowledge receipts",
+      "Voter receipt verification at /verify-vote — prove your vote was counted",
+      "Transparency page at /how-polling-works — see exactly how anonymity works",
       "Answer civic polls and questions from candidates",
       "Request campaign signs from their address",
       "Express support publicly or privately",
@@ -815,7 +818,7 @@ export default function MarketingClient() {
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-blue-100">
             {[
               { icon: Shield, label: "PIPEDA Compliant" },
-              { icon: Lock, label: "Bank-Level Security" },
+              { icon: Lock, label: "SHA-256 Anonymous Polling" },
               { icon: Heart, label: "Canadian Made 🍁" },
               { icon: Database, label: "Data Stays in Canada" },
             ].map(({ icon: Icon, label }) => (

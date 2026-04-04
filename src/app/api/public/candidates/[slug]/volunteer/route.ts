@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const rateLimitResponse = rateLimit(request);
+  const rateLimitResponse = rateLimit(request, "form");
   if (rateLimitResponse) return rateLimitResponse;
 
   const contentLength = Number(request.headers.get("content-length") ?? "0");

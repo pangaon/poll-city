@@ -21,6 +21,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // Verify magic bytes match claimed MIME type
+    const buffer = Buffer.from(await file.slice(0, 12).arrayBuffer());
+    const MAGIC_BYTES: Record<string, number[][]> = {
+      "image/png": [[0x89, 0x50, 0x4e, 0x47]],
+      "image/jpeg": [[0xff, 0xd8, 0xff]],
+      "image/gif": [[0x47, 0x49, 0x46]],
+      "image/webp": [[0x52, 0x49, 0x46, 0x46]],
+      "image/tiff": [[0x49, 0x49, 0x2a, 0x00], [0x4d, 0x4d, 0x00, 0x2a]],
+      "application/pdf": [[0x25, 0x50, 0x44, 0x46]],
+    };
+    if (uploadType === "logo") {
+      const expectedMagic = MAGIC_BYTES[file.type];
+      if (expectedMagic) {
+        const matches = expectedMagic.some((magic) =>
+          magic.every((byte, i) => buffer[i] === byte)
+        );
+        if (!matches) {
+          return NextResponse.json({ error: "File content does not match declared type" }, { status: 400 });
+        }
+      }
+    }
+
     if (uploadType === "logo") {
       if (!file.type.startsWith("image/")) {
         return NextResponse.json({ error: "File must be an image" }, { status: 400 });
@@ -44,6 +66,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Print files must be under 25MB" }, { status: 400 });
       }
     }
+
+    // Verify campaign membership
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+    });
+    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Upload to Vercel Blob
     const folder = uploadType === "print" ? "print-files" : "campaign-logos";
