@@ -75,6 +75,7 @@ export default async function CandidatePage({ params }: PageProps) {
           id: true, isClaimed: true, name: true, firstName: true, lastName: true,
           title: true, level: true, photoUrl: true, website: true, twitter: true,
           facebook: true, instagram: true, linkedIn: true, phone: true, address: true, email: true,
+          partyName: true, party: true,
         },
       },
       polls: {
@@ -139,6 +140,8 @@ export default async function CandidatePage({ params }: PageProps) {
             phone: campaign.official.phone,
             address: campaign.official.address,
             email: campaign.official.email,
+            partyName: campaign.official.partyName,
+            party: campaign.official.party,
           }
         : null,
     };
@@ -153,6 +156,7 @@ export default async function CandidatePage({ params }: PageProps) {
       id: true, isClaimed: true, name: true, firstName: true, lastName: true,
       title: true, level: true, photoUrl: true, website: true, twitter: true,
       facebook: true, instagram: true, linkedIn: true, phone: true, address: true, email: true, district: true,
+      partyName: true, party: true,
     },
   });
 
@@ -186,6 +190,8 @@ export default async function CandidatePage({ params }: PageProps) {
         phone: official.phone,
         address: official.address,
         email: official.email,
+        partyName: official.partyName,
+        party: official.party,
       },
     };
 

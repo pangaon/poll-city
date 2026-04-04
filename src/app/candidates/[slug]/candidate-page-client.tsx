@@ -9,6 +9,7 @@ import {
   ShieldCheck, Building2, ExternalLink, Trophy, Star, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getPartyColour } from "@/lib/party-colours";
 
 /* ─── Customization types ────────────────────────────────────────────────── */
 
@@ -100,6 +101,8 @@ export interface OfficialInfo {
   phone: string | null;
   address: string | null;
   email: string | null;
+  partyName?: string | null;
+  party?: string | null;
 }
 
 export interface CampaignData {
@@ -152,7 +155,9 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
   const [loading, setLoading] = useState(false);
 
   const cx = campaign.customization ?? {};
-  const primaryColor = cx.primaryColor ?? campaign.primaryColor ?? "#1e40af";
+  const off = campaign.official;
+  const partyColour = getPartyColour(off?.partyName ?? off?.party ?? null);
+  const primaryColor = cx.primaryColor ?? (campaign.primaryColor !== "#1e40af" ? campaign.primaryColor : partyColour.primary);
   const accentColor = cx.accentColor ?? primaryColor;
   const theme = cx.theme ?? "classic-blue";
   const themeColors = THEME_COLORS[theme] ?? THEME_COLORS["classic-blue"];
@@ -164,7 +169,6 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
     fetch(`/api/campaigns/${campaign.id}/customization`, { method: "POST" }).catch(() => {});
   }, [campaign.id]);
 
-  const off = campaign.official;
   const photoUrl = campaign.logoUrl ?? off?.photoUrl ?? null;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
@@ -227,7 +231,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
       {/* ── Hero ── */}
       <div
         className="text-white py-12 px-4 relative overflow-hidden"
-        style={{ background: cx.heroBannerUrl ? `url(${cx.heroBannerUrl}) center/cover` : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}cc 100%)` }}
+        style={{ background: cx.heroBannerUrl ? `url(${cx.heroBannerUrl}) center/cover` : `linear-gradient(135deg, ${primaryColor} 0%, ${partyColour.secondary} 100%)` }}
       >
         {cx.heroBannerUrl && <div className="absolute inset-0 bg-black/50" />}
         {cx.heroVideoUrl && (

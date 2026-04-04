@@ -1,5 +1,92 @@
 # Poll City Changelog
 
+## [2.0.0] - April 4, 2026
+
+### v2.0.0 — World-Class Officials Directory, Individual Profiles, Party Colours, Candidate Pages, Performance
+
+**Part 1 — Canadian Political Party Colour System**
+- Created `src/lib/party-colours.ts` with `getPartyColour(partyName)`.
+- Covers every major Canadian party: Liberal (#D71920), Conservative (#1A4782), NDP (#F37021), Bloc (#0088CE), Green (#24A348), PPC (#4B306A), CAQ (#1B4F9B), PQ (#009FE3), Independent (#6B7280), Non-Partisan (#374151).
+- Fuzzy case-insensitive substring matching in both directions — never throws.
+- `partyGradientStyle()` helper returns CSS gradient object for hero sections.
+
+**Part 2 — Officials Schema + 2025 Update Seed**
+- Added `partyName String?` to `Official` model.
+- Added `@@index([province, level])`, `@@index([isClaimed])`, `@@index([isActive, level])` to `Official`.
+- Added `@@index([slug])`, `@@index([isPublic, isActive])` to `Campaign`.
+- Created `prisma/seeds/update-officials-2025.ts` — fetches current Ontario MPPs and Canadian MPs from Represent API, upserts with `isActive=true` and `partyName`, marks absent officials as `isActive=false`. Run with `npm run db:update-2025`.
+
+**Part 4 — Officials Directory Rebuild** (`/officials`)
+- Hero: Canadian red (#D71920) to navy (#1A4782) gradient, live search bar, level filter pills, stats row.
+- `OfficialCard`: party colour gradient header, 90px photo with verified badge overlay, `isActive=false` → "Former Member" badge, social icons, party badge, two action buttons.
+- Skeleton loading cards, error state with retry, empty state with illustration.
+- Mobile filter modal (slide-up), province dropdown, level pills.
+- 24/page pagination with scroll-to-top.
+- API (`GET /api/officials/directory`) updated to return `officials` + `filterOptions`, includes `partyName` / `isActive`, sorted by claimed/active/name. Cache-Control: s-maxage=300.
+
+**Part 5 — Official Individual Profile Pages** (`/officials/[id]`)
+- Party colour hero: 144px photo with glow shadow, name/title/district, party + level badges, social buttons.
+- Unclaimed amber banner with claim CTA; Verified emerald banner.
+- Stats bar: supporters, active polls, elections won, days to election.
+- Election history table, Q&A section, campaign website browser mockup.
+- Sidebar: election countdown card (Oct 26, 2026), get involved buttons, share buttons.
+- `generateMetadata` with party/name/district.
+
+**Part 6 — Candidate Pages Party Colour Fallback** (`/candidates/[slug]`)
+- `getPartyColour()` now used as fallback when `primaryColor` not set.
+- Hero gradient uses `partyColour.primary → partyColour.secondary` for visually distinct party branding.
+- `partyName` and `party` from linked official fetched and passed through.
+
+**Part 7 — Campaign Website URL Card** (`/settings/public-page`)
+- Prominent dark-blue card at the top of Page Builder.
+- URL displayed in monospace with inline copy button.
+- Four action buttons: Copy Link, Open in New Tab, Share on Twitter, Preview.
+- Live QR code generated via `api.qrserver.com` with Download PNG button.
+- Print instructions: "Print on flyers, yard signs, and door hangers."
+
+**Performance**
+- `compress: true`, `images.formats: ["image/avif", "image/webp"]`, `optimizePackageImports: ["lucide-react", "recharts"]` in `next.config.js`.
+- `vercel.json` static asset edge caching (1 year immutable).
+- Canonical redirect `poll.city → www.poll.city` in `next.config.js redirects()`.
+- Middleware matcher updated to exclude static files, icons, SW, and robots.txt.
+- DB indexes on Campaign, Official, GeoDistrict for hot query paths.
+- Cache-Control headers on officials directory and heat-map APIs.
+
+### Quality Gates
+
+- `npm exec tsc -- --noEmit`: pass.
+- `npm run build`: pass (129 routes).
+
+---
+
+## [2.1.0] - April 4, 2026
+
+### Massive Visible UI Transformation — Homepage + Dashboard War Room
+
+- Homepage (`/`) now includes:
+  - Animated stats counters using IntersectionObserver + requestAnimationFrame.
+  - Live activity ticker with rotating campaign events every 3 seconds and fade transitions.
+  - New product demo tabbed section (Campaign Dashboard, Mobile Canvassing App, Poll City Social).
+  - New urgency countdown section to Ontario nominations opening (May 1, 2026), updating every second.
+- Dashboard (`/dashboard`) now includes a new campaign war-room layer:
+  - Large contextual greeting + election-days-left narrative.
+  - Campaign health score with checklist-driven completion logic and red/amber/green scoring.
+  - Election countdown card with dynamic urgency color thresholds.
+  - Today's priorities list generated from current campaign state.
+  - Quick action bar with visible shortcut hints.
+  - GOTV readiness gauge integrated into top-level overview.
+- Analytics build blocker fixed:
+  - Corrected `ChoroplethMap` prop typing in `analytics-client.tsx` to restore clean compile.
+- Notifications production wiring improvement:
+  - Added `NEXT_PUBLIC_VAPID_PUBLIC_KEY` passthrough in `next.config.js` `env` block for client-side subscription flows.
+
+### Quality Gates
+
+- `npm exec tsc -- --noEmit`: pass.
+- `npm run build`: pass.
+
+---
+
 ## [1.9.0] - April 4, 2026
 
 ### GIS Boundaries Imported — Real Choropleth Heat Maps

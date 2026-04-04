@@ -250,6 +250,8 @@ const PRODUCTS = [
       "Import and export voter files with field mapping",
       "Custom per-campaign fields",
       "Role-based access: Admin, Manager, Canvasser, Finance",
+      "Campaign website QR code — print on flyers, yard signs, and door hangers",
+      "One-click copy, share to Twitter, download QR PNG from Page Builder",
     ],
   },
   {
@@ -303,7 +305,11 @@ const PRODUCTS = [
     border: "border-green-200",
     features: [
       "Voters discover candidates by postal code",
-      "Officials Directory with MPs, MPPs, mayors, councillors, trustees, and reeves",
+      "World-class Officials Directory: 7,000+ MPs, MPPs, mayors, councillors, trustees, and reeves",
+      "Party colour–coded profiles for every Canadian political party",
+      "Individual official pages with election history, Q&A, countdown to election day",
+      "Verified badge + claim your profile workflow",
+      "2025 election data: current MPs and MPPs marked active",
       "Follow officials at federal, provincial, and municipal level",
       "Answer civic polls and questions from candidates",
       "Request campaign signs from their address",

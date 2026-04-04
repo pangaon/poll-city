@@ -1,5 +1,80 @@
 # Poll City User Guide
 
+## v2.0.0 Feature SOP Addendum — April 4, 2026
+
+### Campaign Website URL Card SOP (`/settings/public-page`)
+
+1. Open **Page Builder** (`/settings/public-page`).
+2. At the very top, before the customization panels, find the dark-blue **Your Campaign Website** card.
+3. Your public URL is displayed in monospace text: `poll.city/candidates/your-slug`.
+4. Click the **copy icon** inside the URL bar to copy it silently, or click the **Copy Link** button — a toast confirms "URL copied!".
+5. Click **Open** to open your campaign page in a new tab without leaving settings.
+6. Click **Tweet** to open a pre-filled Twitter post with your campaign URL.
+7. Click **Preview** (green button) to view your live page.
+8. The **QR Code** section shows a live 80×80 QR code — scan it to confirm it opens your page.
+9. Click **Download PNG** to save the QR code for use on flyers, yard signs, and door hangers.
+
+### Officials Directory SOP (`/officials`)
+
+1. Go to `/officials` (linked from the social header navigation).
+2. See the Canadian red-to-navy gradient hero with live search and level filter pills.
+3. Type a name, district, or postal code into the search bar — cards filter instantly.
+4. Click a level pill (Federal MP / Provincial MPP / Municipal) to narrow the list.
+5. Use the province dropdown for province-level filtering.
+6. Each card shows: party colour gradient, photo or initials, verified badge (if claimed), party badge, level/province badges, social icons, and "Former Member" badge if no longer active.
+7. Click **View Profile** to open the official's full profile page.
+8. Click **Claim Profile** (amber) to start the claim flow as an official.
+9. Pagination shows 24 per page — click Next/Previous to browse all 7,000+ officials.
+
+### Official Profile Page SOP (`/officials/[id]`)
+
+1. From the directory, click **View Profile** on any card.
+2. The party colour hero displays: photo (144px), name, title, district, party badge, level badge, and social buttons.
+3. If the profile is unclaimed, an amber banner appears: "Are you [Name]? Claim this profile."
+4. If claimed and verified, an emerald banner confirms verified status.
+5. The stats bar shows: supporter count, active polls, elections won, and days until Oct 26, 2026.
+6. Scroll down to read the official's bio (if populated).
+7. The **Election History** table shows past results with win/loss badges.
+8. Submit a question in the Q&A section — it goes to the official or campaign for response.
+9. The sidebar shows the election countdown and Get Involved / Share buttons.
+
+### Candidate Page Party Colours SOP (`/candidates/[slug]`)
+
+1. Campaigns linked to an official with a known `partyName` now automatically inherit party colours for the hero gradient.
+2. Liberal campaigns display a red-to-darker-red gradient; Conservative campaigns display blue-to-navy; NDP displays orange; Green displays green; etc.
+3. This is a fallback only — if the campaign has a custom `primaryColor` set in Page Builder, that always takes precedence.
+4. To override: go to **Page Builder → Branding → Primary Colour** and set your custom hex value.
+
+---
+
+## v2.1.0 Feature SOP Addendum — April 4, 2026
+
+### Homepage Live Experience SOP (`/`)
+
+1. Open the homepage and scroll to the Stats bar.
+2. Confirm counters animate from 0 to their final values when the section enters view.
+3. Confirm the Live Activity ticker rotates campaign activity every 3 seconds with a smooth fade.
+4. Open the Product Demo tabs section and switch between:
+   - Campaign Dashboard
+   - Mobile Canvassing App
+   - Poll City Social
+5. Confirm each tab changes both the visual mock and description text.
+6. Scroll to the urgency panel and verify the nominations countdown updates every second.
+
+### Dashboard War-Room SOP (`/dashboard`)
+
+1. Open Dashboard and verify the top war-room section appears above widgets.
+2. Confirm greeting text references days remaining to election.
+3. Review Campaign Health Score and checklist statuses.
+4. Verify score color changes by threshold:
+   - 0–40 red
+   - 41–70 amber
+   - 71–100 green
+5. Confirm Election Countdown card shows days/hours/minutes.
+6. Review Today's Priorities list and verify it reflects campaign data conditions.
+7. Use the Quick Action tiles to jump to common workflows.
+8. Confirm GOTV readiness gauge is visible in the war-room section.
+
 ## v1.9.0 Feature SOP Addendum — April 4, 2026
 
 ### Election Analytics Heat Map SOP (`/analytics`)

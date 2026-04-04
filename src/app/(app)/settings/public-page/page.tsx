@@ -5,7 +5,7 @@ import {
   Upload, Save, ExternalLink, Check, Lock, ChevronDown, ChevronUp,
   Globe, Palette, Type, Layout, Image as ImageIcon, BarChart3, QrCode,
   Code, Eye, Pencil, Plus, Trash2, Download, Loader2, Building2,
-  Calendar, Users, Bell, Zap, Star, Trophy, Mail, Clock,
+  Calendar, Users, Bell, Zap, Star, Trophy, Mail, Clock, Copy, Share2,
 } from "lucide-react";
 import { Button, Card, CardContent, Input, FormField, Textarea, Select, PageHeader } from "@/components/ui";
 import { toast } from "sonner";
@@ -510,6 +510,85 @@ export default function PublicPageSettings() {
     return <div className="p-6 text-gray-500">Campaign not found</div>;
   }
 
+  const qrUrl = pageUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pageUrl)}`
+    : "";
+
+  function copyPageUrl() {
+    if (!pageUrl) return;
+    navigator.clipboard.writeText(pageUrl).then(() => toast.success("URL copied!"));
+  }
+
+  function shareOnTwitter() {
+    if (!pageUrl) return;
+    const tweet = encodeURIComponent(`Check out my campaign page: ${pageUrl}`);
+    window.open(`https://twitter.com/intent/tweet?text=${tweet}`, "_blank", "noopener");
+  }
+
+  async function downloadQr() {
+    if (!qrUrl) return;
+    const res = await fetch(qrUrl);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${campaign?.slug ?? "campaign"}-qr.png`;
+    a.click();
+  }
+
+  const websiteCard = campaign ? (
+    <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-5 text-white">
+      <div className="flex items-center gap-2 mb-3">
+        <Globe className="w-5 h-5 text-blue-200" />
+        <span className="text-sm font-semibold text-blue-100 uppercase tracking-wide">Your Campaign Website</span>
+      </div>
+
+      {/* URL display */}
+      <div className="flex items-center gap-2 bg-white/10 backdrop-blur rounded-xl px-4 py-3 mb-4">
+        <span className="flex-1 font-mono text-sm text-white break-all">{pageUrl || `poll.city/candidates/${campaign.slug}`}</span>
+        <button onClick={copyPageUrl} title="Copy URL"
+          className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/20 transition-colors">
+          <Copy className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Action buttons */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <button onClick={copyPageUrl}
+          className="flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-xl py-2 px-3 text-xs font-semibold transition-colors">
+          <Copy className="w-3.5 h-3.5" /> Copy Link
+        </button>
+        <a href={pageUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-xl py-2 px-3 text-xs font-semibold transition-colors">
+          <ExternalLink className="w-3.5 h-3.5" /> Open
+        </a>
+        <button onClick={shareOnTwitter}
+          className="flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-xl py-2 px-3 text-xs font-semibold transition-colors">
+          <Share2 className="w-3.5 h-3.5" /> Tweet
+        </button>
+        <a href={pageUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 rounded-xl py-2 px-3 text-xs font-semibold transition-colors">
+          <Eye className="w-3.5 h-3.5" /> Preview
+        </a>
+      </div>
+
+      {/* QR code */}
+      {pageUrl && (
+        <div className="flex items-center gap-4 bg-white rounded-xl p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrUrl} alt="QR code for your campaign page" width={80} height={80} className="rounded-lg" />
+          <div className="flex-1">
+            <p className="text-gray-900 text-sm font-semibold mb-1">QR Code</p>
+            <p className="text-gray-500 text-xs mb-2">Print it on flyers, yard signs, and door hangers.</p>
+            <button onClick={downloadQr}
+              className="flex items-center gap-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded-lg py-1.5 px-3 text-xs font-semibold transition-colors">
+              <Download className="w-3 h-3" /> Download PNG
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   const settingsPanel = (
     <div className="space-y-3">
       {/* Page live toggle */}
@@ -1006,6 +1085,9 @@ export default function PublicPageSettings() {
         title="Page Builder"
         description="Customize your candidate public page. Changes preview live on the right."
       />
+
+      {/* Campaign Website Card — always full-width at the top */}
+      {websiteCard}
 
       {/* Desktop: two-column */}
       <div className="hidden lg:grid lg:grid-cols-[1fr_380px] gap-6 items-start">
