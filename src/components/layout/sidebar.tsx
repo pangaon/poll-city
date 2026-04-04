@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -45,10 +46,8 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-200">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Vote className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-gray-900 text-lg tracking-tight">Poll City</span>
+          <Image src="/logo.png" alt="Poll City" width={32} height={32} priority />
+          <span className="font-bold text-lg tracking-tight" style={{ color: "#1E3A8A" }}>Poll City</span>
         </Link>
       </div>
 

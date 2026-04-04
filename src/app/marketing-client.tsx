@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   CheckCircle, Menu, X, ArrowRight, Shield, Lock, MapPin, Users,
   BarChart3, Bell, Printer, Star, Zap, Vote, Globe, ChevronRight,
@@ -451,10 +452,8 @@ export default function MarketingClient() {
       <header className={`sticky top-0 z-50 border-b transition-all duration-200 ${scrolled ? "bg-white/95 backdrop-blur shadow-sm" : "bg-white"}`}>
         <nav className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Vote className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
-            </div>
-            <span className="font-extrabold text-xl text-gray-900 tracking-tight">Poll City</span>
+            <Image src="/logo.png" alt="Poll City" width={36} height={36} priority />
+            <span className="font-extrabold text-xl tracking-tight" style={{ color: "#1E3A8A" }}>Poll City</span>
           </Link>
 
           <div className="hidden lg:flex items-center gap-6">
@@ -1087,9 +1086,7 @@ export default function MarketingClient() {
             {/* Brand */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Vote className="w-4 h-4 text-white" />
-                </div>
+                <Image src="/logo.png" alt="Poll City" width={36} height={36} />
                 <span className="font-extrabold text-white text-lg">Poll City</span>
               </div>
               <p className="text-sm leading-relaxed mb-5 max-w-xs">
