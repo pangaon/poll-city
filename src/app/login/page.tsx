@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +26,14 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
       } else {
-        router.push("/dashboard");
+        // Get updated session to check role
+        const session = await getSession();
+        const role = session?.user?.role;
+        if (role === "VOLUNTEER") {
+          router.push("/canvass");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     } catch {
