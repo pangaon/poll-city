@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Menu, X, ArrowRight, Shield, Lock, MapPin, Users, BarChart3, Bell,
   Printer, Star, Zap, Globe, ChevronDown, ChevronUp, Check, Phone,
@@ -66,7 +67,7 @@ const NAV_LINKS = [
   { href: "#pricing", label: "Pricing" },
   { href: "#how-it-works", label: "How It Works" },
   { href: "#candidates", label: "For Candidates" },
-  { href: "#voters", label: "For Voters" },
+  { href: "/social", label: "For Voters", external: true },
   { href: "/officials", label: "Officials Directory", external: true },
   { href: "#blog", label: "Blog" },
   { href: "#about", label: "About" },
@@ -422,6 +423,7 @@ const PUSH_NOTIFICATIONS = [
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function MarketingClient() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(true);
@@ -429,6 +431,8 @@ export default function MarketingClient() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [roleTab, setRoleTab] = useState<"campaign" | "voter">("campaign");
   const [arrowBounce, setArrowBounce] = useState(true);
+  const [heroPostalCode, setHeroPostalCode] = useState("");
+  const [candidatePostalCode, setCandidatePostalCode] = useState("");
 
   useEffect(() => {
     const dismissed = localStorage.getItem("poll-city-banner-dismissed");
@@ -458,6 +462,18 @@ export default function MarketingClient() {
     const el = document.getElementById(id.replace("#", ""));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const navigateToOfficialsSearch = useCallback(
+    (query: string) => {
+      const trimmed = query.trim();
+      if (!trimmed) {
+        router.push("/officials");
+        return;
+      }
+      router.push(`/officials?search=${encodeURIComponent(trimmed)}`);
+    },
+    [router]
+  );
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
@@ -616,6 +632,34 @@ export default function MarketingClient() {
             </Btn>
           </div>
 
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigateToOfficialsSearch(heroPostalCode);
+            }}
+            className="max-w-xl mx-auto mb-10"
+          >
+            <label htmlFor="hero-postal-search" className="block text-sm font-semibold text-blue-100 mb-2 text-left">
+              Find officials and candidates by postal code
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                id="hero-postal-search"
+                type="text"
+                value={heroPostalCode}
+                onChange={(e) => setHeroPostalCode(e.target.value)}
+                placeholder="Enter postal code (e.g. M5V 2T6)"
+                className="w-full rounded-lg border border-white/30 bg-white/15 px-4 py-3 text-white placeholder:text-blue-100/80 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-semibold text-[#1E3A8A] hover:bg-blue-50 transition-colors"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+
           {/* Social proof */}
           <p className="text-blue-200 text-sm font-medium mb-8">
             500+ campaigns · 7,000+ officials tracked · Ontario &amp; BC 2026
@@ -659,6 +703,43 @@ export default function MarketingClient() {
               <p className="text-sm text-gray-500 mt-1.5 font-medium">{label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-blue-50 py-14 px-4 border-b border-blue-100">
+        <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-8 items-center">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-[#1E3A8A] mb-3">For Voters</p>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Find Your Candidates</h2>
+            <p className="text-gray-600 text-lg">
+              Enter your postal code to instantly see the candidates and elected officials that represent your address.
+            </p>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigateToOfficialsSearch(candidatePostalCode);
+            }}
+            className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6"
+          >
+            <label htmlFor="candidate-postal-search" className="block text-sm font-semibold text-gray-700 mb-2">
+              Postal code lookup
+            </label>
+            <input
+              id="candidate-postal-search"
+              type="text"
+              value={candidatePostalCode}
+              onChange={(e) => setCandidatePostalCode(e.target.value)}
+              placeholder="A1A 1A1"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            <button
+              type="submit"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#1E3A8A] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-900 transition-colors"
+            >
+              Find My Candidates
+            </button>
+          </form>
         </div>
       </section>
 

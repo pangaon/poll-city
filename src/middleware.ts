@@ -47,6 +47,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  if (path === "/") {
+    return NextResponse.next();
+  }
+
   if (isPublicPath(path)) {
     return NextResponse.next();
   }
