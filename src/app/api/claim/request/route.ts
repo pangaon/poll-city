@@ -36,15 +36,19 @@ export async function POST(req: NextRequest) {
     const token = `${payload}.${sig}`;
 
     // Build the verification URL
-    const host = req.headers.get("origin") ?? req.headers.get("x-forwarded-host") ?? "http://localhost:3000";
-    const verifyUrl = `${host}/api/claim/verify?token=${encodeURIComponent(token)}`;
-
-    // In production this would send an email. For now, log and return the link.
-    console.log(`[claim] Verify link for ${official.name} (${emailLower}): ${verifyUrl}`);
+    const origin = req.headers.get("origin");
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
+    const baseUrl = origin ?? (forwardedHost ? `${forwardedProto}://${forwardedHost}` : "http://localhost:3000");
+    const verifyUrl = `${baseUrl}/api/claim/verify?token=${encodeURIComponent(token)}`;
 
     // TODO: send email via your transactional email provider using verifyUrl
 
-    return NextResponse.json({ success: true, message: "Verification email sent" });
+    return NextResponse.json({
+      success: true,
+      message: "Verification email sent",
+      ...(process.env.NODE_ENV !== "production" ? { verifyUrl } : {}),
+    });
   } catch (err) {
     console.error("[claim/request]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

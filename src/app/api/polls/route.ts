@@ -92,7 +92,15 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   const parsed = createPollSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
+  if (!parsed.success) {
+    const flat = parsed.error.flatten();
+    const errors: Record<string, string> = {};
+    for (const [field, msgs] of Object.entries(flat.fieldErrors)) {
+      const arr = msgs as string[] | undefined;
+      if (arr?.[0]) errors[field] = arr[0];
+    }
+    return NextResponse.json({ error: "Validation failed", errors }, { status: 422 });
+  }
 
   // If tied to a campaign, verify membership
   if (parsed.data.campaignId) {

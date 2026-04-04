@@ -6,8 +6,32 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
+const appleClientId = process.env.APPLE_CLIENT_ID ?? "";
+const appleClientSecret = process.env.APPLE_CLIENT_SECRET ?? "";
+
+const oauthProviders = [
+  ...(googleClientId && googleClientSecret
+    ? [
+        GoogleProvider({
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+        }),
+      ]
+    : []),
+  ...(appleClientId && appleClientSecret
+    ? [
+        AppleProvider({
+          clientId: appleClientId,
+          clientSecret: appleClientSecret,
+        }),
+      ]
+    : []),
+];
+
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET ?? "dev-secret",
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
@@ -128,13 +152,6 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    AppleProvider({
-      clientId: process.env.APPLE_CLIENT_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!,
-    }),
+    ...oauthProviders,
   ],
 };

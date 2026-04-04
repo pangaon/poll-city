@@ -556,36 +556,47 @@ export default function MarketingClient() {
           </button>
         </nav>
 
-        {/* Mobile slide-down menu */}
+        {/* Mobile slide-from-right menu */}
         {menuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-4 py-5 flex flex-col gap-1 shadow-lg">
-            {NAV_LINKS.map(({ href, label, external }) =>
-              external ? (
-                <Link key={href} href={href} onClick={() => setMenuOpen(false)}
-                  className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 transition-colors block">
-                  {label}
-                </Link>
-              ) : (
-                <button
-                  key={href}
-                  onClick={() => scrollTo(href)}
-                  className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-left transition-colors w-full"
-                >
-                  {label}
+          <div className="md:hidden fixed inset-0 z-50 flex">
+            <div className="flex-1 bg-black/40" onClick={() => setMenuOpen(false)} />
+            <div className="w-72 bg-white h-full shadow-2xl flex flex-col overflow-y-auto">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <span className="font-bold text-[#1E3A8A]">Menu</span>
+                <button onClick={() => setMenuOpen(false)} className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100">
+                  <X className="w-5 h-5" />
                 </button>
-              )
-            )}
-            <div className="flex flex-col gap-2 pt-4 mt-2 border-t border-gray-100">
-              <Link
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="text-sm font-semibold text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-center transition-colors"
-              >
-                Login
-              </Link>
-              <Btn href="/login" size="md" variant="primary" className="w-full">
-                Start Free Trial
-              </Btn>
+              </div>
+              <nav className="px-4 py-4 flex flex-col gap-1 flex-1">
+                {NAV_LINKS.map(({ href, label, external }) =>
+                  external ? (
+                    <Link key={href} href={href} onClick={() => setMenuOpen(false)}
+                      className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 transition-colors block">
+                      {label}
+                    </Link>
+                  ) : (
+                    <button
+                      key={href}
+                      onClick={() => scrollTo(href)}
+                      className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-left transition-colors w-full"
+                    >
+                      {label}
+                    </button>
+                  )
+                )}
+              </nav>
+              <div className="flex flex-col gap-2 px-4 py-4 border-t border-gray-100">
+                <Link
+                  href="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-sm font-semibold text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-center transition-colors"
+                >
+                  Login
+                </Link>
+                <Btn href="/login" size="md" variant="primary" className="w-full">
+                  Start Free Trial
+                </Btn>
+              </div>
             </div>
           </div>
         )}
@@ -594,7 +605,7 @@ export default function MarketingClient() {
       {/* ── Hero Section ── */}
       <section
         className="relative flex flex-col items-center justify-center text-center text-white px-4 py-24 sm:py-32 min-h-[90vh]"
-        style={{ background: "linear-gradient(135deg, #1E3A8A 0%, #1e40af 60%, #2563eb 100%)" }}
+        style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #312e81 100%)" }}
       >
         {/* Dot pattern overlay */}
         <div
@@ -611,7 +622,7 @@ export default function MarketingClient() {
             🇨🇦 Built for Canadian Municipal Elections 2026
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 tracking-tight">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight mb-6 tracking-tighter">
             The Complete Political
             <br />
             <span className="text-blue-200">Operating System</span>
@@ -699,7 +710,7 @@ export default function MarketingClient() {
             { number: "Oct 26", label: "Election Day Ontario" },
           ].map(({ number, label }) => (
             <div key={label}>
-              <p className="text-3xl sm:text-4xl font-extrabold text-[#1E3A8A] leading-none">{number}</p>
+              <p className="text-5xl font-black text-[#1E3A8A] leading-none">{number}</p>
               <p className="text-sm text-gray-500 mt-1.5 font-medium">{label}</p>
             </div>
           ))}
@@ -1182,7 +1193,7 @@ export default function MarketingClient() {
               <div
                 key={plan.name}
                 className={`rounded-2xl border-2 ${plan.borderColour} overflow-hidden flex flex-col shadow-sm ${
-                  plan.highlight ? "bg-[#1E3A8A] text-white scale-[1.02] shadow-xl" : "bg-white"
+                  plan.highlight ? "bg-[#1E3A8A] text-white scale-[1.03] shadow-2xl ring-2 ring-blue-500" : "bg-white"
                 }`}
               >
                 {/* Badge */}
@@ -1269,13 +1280,15 @@ export default function MarketingClient() {
           </div>
           <div className="grid sm:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div key={t.name} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
+                {/* Decorative quote mark */}
+                <div className="absolute top-3 right-4 text-gray-100 font-black text-8xl leading-none select-none pointer-events-none">&rdquo;</div>
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: t.stars }).map((_, i) => (
                     <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                   ))}
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-5 italic">&ldquo;{t.quote}&rdquo;</p>
+                <p className="text-sm text-gray-600 leading-relaxed mb-5 relative">&ldquo;{t.quote}&rdquo;</p>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#1E3A8A] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                     {t.initials}
@@ -1334,23 +1347,24 @@ export default function MarketingClient() {
           </div>
           <div className="space-y-3">
             {FAQS.map((faq, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div key={i} className={`bg-white rounded-xl border overflow-hidden shadow-sm transition-all ${openFaq === i ? "border-blue-200" : "border-gray-200"}`}>
                 <button
                   onClick={() => toggleFaq(i)}
                   className="w-full flex items-center justify-between px-5 py-4 text-left gap-4 hover:bg-gray-50 transition-colors"
                 >
                   <span className="font-semibold text-sm text-gray-900">{faq.q}</span>
-                  {openFaq === i ? (
-                    <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  )}
+                  <div className={`transition-transform duration-200 flex-shrink-0 ${openFaq === i ? "rotate-180" : "rotate-0"}`}>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
                 </button>
-                {openFaq === i && (
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: openFaq === i ? "300px" : "0px" }}
+                >
                   <div className="px-5 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-4">
                     {faq.a}
                   </div>
-                )}
+                </div>
               </div>
             ))}
           </div>
@@ -1499,6 +1513,16 @@ export default function MarketingClient() {
           </div>
         </div>
       </footer>
+
+      {/* Floating chat button */}
+      <a
+        href="mailto:admin@pollcity.dev"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#1E3A8A] text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-900 transition-all hover:scale-110 hover:shadow-blue-500/30"
+        title="Chat with us"
+        aria-label="Contact support"
+      >
+        <MessageSquare className="w-6 h-6" />
+      </a>
     </div>
   );
 }

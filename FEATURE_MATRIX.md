@@ -1,0 +1,55 @@
+# Poll City Feature Matrix (v1.6.1 Baseline)
+
+Source inputs reviewed:
+- PRODUCT_BRIEF.md
+- STATUS_REPORT.md
+- docs/architecture/ABUSE_AND_RISK_CONTROLS.md
+- docs/architecture/AUDIT_AND_LOGGING_SPEC.md
+- docs/architecture/API_AND_INTEGRATION_CONTRACTS.md
+
+Note: RESEARCH_BRIEF.md and SECURITY_BLUEPRINT.md were not found in this repository by those exact filenames.
+
+| Feature Name | Category | Status | Page Route | API Route | Database Model | Has Real Data | Priority | Notes |
+|---|---|---|---|---|---|---|---|---|
+| Campaign Dashboard Widgets | Campaign Operations | ✅ Built & Verified | /dashboard | /api/campaigns/current | Campaign, Membership | Yes | High | Preset layouts + widget persistence implemented. |
+| Campaign Switcher | Campaign Operations | ✅ Built & Verified | /campaigns | /api/campaigns/switch | User, Campaign, Membership | Yes | High | Active campaign context switching works. |
+| CRM Contact Management | Contacts & CRM | ✅ Built & Verified | /contacts | /api/contacts | Contact, Tag, ContactTag | Yes | High | Search, filtering, tagging, pagination. |
+| Contact Detail + Timeline | Contacts & CRM | ✅ Built & Verified | /contacts/[id] | /api/contacts/[id], /api/interactions | Contact, Interaction | Yes | High | Campaign-scoped access checks in place. |
+| Custom Fields | Contacts & CRM | ✅ Built & Verified | /settings/fields | /api/campaign-fields, /api/custom-field-values | CampaignField, CustomFieldValue | Yes | Medium | Per-campaign custom schema. |
+| Turf Builder | Canvassing & Field | ✅ Built & Verified | /canvassing/turf-builder | /api/turf, /api/turf/preview | Turf, TurfStop | Partial | High | Route optimization and stop preview exist. |
+| Walk App + GPS | Canvassing & Field | ✅ Built & Verified | /canvassing/walk | /api/canvasser/location, /api/canvass | CanvassAssignment, CanvasserLocation | Partial | High | Field execution flows implemented. |
+| GOTV Priority + Upload | GOTV | ✅ Built & Verified | /gotv | /api/gotv, /api/gotv/upload, /api/gotv/priority-list | GotvBatch, Contact | Yes | High | Upload + call priority list available. |
+| Volunteer Management | Volunteers | ✅ Built & Verified | /volunteers | /api/volunteers, /api/volunteers/bulk-activate | VolunteerProfile, User | Yes | Medium | Bulk activation/deactivation supported. |
+| Sign Tracking | Signs | ✅ Built & Verified | /signs | /api/signs, /api/signs/quick-capture | Sign, SignRequest | Partial | Medium | Request/install/remove flow present. |
+| Donation Logging | Donations | ✅ Built & Verified | /donations | /api/donations, /api/donations/quick-capture | Donation | Partial | Medium | Manual capture and list operational. |
+| Task Management | Tasks | ✅ Built & Verified | /tasks | /api/tasks, /api/tasks/[id] | Task | Yes | Medium | Status/priority/assignee lifecycle. |
+| Poll Builder + Results | Polls | ✅ Built & Verified | /polls | /api/polls, /api/polls/[id], /api/polls/[id]/respond | Poll, PollOption, PollResponse | Yes | High | Multiple poll types and result views. |
+| Push Subscription + Send | Notifications & Push | ✅ Built & Verified | /notifications | /api/notifications/subscribe, /api/notifications/send | PushSubscription, NotificationLog | Partial | High | Scheduling/history/stats are implemented. |
+| Campaign Analytics | Analytics | ✅ Built & Verified | /analytics | /api/analytics/election-results, /api/analytics/heat-map | ElectionResult, Contact | Yes | Medium | Heat maps and exports available. |
+| Print Job Wizard | Print Marketplace | ✅ Built & Verified | /print/jobs/new | /api/print/jobs | PrintJob | Partial | High | Multi-step request flow built. |
+| Print Bidding + Escrow Intent | Print Marketplace | ✅ Built & Verified | /print/jobs/[id] | /api/print/jobs/[id]/bids, /api/print/payment/create-intent | PrintBid, PrintPayment | Partial | High | Bid compare and staged payment present. |
+| Shop Directory + Onboarding | Print Marketplace | ✅ Built & Verified | /print/shops, /print/shops/register | /api/print/shops, /api/print/shops/onboard | PrintShop | Partial | Medium | Stripe Connect onboarding linked. |
+| Social Feed Entry + Nav | Poll City Social | ✅ Built & Verified | /social | /api/social/my-notifications | User, Notification | Partial | Medium | Top and bottom social navigation present. |
+| Social Poll Participation | Poll City Social | ✅ Built & Verified | /social/polls, /social/polls/[id] | /api/polls, /api/polls/[id]/respond | PollResponse | Yes | Medium | Public voting and result UX available. |
+| Social Official Profiles | Poll City Social | ✅ Built & Verified | /social/officials, /social/officials/[id] | /api/officials, /api/officials/[id]/questions | Official, PublicQuestion, OfficialFollow | Yes | Medium | Question and follow experiences present. |
+| Candidate Public Profile | Candidate Public Pages | ✅ Built & Verified | /candidates/[slug] | /api/public/candidates/[slug] | Campaign, Official | Partial | High | Public campaign microsite implemented. |
+| Public Candidate Engagement | Candidate Public Pages | ✅ Built & Verified | /candidates/[slug] | /api/public/candidates/[slug]/question, /support, /volunteer, /sign-request | Question, SupportSignal, SignRequest | Partial | High | Public inbound actions flow into campaign data. |
+| Officials Directory Search | Officials Directory | ✅ Built & Verified | /officials | /api/officials/directory, /api/officials | Official | Yes | High | Postal/search + filters + pagination. |
+| Officials Claim Link Request | Claim Flow | ⚠️ Partially Built | /claim/[slug] | /api/claim/request | Official | Partial | High | No outbound email provider wired yet. |
+| Officials Claim Verification | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/verify | Official | Partial | High | Token verification + claim status update. |
+| Campaign Creation Wizard | Campaign Registration | ⚠️ Partially Built | /campaigns/new | /api/campaigns | Campaign | Yes | Medium | Province/ward UX still limited. |
+| Credentials Login | Authentication | ✅ Built & Verified | /login | /api/auth/[...nextauth] | User, Membership | Yes | High | Session/JWT auth path validated. |
+| OAuth Login | Authentication | 🔄 Built Unverified | /login | /api/auth/[...nextauth] | User | No | Medium | Google/Apple now env-gated; needs smoke test in configured env. |
+| Subscription Checkout | Billing & Payments | ✅ Built & Verified | /billing | /api/stripe/checkout, /api/stripe/webhook | Subscription | Partial | High | Checkout + webhook updates implemented. |
+| Print Escrow Release | Billing & Payments | ✅ Built & Verified | /print/jobs/[id] | /api/print/payment/release | PrintPayment | Partial | High | Release endpoint exists for completion flow. |
+| Abuse Controls (Duplicate Vote, Size Guard) | Security | ✅ Built & Verified | /polls, /social/polls/[id] | /api/polls/[id]/respond | PollResponse | Yes | High | App checks + DB uniqueness backstops in place. |
+| Rate Limiting + CAPTCHA | Security | ❌ Not Built | — | — | — | No | High | Documented as missing in architecture docs. |
+| Audit Logging | Security | ✅ Built & Verified | — | Cross-cutting | ActivityLog | Yes | High | ActivityLog wiring present across campaign mutations. |
+| Marketing Landing + SEO | Marketing Site | ✅ Built & Verified | / | — | — | Yes | Medium | Hero postal search, voter section, OG metadata and icons now set. |
+| Progressive Web App Install | Mobile PWA | ✅ Built & Verified | / (global) | /sw.js | Notification, PushSubscription | Partial | Medium | Manifest + service worker + install hooks active. |
+| User Profile Updates | User Management | ✅ Built & Verified | /settings | /api/users/[id] | User | Yes | Medium | Profile edit and role display available. |
+| Membership Roles/Permissions | User Management | ✅ Built & Verified | /admin (partial shell) | Cross-cutting | Membership, Role enum | Yes | High | Backend role checks implemented broadly. |
+| Election/Official Seeding Scripts | Data Ingestion | ✅ Built & Verified | — | — | Official, ElectionResult, GeoDistrict | Yes | High | Seeds and ingest scripts exist in prisma/seeds. |
+| Postal Code Geo Lookup Cache | Data Ingestion | ✅ Built & Verified | /lookup | /api/geo, /api/geo/municipalities, /api/geo/wards | GeoDistrict | Yes | Medium | Lookup and district cache flow operational. |
+| Public/Private DTO Boundary | API Coverage | ✅ Built & Verified | Mixed | /api/officials, /api/polls, /api/public/* | Official, Poll, Contact | Yes | High | DTO separation documented and reflected in route behavior. |
+| API Surface Breadth | API Coverage | ✅ Built & Verified | Mixed | 70+ endpoints under /api/* | Multiple | Yes | High | Broad functional coverage across campaign + social + print. |

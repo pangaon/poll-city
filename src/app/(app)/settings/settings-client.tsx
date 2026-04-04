@@ -12,6 +12,7 @@ interface Props {
 export default function SettingsClient({ campaign, user, userRole }: Props) {
   const [profile, setProfile] = useState({ name: user.name ?? "", phone: user.phone ?? "" });
   const [savingProfile, setSavingProfile] = useState(false);
+  const isAiEnabled = (process.env.NEXT_PUBLIC_AI_ENABLED ?? "false") === "true";
 
   async function saveProfile() {
     setSavingProfile(true);
@@ -78,7 +79,7 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
       <Card>
         <CardHeader><h3 className="font-semibold text-gray-900">System</h3></CardHeader>
         <CardContent className="space-y-2 text-sm text-gray-600">
-          <div className="flex justify-between"><span>AI Assist</span><Badge variant={process.env.NEXT_PUBLIC_AI_ENABLED === "true" ? "success" : "default"}>{process.env.NEXT_PUBLIC_AI_ENABLED === "true" ? "Live" : "Demo mode"}</Badge></div>
+          <div className="flex justify-between"><span>AI Assist</span><Badge variant={isAiEnabled ? "success" : "default"}>{isAiEnabled ? "Live" : "Demo mode"}</Badge></div>
           <div className="flex justify-between"><span>Version</span><span className="text-gray-400">Poll City v0.1.0</span></div>
         </CardContent>
       </Card>

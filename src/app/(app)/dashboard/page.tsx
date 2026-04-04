@@ -76,10 +76,9 @@ export default async function DashboardPage() {
   // resolveActiveCampaign calls getServerSession internally — do not call it again
   const { campaignId, userId, role, userName } = await resolveActiveCampaign();
 
-  const [campaign, data] = await Promise.all([
+  const [campaign, data, official] = await Promise.all([
     prisma.campaign.findUnique({
       where: { id: campaignId },
-      // Select only what the dashboard renders — avoids returning candidateBio etc.
       select: {
         id: true,
         name: true,
@@ -88,9 +87,14 @@ export default async function DashboardPage() {
         candidateName: true,
         primaryColor: true,
         electionDate: true,
+        officialId: true,
       },
     }),
     getDashboardData(campaignId),
+    prisma.official.findFirst({
+      where: { claimedByUserId: userId, isActive: true },
+      select: { id: true, name: true, title: true, district: true, level: true, isClaimed: true, photoUrl: true },
+    }),
   ]);
 
   return (
@@ -98,6 +102,7 @@ export default async function DashboardPage() {
       data={data}
       campaign={campaign!}
       user={{ id: userId, role, name: userName }}
+      official={official ?? undefined}
     />
   );
 }

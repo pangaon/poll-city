@@ -1,5 +1,60 @@
 # Poll City Changelog
 
+## [1.6.0] - April 4, 2026
+
+### Tinder-Style Swipe Polls — Poll City Social
+
+- Rebuilt `src/app/social/polls/[id]/page.tsx` as a full-screen gradient card experience.
+- Added `SwipeCard` component with touch events (`onTouchStart`, `onTouchMove`, `onTouchEnd`) for binary polls.
+- Card tilts in swipe direction, green glow on right swipe (yes), red glow on left swipe (no).
+- Physics animation: card flies off screen with CSS transforms when swipe threshold reached.
+- Added `Confetti` component — pure CSS keyframe animation with 40 particles on vote completion.
+- `MultipleChoiceVote`, `SliderVote`, `RankedVote` all use gradient card backgrounds.
+- Results shown with animated progress bars after voting.
+- Desktop: yes/no buttons below the card.
+- 8-gradient pool, chosen deterministically by poll ID hash.
+- Rebuilt `src/app/social/polls/page.tsx` with gradient card grid.
+- Added filter tabs: All / Municipal / Provincial / Federal / School Board.
+- Added search bar with live filtering.
+- Time remaining badge ("3d left", "2h left", "Ending soon", "Ended").
+- Vote recorded state shows checkmark + "Results →" link.
+
+### Beautiful 4-Step Poll Creation Wizard
+
+- Created `src/app/(app)/polls/new/page.tsx` — 4-step wizard with step indicator.
+- Step 1 — Question: large textarea, 8 poll type cards with descriptions.
+- Step 2 — Options: add/remove options, inline color picker per option, min 2 options validation.
+- Step 3 — Settings: visibility (Public/Campaign/Unlisted), end date, target region, tags, 3 toggle switches (show results, multiple votes, notify subscribers).
+- Step 4 — Preview: live gradient card preview + summary table.
+- Rebuilt `src/app/(app)/polls/polls-client.tsx` as beautiful card grid.
+- Cards show: gradient stripe, type badge, status badge (Active/Closing/Ended), option previews, response count, visibility icon, edit button on hover.
+- Fixed `src/app/api/polls/route.ts` POST to return field-specific errors: `{ errors: { question: '...', options: '...' } }`.
+
+### Elected Official Account with Candidate Mode Toggle
+
+- Added `official` prop to `DashboardClient` (fetched via `claimedByUserId` on Official model).
+- When official linked, "Official View" button appears in dashboard header.
+- Constituent dashboard shows: 4 stat cards, Quick Actions grid, Recent Interactions, Sentiment Overview chart.
+- `officialMode` persisted in localStorage per userId.
+- Toggle returns to full campaign ops dashboard.
+
+### Global UI Quality
+
+- Sidebar active state: `bg-blue-50 text-blue-700 border-l-4 border-blue-600` (matches spec exactly).
+- Removed `overflow-hidden` from `(app)/layout.tsx` outer div for proper scroll behavior.
+- Added `className="scroll-smooth"` to `<html>` in root layout.
+
+### Marketing Site — Stripe Quality
+
+- Hero gradient updated to `linear-gradient(135deg, #1e3a8a 0%, #1e40af 40%, #312e81 100%)`.
+- H1 upgraded to `text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter`.
+- Stats numbers: `text-5xl font-black text-[#1E3A8A]`.
+- Pro pricing card: `shadow-2xl ring-2 ring-blue-500 scale-[1.03]`.
+- Testimonials: large decorative `"` quote mark (absolute positioned, `text-8xl text-gray-100`).
+- FAQ: smooth CSS height animation (`maxHeight: "300px"` / `"0px"`, `transition: all 300ms ease-in-out`), chevron rotates 180° when open.
+- Mobile hamburger menu now slides from the right (fixed overlay with backdrop).
+- Floating chat button bottom-right: `mailto:admin@pollcity.dev` with MessageSquare icon.
+
 ## [1.5.0] - April 4, 2026
 
 ### Officials Public Directory

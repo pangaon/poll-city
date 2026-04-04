@@ -11,7 +11,8 @@
       "WebFetch(domain:poll.city)",
       "Bash(npx tsx -e ':*)",
       "Bash(node -e ':*)",
-      "Read(//c/Users/14168/Documents/Projects/**)"
+      "Read(//c/Users/14168/Documents/Projects/**)",
+      "Read(//c/Users/14168/AppData/Local/Temp/claude/c--Users-14168-Documents-Projects-poll-city/57034eba-8060-409c-a71a-eab4fa387f1c/tasks/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops"

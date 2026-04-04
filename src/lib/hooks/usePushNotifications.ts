@@ -58,10 +58,17 @@ export function usePushNotifications(campaignId: string) {
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
 
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+      if (!vapidPublicKey) {
+        toast.error("Push notifications are not configured for this environment");
+        setLoading(false);
+        return false;
+      }
+
       // Subscribe to push notifications
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
 
       const subscriptionData: PushSubscriptionData = {

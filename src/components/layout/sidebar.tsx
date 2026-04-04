@@ -67,10 +67,10 @@ export default function Sidebar() {
               href={href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all",
                 active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />

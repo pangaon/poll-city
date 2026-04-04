@@ -11,6 +11,11 @@ import { formatRelative, fullName } from "@/lib/utils";
 import { INTERACTION_TYPE_LABELS } from "@/types";
 
 /* ── Types ── */
+interface OfficialInfo {
+  id: string; name: string; title: string | null; district: string | null;
+  level: string; isClaimed: boolean; photoUrl: string | null;
+}
+
 interface DashboardProps {
   data: {
     totalContacts: number;
@@ -33,6 +38,7 @@ interface DashboardProps {
   };
   campaign: { name: string; candidateName: string | null; electionDate: Date | null };
   user: { id: string; name?: string | null; role: string };
+  official?: OfficialInfo;
 }
 
 type WidgetId =
@@ -100,13 +106,33 @@ function actionLabel(action: string, entityType: string, details: unknown): stri
   return `${action} ${entityType}`;
 }
 
-export default function DashboardClient({ data, campaign, user }: DashboardProps) {
+const OFFICIAL_MODE_KEY = "poll-city-official-mode";
+
+export default function DashboardClient({ data, campaign, user, official }: DashboardProps) {
   const [order, setOrder] = useState<WidgetId[]>(PRESETS.Overview);
   const [hidden, setHidden] = useState<WidgetId[]>([]);
   const [customising, setCustomising] = useState(false);
   const [activePreset, setActivePreset] = useState("Overview");
   const [extraData, setExtraData] = useState({ donations: 0, signs: 0, doorsToday: 0, gotvPct: 0, callPct: 0 });
+  const [officialMode, setOfficialMode] = useState(false);
   const dragId = useRef<WidgetId | null>(null);
+
+  // Load official mode preference
+  useEffect(() => {
+    if (!official) return;
+    try {
+      const saved = localStorage.getItem(`${OFFICIAL_MODE_KEY}-${user.id}`);
+      if (saved === "constituent") setOfficialMode(true);
+    } catch { /* ignore */ }
+  }, [official, user.id]);
+
+  function toggleOfficialMode() {
+    const next = !officialMode;
+    setOfficialMode(next);
+    try {
+      localStorage.setItem(`${OFFICIAL_MODE_KEY}-${user.id}`, next ? "constituent" : "campaign");
+    } catch { /* ignore */ }
+  }
 
   const supportRate = data.totalContacts > 0
     ? Math.round((data.supporters / data.totalContacts) * 100)
@@ -319,6 +345,117 @@ export default function DashboardClient({ data, campaign, user }: DashboardProps
     );
   }
 
+  // Constituent dashboard view (for officials in official mode)
+  if (official && officialMode) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* Official header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">Official Mode</div>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Constituent Dashboard</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{official.name} · {official.title} · {official.district}</p>
+          </div>
+          <button
+            onClick={toggleOfficialMode}
+            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors font-medium"
+          >
+            Switch to Candidate Mode
+          </button>
+        </div>
+
+        {/* Constituent stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Constituents Reached", value: data.totalContacts, color: "text-blue-600" },
+            { label: "Supporter Signals", value: data.supporters, color: "text-emerald-600" },
+            { label: "Questions Received", value: data.followUpsDue, color: "text-purple-600" },
+            { label: "Open Tasks", value: data.pendingTasks, color: "text-amber-600" },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-gray-500 mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick actions */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Send Update", href: "/notifications/new", icon: Bell },
+              { label: "View Questions", href: "/contacts?followUpNeeded=true", icon: HelpCircle },
+              { label: "Post Poll", href: "/polls/new", icon: CheckSquare },
+              { label: "View Sign Requests", href: "/signs", icon: MapPin },
+            ].map(({ label, href, icon: Icon }) => (
+              <Link
+                key={label}
+                href={href}
+                className="flex flex-col items-center gap-2 p-4 bg-gray-50 hover:bg-blue-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-all text-center"
+              >
+                <Icon className="w-5 h-5 text-blue-600" />
+                <span className="text-xs font-medium text-gray-700">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent constituent activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900 text-sm">Recent Interactions</h3>
+              <Link href="/contacts" className="text-xs text-blue-600 hover:underline">View all</Link>
+            </div>
+            {data.recentInteractions.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-10">No interactions yet</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {data.recentInteractions.slice(0, 5).map(i => (
+                  <div key={i.id} className="px-6 py-3 flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{fullName(i.contact.firstName, i.contact.lastName)}</p>
+                      <p className="text-xs text-gray-500">{INTERACTION_TYPE_LABELS[i.type as keyof typeof INTERACTION_TYPE_LABELS]}</p>
+                    </div>
+                    <span className="text-xs text-gray-400">{formatRelative(i.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-50">
+              <h3 className="font-semibold text-gray-900 text-sm">Sentiment Overview</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              {[
+                { label: "Support", pct: data.totalContacts > 0 ? Math.round((data.supporters / data.totalContacts) * 100) : 0, color: "bg-emerald-500" },
+                { label: "Undecided", pct: data.totalContacts > 0 ? Math.round((data.undecided / data.totalContacts) * 100) : 0, color: "bg-amber-400" },
+                { label: "Opposition", pct: data.totalContacts > 0 ? Math.round((data.opposition / data.totalContacts) * 100) : 0, color: "bg-red-400" },
+              ].map(s => (
+                <div key={s.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">{s.label}</span>
+                    <span className="font-bold text-gray-900">{s.pct}%</span>
+                  </div>
+                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${s.color} rounded-full transition-all duration-700`} style={{ width: `${s.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -329,17 +466,27 @@ export default function DashboardClient({ data, campaign, user }: DashboardProps
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{campaign.name}</p>
         </div>
-        <button
-          onClick={() => setCustomising(!customising)}
-          className={`inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-            customising
-              ? "bg-blue-600 text-white border-blue-600"
-              : "border-gray-200 text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          {customising ? "Done" : "Customise"}
-        </button>
+        <div className="flex items-center gap-2">
+          {official && (
+            <button
+              onClick={toggleOfficialMode}
+              className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Official View
+            </button>
+          )}
+          <button
+            onClick={() => setCustomising(!customising)}
+            className={`inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+              customising
+                ? "bg-blue-600 text-white border-blue-600"
+                : "border-gray-200 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            {customising ? "Done" : "Customise"}
+          </button>
+        </div>
       </div>
 
       {/* Customise panel */}

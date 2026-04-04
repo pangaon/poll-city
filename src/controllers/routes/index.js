@@ -35,8 +35,6 @@ module.exports = (req, res) => {
 
         poll.votes[parsed.vote]++;
 
-        console.log('Updated votes:', poll.votes);
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({

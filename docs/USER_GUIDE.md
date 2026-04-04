@@ -1,5 +1,54 @@
 # Poll City User Guide
 
+## v1.6.0 Feature SOP Addendum — April 4, 2026
+
+### Swipe Polls SOP (Voters — Poll City Social)
+
+1. Open Poll City Social at `/social/polls`.
+2. Use the filter tabs to narrow polls by election level: All, Municipal, Provincial, Federal, or School Board.
+3. Use the search bar to find polls by question text.
+4. For **Yes/No (Binary) polls**:
+   - On mobile: swipe right to vote Yes, swipe left to vote No.
+   - Green glow appears as you swipe right. Red glow appears as you swipe left.
+   - Release when you feel the card fly off to confirm your vote.
+   - On desktop: click the Yes or No button below the card.
+5. For **Multiple Choice polls**: tap your preferred option directly on the card.
+6. For **Slider, Ranked, or Swipe Image polls**: tap "Open Poll" to go to the full poll page.
+7. After voting, a checkmark appears. Tap "Results →" to see community results with animated bars.
+8. Confetti celebrates your completed vote.
+
+### Creating a Poll — 4-Step Wizard (Campaign Staff)
+
+1. Go to `/polls` and click **New Poll**.
+2. **Step 1 — Question**: type your question (minimum 5 characters). Add an optional description. Select a poll type (Yes/No, Multiple Choice, Ranked, Slider, Swipe, Image Swipe, Emoji React, Priority Rank).
+3. **Step 2 — Options**: for poll types that need choices (Multiple Choice, Ranked, Swipe, Priority Rank), add at least 2 options. Click the colour dot to pick a colour for each option. Drag up/down arrows to reorder. Click the trash icon to remove. Polls with no options (Yes/No, Slider) skip this step automatically.
+4. **Step 3 — Settings**: choose visibility (Public, Campaign Only, Unlisted). Set an optional end date. Enter a target region (optional). Add comma-separated tags for filtering (e.g. "municipal, transit"). Toggle: Show Results Before End, Allow Multiple Votes, Notify Subscribers.
+5. **Step 4 — Preview**: review the gradient card preview and the settings summary. Click **Publish Poll** to go live.
+6. The poll appears in your polls list with a status badge (Active, Closing, Ended).
+
+### Polls List — Campaign Staff
+
+1. Go to `/polls` to see all campaign polls as cards.
+2. Each card shows: type badge, status badge, question, option preview, response count, visibility icon, and created date.
+3. Hover a card to reveal the Edit button.
+4. Use the search bar to find polls by question text.
+5. Use pagination arrows when you have more than 20 polls.
+
+### Official Dashboard — Constituent Mode (Elected Officials)
+
+1. Log in to Poll City. If your official profile is linked to your account, an **Official View** button appears in the dashboard header.
+2. Click **Official View** to switch to the Constituent Dashboard.
+3. The Constituent Dashboard shows:
+   - **Constituents Reached** — total contacts in your district.
+   - **Supporter Signals** — contacts who have expressed support.
+   - **Questions Received** — contacts flagged for follow-up.
+   - **Open Tasks** — pending tasks.
+4. Use the Quick Actions grid: Send Update, View Questions, Post Poll, View Sign Requests.
+5. The Recent Interactions card shows your latest constituent touchpoints.
+6. The Sentiment Overview chart shows Support / Undecided / Opposition breakdown.
+7. Click **Switch to Candidate Mode** to return to the full campaign operations dashboard.
+8. Your view preference is saved in your browser.
+
 ## April 2026 Feature SOP Addendum
 
 ### Officials Directory SOP (`/officials`)

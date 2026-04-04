@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Search, Pencil, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
-import { Badge, Button, Card, CardContent, FormField, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { Plus, Search, Pencil, ChevronLeft, ChevronRight, BarChart3, Clock, Eye, EyeOff, Users } from "lucide-react";
+import { Button, Card, CardContent, Input, PageHeader } from "@/components/ui";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/utils";
 
@@ -21,28 +22,57 @@ interface PollRow {
 
 interface Props { campaignId: string; }
 
-const pageSize = 25;
-const optionTypes = new Set(["multiple_choice", "ranked", "priority_rank"]);
+const pageSize = 20;
+
+const TYPE_COLORS: Record<string, string> = {
+  binary: "bg-blue-100 text-blue-700",
+  multiple_choice: "bg-indigo-100 text-indigo-700",
+  ranked: "bg-purple-100 text-purple-700",
+  slider: "bg-cyan-100 text-cyan-700",
+  swipe: "bg-pink-100 text-pink-700",
+  image_swipe: "bg-rose-100 text-rose-700",
+  emoji_react: "bg-amber-100 text-amber-700",
+  priority_rank: "bg-violet-100 text-violet-700",
+};
+
+const GRADIENTS = [
+  "from-blue-500 to-purple-600",
+  "from-emerald-500 to-teal-600",
+  "from-orange-500 to-red-600",
+  "from-pink-500 to-purple-600",
+  "from-cyan-500 to-blue-600",
+  "from-violet-500 to-indigo-600",
+  "from-amber-500 to-orange-600",
+  "from-indigo-500 to-blue-700",
+];
+function getGradient(id: string) {
+  const sum = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return GRADIENTS[sum % GRADIENTS.length];
+}
+
+function StatusBadge({ endsAt, totalResponses }: { endsAt: string | null; totalResponses: number }) {
+  if (!endsAt) return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Active
+    </span>
+  );
+  const isEnded = new Date(endsAt) < new Date();
+  return isEnded ? (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold">Ended</span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+      <Clock className="w-3 h-3" />Closing
+    </span>
+  );
+}
 
 export default function PollsClient({ campaignId }: Props) {
+  const router = useRouter();
   const [polls, setPolls] = useState<PollRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [selectedPoll, setSelectedPoll] = useState<PollRow | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({
-    question: "",
-    description: "",
-    type: "binary",
-    visibility: "campaign_only",
-    targetRegion: "",
-    targetPostalPrefixes: "",
-    tags: "",
-    endsAt: "",
-    options: "",
-  });
 
   const loadPolls = useCallback(async () => {
     setLoading(true);
@@ -66,170 +96,131 @@ export default function PollsClient({ campaignId }: Props) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function openCreate() {
-    setSelectedPoll(null);
-    setForm({ question: "", description: "", type: "binary", visibility: "campaign_only", targetRegion: "", targetPostalPrefixes: "", tags: "", endsAt: "", options: "" });
-    setModalOpen(true);
-  }
-
-  function openEdit(poll: PollRow) {
-    setSelectedPoll(poll);
-    setForm({
-      question: poll.question,
-      description: poll.description ?? "",
-      type: poll.type,
-      visibility: poll.visibility,
-      targetRegion: poll.targetRegion ?? "",
-      targetPostalPrefixes: "",
-      tags: poll.tags?.join(", ") ?? "",
-      endsAt: poll.endsAt ? new Date(poll.endsAt).toISOString().slice(0, 16) : "",
-      options: poll.options.map((option) => option.text).join(", "),
-    });
-    setModalOpen(true);
-  }
-
-  async function savePoll() {
-    const payload = {
-      question: form.question,
-      description: form.description,
-      type: form.type,
-      visibility: form.visibility,
-      targetRegion: form.targetRegion || null,
-      targetPostalPrefixes: form.targetPostalPrefixes.split(",").map((item) => item.trim()).filter(Boolean),
-      tags: form.tags.split(",").map((item) => item.trim()).filter(Boolean),
-      endsAt: form.endsAt || null,
-      options: optionTypes.has(form.type)
-        ? form.options.split(",").map((item) => item.trim()).filter(Boolean)
-        : undefined,
-      campaignId,
-    };
-
-    try {
-      const url = selectedPoll ? `/api/polls?id=${selectedPoll.id}` : "/api/polls";
-      const method = selectedPoll ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save poll");
-      toast.success(`Poll ${selectedPoll ? "updated" : "created"}`);
-      setModalOpen(false);
-      loadPolls();
-    } catch (error) {
-      toast.error((error as Error).message || "Save failed");
-    }
-  }
-
-  const showOptionsField = optionTypes.has(form.type);
-
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         title="Polls"
-        description="Create, edit, and review campaign polls and their response volume."
-        actions={<Button onClick={openCreate}><Plus className="w-4 h-4" />New poll</Button>}
+        description="Create and manage polls to understand voter sentiment."
+        actions={
+          <Button onClick={() => router.push("/polls/new")}>
+            <Plus className="w-4 h-4" /> New Poll
+          </Button>
+        }
       />
 
+      {/* Search */}
       <Card>
-        <CardContent>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search question or region" />
-            </div>
+        <CardContent className="pt-4 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              className="pl-9"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search polls by question or region…"
+            />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Question</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Type</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Visibility</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 hidden xl:table-cell">Responses</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Created</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <tr key={index}>{Array.from({ length: 6 }).map((cell, idx) => <td key={idx} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>)}</tr>
-                ))
-              ) : polls.length === 0 ? (
-                <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-500">No campaign polls yet.</td></tr>
-              ) : polls.map((poll) => (
-                <tr key={poll.id} className="hover:bg-blue-50/40 transition-colors">
-                  <td className="px-4 py-3"><div className="font-medium text-gray-900">{poll.question}</div><div className="text-xs text-gray-500">{poll.targetRegion ?? "No target region"}</div></td>
-                  <td className="px-4 py-3 hidden lg:table-cell"><Badge variant="info">{poll.type}</Badge></td>
-                  <td className="px-4 py-3"><Badge variant={poll.visibility === "public" ? "success" : poll.visibility === "campaign_only" ? "default" : "warning"}>{poll.visibility}</Badge></td>
-                  <td className="px-4 py-3 hidden xl:table-cell">{poll.totalResponses}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatDateTime(poll.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <Button size="sm" variant="outline" onClick={() => openEdit(poll)}><Pencil className="w-3.5 h-3.5" />Edit</Button>
-                  </td>
-                </tr>
+      {/* Empty state */}
+      {!loading && polls.length === 0 && (
+        <div className="text-center py-20">
+          <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <BarChart3 className="w-8 h-8 text-indigo-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">No polls yet</h3>
+          <p className="text-gray-500 text-sm mb-6">Create your first poll to start gathering voter insights.</p>
+          <Button onClick={() => router.push("/polls/new")}>
+            <Plus className="w-4 h-4" /> Create Your First Poll
+          </Button>
+        </div>
+      )}
+
+      {/* Poll cards grid */}
+      {(loading || polls.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl bg-gray-100 animate-pulse h-48" />
+              ))
+            : polls.map(poll => (
+                <div
+                  key={poll.id}
+                  className="group rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col"
+                >
+                  {/* Gradient stripe */}
+                  <div className={`h-1.5 bg-gradient-to-r ${getGradient(poll.id)}`} />
+
+                  <div className="p-5 flex-1 flex flex-col">
+                    {/* Type + status */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${TYPE_COLORS[poll.type] ?? "bg-gray-100 text-gray-600"}`}>
+                        {poll.type.replace(/_/g, " ")}
+                      </span>
+                      <StatusBadge endsAt={poll.endsAt} totalResponses={poll.totalResponses} />
+                    </div>
+
+                    {/* Question */}
+                    <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-3 flex-1 mb-3">
+                      {poll.question}
+                    </h3>
+
+                    {/* Options preview */}
+                    {poll.options.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {poll.options.slice(0, 3).map(opt => (
+                          <span key={opt.id} className="text-xs bg-gray-50 border border-gray-200 text-gray-600 px-2 py-0.5 rounded-lg">
+                            {opt.text}
+                          </span>
+                        ))}
+                        {poll.options.length > 3 && (
+                          <span className="text-xs text-gray-400">+{poll.options.length - 3} more</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" />{poll.totalResponses}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {poll.visibility === "public" ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          {poll.visibility.replace("_", " ")}
+                        </span>
+                        <span>{formatDateTime(poll.createdAt)}</span>
+                      </div>
+                      <button
+                        onClick={() => router.push(`/polls/new?edit=${poll.id}`)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
         </div>
-      </Card>
+      )}
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-gray-500">Showing {total === 0 ? 0 : Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}</div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="w-4 h-4" /></Button>
-          <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}><ChevronRight className="w-4 h-4" /></Button>
-        </div>
-      </div>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={selectedPoll ? "Edit poll" : "Create poll"} size="xl">
-        <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Question"><Input value={form.question} onChange={(event) => setForm((state) => ({ ...state, question: event.target.value }))} /></FormField>
-            <FormField label="Type">
-              <Select value={form.type} onChange={(event) => setForm((state) => ({ ...state, type: event.target.value }))}>
-                <option value="binary">Binary</option>
-                <option value="multiple_choice">Multiple choice</option>
-                <option value="ranked">Ranked</option>
-                <option value="slider">Slider</option>
-                <option value="swipe">Swipe</option>
-                <option value="image_swipe">Image swipe</option>
-                <option value="emoji_react">Emoji react</option>
-                <option value="priority_rank">Priority rank</option>
-              </Select>
-            </FormField>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Visibility">
-              <Select value={form.visibility} onChange={(event) => setForm((state) => ({ ...state, visibility: event.target.value }))}>
-                <option value="campaign_only">Campaign only</option>
-                <option value="public">Public</option>
-                <option value="unlisted">Unlisted</option>
-              </Select>
-            </FormField>
-            <FormField label="Target region"><Input value={form.targetRegion} onChange={(event) => setForm((state) => ({ ...state, targetRegion: event.target.value }))} /></FormField>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Postal prefixes"><Input value={form.targetPostalPrefixes} onChange={(event) => setForm((state) => ({ ...state, targetPostalPrefixes: event.target.value }))} placeholder="Comma separated" /></FormField>
-            <FormField label="Tags"><Input value={form.tags} onChange={(event) => setForm((state) => ({ ...state, tags: event.target.value }))} placeholder="Comma separated" /></FormField>
-          </div>
-          {showOptionsField && <FormField label="Options"><Textarea value={form.options} onChange={(event) => setForm((state) => ({ ...state, options: event.target.value }))} placeholder="Enter options separated by commas" /></FormField>}
-          <FormField label="Description"><Textarea value={form.description} onChange={(event) => setForm((state) => ({ ...state, description: event.target.value }))} /></FormField>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Ends at"><Input type="datetime-local" value={form.endsAt} onChange={(event) => setForm((state) => ({ ...state, endsAt: event.target.value }))} /></FormField>
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={savePoll}><CheckCircle2 className="w-4 h-4" />Save</Button>
+      {/* Pagination */}
+      {total > pageSize && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-gray-500">
+            {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} polls
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(v => Math.max(1, v - 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(v => Math.min(totalPages, v + 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }
