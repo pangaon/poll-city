@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { parsePagination, paginate } from "@/lib/utils";
 import { z } from "zod";
 
 const createPollSchema = z.object({
@@ -23,8 +24,12 @@ export async function GET(req: NextRequest) {
   const postalCode = sp.get("postalCode");
   const featured = sp.get("featured") === "true";
   const campaignId = sp.get("campaignId");
+  const search = sp.get("search")?.trim();
 
-  // Campaign-specific polls require auth + membership
+  let page = 1;
+  let pageSize = 25;
+  let skip = 0;
+
   if (campaignId) {
     const { session, error } = await apiAuth(req);
     if (error) return error;
@@ -34,7 +39,7 @@ export async function GET(req: NextRequest) {
     if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const where: Record<string, unknown> = { isActive: true };
+  const where: any = { isActive: true };
   if (featured) where.isFeatured = true;
   if (campaignId) {
     where.campaignId = campaignId;
@@ -51,17 +56,31 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  const polls = await prisma.poll.findMany({
-    where,
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    take: 20,
-    include: {
-      options: { orderBy: { order: "asc" } },
-      _count: { select: { responses: true } },
-    },
-  });
+  if (search) {
+    where.OR = [
+      ...(where.OR ?? []),
+      { question: { contains: search, mode: "insensitive" } },
+      { targetRegion: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
-  return NextResponse.json({ data: polls });
+  ({ page, pageSize, skip } = parsePagination(sp));
+
+  const [polls, total] = await Promise.all([
+    prisma.poll.findMany({
+      where,
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      skip,
+      take: pageSize,
+      include: {
+        options: { orderBy: { order: "asc" } },
+        _count: { select: { responses: true } },
+      },
+    }),
+    prisma.poll.count({ where }),
+  ]);
+
+  return NextResponse.json(paginate(polls, total, page, pageSize));
 }
 
 /** POST /api/polls — create a poll (auth required) */
