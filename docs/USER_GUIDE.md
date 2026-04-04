@@ -1,0 +1,529 @@
+# Poll City User Guide
+
+## Section 1: Getting Started
+
+### How to Create Your Poll City Account
+
+1. Navigate to poll.city and click **Sign Up**
+2. Enter your email address and choose a strong password (minimum 8 characters)
+3. Click **Create Account**
+4. Check your email for a verification link and click it to activate your account
+5. You're now ready to create your first campaign
+
+### How to Create Your First Campaign
+
+1. Log in to your account and click **Create New Campaign** on the dashboard
+2. Fill in the campaign details:
+   - **Campaign Name**: e.g., "Jane Smith for Mayor 2026"
+   - **Election Type**: Select from Municipal, Provincial, Federal, By-Election, Nomination, Leadership, Union, or Referendum
+   - **Election Date**: Pick the date when the election takes place
+3. For municipal elections, select your **Municipality** from the dropdown (we'll show if we have election data for it)
+4. Auto-fill or edit your **Jurisdiction** (ward number or district name)
+5. Enter the **Candidate Name** (if your name matches an official record, we'll offer to pre-fill your data)
+6. Add **Party or Organization** (optional)
+7. Click **Create Campaign**
+8. You'll be taken to the dashboard of your new campaign
+
+### How to Set Up Your Candidate Public Page
+
+1. Go to **Settings** → **Public Page**
+2. Upload or paste a **Campaign Logo** (recommended: square, 512×512px)
+3. Choose your **Primary Brand Colour** (hex code)
+4. Write your **Candidate Bio** (supports markdown formatting)
+5. Check **Make This Page Public** to publish
+6. Copy your public page URL: `poll.city/candidates/your-slug`
+7. Share this link on social media and with voters
+
+### How to Invite Team Members
+
+1. Go to **Settings** → **Users & Permissions**
+2. Click **Invite Team Member**
+3. Enter their email address
+4. Select their role:
+   - **Campaign Manager**: Full access to all features
+   - **Volunteer**: Canvassing and reporting only
+   - **Analyst**: View analytics, reports, and contacts
+5. Click **Send Invite**
+6. They'll receive an email with an invitation link to join your campaign
+
+### How to Connect Your Custom Domain
+
+1. Go to **Settings** → **Custom Domain**
+2. Enter your domain name (e.g., `janeitsmith.com`)
+3. Follow the DNS setup instructions (add a CNAME record pointing to `poll.city`)
+4. Click **Verify Domain** once DNS is configured
+5. Your custom domain will now point to your candidate profile
+
+---
+
+## Section 2: Campaign Manager Guide
+
+### How to Import Your Contact List
+
+1. Go to **Import / Export** → **Smart Import**
+2. Click **Choose CSV File** and select your spreadsheet (supports .csv, .xlsx, .xls)
+3. Map your columns to Poll City fields:
+   - Required: First Name, Last Name, Email OR Phone
+   - Optional: Street Address, City, Postal Code, Phone, Email, Support Level, Tags
+4. Preview shows first 5 rows — verify the mapping is correct
+5. Click **Import Contacts** (note: duplicates are automatically merged)
+6. Watch the progress bar. You'll get an email confirmation when done.
+
+### How to Create and Manage Walk Lists
+
+1. Go to **Canvassing** → **Walk List**
+2. Click **Create New Walk List**
+3. Give your list a name (e.g., "Ward 12 Door Knock Nov 1")
+4. Select **Turf/District** or manually search by:
+   - Address
+   - Postal Code Range
+   - Support Level (to target only supporters, etc.)
+5. Review the contact count, then click **Generate List**
+6. Export as PDF for field teams or share a mobile link
+7. Teams can report results in real-time using the mobile app
+
+### How to Build and Assign Turfs
+
+1. Go to **Canvassing** → **Turf Builder**
+2. Select your **Start Address** and **Radius** (in kilometers)
+3. Choose **Split Method**: Ward, Poll Number, Street, or Odd/Even Side
+4. Set **Doors Per Turf** (e.g., 50 doors max per canvasser)
+5. Click **Generate Turfs**
+6. Review turfs on the map, then click **Confirm & Create**
+7. Assign turfs to canvassers:
+   - Go to **Canvassing** → **Assign Turfs**
+   - Drag turfs to canvassers or use bulk assignment
+   - Send them a link to download their mobile walk list
+
+### How to Track Canvassing Progress
+
+1. Go to **Analytics**
+2. Click **Door Knock Completion Map** to see real-time coverage
+3. Hover over areas to see:
+   - Doors knocked vs. remaining
+   - Canvasser names and completion %
+   - Time taken per area
+4. Use **Leaderboard** to see top-performing canvassers
+5. Click on a canvasser to see their recent activity
+
+### How to Manage Volunteers and Shifts
+
+1. Go to **Volunteers**
+2. Click **Invite Volunteer** and send them a link
+3. Create **Volunteer Shifts**:
+   - Date, Time, Location, Role (Canvasser, Phone Bank, Data Entry)
+   - Description and any special notes
+4. Volunteers RSVP to your shifts
+5. Send **SMS Reminders** 24 hours before each shift
+6. Track **Volunteer Hours** contributed by person and role
+
+### How to Track Signs and Requests
+
+1. Go to **Signs**
+2. To **Request a Sign**:
+   - Enter address, contact name, phone, email
+   - Select sign size and quantity
+   - Mark as "Pick Up" or "Delivery"
+3. To **Track Requests**:
+   - View all pending, approved, and delivered signs
+   - Filter by date or status
+   - Export a sign delivery schedule for your team
+4. To **Manage Supply**:
+   - Add your inventory count
+   - System alerts when stock is low
+
+### How to Manage Donations
+
+1. Go to **Donations**
+2. To **Record a Donation**:
+   - Click **Add Donation**
+   - Enter donor name, amount, date
+   - Add transaction ID or payment method reference
+3. To **Set Up Online Giving**:
+   - Go to **Settings** → **Donation Links**
+   - Enable Stripe integration
+   - Copy your donation link and share on your public page
+4. To **Track Progress**:
+   - See daily/weekly donation totals
+   - Monitor which addresses are donating (for targeting)
+   - Export donor list for thank-you letters
+
+### How to Create and Send Notifications
+
+1. Go to **Notifications**
+2. Click **Create Notification**
+3. Choose channel:
+   - **Email** (all contacts or specific support level)
+   - **SMS** (CASL-compliant list only)
+   - **In-App** (to Poll City users following you)
+4. Write your message (supports variables like {firstName}, {supportLevel})
+5. Schedule for immediate send or pick a future date/time
+6. Click **Send** and monitor open/click rates
+
+### How to Run Polls
+
+1. Go to **Polls**
+2. Click **Create Poll**
+3. Ask your question and set poll type:
+   - **Yes/No**: Binary choice
+   - **Multiple Choice**: Up to 5 options
+   - **Ranking**: Voters rank options by preference
+   - **Slider**: 1-10 scale (e.g., "How likely are you to vote?")
+   - **Image Swipe**: Tinder-style swiping on images
+4. Set **Visibility**: Public (on your profile) or Private (campaign-only)
+5. Publish poll immediately or schedule a future time
+6. View live results in real-time
+7. Use results for messaging strategy (which policy resonates most, etc.)
+
+### How to Use the GOTV Engine
+
+1. Go to **GOTV** (Get Out The Vote)
+2. Configure your **GOTV Settings**:
+   - Election day date
+   - Locations of polling stations
+   - Advance voting location details
+3. Select contacts who are:
+   - Strong supporters
+   - Persuadable voters
+   - First-time voters
+4. Create **GOTV Tasks**:
+   - Phone banking (reminder calls 3 days before)
+   - Door knocking (final pushes)
+   - Ride-to-polls sign-ups
+5. Track **Voter Turnout** against historical targets
+6. Monitor completion % in real-time on the **GOTV Dashboard**
+
+### How to View Analytics and Heat Maps
+
+1. Go to **Analytics**
+2. Click **Heat Map** to see election result intensity by municipality:
+   - Red zones = Close races (<40% support)
+   - Blue zones = Moderate contests (40–60%)
+   - Dark blue = Dominant territory (>60%)
+3. Use **Top Municipalities** chart to see highest voter turnout areas
+4. Use **Trends** chart to compare 2014, 2018, and 2022 elections
+5. Click **Full Results** to export raw data for further analysis
+6. Filter by year, province, and municipality
+
+### How to Use the AI Assistant
+
+1. Go to **AI Assist**
+2. Chat with Claude AI for:
+   - Writing email templates
+   - Generating canvassing scripts
+   - Analyzing poll data and suggesting messaging
+   - Creating social media posts
+   - Draft press releases
+3. Give context (e.g., "I'm running for mayor in a suburban riding with aging voters")
+4. AI generates tailored suggestions you can edit and use
+
+### How to Manage Tasks
+
+1. Go to **Tasks**
+2. Click **Create Task**
+3. Add details:
+   - Title, description, priority level
+   - Due date
+   - Assign to team member
+   - Add subtasks if needed
+4. Click **Create**
+5. Team members see tasks in their **Task List**
+6. Dashboard shows **Open Tasks** count
+7. Mark tasks complete when done; they roll to archive
+
+### How to Export Data
+
+1. Go **Import/Export** → **Export**
+2. Select what to export:
+   - Contacts (CSV with all fields)
+   - Election Results (CSV with analysis)
+   - Canvassing Reports (by date range)
+   - Donation List (with donor info)
+   - Volunteer Hours (by person)
+   - Analytics Maps (as images)
+3. Click **Export** to download
+
+---
+
+## Section 3: Canvasser Guide
+
+### How to Download the Mobile App
+
+1. On your phone, go to:
+   - **iOS**: Apple App Store → search "Poll City"
+   - **Android**: Google Play Store → search "Poll City"
+2. Tap **Install**
+3. Open the app and log in with your email and password
+4. You're ready to start canvassing
+
+### How to Access Your Walk List
+
+1. Open the Poll City app
+2. If your manager assigned you a turf, you'll see **Your Turfs** on the home screen
+3. Tap your turf name to open your walk list
+4. The app shows:
+   - Map of all doors you need to visit
+   - Address and contact name
+   - Current support level (from previous conversations)
+   - Notes from your manager
+5. Walk to each address in order (app guides you via GPS)
+
+### How to Record a Door Knock Result
+
+1. Arrive at a door and tap the address in the app
+2. Select the interaction type:
+   - **Home**: They answered the door
+   - **Not Home**: No one answered
+   - **Refused**: They declined to speak with you
+   - **Moved**: Address is vacant
+3. If they answered, record:
+   - **Support Level**: Strong Support, Leaning Support, Undecided, Leaning Opposition, Strong Opposition
+   - **Notes**: e.g., "Interested in affordable housing"
+   - **Phone Number** (optional): to follow up later
+   - **Email** (optional): to add to newsletter
+4. Upload a photo if needed (e.g., "No Solicitors" sign)
+5. Tap **Save** → move to next address
+
+### How to Use the App Offline Without Cell Signal
+
+1. Before you go canvassing, tap **Download Offline** in the app
+2. Select your turf and tap **Sync**
+3. The app downloads:
+   - Full walk list
+   - Contact information
+   - Maps (no GPS needed, just for reference)
+4. Go knock doors; app saves results locally
+5. When you get cell signal, results auto-sync
+6. If sync fails, tap **Manual Sync** in settings
+
+### How to Sync Your Results
+
+1. When you have cell/WiFi connection:
+   - Open the app → **More** → **Sync**
+2. Tap **Upload Results** (blue circle)
+3. App shows upload progress — you'll see a checkmark when done
+4. Important: Don't force-close the app during sync
+5. Results appear on your manager's dashboard within 5 minutes
+
+### How to Use Quick Capture
+
+1. Go to **Capture** in the app
+2. Without visiting an address, quickly log:
+   - Street/neighbourhood
+   - Phone number or email
+   - Support level
+   - One key note
+3. Useful for: Market events, street teams, random conversations
+4. Later, your manager can geocode these into turfs
+
+---
+
+## Section 4: Voter Guide on Poll City Social
+
+### How to Find Your Candidates by Postal Code
+
+1. Go to poll.city/social
+2. Enter your postal code (e.g., M5V 3A8) in the search box
+3. Click **Search**
+4. See all candidates and officials running or serving in your area:
+   - By level: Municipal, Provincial, Federal
+   - By district/riding
+5. View their profiles, answer their polls, learn their positions
+
+### How to Follow a Candidate or Official
+
+1. On any candidate's profile, click **Follow**
+2. You'll get email updates when they:
+   - Post a new poll
+   - Publish a message
+   - Request your support
+3. Manage your following list in **Profile** → **Following**
+4. Click **Unfollow** anytime to stop receiving updates
+
+### How to Answer Polls
+
+1. On a candidate's profile, locate their **Active Polls**
+2. Click a poll question to open it
+3. Select your answer(s) and click **Submit**
+4. See live results instantly
+5. Polls are anonymous — your name isn't recorded
+
+### How to Request a Campaign Sign
+
+1. On the candidate's profile, click **Request a Sign**
+2. Fill in:
+   - Your street address
+   - Your name and phone number
+   - Sign size preference (Small, Medium, Large)
+   - Installation date preference
+3. Click **Submit Request**
+4. The campaign will contact you within 24 hours
+
+### How to Opt In to Election Day Notifications
+
+1. On any candidate's profile, click **Election Day Alerts** (toggle ON)
+2. You'll receive an SMS or email reminding you to vote on election day
+3. Message includes:
+   - Polling station address for your postal code
+   - Hours (polls typically open 8am–8pm)
+   - What to bring (voter ID)
+   - Early voting dates if not voting on election day
+4. Manage notifications in **Profile** → **Notification Settings**
+
+### How to Manage Your Notification Preferences
+
+1. Go to your **Profile** → **Notification Settings**
+2. Choose which types of emails/SMS you want:
+   - Poll notifications
+   - Election day reminders
+   - Campaign announcements
+   - Policy updates
+3. Uncheck any you don't want
+4. Click **Save**
+5. You can always re-enable them later
+
+---
+
+## Section 5: Elected Official Guide
+
+### How to Claim Your Poll City Profile
+
+1. Go to poll.city/claim
+2. Enter your name and postal code (or district name)
+3. If Poll City has your official record, you'll see your profile:
+   - Photo (if in our database)
+   - Title, level, and jurisdiction
+4. Click **Claim This Profile**
+5. Enter your email and password to create your account
+6. Verify ownership via email link
+7. Your profile is now claimed and locked to your account
+
+### How to Verify Your Identity
+
+1. After claiming your profile, go to **Settings** → **Identity Verification**
+2. Upload one of the following:
+   - Photo ID (driver's license, passport)
+   - Official government letter with your address
+   - Election Canada certificate (for MPs)
+3. Add a note explaining your document (e.g., "My driver's license")
+4. Click **Submit for Verification**
+5. Poll City team reviews within 24 hours
+6. Once verified, a green "Verified" badge appears on your profile
+
+### How to Manage Your Public Profile
+
+1. Go to **Settings** → **Profile Information**
+2. Update:
+   - **Title**: Your official role
+   - **Photo**: Professional headshot
+   - **Bio**: Your background and priorities
+   - **District**: Your riding, ward, or municipality
+3. Add contact information:
+   - **Website**: Link to your official site
+   - **Phone**: Office number
+   - **Email**: Public contact email
+   - **Twitter, Facebook, Instagram, LinkedIn**: Social media handles
+4. Click **Publish** to go live
+
+### How to Engage With Constituent Questions
+
+1. Go to **Inbox** → **Constituent Questions**
+2. See all questions voters have submitted to you
+3. Click a question to open it
+4. Type your response and click **Send Answer**
+5. Voter receives your response via email
+6. Your answer appears on your public profile (anonymous)
+7. You can mark questions as "Answered," "Forwarded to Staff," or "No Response"
+
+### How to Use the Constituent Dashboard
+
+1. Go to your **Dashboard**
+2. View:
+   - **District Overview**: Population, demographics, top issues
+   - **Recent Activity**: Latest polls voters have answered
+   - **Service Requests**: Constituent cases (potholes, permit issues)
+   - **Follow Count**: How many constituents are following you
+3. Use insights to inform your priorities and town halls
+
+### How to Prepare for Re-Election
+
+1. Go to **Re-Election Hub**
+2. Download tools:
+   - Contact list of supporters (segmented by support level)
+   - Canvassing scripts tailored to common issues
+   - Sample social media posts
+   - Election timeline (nomination period, advance vote, election day)
+3. Set up your campaign:
+   - Import your contact list
+   - Create your candidate page (if running again)
+   - Invite staff and volunteers
+4. Monitor opposition:
+   - View candidate profiles running against you
+   - Track their position on key issues via polls
+
+---
+
+## Section 6: Print Marketplace Guide
+
+### How to Create a Print Job
+
+1. Go to **Print** → **Print Shop**
+2. Click **Create New Job**
+3. Specify your order:
+   - **Item Type**: Door Hanger, Postcard, Flyer, Sign, Lawn Sign, etc.
+   - **Quantity**: 500–50,000+
+   - **Specifications**: Color, Size, Paper Weight
+   - **Design**: Upload a PDF or use our design tool
+4. Preview your file and click **Submit Design**
+5. Choose **Delivery Options**:
+   - Mail to single address
+   - Mail to multiple addresses (bulk shipping)
+   - Local pickup
+6. Click **Estimate Cost**
+
+### How to Post to Marketplace
+
+1. Create your job (above), then click **Post to Marketplace**
+2. Your job is now visible to all print shops in our network
+3. You'll receive bids within 24 hours
+4. Each bid shows:
+   - Price per unit
+   - Turnaround time
+   - Print shop reputation score
+   - Samples of their previous work
+
+### How to Review Bids From Print Shops
+
+1. Go to **Print** → **Your Jobs**
+2. Click your job to see all bids
+3. Compare:
+   - **Price per unit**: Calculate total cost
+   - **Timeline**: How fast can they deliver?
+   - **Reputation**: Click shop name to see reviews
+   - **Samples**: View their recent projects
+4. Click on a bid to see the print shop's full terms
+
+### How to Award a Job
+
+1. After reviewing bids, click on your chosen bid
+2. Click **Award Job** (you'll sign a simple contract)
+3. Upload final approved artwork if you haven't already
+4. Confirm delivery address and timeline
+5. The print shop sends you a production confirmation within 24 hours
+6. Estimated delivery date is locked in
+
+### How to Track Your Order
+
+1. Go to **Print** → **My Orders**
+2. Click on a job to see its status:
+   - **Design approved**: Proof accepted
+   - **In production**: Being printed
+   - **Quality check**: Final inspection at print shop
+   - **Shipped**: On its way to you
+   - **Delivered**: Arrival confirmation
+3. Click **Track Shipment** for real-time location updates
+4. Print shop updates progress automatically daily
+
+---
+
+**Need help?** Email support@poll.city or use the in-app Chat button.
