@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 const LIST_SELECT = {
   id: true,
@@ -18,6 +19,9 @@ const VALID_LEVELS = new Set(["municipal", "provincial", "federal"]);
 const POSTAL_CODE_PREFIX_REGEX = /^[A-Z0-9]{3}$/;
 
 export async function GET(req: NextRequest) {
+  const rateLimitResponse = rateLimit(req);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const sp = req.nextUrl.searchParams;
   const postalCode = sp.get("postalCode");
   const level = sp.get("level");

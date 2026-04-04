@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 const POSTAL_CODE_PREFIX_REGEX = /^[A-Z0-9]{3}$/;
 
 export async function GET(req: NextRequest) {
+  const rateLimitResponse = rateLimit(req);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const postalCode = req.nextUrl.searchParams.get("postalCode");
   if (!postalCode) {
     return NextResponse.json({ error: "postalCode is required" }, { status: 400 });
