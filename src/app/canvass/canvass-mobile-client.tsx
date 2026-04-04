@@ -76,7 +76,7 @@ export default function CanvassMobileClient({
                 <h3 className="text-lg font-semibold">Start Canvassing</h3>
                 <p className="text-gray-600">Walk your assigned list and record interactions</p>
                 {assignments.length > 0 && (
-                  <Badge variant="secondary" className="mt-1">
+                  <Badge variant="default" className="mt-1">
                     {assignments[0].canvassList.contacts.length} contacts
                   </Badge>
                 )}
@@ -184,7 +184,7 @@ function WalkView({ assignment, onBack }: { assignment: Assignment; onBack: () =
           <h3 className="text-xl font-bold">{contact.firstName} {contact.lastName}</h3>
           <p className="text-gray-600">{contact.address1}</p>
           <p className="text-gray-600">{contact.city}</p>
-          <Badge variant={contact.supportLevel === "supporter" ? "default" : "secondary"} className="mt-2">
+          <Badge variant={contact.supportLevel === "strong_support" ? "success" : "default"} className="mt-2">
             {contact.supportLevel}
           </Badge>
         </div>

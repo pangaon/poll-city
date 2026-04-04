@@ -25,12 +25,12 @@ export default function MarketingPage() {
             <Link href="/pricing" className="text-gray-600 hover:text-gray-900">
               Pricing
             </Link>
-            <Button asChild variant="outline">
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/login">Start Free Trial</Link>
-            </Button>
+            <Link href="/login">
+              <Button variant="outline">Login</Button>
+            </Link>
+            <Link href="/login">
+              <Button>Start Free Trial</Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -45,10 +45,10 @@ export default function MarketingPage() {
             The complete campaign operations platform for municipal candidates. Manage voters, coordinate volunteers, track signs, and engage your community — all in one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="text-lg px-8 py-3">
+            <Button size="lg" className="text-lg px-8 py-3">
               <Link href="/login">Start Free 14-Day Trial</Link>
             </Button>
-            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-3">
+            <Button size="lg" variant="outline" className="text-lg px-8 py-3">
               <Link href="#features">See How It Works</Link>
             </Button>
           </div>
@@ -153,6 +153,7 @@ export default function MarketingPage() {
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-blue-600">3</span>
+              </div>
               <h3 className="text-xl font-semibold mb-2">Win on Election Day</h3>
               <p className="text-gray-600">
                 Use GOTV tools to ensure every supporter votes. Celebrate your victory.
@@ -186,7 +187,7 @@ export default function MarketingPage() {
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Mobile canvassing app</li>
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Email support</li>
                 </ul>
-                <Button className="w-full mt-6" asChild>
+                <Button className="w-full mt-6">
                   <Link href="/login">Start Free Trial</Link>
                 </Button>
               </CardContent>
@@ -209,7 +210,7 @@ export default function MarketingPage() {
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Priority support</li>
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Custom fields</li>
                 </ul>
-                <Button className="w-full mt-6" asChild>
+                <Button className="w-full mt-6">
                   <Link href="/login">Start Starter Plan</Link>
                 </Button>
               </CardContent>
@@ -231,7 +232,7 @@ export default function MarketingPage() {
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />API access</li>
                   <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Dedicated support</li>
                 </ul>
-                <Button className="w-full mt-6" variant="outline" asChild>
+                <Button className="w-full mt-6" variant="outline">
                   <Link href="/login">Contact Sales</Link>
                 </Button>
               </CardContent>
@@ -247,7 +248,7 @@ export default function MarketingPage() {
           <p className="text-xl mb-8 opacity-90">
             Join hundreds of Ontario candidates already using Poll City to run winning campaigns.
           </p>
-          <Button size="lg" variant="secondary" asChild className="text-lg px-8 py-3">
+          <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
             <Link href="/login">Start Your Free Trial Today</Link>
           </Button>
         </div>
