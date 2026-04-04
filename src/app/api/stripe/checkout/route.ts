@@ -4,11 +4,15 @@ import { authOptions } from "@/lib/auth/auth-options";
 import Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
-});
+}) : null;
 
 export async function POST(request: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
+  }
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -43,7 +47,7 @@ export async function POST(request: NextRequest) {
 
       customer = await stripe.customers.create({
         email: user?.email,
-        name: user?.name,
+        name: user?.name ?? undefined,
         metadata: { userId },
       });
     }
