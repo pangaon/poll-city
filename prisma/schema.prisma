@@ -260,6 +260,7 @@ model Campaign {
   signRequests    SignRequest[]
   questions       Question[]
   pushSubscriptions PushSubscription[]
+  printJobs         PrintJob[]
 
   @@unique([customDomain])
   @@map("campaigns")
@@ -1232,4 +1233,103 @@ model ConsentLog {
   @@index([userId])
   @@index([campaignId])
   @@map("consent_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINT MARKETPLACE
+// Campaigns post print jobs, registered print shops bid, campaign awards bid.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PrintProductType {
+  door_hanger
+  lawn_sign
+  flyer
+  palm_card
+  mailer_postcard
+  banner
+  button_pin
+  window_sign
+}
+
+enum PrintJobStatus {
+  draft
+  posted
+  bidding
+  awarded
+  in_production
+  ready
+  delivered
+  cancelled
+}
+
+model PrintShop {
+  id           String   @id @default(cuid())
+  name         String
+  contactName  String?
+  email        String
+  phone        String?
+  website      String?
+  description  String?
+  serviceAreas String[] @default([])
+  specialties  PrintProductType[] @default([])
+  rating       Float?
+  reviewCount  Int      @default(0)
+  isVerified   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  logoUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bids         PrintBid[]
+
+  @@map("print_shops")
+}
+
+model PrintJob {
+  id              String           @id @default(cuid())
+  campaignId      String
+  userId          String
+  productType     PrintProductType
+  title           String
+  quantity        Int
+  description     String?
+  specs           Json?
+  deadline        DateTime?
+  deliveryAddress String?
+  deliveryCity    String?
+  deliveryPostal  String?
+  fileUrl         String?
+  budgetMin       Float?
+  budgetMax       Float?
+  status          PrintJobStatus   @default(draft)
+  awardedBidId    String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  campaign        Campaign         @relation(fields: [campaignId], references: [id])
+  bids            PrintBid[]
+
+  @@index([campaignId, status])
+  @@map("print_jobs")
+}
+
+model PrintBid {
+  id         String    @id @default(cuid())
+  jobId      String
+  shopId     String
+  price      Float
+  turnaround Int
+  notes      String?
+  fileUrl    String?
+  isAccepted Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  job        PrintJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  shop       PrintShop @relation(fields: [shopId], references: [id])
+
+  @@index([jobId])
+  @@index([shopId])
+  @@map("print_bids")
 }
