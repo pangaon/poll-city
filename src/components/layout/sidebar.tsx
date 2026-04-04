@@ -5,7 +5,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
-  Settings, Sparkles, ChevronDown, Vote, Menu, X,
+  Settings, Sparkles, BarChart3, ChevronDown, Vote, Menu, X,
   Phone, Search, Target, Zap, DollarSign
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/volunteers", icon: Users, label: "Volunteers" },
   { href: "/canvassing", icon: Map, label: "Canvassing" },
   { href: "/canvassing/walk", icon: Map, label: "Walk List" },
+  { href: "/polls", icon: BarChart3, label: "Polls" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/gotv", icon: Target, label: "GOTV" },
   { href: "/signs", icon: Map, label: "Signs" },
