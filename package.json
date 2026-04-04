@@ -17,6 +17,9 @@
     "typecheck": "tsc --noEmit",
     "db:indexes": "psql $DATABASE_URL -f prisma/setup-indexes.sql"
   },
+  "prisma": {
+    "seed": "npm run db:seed"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.6.0",
     "@prisma/client": "^5.15.0",
