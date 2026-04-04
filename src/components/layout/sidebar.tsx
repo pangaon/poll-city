@@ -13,6 +13,7 @@ import CampaignSwitcher from "@/components/layout/campaign-switcher";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/contacts", icon: Users, label: "Contacts" },
+  { href: "/volunteers", icon: Users, label: "Volunteers" },
   { href: "/canvassing", icon: Map, label: "Canvassing" },
   { href: "/canvassing/walk", icon: Map, label: "Walk List" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
