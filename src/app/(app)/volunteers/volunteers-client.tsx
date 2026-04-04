@@ -66,24 +66,30 @@ export default function VolunteersClient({ campaignId }: Props) {
     return "Volunteer";
   }, [selectedProfile]);
 
-  async function openEditor(profile: VolunteerProfileRow) {
-    setSelectedProfile(profile);
-    setFormState({
-      availability: profile.availability ?? "",
-      skills: profile.skills.join(", "),
-      maxHoursPerWeek: profile.maxHoursPerWeek?.toString() ?? "",
-      hasVehicle: profile.hasVehicle,
-      isActive: profile.isActive,
-      notes: profile.notes ?? "",
-    });
+  function openEditor(profile?: VolunteerProfileRow) {
+    if (profile) {
+      setSelectedProfile(profile);
+      setFormState({
+        availability: profile.availability ?? "",
+        skills: profile.skills.join(", "),
+        maxHoursPerWeek: profile.maxHoursPerWeek?.toString() ?? "",
+        hasVehicle: profile.hasVehicle,
+        isActive: profile.isActive,
+        notes: profile.notes ?? "",
+      });
+    } else {
+      setSelectedProfile(null);
+      setFormState({ availability: "", skills: "", maxHoursPerWeek: "", hasVehicle: false, isActive: true, notes: "" });
+    }
     setOpenEdit(true);
   }
 
   async function saveProfile() {
-    if (!selectedProfile) return;
     try {
-      const res = await fetch(`/api/volunteers?id=${selectedProfile.id}`, {
-        method: "PATCH",
+      const url = selectedProfile ? `/api/volunteers?id=${selectedProfile.id}` : "/api/volunteers";
+      const method = selectedProfile ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           availability: formState.availability,
@@ -92,11 +98,12 @@ export default function VolunteersClient({ campaignId }: Props) {
           hasVehicle: formState.hasVehicle,
           isActive: formState.isActive,
           notes: formState.notes,
+          campaignId,
         }),
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || "Unable to save volunteer profile");
-      toast.success("Volunteer profile updated");
+      toast.success(selectedProfile ? "Volunteer profile updated" : "Volunteer profile created");
       setOpenEdit(false);
       loadVolunteers();
     } catch (error) {
@@ -109,7 +116,7 @@ export default function VolunteersClient({ campaignId }: Props) {
       <PageHeader
         title="Volunteers"
         description="Manage volunteer profiles, skills, availability, and activity."
-        actions={<Button onClick={() => setOpenEdit(true)}><Users className="w-4 h-4" />New volunteer</Button>}
+        actions={<Button onClick={() => openEditor()}><Users className="w-4 h-4" />New volunteer</Button>}
       />
 
       <Card>

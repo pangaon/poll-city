@@ -56,6 +56,44 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(paginate(profiles, total, page, pageSize));
 }
 
+export async function POST(req: NextRequest) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+
+  const campaignId = typeof body.campaignId === "string" ? body.campaignId : null;
+  if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const created = await prisma.volunteerProfile.create({
+    data: {
+      campaignId,
+      availability: typeof body.availability === "string" ? body.availability.trim() || null : null,
+      skills: Array.isArray(body.skills)
+        ? body.skills
+            .filter((value: unknown) => typeof value === "string" && value.trim() !== "")
+            .map((value: string) => value.trim())
+        : [],
+      maxHoursPerWeek: body.maxHoursPerWeek !== undefined ? (body.maxHoursPerWeek === null ? null : Number(body.maxHoursPerWeek)) : null,
+      hasVehicle: typeof body.hasVehicle === "boolean" ? body.hasVehicle : false,
+      isActive: typeof body.isActive === "boolean" ? body.isActive : true,
+      notes: typeof body.notes === "string" ? body.notes.trim() || null : null,
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true } },
+      contact: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, address1: true, city: true } },
+    },
+  });
+
+  return NextResponse.json({ data: created }, { status: 201 });
+}
+
 export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
