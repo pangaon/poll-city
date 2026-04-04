@@ -316,12 +316,13 @@ export function PageHeader({ title, description, actions }: {
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 
-export function StatCard({ label, value, change, icon, color = "blue" }: {
+export function StatCard({ label, value, change, icon, color = "blue", prefix }: {
   label: string;
   value: string | number;
   change?: string;
   icon?: React.ReactNode;
   color?: "blue" | "green" | "amber" | "red" | "purple" | "gray";
+  prefix?: string;
 }) {
   const colors = {
     blue: "bg-blue-50 text-blue-600",
@@ -336,7 +337,7 @@ export function StatCard({ label, value, change, icon, color = "blue" }: {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500 font-medium">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{prefix}{typeof value === "number" ? value.toLocaleString() : value}</p>
           {change && <p className="text-xs text-gray-500 mt-1">{change}</p>}
         </div>
         {icon && (

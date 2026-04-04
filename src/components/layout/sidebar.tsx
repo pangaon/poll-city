@@ -29,12 +29,10 @@ const navItems = [
   { href: "/call-list", icon: Phone, label: "Call List" },
   { href: "/lookup", icon: Search, label: "Address Lookup" },
   { href: "/capture", icon: Zap, label: "Quick Capture" },
+  { href: "/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/import-export", icon: Upload, label: "Import / Export" },
-  { href: "/admin", icon: Shield, label: "Admin" },
-  { href: "/ai-assist", icon: Sparkles, label: "AI Assist" },
-  { href: "/billing", icon: CreditCard, label: "Billing" },
-  { href: "/settings/public-page", icon: Globe, label: "Public Page" },
   { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/billing", icon: CreditCard, label: "Billing" },
 ];
 
 export default function Sidebar() {
