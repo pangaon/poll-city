@@ -9,7 +9,9 @@ import {
   ShieldCheck, Building2, ExternalLink, Trophy, Star, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getPartyColour } from "@/lib/party-colours";
+function getPartyColour(_name?: string | null) {
+  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
+}
 
 /* ─── Customization types ────────────────────────────────────────────────── */
 
