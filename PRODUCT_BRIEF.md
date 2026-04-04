@@ -29,6 +29,17 @@ Pick one and I’ll structure it properly.
 
 ---
 
+## Canada-Wide Election Calendar 2026
+
+Poll City is live for two primary Canadian provincial election markets in 2026:
+
+- **Ontario Municipal Elections**: October 26, 2026 (nominations open May 1, close August 21, 2026)
+- **BC Municipal Elections**: October 17, 2026
+
+These two provinces represent 444 municipalities and 7,000+ elected officials that are integrated into Poll City Social for voter engagement and candidate discoverability.
+
+---
+
 ## Advanced Features Roadmap
 
 ### Turf Cutting and Route Optimization
