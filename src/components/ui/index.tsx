@@ -420,3 +420,7 @@ export function FormField({ label, error, required, children }: {
     </div>
   );
 }
+
+// Re-export new components
+export { ContactAutocomplete } from "./contact-autocomplete";
+export { MultiSelect } from "./multi-select";

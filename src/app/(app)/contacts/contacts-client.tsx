@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge } from "@/components/ui";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
+import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,7 @@ import { createContactSchema, CreateContactInput } from "@/lib/validators";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Tag } from "@prisma/client";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 interface ContactRow {
   id: string; firstName: string; lastName: string; email: string | null;
@@ -27,6 +28,8 @@ interface Props {
   userRole: string;
 }
 
+const pageSize = 25;
+
 export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -38,45 +41,93 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [supportFilter, setSupportFilter] = useState("");
+  const [supportLevels, setSupportLevels] = useState<string[]>([]);
   const [followUp, setFollowUp] = useState(false);
   const [volunteerOnly, setVolunteerOnly] = useState(false);
   const [signOnly, setSignOnly] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [wards, setWards] = useState<string[]>([]);
 
-  const pageSize = 25;
+  const debouncedSearch = useDebounce(search, 300);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ campaignId, page: String(page), pageSize: String(pageSize) });
-      if (search) params.set("search", search);
-      if (supportFilter) params.set("supportLevel", supportFilter);
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
       if (followUp) params.set("followUpNeeded", "true");
       if (volunteerOnly) params.set("volunteerInterest", "true");
       if (signOnly) params.set("signRequested", "true");
+      if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+      if (wards.length > 0) params.set("wards", wards.join(","));
       const res = await fetch(`/api/contacts?${params}`);
       const data = await res.json();
       setContacts(data.data ?? []);
       setTotal(data.total ?? 0);
     } catch { toast.error("Failed to load contacts"); }
     finally { setLoading(false); }
-  }, [campaignId, page, search, supportFilter, followUp, volunteerOnly, signOnly]);
+  }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
 
-  // Debounce search
-  useEffect(() => { setPage(1); }, [search, supportFilter, followUp, volunteerOnly, signOnly]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards]);
 
-  const totalPages = Math.ceil(total / pageSize);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  async function exportCSV() {
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedContacts(checked ? contacts.map(c => c.id) : []);
+  };
+
+  const handleSelectContact = (contactId: string, checked: boolean) => {
+    setSelectedContacts(prev =>
+      checked
+        ? [...prev, contactId]
+        : prev.filter(id => id !== contactId)
+    );
+  };
+
+  const handleBulkTag = async (tagIds: string[]) => {
+    try {
+      await fetch("/api/contacts/bulk-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactIds: selectedContacts, tagIds }),
+      });
+      toast.success("Tags updated");
+      loadContacts();
+      setSelectedContacts([]);
+    } catch {
+      toast.error("Failed to update tags");
+    }
+  };
+
+  const handleBulkUpdateSupport = async (supportLevel: SupportLevel) => {
+    try {
+      await fetch("/api/contacts/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactIds: selectedContacts, supportLevel }),
+      });
+      toast.success("Support levels updated");
+      loadContacts();
+      setSelectedContacts([]);
+    } catch {
+      toast.error("Failed to update support levels");
+    }
+  };
+
+  const exportCSV = async () => {
     const url = `/api/import-export?campaignId=${campaignId}&type=contacts`;
     const res = await fetch(url);
     const blob = await res.blob();
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = `contacts-${Date.now()}.csv`; a.click();
     toast.success("Export downloaded");
-  }
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -99,19 +150,30 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         <div className="flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, phone, address…"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-9"
             />
+            {loading && <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4" />}
           </div>
-          <Select value={supportFilter} onChange={(e) => setSupportFilter(e.target.value)} className="w-44">
-            <option value="">All support levels</option>
-            {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </Select>
+          <MultiSelect
+            value={supportLevels}
+            onChange={setSupportLevels}
+            options={Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+            placeholder="Support levels"
+            className="w-44"
+          />
+          <MultiSelect
+            value={selectedTags}
+            onChange={setSelectedTags}
+            options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
+            placeholder="Tags"
+            className="w-32"
+          />
           <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="w-3.5 h-3.5" />Filters{(followUp || volunteerOnly || signOnly) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
+            <Filter className="w-3.5 h-3.5" />More Filters{(followUp || volunteerOnly || signOnly || wards.length > 0) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
           </Button>
         </div>
         {showFilters && (
@@ -119,9 +181,51 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             <Checkbox label="Follow-up needed" checked={followUp} onChange={(e) => setFollowUp(e.target.checked)} />
             <Checkbox label="Volunteer interest" checked={volunteerOnly} onChange={(e) => setVolunteerOnly(e.target.checked)} />
             <Checkbox label="Sign requested" checked={signOnly} onChange={(e) => setSignOnly(e.target.checked)} />
+            <MultiSelect
+              value={wards}
+              onChange={setWards}
+              options={[
+                { value: "Ward 1", label: "Ward 1" },
+                { value: "Ward 2", label: "Ward 2" },
+                // Add more wards as needed
+              ]}
+              placeholder="Wards"
+              className="w-32"
+            />
           </div>
         )}
       </Card>
+
+      {/* Bulk Actions */}
+      {selectedContacts.length > 0 && (
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckSquare className="w-5 h-5 text-blue-600" />
+              <span className="font-medium text-blue-900">
+                {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Select onChange={(e) => e.target.value && handleBulkUpdateSupport(e.target.value as SupportLevel)}>
+                <option value="">Update support level</option>
+                {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </Select>
+              <MultiSelect
+                value={[]}
+                onChange={handleBulkTag}
+                options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
+                placeholder="Add tags"
+              />
+              <Button variant="outline" size="sm" onClick={() => setSelectedContacts([])}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Table */}
       <Card className="overflow-hidden">
@@ -129,6 +233,12 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="w-12 px-4 py-3">
+                  <Checkbox
+                    checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Contact</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Support</th>
@@ -142,19 +252,26 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
+                    <td className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : contacts.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center text-gray-400 text-sm">No contacts found</td></tr>
+                <tr><td colSpan={8} className="py-16 text-center text-gray-400 text-sm">No contacts found</td></tr>
               ) : contacts.map((c) => (
                 <tr
                   key={c.id}
-                  onClick={() => router.push(`/contacts/${c.id}`)}
-                  className="hover:bg-blue-50/40 cursor-pointer transition-colors"
+                  className="hover:bg-blue-50/40 transition-colors"
                 >
+                  <td className="px-4 py-3">
+                    <Checkbox
+                      checked={selectedContacts.includes(c.id)}
+                      onChange={(e) => handleSelectContact(c.id, e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">{fullName(c.firstName, c.lastName)}</div>
                     {c._count.interactions > 0 && <div className="text-xs text-gray-400">{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</div>}
@@ -165,7 +282,29 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                       {c.email && <div className="flex items-center gap-1 text-gray-500 text-xs truncate max-w-[160px]"><Mail className="w-3 h-3" />{c.email}</div>}
                     </div>
                   </td>
-                  <td className="px-4 py-3"><SupportLevelBadge level={c.supportLevel} /></td>
+                  <td className="px-4 py-3">
+                    <Select
+                      value={c.supportLevel}
+                      onChange={async (e) => {
+                        try {
+                          await fetch(`/api/contacts/${c.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ supportLevel: e.target.value }),
+                          });
+                          loadContacts();
+                        } catch {
+                          toast.error("Failed to update support level");
+                        }
+                      }}
+                      className="w-32"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
+                        <option key={v} value={v}>{l}</option>
+                      ))}
+                    </Select>
+                  </td>
                   <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{c.ward ?? "—"}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <div className="flex gap-1 flex-wrap">

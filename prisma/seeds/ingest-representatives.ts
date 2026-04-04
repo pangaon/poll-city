@@ -139,7 +139,8 @@ function detectLevel(setName: string, office: string): GovernmentLevel {
 
 async function paginateRepresentatives(url: string): Promise<Representative[]> {
   const allReps: Representative[] = [];
-  let nextUrl: string | null = `${BASE}${url}&limit=200`;
+  const separator = url.includes("?") ? "&" : "?";
+  let nextUrl: string | null = `${BASE}${url}${separator}limit=200`;
 
   while (nextUrl) {
     const data = await fetchJson<ApiList<Representative>>(nextUrl);

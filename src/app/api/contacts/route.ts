@@ -26,12 +26,13 @@ export async function GET(req: NextRequest) {
 
   const { page, pageSize, skip } = parsePagination(sp);
   const search = sp.get("search")?.trim();
-  const supportLevel = sp.get("supportLevel") as SupportLevel | null;
+  const supportLevels = sp.get("supportLevels")?.split(",").filter(Boolean) as SupportLevel[] | undefined;
   const followUpNeeded = sp.get("followUpNeeded") === "true" ? true : undefined;
   const volunteerInterest = sp.get("volunteerInterest") === "true" ? true : undefined;
   const signRequested = sp.get("signRequested") === "true" ? true : undefined;
   const doNotContact = sp.get("doNotContact") === "true" ? true : sp.get("doNotContact") === "false" ? false : undefined;
-  const tagId = sp.get("tagId");
+  const tagIds = sp.get("tags")?.split(",").filter(Boolean);
+  const wards = sp.get("wards")?.split(",").filter(Boolean);
   // Custom field filters: ?customFilter=fieldKey:operator:value (can be repeated)
   const customFilterParams = sp.getAll("customFilter");
   const customFilters: CustomFieldFilter[] = customFilterParams
@@ -45,11 +46,18 @@ export async function GET(req: NextRequest) {
     campaignId,
     isDeceased: false,
     ...(doNotContact !== undefined && { doNotContact }),
-    ...(supportLevel && { supportLevel }),
+    ...(supportLevels && supportLevels.length > 0 && { supportLevel: { in: supportLevels } }),
     ...(followUpNeeded !== undefined && { followUpNeeded }),
     ...(volunteerInterest !== undefined && { volunteerInterest }),
     ...(signRequested !== undefined && { signRequested }),
-    ...(tagId && { tags: { some: { tagId } } }),
+    ...(wards && wards.length > 0 && { ward: { in: wards } }),
+    ...(tagIds && tagIds.length > 0 && {
+      tags: {
+        some: {
+          tagId: { in: tagIds }
+        }
+      }
+    }),
     ...(search && {
       OR: [
         { firstName: { contains: search, mode: "insensitive" as const } },

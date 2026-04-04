@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Search, Filter, ChevronLeft, ChevronRight, Users, CheckCircle2, XCircle } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardHeader, Checkbox, FormField, Input, Label, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { Pencil, Search, ChevronLeft, ChevronRight, Users, CheckCircle2, XCircle } from "lucide-react";
+import { Badge, Button, Card, CardContent, Checkbox, FormField, Input, Label, Modal, PageHeader, Select, Textarea } from "@/components/ui";
 import { toast } from "sonner";
-import { fullName, formatPhone, cn } from "@/lib/utils";
+import { fullName, formatPhone } from "@/lib/utils";
 
 interface VolunteerProfileRow {
   id: string;
@@ -34,6 +34,9 @@ export default function VolunteersClient({ campaignId }: Props) {
   const [openEdit, setOpenEdit] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<VolunteerProfileRow | null>(null);
   const [formState, setFormState] = useState({ availability: "", skills: "", maxHoursPerWeek: "", hasVehicle: false, isActive: true, notes: "" });
+  const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
+  const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
+  const [availabilityFilter, setAvailabilityFilter] = useState<string[]>([]);
 
   const loadVolunteers = useCallback(async () => {
     setLoading(true);
@@ -42,6 +45,8 @@ export default function VolunteersClient({ campaignId }: Props) {
       if (search) params.set("search", search);
       if (status !== "all") params.set("status", status);
       if (hasVehicle) params.set("hasVehicle", "true");
+      if (skillsFilter.length > 0) params.set("skills", skillsFilter.join(","));
+      if (availabilityFilter.length > 0) params.set("availability", availabilityFilter.join(","));
       const res = await fetch(`/api/volunteers?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load volunteers");
@@ -52,10 +57,10 @@ export default function VolunteersClient({ campaignId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [campaignId, page, search, status, hasVehicle]);
+  }, [campaignId, page, search, status, hasVehicle, skillsFilter, availabilityFilter]);
 
   useEffect(() => { loadVolunteers(); }, [loadVolunteers]);
-  useEffect(() => { setPage(1); }, [search, status, hasVehicle]);
+  useEffect(() => { setPage(1); }, [search, status, hasVehicle, skillsFilter, availabilityFilter]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -145,11 +150,81 @@ export default function VolunteersClient({ campaignId }: Props) {
         </CardContent>
       </Card>
 
+      {selectedVolunteers.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-900">
+                {selectedVolunteers.length} volunteer{selectedVolunteers.length !== 1 ? "s" : ""} selected
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/volunteers/bulk-activate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ids: selectedVolunteers }),
+                      });
+                      if (!res.ok) throw new Error("Failed to activate volunteers");
+                      toast.success("Volunteers activated");
+                      setSelectedVolunteers([]);
+                      loadVolunteers();
+                    } catch (error) {
+                      toast.error((error as Error).message);
+                    }
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Activate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/volunteers/bulk-deactivate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ids: selectedVolunteers }),
+                      });
+                      if (!res.ok) throw new Error("Failed to deactivate volunteers");
+                      toast.success("Volunteers deactivated");
+                      setSelectedVolunteers([]);
+                      loadVolunteers();
+                    } catch (error) {
+                      toast.error((error as Error).message);
+                    }
+                  }}
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Deactivate
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left">
+                  <Checkbox
+                    checked={selectedVolunteers.length === volunteers.length && volunteers.length > 0}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setSelectedVolunteers(volunteers.map((volunteer) => volunteer.id));
+                      } else {
+                        setSelectedVolunteers([]);
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Name</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">Contact</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600">Availability</th>
@@ -163,39 +238,53 @@ export default function VolunteersClient({ campaignId }: Props) {
               {loading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <tr key={index}>
-                    {Array.from({ length: 7 }).map((cell, idx) => (
+                    {Array.from({ length: 7 }).map((_, idx) => (
                       <td key={idx} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : volunteers.length === 0 ? (
                 <tr><td colSpan={7} className="py-14 text-center text-sm text-gray-500">No volunteers found for this campaign.</td></tr>
-              ) : volunteers.map((volunteer) => (
-                <tr key={volunteer.id} className="hover:bg-blue-50/40 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">
-                      {volunteer.user ? volunteer.user.name ?? "(Unnamed)" : volunteer.contact ? fullName(volunteer.contact.firstName, volunteer.contact.lastName) : "Volunteer"}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {volunteer.user?.email ?? volunteer.contact?.email ?? "No email"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <div className="text-sm text-gray-600">
-                      {volunteer.user?.phone ? formatPhone(volunteer.user.phone) : volunteer.contact?.phone ? formatPhone(volunteer.contact.phone) : "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{volunteer.availability ?? "—"}</td>
-                  <td className="px-4 py-3 hidden lg:table-cell"><div className="space-x-1 flex flex-wrap">{volunteer.skills.slice(0, 3).map((skill) => <Badge key={skill} variant="info">{skill}</Badge>)}</div></td>
-                  <td className="px-4 py-3">{volunteer.maxHoursPerWeek ?? "—"} hrs</td>
-                  <td className="px-4 py-3"><Badge variant={volunteer.isActive ? "success" : "warning"}>{volunteer.isActive ? "Active" : "Inactive"}</Badge></td>
-                  <td className="px-4 py-3">
-                    <Button size="sm" variant="outline" onClick={() => openEditor(volunteer)}>
-                      <Pencil className="w-3.5 h-3.5" />Edit
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                volunteers.map((volunteer) => (
+                  <tr key={volunteer.id} className="hover:bg-blue-50/40 transition-colors">
+                    <td className="px-4 py-3">
+                      <Checkbox
+                        checked={selectedVolunteers.includes(volunteer.id)}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setSelectedVolunteers((prev) => [...prev, volunteer.id]);
+                          } else {
+                            setSelectedVolunteers((prev) => prev.filter((id) => id !== volunteer.id));
+                          }
+                        }}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">
+                        {volunteer.user ? volunteer.user.name ?? "(Unnamed)" : volunteer.contact ? fullName(volunteer.contact.firstName, volunteer.contact.lastName) : "Volunteer"}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {volunteer.user?.email ?? volunteer.contact?.email ?? "No email"}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="text-sm text-gray-600">
+                        {volunteer.user?.phone ? formatPhone(volunteer.user.phone) : volunteer.contact?.phone ? formatPhone(volunteer.contact.phone) : "—"}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{volunteer.availability ?? "—"}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell"><div className="space-x-1 flex flex-wrap">{volunteer.skills.slice(0, 3).map((skill) => <Badge key={skill} variant="info">{skill}</Badge>)}</div></td>
+                    <td className="px-4 py-3">{volunteer.maxHoursPerWeek ?? "—"} hrs</td>
+                    <td className="px-4 py-3"><Badge variant={volunteer.isActive ? "success" : "warning"}>{volunteer.isActive ? "Active" : "Inactive"}</Badge></td>
+                    <td className="px-4 py-3">
+                      <Button size="sm" variant="outline" onClick={() => openEditor(volunteer)}>
+                        <Pencil className="w-3.5 h-3.5" />Edit
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -220,7 +309,10 @@ export default function VolunteersClient({ campaignId }: Props) {
           <div className="grid gap-4 lg:grid-cols-3">
             <FormField label="Max hours/week"><Input type="number" value={formState.maxHoursPerWeek} onChange={(event) => setFormState((state) => ({ ...state, maxHoursPerWeek: event.target.value }))} placeholder="0" /></FormField>
             <FormField label="Vehicle"><Checkbox label="Has vehicle" checked={formState.hasVehicle} onChange={(event) => setFormState((state) => ({ ...state, hasVehicle: event.target.checked }))} /></FormField>
-            <FormField label="Status"><Select value={formState.isActive ? "active" : "inactive"} onChange={(event) => setFormState((state) => ({ ...state, isActive: event.target.value === "active" }))}><option value="active">Active</option><option value="inactive">Inactive</option></Select></FormField>
+            <FormField label="Status"><Select value={formState.isActive ? "active" : "inactive"} onChange={(event) => setFormState((state) => ({ ...state, isActive: event.target.value === "active" }))}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select></FormField>
           </div>
           <FormField label="Notes"><Textarea value={formState.notes} onChange={(event) => setFormState((state) => ({ ...state, notes: event.target.value }))} /></FormField>
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">

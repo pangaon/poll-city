@@ -19,11 +19,15 @@ export async function GET(req: NextRequest) {
   const search = sp.get("search")?.trim();
   const status = sp.get("status");
   const hasVehicle = sp.get("hasVehicle") === "true";
+  const skills = sp.get("skills")?.split(",").filter(Boolean) || [];
+  const availability = sp.get("availability")?.split(",").filter(Boolean) || [];
   const isActive = status === "active" ? true : status === "inactive" ? false : undefined;
 
   const baseWhere: any = { campaignId };
   if (typeof isActive === "boolean") baseWhere.isActive = isActive;
   if (hasVehicle) baseWhere.hasVehicle = true;
+  if (skills.length > 0) baseWhere.skills = { hasSome: skills };
+  if (availability.length > 0) baseWhere.availability = { in: availability, mode: "insensitive" };
   if (search) {
     baseWhere.OR = [
       { availability: { contains: search, mode: "insensitive" } },
