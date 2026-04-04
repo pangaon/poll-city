@@ -342,6 +342,49 @@ function ConsentSection() {
   );
 }
 
+function MyVolunteeringSection() {
+  const [rows, setRows] = useState<Array<{ id: string; campaign: { id: string; name: string }; createdAt: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/social/consent?include_revoked=true")
+      .then((r) => r.json())
+      .then((json) => {
+        const activeVolunteer = (json.data ?? [])
+          .filter((c: ConsentRecord) => c.signalType === "volunteer_interest" && c.isActive)
+          .map((c: ConsentRecord) => ({ id: c.id, campaign: c.campaign, createdAt: c.createdAt }));
+        setRows(activeVolunteer);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="bg-white rounded-2xl border border-gray-200 p-4 text-sm text-gray-500">Loading volunteering...</div>;
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="px-4 py-3.5 border-b border-gray-100">
+        <p className="text-sm font-bold text-gray-900">My Volunteering</p>
+        <p className="text-xs text-gray-400">Campaigns where you opted in to be contacted for volunteer work</p>
+      </div>
+      <div className="px-4 py-3 space-y-2">
+        {rows.map((row) => (
+          <div key={row.id} className="flex items-center justify-between border rounded-xl px-3 py-2">
+            <div>
+              <p className="text-sm font-medium text-gray-900">{row.campaign.name}</p>
+              <p className="text-xs text-gray-400">Opted in {new Date(row.createdAt).toLocaleDateString("en-CA")}</p>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Active</span>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="text-sm text-gray-500">No active volunteer subscriptions yet.</p>}
+      </div>
+    </div>
+  );
+}
+
 // ── Profile page ─────────────────────────────────────────────────────────────
 
 export default function SocialProfile() {
@@ -411,6 +454,9 @@ export default function SocialProfile() {
           </Link>
         ))}
       </div>
+
+      {/* Consent list + revoke */}
+      <MyVolunteeringSection />
 
       {/* Consent list + revoke */}
       <ConsentSection />

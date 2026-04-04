@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
   Settings, Sparkles, BarChart3, ChevronDown, Vote, Menu, X,
-  Phone, Search, Target, Zap, DollarSign, CreditCard, Globe, Bell, Printer
+  Phone, Search, Target, Zap, DollarSign, CreditCard, Globe, Bell, Printer,
+  MessageSquare, Star
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
@@ -16,9 +17,19 @@ const navItems = [
   { href: "/campaigns", icon: Building2, label: "Campaigns" },
   { href: "/contacts", icon: Users, label: "Contacts" },
   { href: "/volunteers", icon: Users, label: "Volunteers" },
+  { href: "/volunteers/groups", icon: Users, label: "Volunteer Groups" },
+  { href: "/volunteers/shifts", icon: Users, label: "Volunteer Shifts" },
+  { href: "/volunteers/expenses", icon: DollarSign, label: "Volunteer Expenses" },
   { href: "/canvassing", icon: Map, label: "Canvassing" },
   { href: "/canvassing/walk", icon: Map, label: "Walk List" },
   { href: "/canvassing/turf-builder", icon: Map, label: "Turf Builder" },
+  { href: "/canvassing/scripts", icon: MessageSquare, label: "Canvassing Scripts" },
+  { href: "/events", icon: Bell, label: "Events" },
+  { href: "/coalitions", icon: Globe, label: "Coalitions" },
+  { href: "/media", icon: Globe, label: "Media" },
+  { href: "/intelligence", icon: Shield, label: "Intelligence" },
+  { href: "/supporters/super", icon: Star, label: "Super Supporters" },
+  { href: "/budget", icon: DollarSign, label: "Budget" },
   { href: "/notifications", icon: Bell, label: "Notifications" },
   { href: "/polls", icon: BarChart3, label: "Polls" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },

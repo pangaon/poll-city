@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     include: {
       assignedUser: { select: { id: true, name: true, email: true } },
+      assignedGroup: { select: { id: true, name: true, targetWard: true } },
       _count: { select: { stops: true } },
     },
   });

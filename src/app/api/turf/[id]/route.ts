@@ -11,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     where: { id: params.id },
     include: {
       assignedUser: { select: { id: true, name: true, email: true } },
+      assignedGroup: { select: { id: true, name: true, targetWard: true } },
       stops: {
         orderBy: { order: "asc" },
         include: {
@@ -61,6 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   let body: {
     status?: TurfStatus;
     assignedUserId?: string | null;
+    assignedGroupId?: string | null;
     name?: string;
     notes?: string;
   };
@@ -71,10 +73,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data: {
       ...(body.status !== undefined ? { status: body.status } : {}),
       ...(body.assignedUserId !== undefined ? { assignedUserId: body.assignedUserId } : {}),
+      ...(body.assignedGroupId !== undefined ? { assignedGroupId: body.assignedGroupId } : {}),
       ...(body.name !== undefined ? { name: body.name } : {}),
       ...(body.notes !== undefined ? { notes: body.notes } : {}),
     },
-    include: { assignedUser: { select: { id: true, name: true, email: true } } },
+    include: {
+      assignedUser: { select: { id: true, name: true, email: true } },
+      assignedGroup: { select: { id: true, name: true, targetWard: true } },
+    },
   });
 
   return NextResponse.json({ data: updated });

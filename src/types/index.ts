@@ -92,6 +92,7 @@ export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
   event: "Event",
   note: "Note",
   follow_up: "Follow-up",
+  field_encounter: "Field Encounter",
 };
 
 export const ELECTION_TYPE_LABELS: Record<ElectionType, string> = {

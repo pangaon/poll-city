@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
       followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
       doorNumber: data.doorNumber,
       duration: data.duration,
+      latitude: data.latitude,
+      longitude: data.longitude,
     },
     include: { user: { select: { id: true, name: true } } },
   });

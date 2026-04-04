@@ -34,6 +34,7 @@
 3. Use quick actions to mark supporter/soft supporter/undecided/against or add note.
 4. For multi-voter addresses, use household soft-supporter action.
 5. If offline, actions queue automatically and sync in background when online.
+6. Use displayed language/accessibility cues to match communication style and improve doorstep accessibility.
 
 ### Turf Assignment SOP (`/canvassing/turf-builder`)
 

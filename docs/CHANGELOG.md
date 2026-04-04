@@ -24,6 +24,7 @@
   - Added `/api/lookup/quick-action` endpoint for rapid support updates, notes, tags, and interaction logging.
   - Added household-level quick action support for soft-supporter marking.
   - Added offline queue fallback for lookup actions via service worker/IndexedDB.
+  - Added language/accessibility visibility in lookup detail cards for more inclusive field conversations.
 - Enhanced turf operations:
   - Added volunteer group assignment support in Turf APIs and Turf Builder UI.
 - Expanded social profile experience:

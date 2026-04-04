@@ -1,4 +1,4 @@
-# Poll City Feature Matrix (v1.6.1 Baseline)
+# Poll City Feature Matrix (v1.8.0 Baseline)
 
 Source inputs reviewed:
 - PRODUCT_BRIEF.md
@@ -8,6 +8,14 @@ Source inputs reviewed:
 - docs/architecture/API_AND_INTEGRATION_CONTRACTS.md
 
 Note: RESEARCH_BRIEF.md and SECURITY_BLUEPRINT.md were not found in this repository by those exact filenames.
+
+v1.8.0 additions included in this baseline:
+- Volunteer onboarding flow (`/volunteer/onboard/[token]`, `/api/volunteer/onboard/[token]`)
+- Volunteer groups and shifts (`/volunteers/groups`, `/volunteers/shifts`, related APIs)
+- Canvassing scripts (`/canvassing/scripts`, `/api/canvassing/scripts`)
+- Campaign ops modules: media, coalitions, intelligence, events, volunteer expenses, budget
+- Lookup quick actions (`/api/lookup/quick-action`) with field encounter logging
+- Super supporters module (`/supporters/super`)
 
 | Feature Name | Category | Status | Page Route | API Route | Database Model | Has Real Data | Priority | Notes |
 |---|---|---|---|---|---|---|---|---|

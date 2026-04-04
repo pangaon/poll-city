@@ -16,6 +16,7 @@ const TurfMap = dynamic(() => import("@/components/maps/turf-map"), { ssr: false
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
 interface TeamMember { id: string; name: string | null; email: string }
+interface VolunteerGroupSummary { id: string; name: string; targetWard: string | null }
 
 interface TurfSummary {
   id: string;
@@ -29,6 +30,7 @@ interface TurfSummary {
   completedStops: number;
   notes: string | null;
   assignedUser: { id: string; name: string | null; email: string } | null;
+  assignedGroup: { id: string; name: string; targetWard: string | null } | null;
   _count: { stops: number };
   createdAt: string;
 }
@@ -103,6 +105,7 @@ export default function TurfBuilderClient({
   const [selectedTurf, setSelectedTurf] = useState<TurfDetail | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [canvasserLocations, setCanvasserLocations] = useState<CanvasserPin[]>([]);
+  const [volunteerGroups, setVolunteerGroups] = useState<VolunteerGroupSummary[]>([]);
 
   const loadTurfs = useCallback(async () => {
     setLoading(true);
@@ -138,7 +141,22 @@ export default function TurfBuilderClient({
     } catch { /* silent */ }
   }, [campaignId]);
 
+  const loadVolunteerGroups = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/volunteers/groups?campaignId=${campaignId}`);
+      const data = await res.json();
+      setVolunteerGroups((data.data ?? []).map((g: { id: string; name: string; targetWard: string | null }) => ({
+        id: g.id,
+        name: g.name,
+        targetWard: g.targetWard,
+      })));
+    } catch {
+      setVolunteerGroups([]);
+    }
+  }, [campaignId]);
+
   useEffect(() => { loadTurfs(); }, [loadTurfs]);
+  useEffect(() => { loadVolunteerGroups(); }, [loadVolunteerGroups]);
   useEffect(() => { if (tab === "leaderboard") loadLeaderboard(); }, [tab, loadLeaderboard]);
   useEffect(() => {
     if (tab === "map") {
@@ -224,6 +242,7 @@ export default function TurfBuilderClient({
           onCloseDetail={() => setSelectedTurf(null)}
           mapStops={allMapStops}
           campaignId={campaignId}
+          volunteerGroups={volunteerGroups}
         />
       )}
 
@@ -256,7 +275,7 @@ export default function TurfBuilderClient({
 /* ─── Turfs Tab ──────────────────────────────────────────────────────────────── */
 
 function TurfsTab({
-  turfs, loading, teamMembers, onRefresh, onOpenDetail, selectedTurf, onCloseDetail, mapStops, campaignId,
+  turfs, loading, teamMembers, onRefresh, onOpenDetail, selectedTurf, onCloseDetail, mapStops, campaignId, volunteerGroups,
 }: {
   turfs: TurfSummary[];
   loading: boolean;
@@ -267,8 +286,10 @@ function TurfsTab({
   onCloseDetail: () => void;
   mapStops: MapStop[];
   campaignId: string;
+  volunteerGroups: VolunteerGroupSummary[];
 }) {
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [assigningGroup, setAssigningGroup] = useState<string | null>(null);
 
   async function assign(turfId: string, userId: string) {
     const res = await fetch(`/api/turf/${turfId}`, {
@@ -278,6 +299,16 @@ function TurfsTab({
     });
     if (res.ok) { toast.success("Turf assigned"); onRefresh(); setAssigning(null); }
     else toast.error("Failed to assign");
+  }
+
+  async function assignGroup(turfId: string, groupId: string) {
+    const res = await fetch(`/api/turf/${turfId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignedGroupId: groupId || null, status: "assigned" }),
+    });
+    if (res.ok) { toast.success("Turf group assigned"); onRefresh(); setAssigningGroup(null); }
+    else toast.error("Failed to assign group");
   }
 
   async function deleteTurf(turfId: string) {
@@ -370,14 +401,23 @@ function TurfsTab({
               ) : (
                 <p className="text-xs text-amber-600 mb-3 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />Unassigned</p>
               )}
+              {turf.assignedGroup && (
+                <div className="flex items-center gap-2 text-xs text-indigo-600 mb-3">
+                  <Users className="w-3.5 h-3.5" />
+                  <span className="truncate">{turf.assignedGroup.name}</span>
+                </div>
+              )}
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button onClick={() => onOpenDetail(turf)} className="flex-1 py-1.5 text-xs font-medium bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
                   View stops
                 </button>
                 <button onClick={() => setAssigning(assigning === turf.id ? null : turf.id)} className="flex-1 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors">
                   {turf.assignedUser ? "Reassign" : "Assign"}
+                </button>
+                <button onClick={() => setAssigningGroup(assigningGroup === turf.id ? null : turf.id)} className="flex-1 py-1.5 text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors">
+                  Group
                 </button>
               </div>
 
@@ -389,6 +429,22 @@ function TurfsTab({
                       className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors flex items-center gap-2">
                       <User className="w-3.5 h-3.5 text-gray-400" />
                       {m.name ?? m.email}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {assigningGroup === turf.id && (
+                <div className="mt-2 border rounded-xl bg-white shadow-lg z-10 overflow-hidden">
+                  <button onClick={() => assignGroup(turf.id, "")}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors text-gray-500">
+                    Clear group assignment
+                  </button>
+                  {volunteerGroups.map((g) => (
+                    <button key={g.id} onClick={() => assignGroup(turf.id, g.id)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between gap-2">
+                      <span>{g.name}</span>
+                      {g.targetWard && <span className="text-xs text-gray-400">Ward {g.targetWard}</span>}
                     </button>
                   ))}
                 </div>

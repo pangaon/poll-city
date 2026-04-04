@@ -2,6 +2,8 @@
 
 This pass completes the campaign operations expansion for volunteer coordination, field lookup velocity, and execution intelligence.
 
+Release note: this section was refreshed during the v1.8.0 stabilization pass to align product messaging with implemented routes and APIs.
+
 ### Delivered modules
 
 - Volunteer onboarding: secure token flow for profile completion and code-of-conduct acceptance.

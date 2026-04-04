@@ -242,6 +242,7 @@ const PRODUCTS = [
       "Budget tracker with allocation versus actual spend",
       "Volunteer expenses and reimbursement workflow",
       "Canvassing script builder and lookup quick actions",
+      "Household-level soft-supporter updates from lookup in one tap",
       "Campaign operations hub: media, coalitions, events, and opponent intelligence",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",

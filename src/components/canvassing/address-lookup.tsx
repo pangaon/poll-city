@@ -6,10 +6,11 @@
  * Staff gets push notification + email instantly.
  * Works for: canvassers in the field, candidates at events, phone bankers.
  */
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Search, MapPin, User, Phone, Mail, ChevronRight, Bell, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getSyncQueueCount, queueViaServiceWorker } from "@/lib/db/indexeddb";
 
 interface LookupContact {
   id: string;
@@ -25,6 +26,8 @@ interface LookupContact {
   signRequested: boolean;
   volunteerInterest: boolean;
   notes: string | null;
+  preferredLanguage: string | null;
+  accessibilityNeeds: string[];
   issues: string[];
   totalVotersAtAddress?: number;
   _count: { interactions: number };
@@ -164,6 +167,60 @@ function ContactDetailCard({ contact, onBack, onNotifyStaff, notifying, campaign
   notifying: boolean; campaignId: string;
 }) {
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(contact.address1 + " " + contact.city)}`;
+  const [pendingQueue, setPendingQueue] = useState(0);
+  const [runningAction, setRunningAction] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSyncQueueCount().then(setPendingQueue).catch(() => setPendingQueue(0));
+  }, []);
+
+  async function getCoords() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return {};
+    return new Promise<{ latitude?: number; longitude?: number }>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => resolve({}),
+        { maximumAge: 60_000, timeout: 2500 }
+      );
+    });
+  }
+
+  async function runQuickAction(action: "supporter" | "soft_support" | "undecided" | "against" | "note", applyHousehold = false) {
+    const note = action === "note" ? window.prompt("Add note")?.trim() : undefined;
+    if (action === "note" && !note) return;
+
+    setRunningAction(action);
+    const coords = await getCoords();
+    const payload = {
+      contactId: contact.id,
+      action,
+      note,
+      applyHousehold,
+      ...coords,
+    };
+
+    try {
+      const res = await fetch("/api/lookup/quick-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("lookup action failed");
+      toast.success("Saved");
+    } catch {
+      await queueViaServiceWorker({
+        url: "/api/lookup/quick-action",
+        method: "POST",
+        body: payload,
+        label: `${action} via address lookup`,
+      });
+      const count = await getSyncQueueCount().catch(() => pendingQueue + 1);
+      setPendingQueue(count);
+      toast("Offline: queued action for sync");
+    } finally {
+      setRunningAction(null);
+    }
+  }
 
   const QUICK_ALERTS = [
     { label: "🪧 Sign Request", event: "sign_request" },
@@ -238,6 +295,33 @@ function ContactDetailCard({ contact, onBack, onNotifyStaff, notifying, campaign
             <p className="text-xs text-gray-700 flex-1">{contact.notes}</p>
           </div>
         )}
+        {contact.preferredLanguage && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 w-20">Language</span>
+            <span className="text-xs font-medium text-blue-700">{contact.preferredLanguage}</span>
+          </div>
+        )}
+        {contact.accessibilityNeeds?.length > 0 && (
+          <div className="flex items-start gap-2">
+            <span className="text-xs text-gray-500 w-20 mt-0.5">Access</span>
+            <p className="text-xs text-gray-700 flex-1">{contact.accessibilityNeeds.join(", ")}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-3 border-b border-gray-100 space-y-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quick Field Actions</p>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => runQuickAction("supporter")} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Mark supporter</button>
+          <button onClick={() => runQuickAction("soft_support")} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium">Mark soft supporter</button>
+          <button onClick={() => runQuickAction("undecided")} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-medium">Mark undecided</button>
+          <button onClick={() => runQuickAction("against")} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium">Mark against</button>
+          <button onClick={() => runQuickAction("note")} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 font-medium">Add note</button>
+          {contact.totalVotersAtAddress && contact.totalVotersAtAddress > 1 && (
+            <button onClick={() => runQuickAction("soft_support", true)} disabled={!!runningAction} className="text-xs px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">Household soft supporter</button>
+          )}
+        </div>
+        {pendingQueue > 0 && <p className="text-xs text-amber-700">{pendingQueue} queued action(s) pending sync.</p>}
       </div>
 
       {/* Notify staff */}
