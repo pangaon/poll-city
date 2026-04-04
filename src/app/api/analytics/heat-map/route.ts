@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const year = searchParams.get("year") ?? "2022";
   const province = searchParams.get("province");
+  const mode = searchParams.get("mode") ?? "list"; // "list" | "geojson"
 
   const y = parseInt(year);
   const where: Record<string, unknown> = {
@@ -33,7 +34,6 @@ export async function GET(req: NextRequest) {
     take: 500,
   });
 
-  // Normalise percentage to 0–100 heat intensity
   const maxVotes = Math.max(...winners.map((w) => w.totalVotesCast), 1);
 
   const features = winners.map((w) => ({
@@ -44,9 +44,68 @@ export async function GET(req: NextRequest) {
     votesReceived: w.votesReceived,
     province: w.province,
     intensity: Math.round((w.totalVotesCast / maxVotes) * 100),
-    // Colour bucket: < 40% close race, 40-60% moderate, > 60% dominant
     bucket: w.percentage < 40 ? "close" : w.percentage < 60 ? "moderate" : "dominant",
   }));
 
-  return NextResponse.json({ data: features, year, total: features.length });
+  // GeoJSON mode — join election results with boundary polygons from GeoDistrict
+  if (mode === "geojson") {
+    const electionByName = new Map<string, (typeof features)[0]>();
+    for (const f of features) {
+      electionByName.set(f.jurisdiction.toLowerCase().trim(), f);
+    }
+
+    const boundaries = await prisma.geoDistrict.findMany({
+      where: {
+        districtType: "municipal",
+        ...(province ? { province } : {}),
+      },
+      select: { id: true, name: true, geoJson: true, province: true, externalId: true },
+    });
+
+    const geoFeatures = boundaries
+      .filter((b) => b.geoJson && b.name)
+      .map((b) => {
+        const key = (b.name ?? "").toLowerCase().trim();
+        const election = electionByName.get(key);
+        // Destructure province out of election to avoid duplicate key
+        const { province: _electionProvince, ...electionWithoutProvince } = election ?? {
+          jurisdiction: b.name,
+          candidateName: null,
+          percentage: null,
+          totalVotesCast: null,
+          votesReceived: null,
+          intensity: 0,
+          bucket: "no-data" as const,
+          province: null,
+        };
+        void _electionProvince;
+        return {
+          type: "Feature" as const,
+          properties: {
+            id: b.id,
+            name: b.name,
+            province: b.province,
+            hasElectionData: !!election,
+            ...electionWithoutProvince,
+          },
+          geometry: b.geoJson,
+        };
+      });
+
+    return NextResponse.json(
+      {
+        data: features,
+        geojson: { type: "FeatureCollection", features: geoFeatures },
+        year,
+        total: features.length,
+        boundaryCount: geoFeatures.length,
+      },
+      { headers: { "Cache-Control": "s-maxage=3600, stale-while-revalidate=7200" } }
+    );
+  }
+
+  return NextResponse.json(
+    { data: features, year, total: features.length },
+    { headers: { "Cache-Control": "s-maxage=3600, stale-while-revalidate=7200" } }
+  );
 }

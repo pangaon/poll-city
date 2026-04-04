@@ -1,5 +1,30 @@
 # Poll City User Guide
 
+## v1.9.0 Feature SOP Addendum — April 4, 2026
+
+### Election Analytics Heat Map SOP (`/analytics`)
+
+The Analytics page shows Ontario municipal election results from 2014, 2018, and 2022.
+
+**Using the Choropleth Map**
+
+1. Go to **Analytics** in the sidebar.
+2. Select the **Heat Map** tab.
+3. Use the **Year** filter to switch between 2014, 2018, and 2022.
+4. Use the **Province** filter to narrow to Ontario or BC.
+5. The top section shows a real geographic choropleth map of Ontario municipalities:
+   - **Red** = close race (winner received less than 40% of votes)
+   - **Blue** = moderate margin (40–60%)
+   - **Navy** = dominant win (over 60%)
+   - **Grey** = no election data for this boundary
+6. Hover over any municipality on the map to see the winner name, vote percentage, and total votes cast.
+7. The grid below the map shows the same data in tile format for easy scanning.
+8. Use the **Search** bar to filter both the map overlay and the grid by municipality name.
+
+**Note for administrators**: The choropleth map requires GIS boundary data to be loaded from Railway using `npm run db:seed:boundaries:gis`. Until this runs, the map shows a notice with instructions and the grid remains available.
+
+---
+
 ## v1.8.0 Feature SOP Addendum - April 4, 2026
 
 ### Volunteer Onboarding SOP (`/volunteer/onboard/[token]`)

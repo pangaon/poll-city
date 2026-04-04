@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -260,14 +260,16 @@ const PRODUCTS = [
     bgLight: "bg-amber-50",
     border: "border-amber-200",
     features: [
-      "Interactive choropleth heat maps showing 2022 Ontario election results",
-      "Color-coded by vote intensity: red (close races), blue (moderate), dark blue (dominant)",
+      "Real GIS choropleth maps — Ontario municipal boundaries from ArcGIS Open Data",
+      "Live Leaflet map with hover tooltips: winner, vote %, total votes cast",
+      "Color-coded by vote intensity: red (close race <40%), blue (moderate), dark blue (dominant >60%)",
+      "GeoJSON boundary polygons joined to election result data by jurisdiction",
       "Voter turnout heat maps by municipality",
       "Top 10 municipalities by turnout bar charts",
-      "Trend analysis across 2014, 2018, and 2022 elections",
+      "Trend analysis across 2014, 2018, and 2022 Ontario elections",
       "Poll-by-poll breakdown table with sortable columns",
-      "Export maps as PNG for campaign materials",
-      "Filter by municipality, province, election year, and office type",
+      "Export data as CSV for campaign materials",
+      "Filter by municipality, province, election year",
       "Ward-level granularity to identify target areas",
       "Identify underperforming neighbourhoods for targeting",
     ],
@@ -441,6 +443,26 @@ const PUSH_NOTIFICATIONS = [
   },
 ];
 
+const LIVE_ACTIVITY = [
+  "Sarah M. just signed up in Hamilton, ON",
+  "New sign request in Ward 3, Toronto",
+  "David K. sent election-day notifications to 2,400 supporters",
+  "Councillor Jennifer T. claimed her Poll City profile",
+  "New volunteer joined the Barrie mayoral campaign",
+  "Team in Kitchener marked 112 doors before noon",
+  "Support signal received from North Bay voter feed",
+  "Campaign in London launched first turf assignment",
+  "New donor pledge logged in Peel Region",
+  "Canvassing shift filled for Saturday morning in Oshawa",
+];
+
+const HOME_STATS = [
+  { label: "Municipalities", value: 444, suffix: "" },
+  { label: "Officials", value: 7000, suffix: "" },
+  { label: "Provinces", value: 2, suffix: "" },
+  { label: "Days To Election", value: 204, suffix: "" },
+] as const;
+
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function MarketingClient() {
   const router = useRouter();
@@ -453,6 +475,13 @@ export default function MarketingClient() {
   const [arrowBounce, setArrowBounce] = useState(true);
   const [heroPostalCode, setHeroPostalCode] = useState("");
   const [candidatePostalCode, setCandidatePostalCode] = useState("");
+  const [liveIndex, setLiveIndex] = useState(0);
+  const [liveVisible, setLiveVisible] = useState(true);
+  const [demoTab, setDemoTab] = useState<"dashboard" | "mobile" | "social">("dashboard");
+  const [animatedStats, setAnimatedStats] = useState<number[]>(HOME_STATS.map(() => 0));
+  const [statsStarted, setStatsStarted] = useState(false);
+  const [nominationsCountdown, setNominationsCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const statsRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const dismissed = localStorage.getItem("poll-city-banner-dismissed");
@@ -469,6 +498,80 @@ export default function MarketingClient() {
     const t = setTimeout(() => setArrowBounce(false), 4000);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStatsStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 }
+    );
+    if (statsRef.current) observer.observe(statsRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!statsStarted) return;
+    const start = performance.now();
+    const duration = 1400;
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedStats(HOME_STATS.map((s) => Math.round(s.value * eased)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [statsStarted]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLiveVisible(false);
+      setTimeout(() => {
+        setLiveIndex((i) => (i + 1) % LIVE_ACTIVITY.length);
+        setLiveVisible(true);
+      }, 220);
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const nominationsOpenAt = new Date("2026-05-01T00:00:00-04:00").getTime();
+    const update = () => {
+      const diff = Math.max(0, nominationsOpenAt - Date.now());
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      setNominationsCountdown({ days, hours, minutes, seconds });
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const activeDemo = useMemo(() => {
+    if (demoTab === "dashboard") {
+      return {
+        title: "Campaign Dashboard",
+        description: "A single war-room view for supporter growth, canvass progress, and election readiness.",
+      };
+    }
+    if (demoTab === "mobile") {
+      return {
+        title: "Mobile Canvassing App",
+        description: "Tinder-speed walk list with one-thumb actions, offline sync, and live route context.",
+      };
+    }
+    return {
+      title: "Poll City Social",
+      description: "Voter-facing discovery, swipe polls, follows, and election reminders in one civic feed.",
+    };
+  }, [demoTab]);
 
   const dismissBanner = useCallback(() => {
     setBannerDismissed(true);
@@ -720,18 +823,25 @@ export default function MarketingClient() {
         </div>
       </section>
 
+      {/* ── Live Activity Ticker ── */}
+      <section className="bg-[#0f172a] border-y border-slate-700 py-3 px-4">
+        <div className="max-w-6xl mx-auto flex items-center gap-4">
+          <span className="text-xs font-bold uppercase tracking-wide text-emerald-300">Live on Poll City</span>
+          <div className="h-7 overflow-hidden flex-1">
+            <p className={`text-sm text-slate-100 transition-all duration-200 ${liveVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"}`}>
+              {LIVE_ACTIVITY[liveIndex]}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Stats Bar ── */}
-      <section className="bg-white border-y border-gray-100 py-8">
+      <section ref={statsRef} className="bg-white border-y border-gray-100 py-8">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-          {[
-            { number: "444", label: "Ontario Municipalities" },
-            { number: "7,000+", label: "Officials Tracked" },
-            { number: "2", label: "Provinces — Fall 2026" },
-            { number: "Oct 26", label: "Election Day Ontario" },
-          ].map(({ number, label }) => (
-            <div key={label}>
-              <p className="text-5xl font-black text-[#1E3A8A] leading-none">{number}</p>
-              <p className="text-sm text-gray-500 mt-1.5 font-medium">{label}</p>
+          {HOME_STATS.map((stat, idx) => (
+            <div key={stat.label}>
+              <p className="text-5xl font-black text-[#1E3A8A] leading-none">{animatedStats[idx].toLocaleString()}{stat.suffix}</p>
+              <p className="text-sm text-gray-500 mt-1.5 font-medium">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -771,6 +881,85 @@ export default function MarketingClient() {
               Find My Candidates
             </button>
           </form>
+        </div>
+      </section>
+
+      {/* ── Product Demo Tabs ── */}
+      <section className="bg-white py-20 px-4 border-t border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">See Poll City in action</h2>
+            <p className="text-gray-500">Three workflows your team and your voters use every day.</p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {[
+              { id: "dashboard", label: "Campaign Dashboard" },
+              { id: "mobile", label: "Mobile Canvassing App" },
+              { id: "social", label: "Poll City Social" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setDemoTab(tab.id as "dashboard" | "mobile" | "social")}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${demoTab === tab.id ? "bg-[#1E3A8A] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-slate-900 to-slate-800 p-4 shadow-xl min-h-[280px]">
+              {demoTab === "dashboard" && (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    ["Supporters", "1,284"],
+                    ["Doors Today", "96"],
+                    ["Volunteers", "34"],
+                    ["Sign Requests", "58"],
+                    ["Notifications", "2.4K"],
+                    ["Readiness", "78%"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="bg-white/10 rounded-xl p-3 text-white">
+                      <p className="text-[11px] text-slate-200">{label}</p>
+                      <p className="text-lg font-bold">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {demoTab === "mobile" && (
+                <div className="max-w-[220px] mx-auto rounded-[28px] border-4 border-slate-700 bg-black p-2">
+                  <div className="rounded-[20px] bg-white p-3 space-y-2">
+                    {["101 Main St", "103 Main St", "105 Main St"].map((door, i) => (
+                      <div key={door} className="border rounded-xl p-2.5">
+                        <p className="font-bold text-sm text-gray-900">{door}</p>
+                        <p className="text-xs text-gray-500">{i === 1 ? "Undecided" : "Leaning support"} · {i + 1} min away</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {demoTab === "social" && (
+                <div className="max-w-sm mx-auto rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5">
+                  <p className="text-xs uppercase tracking-wide text-blue-100">Swipe Poll</p>
+                  <h3 className="text-xl font-extrabold mt-2 mb-6">Should the city add all-day transit passes?</h3>
+                  <div className="space-y-2">
+                    <div className="rounded-xl bg-white/15 px-4 py-3">Yes, prioritize affordability</div>
+                    <div className="rounded-xl bg-white/10 px-4 py-3">No, keep current fare structure</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#1E3A8A] mb-2">Product Demo</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 mb-3">{activeDemo.title}</h3>
+              <p className="text-gray-600 mb-6">{activeDemo.description}</p>
+              <Btn href="/login" size="lg" variant="primary">
+                Try It Free <ArrowRight className="w-4 h-4" />
+              </Btn>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1506,6 +1695,28 @@ export default function MarketingClient() {
                     {faq.a}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Urgency Countdown ── */}
+      <section className="bg-[#B91C1C] py-16 px-4 text-white">
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="text-sm font-bold uppercase tracking-wide text-red-100 mb-2">Election Urgency</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-3">Nominations open in {nominationsCountdown.days} days</h2>
+          <p className="text-red-100 mb-8">Candidates who start early win.</p>
+          <div className="grid grid-cols-4 gap-3 max-w-2xl mx-auto">
+            {[
+              { label: "Days", value: nominationsCountdown.days },
+              { label: "Hours", value: nominationsCountdown.hours },
+              { label: "Minutes", value: nominationsCountdown.minutes },
+              { label: "Seconds", value: nominationsCountdown.seconds },
+            ].map((unit) => (
+              <div key={unit.label} className="rounded-xl bg-white/10 border border-white/20 py-4">
+                <p className="text-3xl font-black">{String(unit.value).padStart(2, "0")}</p>
+                <p className="text-xs uppercase tracking-wide text-red-100">{unit.label}</p>
               </div>
             ))}
           </div>

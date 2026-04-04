@@ -1,10 +1,16 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import type { ComponentProps } from "react";
+import dynamic from "next/dynamic";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, Legend,
 } from "recharts";
 import { BarChart3, TrendingUp, Table2, Map, Download, ChevronUp, ChevronDown, Search, Filter } from "lucide-react";
+
+const ChoroplethMap = dynamic(() => import("./choropleth-map"), { ssr: false, loading: () => <div className="h-80 bg-gray-50 rounded-xl animate-pulse" /> });
+
+void lazy; void Suspense; // keep imports clean
 
 /* ── Types ── */
 interface ElectionRow {
@@ -30,6 +36,11 @@ interface HeatRow {
   province: string | null;
   intensity: number;
   bucket: "close" | "moderate" | "dominant";
+}
+
+interface GeoJsonCollection {
+  type: "FeatureCollection";
+  features: object[];
 }
 
 interface TrendPoint {
@@ -86,6 +97,8 @@ export default function AnalyticsClient() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [heatData, setHeatData] = useState<HeatRow[]>([]);
+  const [geojson, setGeojson] = useState<GeoJsonCollection | null>(null);
+  const [boundaryCount, setBoundaryCount] = useState(0);
   const [tableData, setTableData] = useState<ElectionRow[]>([]);
   const [topData, setTopData] = useState<TopEntry[]>([]);
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
@@ -104,7 +117,7 @@ export default function AnalyticsClient() {
       if (search) params.set("jurisdiction", search);
 
       const [heatRes, tableRes] = await Promise.all([
-        fetch(`/api/analytics/heat-map?year=${year}${province ? `&province=${province}` : ""}`, {
+        fetch(`/api/analytics/heat-map?year=${year}&mode=geojson${province ? `&province=${province}` : ""}`, {
           signal: abortRef.current.signal,
         }),
         fetch(`/api/analytics/election-results?${params}`, {
@@ -115,6 +128,10 @@ export default function AnalyticsClient() {
       if (heatRes.ok) {
         const h = await heatRes.json();
         setHeatData(h.data ?? []);
+        if (h.geojson) {
+          setGeojson(h.geojson);
+          setBoundaryCount(h.boundaryCount ?? 0);
+        }
       }
       if (tableRes.ok) {
         const t = await tableRes.json();
@@ -237,37 +254,60 @@ export default function AnalyticsClient() {
         <>
           {/* ── Heat Map Tab ── */}
           {tab === "heat" && (
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h2 className="font-semibold text-gray-900">Election Results Heat Map — {year}</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-400 mr-1" />Close race (&lt;40%)
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-400 mx-1 ml-3" />Moderate (40–60%)
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-800 mx-1 ml-3" />Dominant (&gt;60%)
-                  </p>
-                </div>
-                <span className="text-xs text-gray-400">{filteredHeat.length} municipalities</span>
-              </div>
-              <div className="p-4">
-                {filteredHeat.length === 0 ? (
-                  <p className="text-center text-gray-400 py-12 text-sm">No data for selected filters</p>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                    {filteredHeat.slice(0, 100).map((row) => (
-                      <div
-                        key={row.jurisdiction}
-                        title={`${row.jurisdiction}\n${row.candidateName}\n${row.percentage.toFixed(1)}% · ${row.totalVotesCast.toLocaleString()} votes`}
-                        className="rounded-lg px-3 py-2.5 cursor-default hover:scale-105 transition-transform"
-                        style={{ backgroundColor: heatColour(row.bucket, row.percentage) }}
-                      >
-                        <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{row.jurisdiction}</p>
-                        <p className="text-[11px] text-gray-700 mt-0.5 truncate">{row.candidateName}</p>
-                        <p className="text-[11px] font-bold text-gray-800 mt-0.5">{row.percentage.toFixed(1)}%</p>
-                      </div>
-                    ))}
+            <div className="space-y-4">
+              {/* Real GIS choropleth map */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">Choropleth Map — {year}</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {boundaryCount > 0
+                        ? `${boundaryCount} municipal boundaries with election data overlay`
+                        : "GIS boundaries not yet loaded — run db:seed:boundaries:gis from Railway"}
+                    </p>
                   </div>
-                )}
+                  <span className="text-xs text-gray-400">{filteredHeat.length} municipalities</span>
+                </div>
+                <div className="p-4">
+                  <ChoroplethMap
+                    geojson={boundaryCount > 0 ? (geojson as ComponentProps<typeof ChoroplethMap>["geojson"]) : null}
+                    year={year}
+                  />
+                </div>
+              </div>
+
+              {/* Grid fallback / supplemental data */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">Election Results Grid — {year}</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-400 mr-1" />Close race (&lt;40%)
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-400 mx-1 ml-3" />Moderate (40–60%)
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-800 mx-1 ml-3" />Dominant (&gt;60%)
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4">
+                  {filteredHeat.length === 0 ? (
+                    <p className="text-center text-gray-400 py-12 text-sm">No data for selected filters</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                      {filteredHeat.slice(0, 100).map((row) => (
+                        <div
+                          key={row.jurisdiction}
+                          title={`${row.jurisdiction}\n${row.candidateName}\n${row.percentage.toFixed(1)}% · ${row.totalVotesCast.toLocaleString()} votes`}
+                          className="rounded-lg px-3 py-2.5 cursor-default hover:scale-105 transition-transform"
+                          style={{ backgroundColor: heatColour(row.bucket, row.percentage) }}
+                        >
+                          <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{row.jurisdiction}</p>
+                          <p className="text-[11px] text-gray-700 mt-0.5 truncate">{row.candidateName}</p>
+                          <p className="text-[11px] font-bold text-gray-800 mt-0.5">{row.percentage.toFixed(1)}%</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

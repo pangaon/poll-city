@@ -868,7 +868,7 @@ model PublicQuestion {
 
 model GeoDistrict {
   id           String          @id @default(cuid())
-  postalPrefix String          // e.g. "M4C", "K1A"
+  postalPrefix String?         // e.g. "M4C", "K1A" — null for boundary-only records
   ward         String?
   wardCode     String?
   riding       String?
@@ -876,10 +876,17 @@ model GeoDistrict {
   province     String
   city         String?
   level        GovernmentLevel
+  // GIS boundary fields — added for choropleth heat maps
+  name         String?         // human-readable district/municipality name
+  districtType String?         // "municipal" | "provincial" | "federal"
+  externalId   String?         // source system identifier
+  geoJson      Json?           // GeoJSON geometry (Polygon or MultiPolygon)
   createdAt    DateTime        @default(now())
 
   @@unique([postalPrefix, level])
   @@index([postalPrefix])
+  @@index([province, districtType])
+  @@index([name])
   @@map("geo_districts")
 }
 

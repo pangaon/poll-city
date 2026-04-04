@@ -1,5 +1,43 @@
 # Poll City Changelog
 
+## [1.9.0] - April 4, 2026
+
+### GIS Boundaries Imported — Real Choropleth Heat Maps
+
+**Schema**
+
+- Added `name String?`, `districtType String?`, `externalId String?`, `geoJson Json?` to `GeoDistrict` model.
+- `postalPrefix` made optional (`String?`) to support boundary-only records with no postal prefix.
+- Added `@@index([province, districtType])` and `@@index([name])` for performance.
+
+**Seed Script**
+
+- Created `prisma/seeds/ingest-gis-boundaries.ts`.
+- Downloads Ontario municipal boundaries from ArcGIS Open Data (`opendata.arcgis.com`).
+- Downloads Ontario electoral districts from Represent API (`represent.opennorth.ca/boundaries/ontario-electoral-districts-representation-act-2015/`).
+- Downloads federal electoral districts from Represent API (`represent.opennorth.ca/boundaries/federal-electoral-districts-2023/`).
+- Upserts each boundary as a `GeoDistrict` record using a synthetic `postalPrefix` key `BOUNDARY__<externalId>`.
+- Full error isolation — one failure never stops the rest. Logs progress counts per category.
+- Run with: `npm run db:seed:boundaries:gis` (requires network access — run from Railway).
+
+**Heat Map API** (`GET /api/analytics/heat-map`)
+
+- Added `mode=geojson` query parameter.
+- When `mode=geojson`: loads `GeoDistrict` records with `districtType=municipal` and `geoJson` populated, joins election results by jurisdiction name (case-insensitive), returns a GeoJSON `FeatureCollection` with election data as feature properties.
+- Added `Cache-Control: s-maxage=3600` header.
+
+**Analytics Client** (`/analytics`)
+
+- Added `ChoroplethMap` component (`analytics/choropleth-map.tsx`) — dynamically imported with `ssr:false`.
+- Uses Leaflet + `L.geoJSON()` layer with choropleth fill colouring (same red/blue/navy bucket scheme).
+- Interactive tooltips on hover: municipality name, winner, percentage, total votes.
+- Legend overlay: close/moderate/dominant/no-data colour key.
+- Auto-fits map bounds to loaded features.
+- Graceful fallback message when no boundary data is in DB yet (shows how to run the seed).
+- Heat grid preserved below the map as supplemental data.
+
+---
+
 ## [1.8.0] - April 4, 2026
 
 ### Comprehensive Completion Pass: Field Ops, Volunteer Ops, and Campaign Intelligence
