@@ -7,10 +7,14 @@ export const metadata = { title: "Notifications — Poll City" };
 export default async function NotificationsPage() {
   const { campaignId, userId } = await resolveActiveCampaign();
 
-  // Check if user has admin/manager access
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId, campaignId } },
-  });
+  const [membership, voterOptInCount] = await Promise.all([
+    prisma.membership.findUnique({
+      where: { userId_campaignId: { userId, campaignId } },
+    }),
+    prisma.consentLog.count({
+      where: { campaignId, signalType: "notification_opt_in", revokedAt: null },
+    }),
+  ]);
 
   const canSend = membership?.role === "ADMIN" || membership?.role === "CAMPAIGN_MANAGER";
 
@@ -19,6 +23,7 @@ export default async function NotificationsPage() {
       campaignId={campaignId}
       currentUserId={userId}
       canSend={canSend}
+      voterOptInCount={voterOptInCount}
     />
   );
 }

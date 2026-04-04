@@ -34,20 +34,22 @@ interface Props {
   campaignId: string;
   currentUserId: string;
   canSend: boolean;
+  voterOptInCount: number;
 }
 
-export default function NotificationsClient({ campaignId, currentUserId, canSend }: Props) {
+export default function NotificationsClient({ campaignId, currentUserId, canSend, voterOptInCount }: Props) {
   const [history, setHistory] = useState<NotificationHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSend, setShowSend] = useState(false);
   const [sending, setSending] = useState(false);
-  const [stats, setStats] = useState({ subscribers: 0, sent: 0 });
+  const [sent, setSent] = useState(0);
 
   const loadHistory = useCallback(async () => {
     try {
       const res = await fetch(`/api/notifications/history?campaignId=${campaignId}`);
       const data = await res.json();
       setHistory(data.data || []);
+      setSent((data.data || []).length);
     } catch (error) {
       console.error("Failed to load notification history:", error);
       toast.error("Failed to load notification history");
@@ -56,29 +58,9 @@ export default function NotificationsClient({ campaignId, currentUserId, canSend
     }
   }, [campaignId]);
 
-  const loadStats = useCallback(async () => {
-    try {
-      // Get subscriber count
-      const subRes = await fetch(`/api/notifications/subscribe`, {
-        method: "HEAD", // Just check if endpoint exists and user can access
-      });
-      // For now, we'll show history count as sent count
-      setStats({
-        subscribers: 0, // TODO: Add API to get subscriber count
-        sent: history.length,
-      });
-    } catch (error) {
-      console.error("Failed to load stats:", error);
-    }
-  }, [history.length]);
-
   useEffect(() => {
     loadHistory();
   }, [loadHistory]);
-
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
 
   const sendNotification = useCallback(async (data: SendNotificationInput) => {
     setSending(true);
@@ -148,8 +130,8 @@ export default function NotificationsClient({ campaignId, currentUserId, canSend
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.subscribers}</p>
-                <p className="text-sm text-gray-500">Active Subscribers</p>
+                <p className="text-2xl font-bold text-gray-900">{voterOptInCount}</p>
+                <p className="text-sm text-gray-500">Voter Opt-Ins</p>
               </div>
             </div>
           </CardContent>
@@ -162,7 +144,7 @@ export default function NotificationsClient({ campaignId, currentUserId, canSend
                 <Send className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.sent}</p>
+                <p className="text-2xl font-bold text-gray-900">{sent}</p>
                 <p className="text-sm text-gray-500">Notifications Sent</p>
               </div>
             </div>

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import NotificationOptInPrompt from "@/components/social/notification-opt-in-prompt";
 
 interface LinkedCampaign {
   id: string;
@@ -168,6 +169,12 @@ export default function OfficialDetailPage() {
   } | null>(null);
   const [signalSubmitting, setSignalSubmitting] = useState(false);
 
+  // Notification opt-in prompt state — shown after follow or support signal
+  const [pendingOptIn, setPendingOptIn] = useState<{
+    campaignId: string;
+    candidateName: string;
+  } | null>(null);
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/officials/${params.id}`).then(r => r.json()),
@@ -185,8 +192,15 @@ export default function OfficialDetailPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ officialId: params.id, type: "strong_support" }),
     });
-    if (res.ok) { setFollowing(true); toast.success("Following!"); }
-    else toast.error("Sign in to follow");
+    if (res.ok) {
+      setFollowing(true);
+      toast.success("Following!");
+      // Show opt-in for first linked campaign if any
+      if (official?.campaigns.length) {
+        const c = official.campaigns[0];
+        setPendingOptIn({ campaignId: c.id, candidateName: c.candidateName ?? c.name });
+      }
+    } else toast.error("Sign in to follow");
   }
 
   // Open disclosure modal before sending a campaign-targeted signal
@@ -214,6 +228,11 @@ export default function OfficialDetailPage() {
           toast.info("You've already sent support to this campaign.");
         } else {
           toast.success("Support sent! The campaign has been notified.");
+          // Offer push notification opt-in for this campaign
+          setPendingOptIn({
+            campaignId: pendingSignal.campaign.id,
+            candidateName: pendingSignal.campaign.candidateName ?? pendingSignal.campaign.name,
+          });
         }
         setPendingSignal(null);
       } else {
@@ -262,6 +281,15 @@ export default function OfficialDetailPage() {
           onConfirm={submitCampaignSignal}
           onCancel={() => setPendingSignal(null)}
           submitting={signalSubmitting}
+        />
+      )}
+
+      {/* Notification opt-in prompt — shown after follow / support signal */}
+      {pendingOptIn && (
+        <NotificationOptInPrompt
+          campaignId={pendingOptIn.campaignId}
+          candidateName={pendingOptIn.candidateName}
+          onDismiss={() => setPendingOptIn(null)}
         />
       )}
 

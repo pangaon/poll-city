@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { Badge } from "@/components/ui";
@@ -163,12 +162,13 @@ export default function CandidatePageClient({ campaign, polls }: CandidatePageCl
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col md:flex-row items-center gap-6">
             {campaign.logoUrl && (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={campaign.logoUrl}
                 alt={campaign.candidateName || "Candidate"}
                 width={120}
                 height={120}
-                className="rounded-full border-4 border-white"
+                className="rounded-full border-4 border-white object-cover"
               />
             )}
             <div className="text-center md:text-left">

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Upload, Download, FileText, AlertCircle, CheckCircle } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, PageHeader } from "@/components/ui";
 import { toast } from "sonner";
@@ -18,21 +18,61 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
   const [fileReady, setFileReady] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function parseFile(file: File) {
     Papa.parse<Record<string, string>>(file, {
       header: true, skipEmptyLines: true,
       complete: (results) => {
+        if (results.data.length === 0) {
+          toast.error("CSV file has no data rows. Check that it has a header row and at least one data row.");
+          return;
+        }
         setPreview(results.data.slice(0, 5));
         setFileReady(true);
         setResult(null);
       },
-      error: () => toast.error("Failed to parse CSV"),
+      error: (err) => toast.error(`Failed to parse CSV: ${err.message}`),
     });
   }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    parseFile(file);
+  }
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
+      toast.error("Please drop a CSV file");
+      return;
+    }
+    // Sync file to input ref so doImport can re-read it
+    if (fileRef.current) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileRef.current.files = dt.files;
+    }
+    parseFile(file);
+  }, []);
 
   async function doImport() {
     const file = fileRef.current?.files?.[0];
@@ -47,10 +87,30 @@ export default function ImportExportClient({ campaignId }: Props) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ campaignId, rows: results.data }),
           });
-          const data = await res.json();
-          if (res.ok) { setResult(data.data); toast.success(`Imported ${data.data.imported} contacts`); }
-          else toast.error(data.error ?? "Import failed");
-        } finally { setImporting(false); }
+          let data: { data?: ImportResult; error?: string };
+          try {
+            data = await res.json();
+          } catch {
+            toast.error("Unexpected response from server. Please try again.");
+            return;
+          }
+          if (res.ok && data.data) {
+            setResult(data.data);
+            toast.success(`Imported ${data.data.imported} contacts`);
+            // Reset input so the same file can be re-imported
+            if (fileRef.current) fileRef.current.value = "";
+          } else {
+            toast.error(data.error ?? "Import failed");
+          }
+        } catch (err) {
+          toast.error("Network error. Please check your connection and try again.");
+        } finally {
+          setImporting(false);
+        }
+      },
+      error: (err) => {
+        toast.error(`Failed to read file: ${err.message}`);
+        setImporting(false);
       },
     });
   }
@@ -102,8 +162,13 @@ export default function ImportExportClient({ campaignId }: Props) {
           </div>
 
           {/* Drop zone */}
-          <label className="flex flex-col items-center gap-3 p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
-            <Upload className="w-8 h-8 text-gray-400" />
+          <label
+            className={`flex flex-col items-center gap-3 p-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${isDragging ? "border-blue-400 bg-blue-50/60" : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/30"}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className={`w-8 h-8 ${isDragging ? "text-blue-500" : "text-gray-400"}`} />
             <div className="text-center">
               <p className="text-sm font-medium text-gray-700">Click to upload CSV</p>
               <p className="text-xs text-gray-400 mt-0.5">or drag and drop</p>

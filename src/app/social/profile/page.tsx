@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useSession, signOut, signIn } from "next-auth/react";
-import { MapPin, Bell, LogOut, Vote, ChevronRight, Shield, X, AlertCircle } from "lucide-react";
+import { MapPin, Bell, LogOut, Vote, ChevronRight, Shield, X, AlertCircle, BellOff } from "lucide-react";
 import Link from "next/link";
 
 interface ConsentRecord {
@@ -12,6 +12,13 @@ interface ConsentRecord {
   fieldsShared: string[];
   isActive: boolean;
   revokedAt: string | null;
+  createdAt: string;
+}
+
+interface NotificationOptIn {
+  id: string;
+  campaignId: string;
+  campaign: { id: string; name: string; slug: string; candidateName: string | null };
   createdAt: string;
 }
 
@@ -30,6 +37,141 @@ const SCOPE_LABELS: Record<string, string> = {
   volunteer_contact:  "May contact you to volunteer",
   do_not_contact:     "Marked as do not contact",
 };
+
+// ── Notification subscriptions section ──────────────────────────────────────
+
+function NotificationSubscriptionsSection() {
+  const [optIns, setOptIns]       = useState<NotificationOptIn[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [revoking, setRevoking]   = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/social/my-notifications")
+      .then((r) => r.json())
+      .then((json) => { setOptIns(json.data ?? []); setLoading(false); })
+      .catch(() => { setError("Could not load notifications."); setLoading(false); });
+  }, []);
+
+  async function revoke(campaignId: string) {
+    setRevoking(campaignId);
+    setConfirmId(null);
+    try {
+      const res = await fetch(`/api/social/notification-consent/${campaignId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setOptIns((prev) => prev.filter((o) => o.campaignId !== campaignId));
+      } else {
+        setError("Could not unsubscribe. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Bell className="w-4 h-4 text-blue-600" />
+          <p className="text-sm font-bold text-gray-900">Election Notifications</p>
+        </div>
+        <div className="space-y-2">
+          <div className="h-10 bg-gray-100 rounded-xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="px-4 py-3.5 border-b border-gray-100 flex items-center gap-2">
+        <Bell className="w-4 h-4 text-blue-600 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-bold text-gray-900">Election Notifications</p>
+          <p className="text-xs text-gray-400">Campaigns sending you election day reminders</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-4 my-3 flex items-center gap-2 bg-red-50 text-red-600 text-xs px-3 py-2 rounded-xl">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {optIns.length === 0 && !error && (
+        <div className="px-4 py-6 text-center">
+          <BellOff className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+          <p className="text-sm text-gray-400">No notification subscriptions yet.</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Follow a candidate and opt in to receive election day reminders.
+          </p>
+        </div>
+      )}
+
+      {/* Confirm unsubscribe prompt */}
+      {confirmId && (
+        <div className="mx-4 my-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <p className="text-xs font-semibold text-amber-800 mb-1">Unsubscribe from notifications?</p>
+          <p className="text-xs text-amber-700 mb-3">
+            You will no longer receive election day reminders from this campaign.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmId(null)}
+              className="flex-1 py-1.5 rounded-lg border border-amber-300 text-amber-700 text-xs font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => revoke(confirmId)}
+              disabled={revoking === confirmId}
+              className="flex-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold disabled:opacity-50"
+            >
+              {revoking === confirmId ? "Removing…" : "Yes, unsubscribe"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {optIns.map((o) => (
+        <div key={o.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {o.campaign.candidateName ?? o.campaign.name}
+              </p>
+              <p className="text-xs text-gray-400">Election day reminders</p>
+              <p className="text-xs text-gray-300 mt-0.5">
+                Since {new Date(o.createdAt).toLocaleDateString("en-CA")}
+              </p>
+            </div>
+            <button
+              onClick={() => setConfirmId(o.campaignId)}
+              disabled={!!revoking}
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
+              aria-label={`Unsubscribe from ${o.campaign.name}`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Unsubscribing stops future notifications. Your support signal is not affected.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ── Consent section ─────────────────────────────────────────────────────────
 
@@ -273,16 +415,14 @@ export default function SocialProfile() {
       {/* Consent list + revoke */}
       <ConsentSection />
 
+      {/* Push notification opt-ins */}
+      <NotificationSubscriptionsSection />
+
       {/* Settings stubs */}
       <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
         <div className="flex items-center gap-3 px-4 py-3.5">
           <MapPin className="w-4 h-4 text-gray-400" />
           <span className="text-sm text-gray-600 flex-1">Location & riding detection</span>
-          <span className="text-xs text-gray-400">Coming soon</span>
-        </div>
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <Bell className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-600 flex-1">Notifications</span>
           <span className="text-xs text-gray-400">Coming soon</span>
         </div>
       </div>

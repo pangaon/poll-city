@@ -15,13 +15,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       jurisdiction: true,
       electionType: true,
       candidateBio: true,
+      isPublic: true,
     },
   });
 
-  if (!campaign) {
-    return {
-      title: "Candidate Not Found",
-    };
+  if (!campaign || !campaign.isPublic) {
+    return { title: "Candidate Not Found" };
   }
 
   return {
@@ -59,6 +58,11 @@ export default async function CandidatePage({ params }: PageProps) {
   });
 
   if (!campaign) {
+    notFound();
+  }
+
+  // Gate on isPublic — campaign must be published before it's publicly visible
+  if (!campaign.isPublic) {
     notFound();
   }
 
