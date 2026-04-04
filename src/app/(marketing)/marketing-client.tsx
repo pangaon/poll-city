@@ -236,8 +236,13 @@ const PRODUCTS = [
       "Turf cutting by ward, poll number, odd/even streets",
       "GOTV engine with supporter scoring and prioritisation",
       "Volunteer management with scheduling and tracking",
+      "Volunteer onboarding links, group leadership, and shift check-ins",
       "Sign tracking with map view",
       "Donation tracking and pledge management",
+      "Budget tracker with allocation versus actual spend",
+      "Volunteer expenses and reimbursement workflow",
+      "Canvassing script builder and lookup quick actions",
+      "Campaign operations hub: media, coalitions, events, and opponent intelligence",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",
       "AI campaign assistant for strategy and targeting",
@@ -324,24 +329,38 @@ const PRODUCTS = [
   },
   {
     title: "Candidate Public Page",
-    tagline: "Your instant campaign website",
+    tagline: "World-class campaign website — built in minutes",
     colour: "from-purple-600 to-purple-800",
     textColour: "text-purple-700",
     bgLight: "bg-purple-50",
     border: "border-purple-200",
     features: [
-      "Live at poll.city/candidates/your-name-ward",
-      "Works with your own domain — votegeorge.ca points here",
-      "Volunteer signup form connected to your CRM",
-      "Sign request form connected to your sign map",
-      "Support signals and endorsements",
+      "Live at poll.city/candidates/your-name — zero setup",
+      "6 themes: Classic Blue, Bold Red, Modern Dark, Campaign Green, Clean White, Royal Purple",
+      "5 font pairs including Playfair Display, Montserrat, and Merriweather",
+      "4 page layouts: Professional, Modern, Bold, Minimal",
+      "Hero banner image and autoplay background video",
+      "Social proof bar showing real-time supporter count",
+      "Election countdown timer",
+      "Up to 10 endorsement cards with org logo and quote",
+      "Custom FAQ (up to 10 Q&A items)",
       "Live poll results from your campaign polls",
-      "Events and town halls listing",
-      "Your platform and pledges",
-      "Photo gallery",
-      "Contact form",
-      "SEO optimised and mobile first",
-      "Replaces your $5,000 campaign website for $199/month",
+      "Email capture widget connected to campaign CRM",
+      "Donation widget with custom amounts",
+      "Office hours, committees, and voting record (Official plan)",
+      "Accomplishments timeline (up to 20 entries)",
+      "Newsletter signup and town hall scheduler",
+      "Custom SEO title and meta description",
+      "Downloadable QR code (PNG + SVG)",
+      "Custom domain — votegeorge.ca points here (Pro+)",
+      "White label — remove Poll City branding (Command)",
+      "Custom CSS for full design control (Command)",
+      "Live page builder preview — see changes before saving",
+      "Page view analytics",
+      "Volunteer signup, sign request, support signal forms — all CRM-connected",
+      "Mobile-first, SEO-optimised, OpenGraph sharing",
+      "Replaces your $5,000 static campaign website",
+      "26 customization features across 4 plan tiers",
     ],
   },
 ];
@@ -850,6 +869,127 @@ export default function MarketingClient() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Make Your Page Yours ── */}
+      <section className="py-20 px-4 bg-white" id="customization">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">Page Builder</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">Make your page yours</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">
+              26 customization features turn your Poll City page into a world-class campaign website — no developer needed, live preview built in.
+            </p>
+          </div>
+
+          {/* Before / After */}
+          <div className="grid md:grid-cols-2 gap-6 mb-14">
+            {/* Before */}
+            <div className="rounded-2xl overflow-hidden border-2 border-gray-200 shadow-sm">
+              <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-2 border-b">
+                <div className="flex gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-400"/><div className="w-2.5 h-2.5 rounded-full bg-amber-400"/><div className="w-2.5 h-2.5 rounded-full bg-green-400"/></div>
+                <span className="text-xs text-gray-400 font-mono flex-1 text-center">Default page (Free plan)</span>
+              </div>
+              <div className="p-5 bg-gray-50">
+                <div className="h-16 bg-blue-900 rounded-xl mb-4 flex items-center px-4 gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white text-sm font-bold">JS</div>
+                  <div><div className="text-white text-sm font-bold">Jane Smith</div><div className="text-blue-300 text-xs">Ward 5 Candidate</div></div>
+                </div>
+                <div className="space-y-2">
+                  {["About", "Platform", "Volunteer"].map(l => <div key={l} className="h-6 bg-gray-200 rounded text-xs flex items-center px-2 text-gray-400">{l}</div>)}
+                </div>
+                <p className="text-xs text-gray-300 text-center mt-3">Default theme · Default font</p>
+              </div>
+            </div>
+
+            {/* After */}
+            <div className="rounded-2xl overflow-hidden border-2 border-purple-300 shadow-xl ring-2 ring-purple-200">
+              <div className="bg-gray-100 px-4 py-2.5 flex items-center gap-2 border-b">
+                <div className="flex gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-400"/><div className="w-2.5 h-2.5 rounded-full bg-amber-400"/><div className="w-2.5 h-2.5 rounded-full bg-green-400"/></div>
+                <span className="text-xs text-gray-400 font-mono flex-1 text-center">Customized page (Pro plan)</span>
+                <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-semibold">After</span>
+              </div>
+              <div className="p-5 bg-white">
+                <div className="h-20 rounded-xl mb-4 flex items-center px-4 gap-3 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)" }}>
+                  <div className="w-12 h-12 rounded-full border-2 border-white bg-purple-400 flex items-center justify-center text-white font-bold">JS</div>
+                  <div>
+                    <div className="text-white font-bold flex items-center gap-1.5">Jane Smith <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">✓ Verified</span></div>
+                    <div className="text-purple-200 text-xs">Ward 5 · Municipal</div>
+                    <div className="text-white/80 text-xs mt-0.5">⭐ 247 supporters</div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {[
+                    { l: "📋 Endorsements (8)", c: "bg-purple-600 text-white" },
+                    { l: "❓ FAQ", c: "bg-purple-50 text-purple-700 border border-purple-200" },
+                    { l: "📬 Stay in the loop", c: "bg-gray-50 text-gray-600 border border-gray-200" },
+                  ].map(({ l, c }) => <div key={l} className={`h-7 rounded-lg text-xs font-medium flex items-center px-3 ${c}`}>{l}</div>)}
+                </div>
+                <p className="text-xs text-purple-400 text-center mt-3 font-medium">Royal Purple theme · Playfair Display font</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 6 theme swatches */}
+          <div className="mb-14">
+            <p className="text-center text-sm font-semibold text-gray-600 mb-5">6 built-in themes — pick yours in one click</p>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {[
+                { label: "Classic Blue",    bg: "#1e3a8a", text: "bg-blue-50" },
+                { label: "Bold Red",        bg: "#dc2626", text: "bg-red-50" },
+                { label: "Modern Dark",     bg: "#111827", text: "bg-gray-50" },
+                { label: "Clean White",     bg: "#2563eb", text: "bg-white" },
+                { label: "Campaign Green",  bg: "#15803d", text: "bg-green-50" },
+                { label: "Royal Purple",    bg: "#7c3aed", text: "bg-purple-50" },
+              ].map((t) => (
+                <div key={t.label} className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm ${t.text}`}>
+                  <div className="h-12" style={{ backgroundColor: t.bg }} />
+                  <p className="text-xs text-center py-2 font-medium text-gray-600 px-1">{t.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Feature highlights grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+            {[
+              { icon: "🎨", title: "Themes & Colours", desc: "6 professional themes, custom primary and accent colours, 5 font pairs.", tier: "Starter+" },
+              { icon: "🖼️", title: "Hero Banner & Video", desc: "Full-bleed background image or autoplay video with overlay for drama.", tier: "Pro+" },
+              { icon: "⭐", title: "Endorsements", desc: "Up to 10 endorsement cards with organisation logo and pull quote.", tier: "Pro+" },
+              { icon: "❓", title: "Custom FAQ", desc: "Answer voters' top questions directly on your page — up to 10 Q&A items.", tier: "Pro+" },
+              { icon: "📊", title: "Live Polls & Counter", desc: "Embed your campaign polls and show a live doors-knocked counter.", tier: "Pro+" },
+              { icon: "🏛️", title: "Elected Official Tools", desc: "Office hours, committees, voting record, accomplishments timeline.", tier: "Official+" },
+              { icon: "📬", title: "Email & Donations", desc: "Email capture and donation widgets both feed directly into your CRM.", tier: "Pro+" },
+              { icon: "🔍", title: "SEO + Analytics", desc: "Custom meta title and description. Page view analytics in your dashboard.", tier: "Pro+" },
+              { icon: "📱", title: "QR Code Download", desc: "One-click QR code for print materials — download PNG or SVG instantly.", tier: "Pro+" },
+              { icon: "🌐", title: "Custom Domain", desc: "votegeorge.ca points to your Poll City page. Setup in 5 minutes.", tier: "Pro+" },
+              { icon: "✏️", title: "White Label", desc: "Remove Poll City branding. Add custom CSS. Your page, your brand.", tier: "Command" },
+              { icon: "👁️", title: "Live Preview", desc: "See every change in real-time before saving — Squarespace-quality builder.", tier: "All plans" },
+            ].map((f) => (
+              <div key={f.title} className="p-4 border border-gray-100 rounded-xl hover:border-purple-200 hover:shadow-sm transition-all">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{f.icon}</span>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 text-sm">{f.title}</p>
+                      <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{f.tier}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">{f.desc}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <a href="/signup">
+              <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg transition-colors">
+                Start Customizing — Free to Try
+              </button>
+            </a>
+            <p className="text-gray-400 text-sm mt-3">No credit card required · Live in minutes · Cancel any time</p>
           </div>
         </div>
       </section>

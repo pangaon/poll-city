@@ -1,5 +1,57 @@
 # Poll City User Guide
 
+## v1.8.0 Feature SOP Addendum - April 4, 2026
+
+### Volunteer Onboarding SOP (`/volunteer/onboard/[token]`)
+
+1. Create or distribute onboarding links from campaign operations.
+2. Volunteer opens their secure token link.
+3. Volunteer confirms name, email, and phone.
+4. Volunteer sets availability and skills.
+5. Volunteer selects preferred ward.
+6. Volunteer reviews intro video and code of conduct.
+7. Volunteer accepts code of conduct and completes onboarding.
+
+### Volunteer Groups SOP (`/volunteers/groups`)
+
+1. Open Volunteer Groups.
+2. Create a new group with name, optional ward target, and optional leader.
+3. Add volunteers to the group roster.
+4. Use "Message Group" to push internal group updates.
+5. Track rosters and contactability from each group card.
+
+### Volunteer Shifts SOP (`/volunteers/shifts`)
+
+1. Create shift records with date, time, and location.
+2. Share signup links/process with volunteers.
+3. Use reminders endpoint to notify signed-up volunteers.
+4. Use check-in at shift start to mark attendance.
+
+### Lookup Quick Actions SOP (`/lookup`)
+
+1. Search voter by name or address.
+2. Open contact card.
+3. Use quick actions to mark supporter/soft supporter/undecided/against or add note.
+4. For multi-voter addresses, use household soft-supporter action.
+5. If offline, actions queue automatically and sync in background when online.
+
+### Turf Assignment SOP (`/canvassing/turf-builder`)
+
+1. Create and optimize turf as normal.
+2. Assign turf to a canvasser or to a volunteer group.
+3. Reassign user or group as field capacity changes.
+
+### Campaign Operations Modules SOP
+
+1. ` /canvassing/scripts`: create and maintain script variants by use case.
+2. ` /media`: log press mentions and status.
+3. ` /coalitions`: track coalition partners and endorsements.
+4. ` /intelligence`: record opponent intel with confidence and source.
+5. ` /events`: maintain event schedule and notes.
+6. ` /volunteers/expenses`: submit and review volunteer reimbursements.
+7. ` /budget`: track allocations, spend, and remaining amounts by category.
+8. ` /supporters/super`: maintain super-supporter list and assign special tasks.
+
 ## v1.6.0 Feature SOP Addendum — April 4, 2026
 
 ### Swipe Polls SOP (Voters — Poll City Social)
@@ -179,6 +231,72 @@
 5. Check **Make This Page Public** to publish
 6. Copy your public page URL: `poll.city/candidates/your-slug`
 7. Share this link on social media and with voters
+
+### How to Customise Your Candidate Page (26 Features)
+
+The page builder is a live two-column editor — settings on the left, real-time preview on the right. Every change reflects instantly in the preview before you save.
+
+**Branding (Starter+ plan)**
+
+1. Go to **Settings** → **Public Page**
+2. In the **Branding** section, choose your **Primary Colour** and **Accent Colour** using the colour pickers
+3. Upload your **Campaign Logo** using the upload button
+4. Click **Save Changes** — your page updates immediately
+
+**Themes (Starter+ plan)**
+
+1. In the **Themes** section, click any of the 6 theme cards: Classic Blue, Bold Red, Modern Dark, Clean White, Campaign Green, Royal Purple
+2. The preview on the right updates immediately to show the full theme
+
+**Typography (Pro+ plan)**
+
+1. In the **Typography** section, click a font pair card
+2. Five font pairs available: Playfair/Source Sans, Inter/Inter, Merriweather/Open Sans, Montserrat/Lato, Georgia/Arial
+
+**Layout (Pro+ plan)**
+
+1. In the **Layout** section, choose: Professional (headshot left), Modern (full-width hero), Bold (large type, dramatic spacing), Minimal (clean whitespace)
+
+**Hero Banner and Video (Pro+ plan)**
+
+1. In the **Hero** section, paste a direct image URL for **Hero Banner Image**
+2. Or paste a direct video URL for **Hero Video** (autoplays silently in the background)
+3. A dark overlay is applied automatically so text stays readable
+
+**Content Widgets (Pro+ plan)**
+
+1. Toggle any widget on or off — the preview updates immediately
+2. Available widgets: Social proof bar, Election countdown, Live polls, Door counter, Supporter wall
+3. For **Endorsements** (up to 10): click **Add Endorsement**, fill in organisation name, logo URL (optional), and a pull quote
+4. For **Custom FAQ** (up to 10): click **Add Q&A**, fill in question and answer
+5. For **Email Capture**: toggle on, customise the headline and button text
+6. For **Donation Widget**: toggle on, set custom amounts as comma-separated values (e.g. `10, 25, 50, 100`)
+7. For **Town Hall Scheduler**: paste your Calendly or booking URL
+
+**Elected Official Widgets (Official plan only)**
+
+1. For **Office Hours** (up to 5): click **Add**, fill in day, time, and location
+2. For **Committees** (up to 10): click **Add**, fill in committee name and your role
+3. For **Voting Record**: paste the URL to your official voting record
+4. For **Accomplishments Timeline** (up to 20): click **Add**, fill in date, title, and description
+5. For **Newsletter**: toggle on, enter your newsletter name
+
+**SEO (Pro+ plan)**
+
+1. In the **SEO** section, enter a custom **Meta Title** (appears in Google search results)
+2. Enter a custom **Meta Description** (up to 160 characters, appears under the title in Google)
+
+**QR Code (Pro+ plan)**
+
+1. In the **QR Code** section, enter a custom **QR Label** (appears below the QR code)
+2. Choose **QR Size**: Small, Medium, or Large
+3. Click **Download PNG** or **Download SVG** to save the QR code for print materials
+
+**White Label (Command plan only)**
+
+1. Toggle **Hide Poll City Branding** to remove the "Powered by Poll City" footer
+2. Enter **Custom Footer Text** to replace it with your own message
+3. Enter **Custom CSS** for full design control (advanced users only)
 
 ### How to Invite Team Members
 

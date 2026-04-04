@@ -21,6 +21,7 @@ enum Role {
   ADMIN
   CAMPAIGN_MANAGER
   VOLUNTEER
+  VOLUNTEER_LEADER
   PUBLIC_USER
 }
 
@@ -41,6 +42,7 @@ enum InteractionType {
   event
   note
   follow_up
+  field_encounter
 }
 
 enum ElectionType {
@@ -158,6 +160,51 @@ enum GotvStatus {
   refused
 }
 
+enum VolunteerInviteStatus {
+  pending
+  completed
+  expired
+}
+
+enum VolunteerShiftSignupStatus {
+  signed_up
+  cancelled
+  attended
+  no_show
+}
+
+enum ScriptType {
+  supporter
+  persuadable
+  opposition
+  general
+}
+
+enum SentimentType {
+  positive
+  neutral
+  negative
+}
+
+enum OpponentIntelType {
+  sign
+  event
+  media
+  note
+}
+
+enum VolunteerExpenseStatus {
+  pending
+  approved
+  rejected
+  reimbursed
+}
+
+enum BudgetItemType {
+  allocation
+  expense
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // USER & AUTH
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,10 +286,14 @@ model Campaign {
   logoUrl         String?
   websiteUrl      String?
   customDomain    String?
+  volunteerIntroVideoUrl String?
+  volunteerCodeOfConduct String?
   primaryColor    String       @default("#1e40af")
   isPublic        Boolean      @default(false)
   officialId      String?
   isActive        Boolean      @default(true)
+  customization   Json?
+  pageViews       Int          @default(0)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -268,6 +319,17 @@ model Campaign {
   notificationLogs  NotificationLog[]
   printJobs         PrintJob[]
   turfs             Turf[]
+  volunteerOnboardingTokens VolunteerOnboardingToken[]
+  volunteerGroups   VolunteerGroup[]
+  volunteerShifts   VolunteerShift[]
+  canvassingScripts CanvassingScript[]
+  mediaMentions     MediaMention[]
+  coalitions        Coalition[]
+  opponentIntel     OpponentIntel[]
+  events            Event[]
+  volunteerExpenses    VolunteerExpense[]
+  budgetItems          BudgetItem[]
+  superSupporterTasks  SuperSupporterTask[]
 
   @@unique([customDomain])
   @@map("campaigns")
@@ -382,6 +444,7 @@ model Contact {
   id                String       @id @default(cuid())
   campaignId        String
   householdId       String?
+  householdRole     String?
   nameTitle         String?      // Mr, Ms, Dr, etc
   firstName         String
   middleName        String?
@@ -401,7 +464,10 @@ model Contact {
   supportLevel      SupportLevel @default(unknown)
   notes             String?
   preferredLanguage String       @default("en")
+  languagePreference String?
+  accessibilityFlag Boolean      @default(false)
   doNotContact      Boolean      @default(false)
+  superSupporter    Boolean      @default(false)
   signRequested     Boolean      @default(false)
   signPlaced        Boolean      @default(false)
   volunteerInterest Boolean      @default(false)
@@ -470,6 +536,7 @@ model Contact {
   gotvRecords       GotvRecord[]
   customFieldValues CustomFieldValue[]
   turfStops         TurfStop[]
+  superSupporterTasks SuperSupporterTask[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -559,6 +626,8 @@ model Interaction {
   followUpDate     DateTime?
   doorNumber       String?
   duration         Int?
+  latitude         Float?
+  longitude        Float?
   createdAt        DateTime        @default(now())
 
   contact          Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -656,6 +725,10 @@ model VolunteerProfile {
   user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact         Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   campaign        Campaign? @relation(fields: [campaignId], references: [id])
+  ledGroups       VolunteerGroup[] @relation("VolunteerGroupLeader")
+  groupMemberships VolunteerGroupMember[]
+  shiftSignups    VolunteerShiftSignup[]
+  submittedExpenses VolunteerExpense[]
 
   @@map("volunteer_profiles")
 }
@@ -1413,6 +1486,7 @@ model Turf {
   oddEven        String     @default("all")
   status         TurfStatus @default(draft)
   assignedUserId String?
+  assignedGroupId String?
   totalStops     Int        @default(0)
   completedStops Int        @default(0)
   notes          String?
@@ -1421,10 +1495,268 @@ model Turf {
 
   campaign       Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   assignedUser   User?      @relation("TurfAssignee", fields: [assignedUserId], references: [id])
+  assignedGroup  VolunteerGroup? @relation(fields: [assignedGroupId], references: [id])
   stops          TurfStop[]
 
   @@index([campaignId])
   @@map("turfs")
+}
+
+model VolunteerOnboardingToken {
+  id             String                @id @default(cuid())
+  token          String                @unique
+  campaignId     String
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  preferredWard  String?
+  status         VolunteerInviteStatus @default(pending)
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  campaign       Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@map("volunteer_onboarding_tokens")
+}
+
+model VolunteerGroup {
+  id                 String                  @id @default(cuid())
+  campaignId         String
+  name               String
+  description        String?
+  targetWard         String?
+  leaderProfileId    String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  campaign           Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leaderProfile      VolunteerProfile?       @relation("VolunteerGroupLeader", fields: [leaderProfileId], references: [id])
+  members            VolunteerGroupMember[]
+  turfs              Turf[]
+
+  @@unique([campaignId, name])
+  @@index([campaignId])
+  @@map("volunteer_groups")
+}
+
+model VolunteerGroupMember {
+  id                 String            @id @default(cuid())
+  groupId            String
+  volunteerProfileId String
+  createdAt          DateTime          @default(now())
+
+  group              VolunteerGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  volunteerProfile   VolunteerProfile  @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, volunteerProfileId])
+  @@index([volunteerProfileId])
+  @@map("volunteer_group_members")
+}
+
+model VolunteerShift {
+  id                String                  @id @default(cuid())
+  campaignId        String
+  name              String
+  shiftDate         DateTime
+  startTime         String
+  endTime           String
+  meetingLocation   String
+  targetTurfArea    String?
+  maxVolunteers     Int                     @default(10)
+  minVolunteers     Int                     @default(1)
+  notes             String?
+  checkInCode       String                  @unique
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  campaign          Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  signups           VolunteerShiftSignup[]
+
+  @@index([campaignId, shiftDate])
+  @@map("volunteer_shifts")
+}
+
+model VolunteerShiftSignup {
+  id                 String                     @id @default(cuid())
+  shiftId            String
+  volunteerProfileId String
+  status             VolunteerShiftSignupStatus @default(signed_up)
+  checkedInAt        DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  shift              VolunteerShift             @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  volunteerProfile   VolunteerProfile           @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftId, volunteerProfileId])
+  @@index([volunteerProfileId])
+  @@map("volunteer_shift_signups")
+}
+
+model CanvassingScript {
+  id            String      @id @default(cuid())
+  campaignId    String
+  name          String
+  scriptType    ScriptType  @default(general)
+  openingLine   String
+  keyMessages   String[]    @default([])
+  issueResponses Json?
+  closingAsk    String
+  literature    String?
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  campaign      Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, scriptType])
+  @@map("canvassing_scripts")
+}
+
+model MediaMention {
+  id            String       @id @default(cuid())
+  campaignId    String
+  outlet        String
+  mentionDate   DateTime
+  url           String?
+  sentiment     SentimentType @default(neutral)
+  summary       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  campaign      Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, mentionDate])
+  @@map("media_mentions")
+}
+
+model Coalition {
+  id             String      @id @default(cuid())
+  campaignId     String
+  organizationName String
+  contactName    String?
+  contactEmail   String?
+  memberCount    Int?
+  endorsementDate DateTime?
+  isPublic       Boolean     @default(false)
+  logoUrl        String?
+  memberList     Json?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("coalitions")
+}
+
+model OpponentIntel {
+  id             String            @id @default(cuid())
+  campaignId     String
+  type           OpponentIntelType
+  title          String
+  details        String?
+  lat            Float?
+  lng            Float?
+  eventDate      DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, type])
+  @@map("opponent_intel")
+}
+
+model Event {
+  id             String      @id @default(cuid())
+  campaignId     String
+  name           String
+  eventDate      DateTime
+  location       String
+  capacity       Int?
+  description    String?
+  isPublic       Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rsvps          EventRsvp[]
+
+  @@index([campaignId, eventDate])
+  @@map("events")
+}
+
+model EventRsvp {
+  id             String      @id @default(cuid())
+  eventId        String
+  contactId      String?
+  name           String
+  email          String
+  attended       Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+
+  event          Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_rsvps")
+}
+
+model SuperSupporterTask {
+  id             String      @id @default(cuid())
+  campaignId     String
+  contactId      String
+  title          String
+  status         String      @default("pending")
+  contributionNotes String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact        Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@map("super_supporter_tasks")
+}
+
+model VolunteerExpense {
+  id             String                @id @default(cuid())
+  campaignId     String
+  volunteerProfileId String
+  amount         Float
+  category       String
+  receiptUrl     String?
+  notes          String?
+  status         VolunteerExpenseStatus @default(pending)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  campaign       Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  volunteerProfile VolunteerProfile    @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@map("volunteer_expenses")
+}
+
+model BudgetItem {
+  id             String         @id @default(cuid())
+  campaignId     String
+  itemType       BudgetItemType
+  category       String
+  amount         Float
+  description    String?
+  incurredAt     DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, category])
+  @@map("budget_items")
 }
 
 model TurfStop {

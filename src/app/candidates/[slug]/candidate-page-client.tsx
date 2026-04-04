@@ -1,14 +1,75 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button, Card, CardContent, CardHeader, Badge } from "@/components/ui";
 import {
   MapPin, Calendar, Users, Share2, AlertCircle, CheckCircle,
   Globe, Phone, Mail, Twitter, Facebook, Instagram, Linkedin,
-  ShieldCheck, Building2, ExternalLink, Trophy,
+  ShieldCheck, Building2, ExternalLink, Trophy, Star, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
+
+/* ─── Customization types ────────────────────────────────────────────────── */
+
+export interface Endorsement { id: string; org: string; logoUrl: string; quote: string; }
+export interface FaqItem { id: string; q: string; a: string; }
+export interface OfficeHour { id: string; day: string; time: string; location: string; }
+export interface Committee { id: string; name: string; role: string; }
+export interface Accomplishment { id: string; date: string; title: string; description: string; }
+
+export interface PageCustomization {
+  primaryColor?: string;
+  accentColor?: string;
+  theme?: string;
+  fontPair?: string;
+  layout?: string;
+  heroBannerUrl?: string;
+  heroVideoUrl?: string;
+  showSocialProof?: boolean;
+  showCountdown?: boolean;
+  showLivePoll?: boolean;
+  showDoorCounter?: boolean;
+  showSupporterWall?: boolean;
+  endorsements?: Endorsement[];
+  customFaq?: FaqItem[];
+  showEmailCapture?: boolean;
+  emailCaptureHeadline?: string;
+  emailCaptureButtonText?: string;
+  showDonation?: boolean;
+  donationAmounts?: string;
+  officeHours?: OfficeHour[];
+  committees?: Committee[];
+  votingRecordUrl?: string;
+  accomplishments?: Accomplishment[];
+  showNewsletter?: boolean;
+  newsletterName?: string;
+  townHallUrl?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  qrLabel?: string;
+  qrSize?: "small" | "medium" | "large";
+  hidePolCityBranding?: boolean;
+  customCss?: string;
+  customFooterText?: string;
+}
+
+const THEME_COLORS: Record<string, { primary: string; bg: string }> = {
+  "classic-blue":   { primary: "#1e3a8a", bg: "#eff6ff" },
+  "bold-red":       { primary: "#dc2626", bg: "#fef2f2" },
+  "modern-dark":    { primary: "#111827", bg: "#f9fafb" },
+  "clean-white":    { primary: "#2563eb", bg: "#ffffff" },
+  "campaign-green": { primary: "#15803d", bg: "#f0fdf4" },
+  "royal-purple":   { primary: "#7c3aed", bg: "#faf5ff" },
+};
+
+const FONT_FAMILIES: Record<string, { headline: string; body: string }> = {
+  "playfair-sourcesans":   { headline: "Playfair Display", body: "Source Sans Pro" },
+  "inter-inter":           { headline: "Inter",            body: "Inter" },
+  "merriweather-opensans": { headline: "Merriweather",     body: "Open Sans" },
+  "montserrat-lato":       { headline: "Montserrat",       body: "Lato" },
+  "georgia-arial":         { headline: "Georgia",          body: "Arial" },
+};
 
 /* ─── Exported types (imported by page.tsx) ──────────────────────────────── */
 
@@ -53,6 +114,7 @@ export interface CampaignData {
   primaryColor: string;
   supporterCount: number;
   official: OfficialInfo | null;
+  customization?: PageCustomization | null;
 }
 
 export interface PollData {
@@ -89,6 +151,19 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
   const [questionForm, setQuestionForm] = useState({ name: "", email: "", question: "" });
   const [loading, setLoading] = useState(false);
 
+  const cx = campaign.customization ?? {};
+  const primaryColor = cx.primaryColor ?? campaign.primaryColor ?? "#1e40af";
+  const accentColor = cx.accentColor ?? primaryColor;
+  const theme = cx.theme ?? "classic-blue";
+  const themeColors = THEME_COLORS[theme] ?? THEME_COLORS["classic-blue"];
+  const fontPair = cx.fontPair ?? "inter-inter";
+  const fonts = FONT_FAMILIES[fontPair] ?? FONT_FAMILIES["inter-inter"];
+
+  // Track page view on mount
+  useEffect(() => {
+    fetch(`/api/campaigns/${campaign.id}/customization`, { method: "POST" }).catch(() => {});
+  }, [campaign.id]);
+
   const off = campaign.official;
   const photoUrl = campaign.logoUrl ?? off?.photoUrl ?? null;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -106,8 +181,30 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
     finally { setLoading(false); }
   }
 
+  const googleFontsUrl = fontPair !== "georgia-arial"
+    ? `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fonts.headline)}:wght@400;700&family=${encodeURIComponent(fonts.body)}:wght@400;600&display=swap`
+    : null;
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen"
+      style={{
+        backgroundColor: themeColors.bg,
+        fontFamily: fonts.body,
+        "--primary": primaryColor,
+        "--accent": accentColor,
+      } as React.CSSProperties}
+    >
+      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
+      {cx.customCss && <style dangerouslySetInnerHTML={{ __html: cx.customCss }} />}
+
+      {/* ── Social proof bar ── */}
+      {cx.showSocialProof && campaign.supporterCount > 0 && (
+        <div style={{ backgroundColor: primaryColor }} className="py-2 px-4 text-white text-center text-sm font-medium">
+          <Star className="w-3.5 h-3.5 inline mr-1.5 mb-0.5" />
+          {campaign.supporterCount.toLocaleString()} supporters have joined {campaign.candidateName}&apos;s campaign
+        </div>
+      )}
 
       {/* ── Unclaimed banner ── */}
       {off && !off.isClaimed && (
@@ -129,10 +226,17 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
 
       {/* ── Hero ── */}
       <div
-        className="text-white py-12 px-4"
-        style={{ background: `linear-gradient(135deg, ${campaign.primaryColor} 0%, ${campaign.primaryColor}cc 100%)` }}
+        className="text-white py-12 px-4 relative overflow-hidden"
+        style={{ background: cx.heroBannerUrl ? `url(${cx.heroBannerUrl}) center/cover` : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}cc 100%)` }}
       >
-        <div className="container mx-auto max-w-4xl">
+        {cx.heroBannerUrl && <div className="absolute inset-0 bg-black/50" />}
+        {cx.heroVideoUrl && (
+          <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover">
+            <source src={cx.heroVideoUrl} />
+          </video>
+        )}
+        {cx.heroVideoUrl && <div className="absolute inset-0 bg-black/50" />}
+        <div className="container mx-auto max-w-4xl relative z-10">
           <div className="flex flex-col md:flex-row items-center gap-6">
 
             {/* Photo — next/image with initials fallback */}
@@ -317,6 +421,123 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
               </Card>
             )}
 
+            {/* Endorsements */}
+            {(cx.endorsements?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold flex items-center gap-2"><Star className="w-5 h-5 text-yellow-500" /> Endorsements</h2></CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {cx.endorsements!.map((e) => (
+                      <div key={e.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        {e.logoUrl && <img src={e.logoUrl} alt={e.org} className="w-10 h-10 rounded object-cover flex-shrink-0" />}
+                        <div>
+                          <p className="font-semibold text-sm">{e.org}</p>
+                          {e.quote && <p className="text-gray-600 text-sm mt-1 italic">&ldquo;{e.quote}&rdquo;</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Accomplishments */}
+            {(cx.accomplishments?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold flex items-center gap-2"><Trophy className="w-5 h-5 text-blue-600" /> Accomplishments</h2></CardHeader>
+                <CardContent>
+                  <div className="relative pl-6 border-l-2 border-gray-200 space-y-4">
+                    {cx.accomplishments!.map((a) => (
+                      <div key={a.id} className="relative">
+                        <div className="absolute -left-[25px] w-3 h-3 rounded-full bg-blue-600 border-2 border-white" />
+                        <p className="text-xs text-gray-500 font-medium mb-0.5">{a.date}</p>
+                        <p className="font-semibold">{a.title}</p>
+                        {a.description && <p className="text-gray-600 text-sm mt-0.5">{a.description}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Committees */}
+            {(cx.committees?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold flex items-center gap-2"><Building2 className="w-5 h-5 text-purple-600" /> Committees</h2></CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {cx.committees!.map((cm) => (
+                      <li key={cm.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{cm.name}</span>
+                        {cm.role && <span className="text-gray-500">{cm.role}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Custom FAQ */}
+            {(cx.customFaq?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold">Frequently Asked Questions</h2></CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {cx.customFaq!.map((f) => (
+                      <div key={f.id}>
+                        <p className="font-semibold">{f.q}</p>
+                        <p className="text-gray-600 text-sm mt-1">{f.a}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Email capture */}
+            {cx.showEmailCapture && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-lg font-semibold mb-2">{cx.emailCaptureHeadline || "Stay in the loop"}</h3>
+                  <form className="flex gap-2 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
+                    <input type="email" placeholder="Your email" className="flex-1 px-3 py-2 border rounded-lg text-sm" />
+                    <Button type="submit" style={{ backgroundColor: primaryColor }}>{cx.emailCaptureButtonText || "Subscribe"}</Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Donation widget */}
+            {cx.showDonation && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold">Support This Campaign</h2></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(cx.donationAmounts || "10,25,50,100").split(",").map((amt) => (
+                      <button key={amt} className="px-5 py-2.5 rounded-lg border-2 font-semibold text-sm transition-colors hover:text-white"
+                        style={{ borderColor: primaryColor, color: primaryColor }}
+                        onMouseEnter={(e) => { (e.target as HTMLElement).style.backgroundColor = primaryColor; (e.target as HTMLElement).style.color = "white"; }}
+                        onMouseLeave={(e) => { (e.target as HTMLElement).style.backgroundColor = "transparent"; (e.target as HTMLElement).style.color = primaryColor; }}>
+                        ${amt.trim()}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Town hall scheduler */}
+            {cx.townHallUrl && (
+              <Card>
+                <CardHeader><h2 className="text-xl font-semibold flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-600" /> Schedule a Meeting</h2></CardHeader>
+                <CardContent>
+                  <a href={cx.townHallUrl} target="_blank" rel="noopener noreferrer">
+                    <Button className="w-full" style={{ backgroundColor: primaryColor }}>Book a Town Hall Meeting</Button>
+                  </a>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Platform */}
             <Card>
               <CardHeader><h2 className="text-xl font-semibold">Platform &amp; Pledges</h2></CardHeader>
@@ -465,9 +686,45 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
               </CardContent>
             </Card>
 
-            <p className="text-xs text-gray-400 text-center">
-              Powered by <a href="https://poll.city" className="text-blue-500 hover:underline font-medium">poll.city</a>
-            </p>
+            {/* Office hours */}
+            {(cx.officeHours?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><h3 className="text-lg font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-blue-600" /> Office Hours</h3></CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {cx.officeHours!.map((oh) => (
+                      <li key={oh.id} className="text-sm">
+                        <span className="font-medium">{oh.day}</span>
+                        {oh.time && <span className="text-gray-500"> · {oh.time}</span>}
+                        {oh.location && <span className="text-gray-500"> · {oh.location}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Newsletter */}
+            {cx.showNewsletter && (
+              <Card>
+                <CardHeader><h3 className="text-lg font-semibold">{cx.newsletterName || "Newsletter"}</h3></CardHeader>
+                <CardContent>
+                  <form className="space-y-2" onSubmit={(e) => e.preventDefault()}>
+                    <input type="email" placeholder="Your email" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                    <Button type="submit" className="w-full" style={{ backgroundColor: primaryColor }}>Subscribe</Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {!cx.hidePolCityBranding && (
+              <p className="text-xs text-gray-400 text-center">
+                {cx.customFooterText || <>Powered by <a href="https://poll.city" className="text-blue-500 hover:underline font-medium">poll.city</a></>}
+              </p>
+            )}
+            {cx.hidePolCityBranding && cx.customFooterText && (
+              <p className="text-xs text-gray-500 text-center">{cx.customFooterText}</p>
+            )}
           </div>
         </div>
       </div>

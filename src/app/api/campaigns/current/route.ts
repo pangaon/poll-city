@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 
@@ -48,18 +49,20 @@ export async function PATCH(req: NextRequest) {
     primaryColor?: string;
     isPublic?: boolean;
     customDomain?: string;
+    customization?: object;
   };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   const campaign = await prisma.campaign.update({
     where: { id: campaignId },
     data: {
-      candidateName: body.candidateName,
-      candidateTitle: body.candidateTitle,
-      candidateBio: body.candidateBio,
-      primaryColor: body.primaryColor,
-      isPublic: body.isPublic,
-      customDomain: body.customDomain,
+      ...(body.candidateName !== undefined && { candidateName: body.candidateName }),
+      ...(body.candidateTitle !== undefined && { candidateTitle: body.candidateTitle }),
+      ...(body.candidateBio !== undefined && { candidateBio: body.candidateBio }),
+      ...(body.primaryColor !== undefined && { primaryColor: body.primaryColor }),
+      ...(body.isPublic !== undefined && { isPublic: body.isPublic }),
+      ...(body.customDomain !== undefined && { customDomain: body.customDomain || null }),
+      ...(body.customization !== undefined && { customization: body.customization as Prisma.InputJsonValue }),
     },
   });
 

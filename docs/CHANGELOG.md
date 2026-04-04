@@ -1,5 +1,114 @@
 # Poll City Changelog
 
+## [1.8.0] - April 4, 2026
+
+### Comprehensive Completion Pass: Field Ops, Volunteer Ops, and Campaign Intelligence
+
+- Expanded canvassing data model and logging:
+  - Added `field_encounter` interaction type and GPS capture (`latitude`, `longitude`) for field interactions.
+  - Added household enrichment fields on contacts and campaign-level volunteer onboarding settings.
+- Added full volunteer operations foundation:
+  - Public token-based onboarding flow at `/volunteer/onboard/[token]`.
+  - Volunteer Groups management + leader assignment + group messaging APIs.
+  - Volunteer Shifts creation, signup, check-in, and reminders APIs.
+- Added campaign execution modules:
+  - Canvassing Scripts (`/canvassing/scripts` + `/api/canvassing/scripts`).
+  - Media tracker (`/media` + `/api/media`).
+  - Coalition tracker (`/coalitions` + `/api/coalitions`).
+  - Opponent intelligence (`/intelligence` + `/api/intelligence`).
+  - Events tracker (`/events` + `/api/events`).
+  - Volunteer expense intake (`/volunteers/expenses` + `/api/volunteers/expenses`).
+  - Budget tracker (`/budget` + `/api/budget`).
+  - Super supporter operations view (`/supporters/super`).
+- Upgraded lookup workflow:
+  - Added `/api/lookup/quick-action` endpoint for rapid support updates, notes, tags, and interaction logging.
+  - Added household-level quick action support for soft-supporter marking.
+  - Added offline queue fallback for lookup actions via service worker/IndexedDB.
+- Enhanced turf operations:
+  - Added volunteer group assignment support in Turf APIs and Turf Builder UI.
+- Expanded social profile experience:
+  - Added "My Volunteering" section to show active volunteer-interest campaign consents.
+- Navigation updates:
+  - Sidebar now links to new volunteer/group/shift/expense, scripts, events, coalitions, media, intelligence, budget, and super-supporter modules.
+
+### Quality Gates
+
+- `npx tsc --noEmit`: pass.
+- `npm run build`: pass.
+
+---
+
+## [1.7.0] - April 4, 2026
+
+### World-Class Candidate Page Customization — 26 Features
+
+**Page Builder (`/settings/public-page`)**
+
+- Built world-class live page builder at `src/app/(app)/settings/public-page/page.tsx`.
+- Desktop: two-column layout — settings panel (left) + live real-time preview (right).
+- Mobile: tab switcher between **Edit** and **Preview** modes.
+- 11 collapsible sections with tier badges. Every locked section shows a gate overlay with plan name and "Upgrade Now →" link.
+- `GateOverlay` component: shows lock icon, required plan, feature name, upgrade button.
+- `Section` component: collapsible with chevron, tier badge, gate overlay when locked.
+- `ToggleCard` component: click-to-toggle with icon, label, description, animated toggle.
+- `LivePreview` component: pure React mini candidate page that re-renders on every state change.
+- `QrCodeDisplay` component: uses `https://api.qrserver.com/v1/create-qr-code/` API — no npm package needed. PNG and SVG download buttons.
+- Plan tier system: `free < starter < pro = official < command`. `canAccess()` function gates every section.
+
+**The 11 Settings Sections**
+
+1. **Branding** (Starter+) — Primary colour, accent colour, logo upload.
+2. **Themes** (Starter+) — 6 one-click themes: Classic Blue, Bold Red, Modern Dark, Clean White, Campaign Green, Royal Purple.
+3. **Typography** (Pro+) — 5 font pairs: Playfair/Source Sans, Inter/Inter, Merriweather/Open Sans, Montserrat/Lato, Georgia/Arial. Uses Google Fonts.
+4. **Layout** (Pro+) — 4 page layouts: Professional, Modern, Bold, Minimal.
+5. **Hero** (Pro+) — Banner image URL, autoplay background video URL.
+6. **Content Widgets** (Pro+) — Social proof bar, countdown timer, live polls, door counter, supporter wall, endorsements (×10), custom FAQ (×10), email capture, donation widget, town hall scheduler URL.
+7. **Elected Official Widgets** (Official plan only) — Office hours (×5), committees (×10), voting record URL, accomplishments timeline (×20), newsletter signup.
+8. **Domain** (Pro+) — Custom domain setting.
+9. **SEO** (Pro+) — Meta title and meta description fields.
+10. **QR Code** (Pro+) — Custom label, 3 size options, PNG/SVG download.
+11. **White Label** (Command only) — Hide Poll City branding, custom footer text, custom CSS textarea.
+
+**Schema Changes**
+
+- Added `customization Json?` to `Campaign` model in `prisma/schema.prisma`.
+- Added `pageViews Int @default(0)` to `Campaign` model.
+- Added missing `superSupporterTasks SuperSupporterTask[]` relation to `Campaign` model.
+- Ran `npx prisma generate` to update local Prisma client (DB push applies on Railway deploy).
+
+**API Routes**
+
+- Updated `PATCH /api/campaigns/current` to accept `customization` JSON payload using `Prisma.InputJsonValue` type.
+- Created `GET /api/campaigns/[id]/customization` — public, no auth. Returns `{ id, customization, primaryColor, logoUrl, pageViews }`.
+- Created `POST /api/campaigns/[id]/customization` — increments `pageViews` counter.
+
+**Candidate Page Updates (`/candidates/[slug]`)**
+
+- Updated `CampaignData` interface to include `customization?: PageCustomization | null`.
+- Added `PageCustomization` interface with all 26 fields, exported from `candidate-page-client.tsx`.
+- Theme system: `THEME_COLORS` map applies background colour from selected theme.
+- Font system: `FONT_FAMILIES` map loads Google Fonts via `<link rel="stylesheet">` tag.
+- Hero: applies `heroBannerUrl` as CSS background or `heroVideoUrl` as `<video autoPlay muted loop>` with overlay.
+- Social proof bar: appears above unclaimed banner when `showSocialProof` is true and `supporterCount > 0`.
+- Content widgets rendered: Endorsements, Accomplishments timeline, Committees, Custom FAQ, Email capture, Donation widget, Town hall CTA.
+- Sidebar widgets: Office hours, Newsletter signup.
+- Footer: `hidePolCityBranding` hides "Powered by Poll City". `customFooterText` replaces it.
+- `customCss` injected via `<style dangerouslySetInnerHTML>`.
+- Page view tracking: `useEffect` fires `POST /api/campaigns/[id]/customization` on mount.
+- `generateMetadata` reads `customization.metaTitle` and `customization.metaDescription` for SEO meta tags.
+
+**Marketing Site Updates (`/`)**
+
+- Updated Candidate Public Page product card with all 26 features.
+- Added new "Make Your Page Yours" section (`id="customization"`) between product cards and "Replace Campaign Websites" section.
+- Section includes: before/after page comparison, 6 theme swatches with labels, 12 feature highlights with tier badges, "Start Customizing" CTA.
+
+**Bug Fixes**
+
+- Fixed `??` and `||` operator precedence errors in `volunteers-groups-client.tsx` and `volunteer-expenses-client.tsx`.
+
+---
+
 ## [1.6.0] - April 4, 2026
 
 ### Tinder-Style Swipe Polls — Poll City Social

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import prisma from "@/lib/db/prisma";
-import CandidatePageClient, { type CampaignData, type PollData, type ElectionHistoryRow } from "./candidate-page-client";
+import CandidatePageClient, { type CampaignData, type PollData, type ElectionHistoryRow, type PageCustomization } from "./candidate-page-client";
 
 interface PageProps {
   params: { slug: string };
@@ -44,13 +44,16 @@ function levelBadge(level: string): string {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const campaign = await prisma.campaign.findUnique({
     where: { slug: params.slug },
-    select: { candidateName: true, jurisdiction: true, electionType: true, candidateBio: true, isPublic: true, officialId: true },
+    select: { candidateName: true, jurisdiction: true, electionType: true, candidateBio: true, isPublic: true, officialId: true, customization: true },
   });
   if (campaign?.isPublic || campaign?.officialId) {
+    const cx = (campaign.customization ?? {}) as { metaTitle?: string; metaDescription?: string };
+    const title = cx.metaTitle || `${campaign.candidateName} — ${campaign.jurisdiction}`;
+    const description = cx.metaDescription || (campaign.candidateBio?.slice(0, 160) ?? `Vote for ${campaign.candidateName}.`);
     return {
-      title: `${campaign.candidateName} — ${campaign.jurisdiction}`,
-      description: campaign.candidateBio?.slice(0, 160) ?? `Vote for ${campaign.candidateName}.`,
-      openGraph: { title: `${campaign.candidateName} — ${campaign.jurisdiction}`, type: "website" },
+      title,
+      description,
+      openGraph: { title, description, type: "website" },
     };
   }
   const official = await prisma.official.findFirst({ where: { externalId: params.slug }, select: { name: true, district: true } });
@@ -81,6 +84,7 @@ export default async function CandidatePage({ params }: PageProps) {
       _count: { select: { contacts: { where: { supportLevel: "strong_support" } } } },
     },
   });
+  // Note: pageViews increment is handled client-side via POST /api/campaigns/[id]/customization
 
   // 2. Campaign found and public (or has official) → show it
   if (campaign && (campaign.isPublic || campaign.official)) {
@@ -117,6 +121,7 @@ export default async function CandidatePage({ params }: PageProps) {
       logoUrl: campaign.logoUrl,
       primaryColor: campaign.primaryColor,
       supporterCount: campaign._count.contacts,
+      customization: (campaign.customization ?? null) as PageCustomization | null,
       official: campaign.official
         ? {
             id: campaign.official.id,
