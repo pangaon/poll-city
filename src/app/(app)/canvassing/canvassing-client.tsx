@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, MapPin, Users, ChevronRight, CheckCircle } from "lucide-react";
+import { Plus, MapPin, Users, ChevronRight, CheckCircle, Bell, BellOff } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, PageHeader, Badge, Modal, FormField, Input, Textarea, Select, EmptyState } from "@/components/ui";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createCanvassListSchema, CreateCanvassListInput } from "@/lib/validators";
+import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 
 interface CanvassList {
   id: string; name: string; description: string | null; status: string; createdAt: string;
@@ -30,6 +31,8 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
   const [showAssign, setShowAssign] = useState<string | null>(null);
   const [assignUserId, setAssignUserId] = useState("");
   const [assigning, setAssigning] = useState(false);
+
+  const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications(campaignId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,6 +63,44 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         description="Manage walk lists and track door-knock progress"
         actions={<Button size="sm" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" />New List</Button>}
       />
+
+      {/* Push Notification Settings */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {isSubscribed ? (
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-green-600" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                  <BellOff className="w-4 h-4 text-gray-400" />
+                </div>
+              )}
+              <div>
+                <h3 className="font-medium text-gray-900">Push Notifications</h3>
+                <p className="text-sm text-gray-500">
+                  {isSubscribed
+                    ? "You'll receive notifications for campaign updates and GOTV alerts"
+                    : permission === "denied"
+                    ? "Notifications are blocked. Enable them in your browser settings."
+                    : "Get notified about campaign updates and GOTV alerts"
+                  }
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant={isSubscribed ? "outline" : "default"}
+              onClick={isSubscribed ? unsubscribe : subscribe}
+              disabled={pushLoading || permission === "denied"}
+            >
+              {pushLoading ? "..." : isSubscribed ? "Disable" : "Enable"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 bg-white rounded-xl border border-gray-200 animate-pulse" />)}</div>

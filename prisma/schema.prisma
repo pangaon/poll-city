@@ -209,6 +209,7 @@ model User {
   questions            PublicQuestion[]
   notifications        Notification[]
   consentLogs          ConsentLog[]
+  pushSubscriptions    PushSubscription[]
 
   @@map("users")
 }
@@ -258,6 +259,7 @@ model Campaign {
   volunteerProfiles VolunteerProfile[]
   signRequests    SignRequest[]
   questions       Question[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([customDomain])
   @@map("campaigns")
@@ -953,6 +955,22 @@ model NotificationTemplate {
   createdAt  DateTime @default(now())
 
   @@map("notification_templates")
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  campaignId String
+  endpoint   String
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@map("push_subscriptions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
