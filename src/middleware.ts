@@ -1,67 +1,66 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 import prisma from "@/lib/db/prisma";
 
-export default withAuth(
-  async function middleware(req) {
-    const { token } = req.nextauth;
-    const path = req.nextUrl.pathname;
-    const hostname = req.headers.get("host") || "";
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth",
+  "/social",
+  "/api/polls",
+  "/api/officials",
+  "/api/geo",
+  "/api/social",
+  "/candidates",
+  "/api/public",
+  "/terms",
+  "/privacy-policy",
+  "/pricing",
+  "/officials",
+];
 
-    // Check for custom domains
-    if (process.env.NEXT_PUBLIC_ROOT_DOMAIN && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
-      // This is a custom domain - find the campaign
-      const campaign = await prisma.campaign.findUnique({
-        where: { customDomain: hostname },
-        select: { slug: true },
-      });
+function isPublicPath(path: string) {
+  return path === "/" || PUBLIC_PATHS.some((p) => path.startsWith(p));
+}
 
-      if (campaign) {
-        // Redirect to the candidate page
-        const url = new URL(`/candidates/${campaign.slug}`, req.url);
-        return NextResponse.redirect(url);
-      }
+export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const hostname = req.headers.get("host") || "";
+
+  if (process.env.NEXT_PUBLIC_ROOT_DOMAIN && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { customDomain: hostname },
+      select: { slug: true },
+    });
+
+    if (campaign) {
+      const url = new URL(`/candidates/${campaign.slug}`, req.url);
+      return NextResponse.redirect(url);
     }
+  }
 
-    // Redirect authenticated users away from login
-    if (path === "/login" && token) {
+  if (path === "/login") {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (token) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
-
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname;
-
-        // Explicitly public paths — no auth required
-        const publicPaths = [
-          "/login",
-          "/api/auth",
-          "/social",
-          "/api/polls",       // public poll listing and voting
-          "/api/officials",   // public official profiles and Q&A
-          "/api/geo",         // postal code lookup for Social discover
-          "/api/social",      // social signals (auth handled inside route)
-          "/candidates",      // public candidate pages
-          "/api/public",      // public API routes
-          "/terms",
-          "/privacy-policy",
-          "/pricing",
-        ];
-
-        // Root marketing site is always public
-        if (path === "/" || publicPaths.some(p => path.startsWith(p))) {
-          return true;
-        }
-
-        // Everything else requires a valid session token
-        return !!token;
-      },
-    },
   }
-);
+
+  if (isPublicPath(path)) {
+    return NextResponse.next();
+  }
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+
+  if (!token) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|public/).*)"],

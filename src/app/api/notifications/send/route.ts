@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
-import webpush from "web-push";
-
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY!;
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY!;
-
-if (vapidPublicKey && vapidPrivateKey) {
-  webpush.setVapidDetails(
-    "mailto:admin@pollcity.app",
-    vapidPublicKey,
-    vapidPrivateKey
-  );
-}
+import { configureWebPush, sendPushBatch } from "@/lib/notifications/push";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -48,8 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!vapidPublicKey || !vapidPrivateKey) {
-    return NextResponse.json({ error: "Push notifications not configured" }, { status: 500 });
+  const pushConfig = configureWebPush();
+  if (!pushConfig.ok) {
+    return NextResponse.json({ error: pushConfig.error }, { status: 500 });
   }
 
   try {
@@ -95,70 +85,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ data: { sent: 0, message: "No subscribers found" } });
     }
 
-    // Send push notifications
-    const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: {
-                p256dh: sub.p256dh,
-                auth: sub.auth,
-              },
-            },
-            JSON.stringify({
-              title,
-              body: messageBody,
-              icon: "/icon-192x192.png",
-              badge: "/icon-192x192.png",
-              data: {
-                campaignId,
-                userId: sub.userId,
-              },
-            })
-          );
-          return { success: true, userId: sub.userId };
-        } catch (err: any) {
-          console.error(`Failed to send push to ${sub.userId}:`, err.message);
-          // If subscription is invalid, remove it
-          if (err.statusCode === 410 || err.statusCode === 400) {
-            await prisma.pushSubscription.delete({
-              where: { id: sub.id },
-            });
-          }
-          return { success: false, userId: sub.userId, error: err.message };
-        }
-      })
-    );
+    const delivery = await sendPushBatch({
+      subscriptions: subscriptions.map((sub) => ({
+        id: sub.id,
+        userId: sub.userId,
+        endpoint: sub.endpoint,
+        p256dh: sub.p256dh,
+        auth: sub.auth,
+      })),
+      title,
+      body: messageBody,
+      data: { campaignId },
+    });
 
-    const successful = results.filter(r => r.status === "fulfilled" && r.value.success).length;
-    const failed = results.length - successful;
-
-    // Log the notification
-    await prisma.activityLog.create({
+    await prisma.notificationLog.create({
       data: {
         campaignId,
         userId: session!.user.id,
-        action: "push_notification_sent",
-        entityType: "campaign",
-        entityId: campaignId,
-        details: {
-          title,
-          body: messageBody,
-          filters,
-          sent: successful,
-          failed,
-          total: subscriptions.length,
-        },
+        title,
+        body: messageBody,
+        audience: filters ? JSON.parse(JSON.stringify(filters)) : undefined,
+        status: "sent",
+        sentAt: new Date(),
+        totalSubscribers: delivery.total,
+        deliveredCount: delivery.sent,
+        failedCount: delivery.failed,
+        failedEndpoints: delivery.failedEndpoints,
       },
     });
 
     return NextResponse.json({
       data: {
-        sent: successful,
-        failed,
-        total: subscriptions.length,
+        sent: delivery.sent,
+        failed: delivery.failed,
+        total: delivery.total,
+        failedEndpoints: delivery.failedEndpoints,
       },
     });
   } catch (err) {

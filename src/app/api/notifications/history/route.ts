@@ -24,10 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const notifications = await prisma.activityLog.findMany({
+    const notifications = await prisma.notificationLog.findMany({
       where: {
         campaignId,
-        action: "push_notification_sent",
       },
       include: {
         user: {
@@ -44,28 +43,24 @@ export async function GET(req: NextRequest) {
       skip: offset,
     });
 
-    const total = await prisma.activityLog.count({
+    const total = await prisma.notificationLog.count({
       where: {
         campaignId,
-        action: "push_notification_sent",
       },
     });
 
     return NextResponse.json({
-      data: notifications.map(n => {
-        const details = n.details as any;
-        return {
-          id: n.id,
-          title: details?.title,
-          body: details?.body,
-          filters: details?.filters,
-          sent: details?.sent,
-          failed: details?.failed,
-          total: details?.total,
-          sentBy: n.user.name,
-          sentAt: n.createdAt,
-        };
-      }),
+      data: notifications.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        filters: n.audience,
+        sent: n.deliveredCount,
+        failed: n.failedCount,
+        total: n.totalSubscribers,
+        sentBy: n.user?.name ?? "System",
+        sentAt: n.sentAt ?? n.createdAt,
+      })),
       pagination: {
         total,
         limit,

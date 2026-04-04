@@ -67,6 +67,7 @@ const NAV_LINKS = [
   { href: "#how-it-works", label: "How It Works" },
   { href: "#candidates", label: "For Candidates" },
   { href: "#voters", label: "For Voters" },
+  { href: "/officials", label: "Officials Directory", external: true },
   { href: "#blog", label: "Blog" },
   { href: "#about", label: "About" },
 ];
@@ -293,6 +294,7 @@ const PRODUCTS = [
     border: "border-green-200",
     features: [
       "Voters discover candidates by postal code",
+      "Officials Directory with MPs, MPPs, mayors, councillors, trustees, and reeves",
       "Follow officials at federal, provincial, and municipal level",
       "Answer civic polls and questions from candidates",
       "Request campaign signs from their address",
@@ -310,7 +312,7 @@ const PRODUCTS = [
     bgLight: "bg-orange-50",
     border: "border-orange-200",
     features: [
-      "8 products: Door Hangers, Lawn Signs, Flyers, Palm Cards, Mailers, Banners, Buttons & Pins, Window Signs",
+      "Vistaprint-level quality with 8 campaign products and competitive local pricing",
       "Post your print job to the marketplace",
       "Local print shops submit competitive bids",
       "Review bids, compare prices and turnaround times",
@@ -498,15 +500,21 @@ export default function MarketingClient() {
 
           {/* Desktop nav links */}
           <div className="hidden lg:flex items-center gap-6">
-            {NAV_LINKS.map(({ href, label }) => (
-              <button
-                key={href}
-                onClick={() => scrollTo(href)}
-                className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors bg-transparent border-none cursor-pointer"
-              >
-                {label}
-              </button>
-            ))}
+            {NAV_LINKS.map(({ href, label, external }) =>
+              external ? (
+                <Link key={href} href={href} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                  {label}
+                </Link>
+              ) : (
+                <button
+                  key={href}
+                  onClick={() => scrollTo(href)}
+                  className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors bg-transparent border-none cursor-pointer"
+                >
+                  {label}
+                </button>
+              )
+            )}
           </div>
 
           {/* Desktop CTAs */}
@@ -535,15 +543,22 @@ export default function MarketingClient() {
         {/* Mobile slide-down menu */}
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-5 flex flex-col gap-1 shadow-lg">
-            {NAV_LINKS.map(({ href, label }) => (
-              <button
-                key={href}
-                onClick={() => scrollTo(href)}
-                className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-left transition-colors w-full"
-              >
-                {label}
-              </button>
-            ))}
+            {NAV_LINKS.map(({ href, label, external }) =>
+              external ? (
+                <Link key={href} href={href} onClick={() => setMenuOpen(false)}
+                  className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 transition-colors block">
+                  {label}
+                </Link>
+              ) : (
+                <button
+                  key={href}
+                  onClick={() => scrollTo(href)}
+                  className="text-sm font-medium text-gray-700 hover:text-[#1E3A8A] py-2.5 px-3 rounded-lg hover:bg-blue-50 text-left transition-colors w-full"
+                >
+                  {label}
+                </button>
+              )
+            )}
             <div className="flex flex-col gap-2 pt-4 mt-2 border-t border-gray-100">
               <Link
                 href="/login"
@@ -1333,7 +1348,7 @@ export default function MarketingClient() {
             <div>
               <h4 className="text-white font-semibold text-sm mb-4">Products</h4>
               <ul className="space-y-3 text-sm text-gray-400">
-                {["Poll City Platform", "Poll City Social", "Poll City Print", "Candidate Pages", "Pricing"].map(
+                {["Poll City Platform", "Poll City Social", "Poll City Print", "Officials Directory", "Candidate Pages", "Pricing"].map(
                   (item) => (
                     <li key={item}>
                       <a href="#features" className="hover:text-white transition-colors">
@@ -1349,15 +1364,19 @@ export default function MarketingClient() {
             <div>
               <h4 className="text-white font-semibold text-sm mb-4">For Candidates</h4>
               <ul className="space-y-3 text-sm text-gray-400">
-                {["How It Works", "Features", "Turf Cutting", "GOTV Engine", "Push Notifications", "Start Free Trial"].map(
-                  (item) => (
-                    <li key={item}>
-                      <a href="#features" className="hover:text-white transition-colors">
-                        {item}
-                      </a>
-                    </li>
-                  )
-                )}
+                {[
+                  { label: "How It Works", href: "#how-it-works" },
+                  { label: "Features", href: "#features" },
+                  { label: "Turf Cutting", href: "#features" },
+                  { label: "GOTV Engine", href: "#features" },
+                  { label: "Push Notifications", href: "#features" },
+                  { label: "Start Free Trial", href: "/login" },
+                  { label: "Officials Directory", href: "/officials" },
+                ].map(({ label, href }) => (
+                  <li key={label}>
+                    <a href={href} className="hover:text-white transition-colors">{label}</a>
+                  </li>
+                ))}
               </ul>
             </div>
 
