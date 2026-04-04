@@ -1,5 +1,49 @@
 # Poll City User Guide
 
+## v2.4.0 Feature SOP Addendum - April 4, 2026
+
+### Mission Control Dashboard SOP (`/dashboard`)
+
+1. Open Dashboard and review the Mission Control panel directly under the war-room header.
+2. Confirm the Health Gauge ring shows campaign readiness percentage.
+3. Confirm Election Clock and Weather pulse are visible for field planning.
+4. Review Conversion Funnel (Universe -> Supporters -> GOTV Pulled).
+5. Review Sentiment Donut for Support, Undecided, and Opposition shares.
+6. Verify GOTV pull-through meter updates from live GOTV records.
+7. Check Canvasser Leaderboard for score and door-knock ranking.
+8. Check Sign Map (By City) bars for city-level deployment pressure.
+
+### Enterprise Analytics SOP (`/analytics`)
+
+1. Open Analytics and confirm tab set: Overview, Canvassing, Supporters, GOTV, Signs, Volunteers, Donations, Communications, Predictions.
+2. In Overview, validate campaign funnel and sentiment distribution against live totals.
+3. In Canvassing, monitor follow-up backlog and persuasion universe size.
+4. In GOTV, track supporters pulled, still needed, and pull progress.
+5. In Signs, validate installed versus pending trends and geo context map.
+6. In Communications, confirm notification delivery rate and delivery totals.
+7. In Predictions, review risk flags and directional win-probability output.
+8. Use Export Snapshot to download a campaign analytics CSV.
+
+### Reports Suite SOP (`/reports`)
+
+1. Open Reports to view executive snapshot metrics.
+2. Click Export Executive CSV to download leadership reporting package.
+3. Review audit notes for campaign-scoped export handling and retention workflow.
+
+### Alerts SOP (`/alerts`)
+
+1. Open Alerts to review live campaign risk detections.
+2. Prioritize high-severity alerts first (follow-up backlog, GOTV pull rate).
+3. Investigate medium alerts (notification quality and signage operations).
+4. If no alerts are present, verify green status message before closeout.
+
+### Compliance Snapshot SOP (`/import-export`)
+
+1. Open Import / Export.
+2. Under Export Contacts, click Compliance JSON Snapshot.
+3. Store the generated snapshot in your campaign compliance folder.
+4. Include snapshot artifacts in weekly governance and audit standups.
+
 ## v2.1.1 Combined Release Note — April 4, 2026
 
 This deployment combines the latest dashboard, officials directory, and platform wiring updates into one production push.

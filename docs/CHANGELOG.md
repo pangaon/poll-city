@@ -1,5 +1,51 @@
 # Poll City Changelog
 
+## [2.4.0] - April 4, 2026
+
+### Enterprise Analytics + Reporting Command Upgrade
+
+- Rebuilt `/analytics` into an enterprise intelligence suite with campaign tabs:
+  - Overview
+  - Canvassing
+  - Supporters
+  - GOTV
+  - Signs
+  - Volunteers
+  - Donations
+  - Communications
+  - Predictions
+- Wired analytics to live campaign APIs for contact segmentation, GOTV progress, donations, signs, volunteers, notifications, and polls.
+- Added directional prediction layer with risk flags for follow-up backlog, GOTV rate, comms delivery quality, and sign operations imbalance.
+- Added one-click analytics snapshot export.
+
+### Dashboard Mission Control Overhaul
+
+- Upgraded dashboard into a campaign mission-control layout with:
+  - weighted health gauge ring
+  - election countdown and weather pulse
+  - conversion funnel visualization
+  - supporter sentiment donut
+  - GOTV pull-through progress meter
+  - canvasser leaderboard
+  - sign deployment intensity by city
+- Connected mission-control blocks to live campaign endpoints where available.
+
+### New Routes
+
+- Added `/reports` for executive summary and export workflow.
+- Added `/alerts` for campaign risk monitoring and prioritization.
+
+### Import/Export Compliance Enhancements
+
+- Added Compliance JSON Snapshot export in `/import-export` for campaign-scoped governance handoff.
+
+### Quality Gates
+
+- `npx tsc --noEmit`: blocked by existing legacy workspace typing issues not introduced in this release.
+- `npm run build`: pass.
+
+---
+
 ## [2.1.1] - April 4, 2026
 
 ### Combined Push: Dashboard + Officials + Platform Wiring

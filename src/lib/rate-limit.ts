@@ -1,29 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-// Simple in-memory rate limiter
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+interface RateLimitRecord {
+  timestamps: number[];
+}
 
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_REQUESTS = 100; // max 100 requests per window
+const store = new Map<string, RateLimitRecord>();
 
-export function rateLimit(req: NextRequest): NextResponse | null {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-             req.headers.get('x-real-ip') ||
-             'unknown';
-
+// Cleanup stale entries every 5 minutes
+setInterval(() => {
   const now = Date.now();
-  const key = ip;
-  const record = rateLimitMap.get(key);
+  for (const [key, record] of Array.from(store.entries())) {
+    record.timestamps = record.timestamps.filter((t) => now - t < 3600_000);
+    if (record.timestamps.length === 0) store.delete(key);
+  }
+}, 300_000);
 
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(key, { count: 1, resetTime: now + WINDOW_MS });
-    return null;
+type Tier = "auth" | "form" | "read";
+
+const TIER_CONFIG: Record<Tier, { windowMs: number; max: number }> = {
+  auth: { windowMs: 60_000, max: 10 },       // 10 per minute
+  form: { windowMs: 3600_000, max: 5 },      // 5 per hour
+  read: { windowMs: 60_000, max: 100 },      // 100 per minute
+};
+
+function getIp(req: NextRequest): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+export function rateLimit(req: NextRequest, tier: Tier = "read"): NextResponse | null {
+  const ip = getIp(req);
+  const config = TIER_CONFIG[tier];
+  const key = `${tier}:${ip}`;
+  const now = Date.now();
+
+  const record = store.get(key) ?? { timestamps: [] };
+  record.timestamps = record.timestamps.filter((t) => now - t < config.windowMs);
+
+  if (record.timestamps.length >= config.max) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(config.windowMs / 1000)),
+          "X-RateLimit-Limit": String(config.max),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
   }
 
-  if (record.count >= MAX_REQUESTS) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
-
-  record.count++;
+  record.timestamps.push(now);
+  store.set(key, record);
   return null;
 }

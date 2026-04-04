@@ -5,8 +5,9 @@ import {
   Users, ThumbsUp, HelpCircle, ThumbsDown, Bell, CheckSquare,
   Clock, ArrowRight, Settings, GripVertical, X, DollarSign,
   MapPin, UserCheck, Target, Phone,
-  PlusCircle, Send, BarChart2, Sunrise, Sunset,
+  PlusCircle, Send, BarChart2, Sunrise, Sunset, CloudSun, Trophy,
 } from "lucide-react";
+import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { StatCard, Card, CardHeader, CardContent, Badge } from "@/components/ui";
 import { formatRelative, fullName } from "@/lib/utils";
 import { INTERACTION_TYPE_LABELS } from "@/types";
@@ -117,6 +118,9 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   const [extraData, setExtraData] = useState({ donations: 0, signs: 0, doorsToday: 0, gotvPct: 0, callPct: 0 });
   const [officialMode, setOfficialMode] = useState(false);
   const [volunteerCount, setVolunteerCount] = useState(0);
+  const [weather, setWeather] = useState<{ temp: number; wind: number; code: number } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<Array<{ name: string; score: number; doorKnocks: number }>>([]);
+  const [signCityLeaderboard, setSignCityLeaderboard] = useState<Array<{ city: string; count: number }>>([]);
   const [tick, setTick] = useState(0);
   const dragId = useRef<WidgetId | null>(null);
 
@@ -157,28 +161,61 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   useEffect(() => {
     async function loadExtra() {
       try {
-        const [donRes, signRes, callRes] = await Promise.all([
-          fetch("/api/donations?limit=1"),
-          fetch("/api/signs?limit=1"),
-          fetch("/api/call-list?limit=1"),
+        const [donRes, signRes, callRes, gotvRes, leaderboardRes] = await Promise.all([
+          fetch(`/api/donations?campaignId=${campaign.id}&pageSize=1`),
+          fetch(`/api/signs?campaignId=${campaign.id}&pageSize=100`),
+          fetch(`/api/call-list?campaignId=${campaign.id}`),
+          fetch(`/api/gotv?campaignId=${campaign.id}`),
+          fetch(`/api/turf/leaderboard?campaignId=${campaign.id}`),
         ]);
-        const [don, sign, call] = await Promise.all([
+        const [don, sign, call, gotv, board] = await Promise.all([
           donRes.ok ? donRes.json() : { data: { total: 0 } },
-          signRes.ok ? signRes.json() : { data: { total: 0, pending: 0 } },
+          signRes.ok ? signRes.json() : { data: [], total: 0 },
           callRes.ok ? callRes.json() : { data: { total: 0, completed: 0 } },
+          gotvRes.ok ? gotvRes.json() : { data: { percentagePulled: 0 } },
+          leaderboardRes.ok ? leaderboardRes.json() : { data: [] },
         ]);
+        const signsByCity = (sign?.data ?? []).reduce((acc: Record<string, number>, row: { city?: string }) => {
+          const city = row.city?.trim() || "Unknown";
+          acc[city] = (acc[city] ?? 0) + 1;
+          return acc;
+        }, {});
+        const topCities = Object.entries(signsByCity)
+          .map(([city, count]) => ({ city, count: Number(count) }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 6);
         setExtraData({
-          donations: don?.data?.total ?? 0,
-          signs: sign?.data?.total ?? sign?.data?.length ?? 0,
+          donations: don?.total ?? 0,
+          signs: sign?.total ?? sign?.data?.length ?? 0,
           doorsToday: 0,
-          gotvPct: 0,
+          gotvPct: Math.round(gotv?.data?.percentagePulled ?? 0),
           callPct: call?.data?.total > 0
             ? Math.round((call.data.completed / call.data.total) * 100)
             : 0,
         });
+        setLeaderboard((board?.data ?? []).slice(0, 5));
+        setSignCityLeaderboard(topCities);
       } catch { /* non-critical — widgets show 0 */ }
     }
     loadExtra();
+  }, [campaign.id]);
+
+  useEffect(() => {
+    async function loadWeather() {
+      try {
+        const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=43.6532&longitude=-79.3832&current=temperature_2m,wind_speed_10m,weather_code", { cache: "no-store" });
+        if (!res.ok) return;
+        const payload = await res.json();
+        setWeather({
+          temp: Number(payload?.current?.temperature_2m ?? 0),
+          wind: Number(payload?.current?.wind_speed_10m ?? 0),
+          code: Number(payload?.current?.weather_code ?? 0),
+        });
+      } catch {
+        setWeather(null);
+      }
+    }
+    loadWeather();
   }, []);
 
   useEffect(() => {
@@ -233,6 +270,19 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   ];
 
   const gotvReadiness = Math.min(100, data.totalContacts > 0 ? Math.round((data.supporters / data.totalContacts) * 100) : 0);
+  const ringStyle = {
+    background: `conic-gradient(#2563eb ${(healthScore / 100) * 360}deg, #e5e7eb 0deg)`,
+  };
+  const funnelData = [
+    { name: "Universe", value: data.totalContacts, fill: "#1d4ed8" },
+    { name: "Supporters", value: data.supporters, fill: "#059669" },
+    { name: "GOTV Pulled", value: Math.round((extraData.gotvPct / 100) * Math.max(1, data.supporters)), fill: "#d97706" },
+  ];
+  const sentimentData = [
+    { name: "Support", value: data.supporters, color: "#10b981" },
+    { name: "Undecided", value: data.undecided, color: "#f59e0b" },
+    { name: "Opposition", value: data.opposition, color: "#ef4444" },
+  ];
 
   const visibleOrder = order.filter((id) => !hidden.includes(id));
 
@@ -601,6 +651,136 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
               <li key={item} className="text-sm text-gray-700 rounded-lg bg-gray-50 px-3 py-2">{item}</li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Health Gauge</p>
+          <div className="mt-3 flex items-center justify-center">
+            <div className="grid h-36 w-36 place-items-center rounded-full" style={ringStyle}>
+              <div className="grid h-24 w-24 place-items-center rounded-full bg-white">
+                <p className="text-2xl font-black text-gray-900">{healthScore}%</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-center text-xs text-gray-500">Weighted on data readiness, field activity, and public presence.</p>
+          <div className="mt-4 rounded-xl bg-blue-50 p-3 text-xs text-blue-800">
+            <p className="font-semibold">Election Clock</p>
+            <p>{timeToElection.days}d {timeToElection.hours}h {timeToElection.minutes}m remaining</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-3">
+          <div className="mb-2 flex items-center gap-2">
+            <CloudSun className="h-4 w-4 text-blue-600" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Weather + GOTV</p>
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Field Conditions</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {weather ? `${weather.temp.toFixed(1)}C, wind ${weather.wind.toFixed(1)} km/h` : "Weather feed unavailable"}
+          </p>
+          <div className="mt-4">
+            <div className="mb-1 flex justify-between text-xs text-gray-500">
+              <span>GOTV pull-through</span>
+              <span className="font-semibold text-gray-800">{extraData.gotvPct}%</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-gray-100">
+              <div className="h-full bg-gradient-to-r from-amber-400 to-emerald-500" style={{ width: `${extraData.gotvPct}%` }} />
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-lg bg-gray-50 p-2">
+              <p className="text-gray-500">Call Progress</p>
+              <p className="text-lg font-bold text-gray-900">{extraData.callPct}%</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-2">
+              <p className="text-gray-500">Donation Entries</p>
+              <p className="text-lg font-bold text-gray-900">{extraData.donations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Conversion Funnel</p>
+          <div className="mt-2 h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <FunnelChart>
+                <Tooltip formatter={(v) => Number(v).toLocaleString()} />
+                <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                  <LabelList position="right" fill="#1f2937" stroke="none" dataKey="name" />
+                </Funnel>
+              </FunnelChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-xs text-gray-500">Universe to supporter to mobilized-voter trajectory.</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sentiment Donut</p>
+          <div className="mt-2 h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={sentimentData} dataKey="value" nameKey="name" innerRadius={36} outerRadius={62}>
+                  {sentimentData.map((item) => (
+                    <Cell key={item.name} fill={item.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => Number(v).toLocaleString()} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="space-y-1 text-xs text-gray-600">
+            {sentimentData.map((item) => (
+              <div key={item.name} className="flex items-center justify-between">
+                <span>{item.name}</span>
+                <span className="font-semibold text-gray-900">{item.value.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Canvasser Leaderboard</p>
+          </div>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-gray-500">No leaderboard data yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {leaderboard.map((row, idx) => (
+                <div key={row.name + idx} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">#{idx + 1} {row.name}</p>
+                    <p className="text-xs text-gray-500">{row.doorKnocks} door knocks</p>
+                  </div>
+                  <p className="text-lg font-black text-blue-700">{row.score}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sign Map (By City)</p>
+          {signCityLeaderboard.length === 0 ? (
+            <p className="mt-2 text-sm text-gray-500">No sign requests geocoded yet.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {signCityLeaderboard.map((entry) => (
+                <div key={entry.city}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium text-gray-700">{entry.city}</span>
+                    <span className="font-bold text-gray-900">{entry.count}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, (entry.count / Math.max(1, signCityLeaderboard[0].count)) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

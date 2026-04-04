@@ -126,6 +126,40 @@ export default function ImportExportClient({ campaignId }: Props) {
     } finally { setExporting(false); }
   }
 
+  async function exportComplianceSnapshot() {
+    const [contactsRes, donationsRes, signsRes, volunteersRes] = await Promise.all([
+      fetch(`/api/contacts?campaignId=${campaignId}&pageSize=1`),
+      fetch(`/api/donations?campaignId=${campaignId}&pageSize=1`),
+      fetch(`/api/signs?campaignId=${campaignId}&pageSize=1`),
+      fetch(`/api/volunteers?campaignId=${campaignId}&pageSize=1`),
+    ]);
+
+    const [contacts, donations, signs, volunteers] = await Promise.all([
+      contactsRes.ok ? contactsRes.json() : { total: 0 },
+      donationsRes.ok ? donationsRes.json() : { total: 0 },
+      signsRes.ok ? signsRes.json() : { total: 0 },
+      volunteersRes.ok ? volunteersRes.json() : { total: 0 },
+    ]);
+
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      campaignId,
+      totals: {
+        contacts: contacts?.total ?? 0,
+        donations: donations?.total ?? 0,
+        signs: signs?.total ?? 0,
+        volunteers: volunteers?.total ?? 0,
+      },
+      note: "Campaign-scoped compliance snapshot generated from live APIs.",
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `compliance-snapshot-${Date.now()}.json`;
+    a.click();
+  }
+
   function downloadTemplate() {
     const csv = CSV_HEADERS.join(",") + "\nJane,Smith,jane@email.com,416-555-0100,123 Main St,,Toronto,ON,M4C 1A1,Ward 12,Toronto—Danforth,strong_support,Transit;Housing,yes,no,no,Great contact at the door";
     const a = document.createElement("a"); a.href = "data:text/csv," + encodeURIComponent(csv);
@@ -141,9 +175,14 @@ export default function ImportExportClient({ campaignId }: Props) {
         <CardHeader><h3 className="font-semibold text-gray-900">Export Contacts</h3></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">Download all contacts in your campaign as a CSV file, including support levels, issues, tags, and interaction history.</p>
-          <Button onClick={doExport} loading={exporting} variant="outline">
-            <Download className="w-4 h-4" />Download CSV Export
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={doExport} loading={exporting} variant="outline">
+              <Download className="w-4 h-4" />Download CSV Export
+            </Button>
+            <Button onClick={exportComplianceSnapshot} variant="outline">
+              <FileText className="w-4 h-4" />Compliance JSON Snapshot
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
