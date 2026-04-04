@@ -10,110 +10,65 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import Papa from "papaparse";
 
 const prisma = new PrismaClient();
 
-// ─── data.ontario.ca CKAN dataset IDs ────────────────────────────────────────
-// Use the CKAN API to discover resource download URLs at runtime.
-const DATASETS = [
+// ─── direct CSV URLs from data.ontario.ca municipal election dataset ──────────
+// Dataset: https://data.ontario.ca/dataset/municipal-election-results
+const ELECTIONS = [
   {
-    datasetId: "2022-ontario-provincial-election-results",
-    label: "2022 Ontario Provincial Election",
-    electionDate: new Date("2022-06-02"),
-    electionType: "provincial" as const,
-    province: "ON",
-  },
-  {
-    datasetId: "2018-ontario-provincial-election-results",
-    label: "2018 Ontario Provincial Election",
-    electionDate: new Date("2018-06-07"),
-    electionType: "provincial" as const,
-    province: "ON",
-  },
-  {
-    datasetId: "ontario-municipal-elections",
-    label: "Ontario Municipal Elections",
+    label: "2022 Ontario Municipal Election",
+    csvUrl:
+      "https://data.ontario.ca/dataset/a5871234-ed52-4c79-af33-b205aee59fd3/resource/7f408f5e-71c7-43fa-82bf-5eb8be77b9a7/download/2022_municipal_election_-_successful_candidate_data_as_of_voting_day.csv",
     electionDate: new Date("2022-10-24"),
+    electionType: "municipal" as const,
+    province: "ON",
+  },
+  {
+    label: "2018 Ontario Municipal Election",
+    csvUrl:
+      "https://data.ontario.ca/dataset/a5871234-ed52-4c79-af33-b205aee59fd3/resource/80304bc4-1ab9-443e-876a-9f79dcbd2c98/download/2018_municipal_election_-_candidate_data_-_csv_for_release_-_2020-05-12.csv",
+    electionDate: new Date("2018-10-22"),
+    electionType: "municipal" as const,
+    province: "ON",
+  },
+  {
+    label: "2014 Ontario Municipal Election",
+    csvUrl:
+      "https://data.ontario.ca/dataset/a5871234-ed52-4c79-af33-b205aee59fd3/resource/562a2b81-b4b0-41ee-97dc-33f10c400f61/download/2014_municipal_election_-_candidate_data.csv",
+    electionDate: new Date("2014-10-27"),
     electionType: "municipal" as const,
     province: "ON",
   },
 ];
 
-const CKAN_BASE = "https://data.ontario.ca/api/3/action";
-
-interface CkanResource {
-  id: string;
-  format: string;
-  url: string;
-  name: string;
-}
-
-interface CkanPackage {
-  success: boolean;
-  result: { resources: CkanResource[] };
-}
-
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
-    return res.json() as Promise<T>;
-  } catch {
-    return null;
-  }
-}
-
-async function getCsvResources(datasetId: string): Promise<CkanResource[]> {
-  const data = await fetchJson<CkanPackage>(
-    `${CKAN_BASE}/package_show?id=${datasetId}`
-  );
-  if (!data?.success) return [];
-  return data.result.resources.filter((r) =>
-    ["CSV", "csv"].includes(r.format)
-  );
-}
-
-async function fetchCsvText(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
-    if (!res.ok) return null;
-    return res.text();
-  } catch {
-    return null;
-  }
-}
-
-function parseSimpleCsv(csv: string): Record<string, string>[] {
-  const lines = csv.replace(/\r/g, "").split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return [];
-  const headers = parseCsvLine(lines[0]);
-  return lines
-    .slice(1)
-    .map((line) => {
-      const values = parseCsvLine(line);
-      return Object.fromEntries(headers.map((h, i) => [h.trim(), (values[i] ?? "").trim()]));
-    })
-    .filter((row) => Object.values(row).some((v) => v !== ""));
-}
-
-function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (const char of line) {
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += char;
+async function fetchCsvText(url: string, retries = 3): Promise<string | null> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(90_000) });
+      if (!res.ok) {
+        if (attempt < retries) { await new Promise((r) => setTimeout(r, 3000 * attempt)); continue; }
+        return null;
+      }
+      return res.text();
+    } catch {
+      if (attempt < retries) { await new Promise((r) => setTimeout(r, 3000 * attempt)); continue; }
+      return null;
     }
   }
-  result.push(current);
-  return result;
+  return null;
+}
+
+function parseCsv(csv: string): Record<string, string>[] {
+  const result = Papa.parse<Record<string, string>>(csv, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.replace(/\s+/g, " ").trim(),
+  });
+  return result.data;
 }
 
 /** Try to find the right column names for common Ontario election CSV formats */
@@ -131,7 +86,20 @@ function extractResult(row: Record<string, string>, electionType: string) {
 
   const candidateName =
     get("Candidate", "CandidateName", "Name", "candidate_name", "Nom/Name") ||
-    [get("First Name", "FirstName"), get("Last Name", "LastName")]
+    [
+      get(
+        "First Name", "FirstName",
+        "Name of Person Elected First Name",
+        "Name Of Person Elected First Name",
+        "FIRST_NAME"
+      ),
+      get(
+        "Last Name", "LastName",
+        "Name of Person Elected Last Name",
+        "Name Of Person Elected Last Name",
+        "LAST_NAME"
+      ),
+    ]
       .filter(Boolean)
       .join(" ");
 
@@ -141,6 +109,9 @@ function extractResult(row: Record<string, string>, electionType: string) {
     "RidingName",
     "constituency_name",
     "Municipality",
+    "MUNICIPALITY",
+    "Municipality Name",
+    "MUNICIPALITY NAME",
     "Ward",
     "WardName",
     "Riding Name"
@@ -167,7 +138,12 @@ function extractResult(row: Record<string, string>, electionType: string) {
     "Total Votes",
     "votes_received",
     "Candidate Vote Count",
-    "Nombre de voix"
+    "Nombre de voix",
+    "VOTES_FOR_CANDIDATE",
+    "Votes For Candidate",
+    "VotesForCandidate",
+    "Number of Votes Cast for the Candidate",
+    "Number Of Votes Cast For The Candidate"
   ).replace(/,/g, "");
 
   const totalStr = get(
@@ -175,14 +151,29 @@ function extractResult(row: Record<string, string>, electionType: string) {
     "TotalVotes",
     "total_votes_cast",
     "Total Valid Ballots",
-    "Votes Cast"
+    "Votes Cast",
+    "VOTES_FOR_OFFICE",
+    "Votes For Office",
+    "VotesForOffice",
+    "Number of Votes Cast for the Office",
+    "Number Of Votes Cast For The Office"
   ).replace(/,/g, "");
 
   const pctStr = get("Percentage", "VotePercentage", "Percent", "vote_percentage", "%")
     .replace("%", "")
     .replace(",", ".");
 
-  const wonStr = get("Elected", "Won", "is_elected", "Elected?", "Resulted", "Status");
+  const wonStr = get(
+    "Elected",
+    "Won",
+    "is_elected",
+    "Elected?",
+    "Resulted",
+    "Status",
+    "ELECTED_OR_ACCLAIMED",
+    "Elected Or Acclaimed",
+    "ElectedOrAcclaimed"
+  );
 
   const votes = parseInt(votesStr, 10);
   const total = parseInt(totalStr, 10);
@@ -197,7 +188,7 @@ function extractResult(row: Record<string, string>, electionType: string) {
     : 0;
 
   const won =
-    /^(yes|true|1|elected|winner|x)$/i.test(wonStr.trim());
+    /^(yes|true|1|elected|winner|x|acclaimed)$/i.test(wonStr.trim());
 
   return {
     candidateName: candidateName.trim(),
@@ -213,64 +204,51 @@ function extractResult(row: Record<string, string>, electionType: string) {
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
-async function ingestDataset(dataset: (typeof DATASETS)[0]) {
-  console.log(`\n📥 ${dataset.label}`);
+async function ingestElection(election: (typeof ELECTIONS)[0]) {
+  console.log(`\n📥 ${election.label}`);
+  console.log(`  ↓ ${election.csvUrl}`);
 
-  const resources = await getCsvResources(dataset.datasetId);
-  if (resources.length === 0) {
-    console.warn(`  ⚠  No CSV resources found for dataset "${dataset.datasetId}". Skipping.`);
-    console.warn(`     Check: https://data.ontario.ca/dataset/${dataset.datasetId}`);
+  const csv = await fetchCsvText(election.csvUrl);
+  if (!csv) {
+    console.warn(`  ⚠  Failed to download CSV. Skipping.`);
     return 0;
   }
 
-  let totalInserted = 0;
+  const rows = parseCsv(csv);
+  console.log(`  Parsed ${rows.length} rows`);
 
-  for (const resource of resources) {
-    console.log(`  ↓ ${resource.name}: ${resource.url}`);
-    const csv = await fetchCsvText(resource.url);
-    if (!csv) {
-      console.warn(`  ⚠  Failed to download ${resource.url}`);
-      continue;
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const extracted = extractResult(row, election.electionType);
+    if (!extracted) { skipped++; continue; }
+
+    try {
+      await prisma.electionResult.create({
+        data: {
+          electionDate: election.electionDate,
+          electionType: election.electionType,
+          jurisdiction: extracted.jurisdiction,
+          jurisdictionCode: extracted.jurisdictionCode,
+          candidateName: extracted.candidateName,
+          partyName: extracted.partyName,
+          votesReceived: extracted.votesReceived,
+          totalVotesCast: extracted.totalVotesCast,
+          percentage: extracted.percentage,
+          won: extracted.won,
+          province: election.province,
+          source: "ontario_open_data",
+        },
+      });
+      inserted++;
+    } catch {
+      skipped++;
     }
-
-    const rows = parseSimpleCsv(csv);
-    console.log(`    Parsed ${rows.length} rows`);
-
-    let inserted = 0;
-    let skipped = 0;
-
-    for (const row of rows) {
-      const extracted = extractResult(row, dataset.electionType);
-      if (!extracted) { skipped++; continue; }
-
-      try {
-        await prisma.electionResult.create({
-          data: {
-            electionDate: dataset.electionDate,
-            electionType: dataset.electionType,
-            jurisdiction: extracted.jurisdiction,
-            jurisdictionCode: extracted.jurisdictionCode,
-            candidateName: extracted.candidateName,
-            partyName: extracted.partyName,
-            votesReceived: extracted.votesReceived,
-            totalVotesCast: extracted.totalVotesCast,
-            percentage: extracted.percentage,
-            won: extracted.won,
-            province: dataset.province,
-            source: "ontario_open_data",
-          },
-        });
-        inserted++;
-      } catch {
-        skipped++;
-      }
-    }
-
-    console.log(`    ✓ Inserted ${inserted}, skipped ${skipped}`);
-    totalInserted += inserted;
   }
 
-  return totalInserted;
+  console.log(`  ✓ Inserted ${inserted}, skipped ${skipped}`);
+  return inserted;
 }
 
 async function main() {
@@ -278,10 +256,9 @@ async function main() {
   console.log("══════════════════════════════════════");
 
   let grand = 0;
-  for (const dataset of DATASETS) {
-    grand += await ingestDataset(dataset);
-    // Brief pause between datasets
-    await new Promise((r) => setTimeout(r, 500));
+  for (const election of ELECTIONS) {
+    grand += await ingestElection(election);
+    await new Promise((r) => setTimeout(r, 2000)); // avoid rate limiting
   }
 
   console.log(`\n✅ Total inserted: ${grand} records`);
