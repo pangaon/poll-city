@@ -1,5 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import AppleProvider from "next-auth/providers/apple";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
@@ -15,6 +17,44 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google" || account?.provider === "apple") {
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+        });
+
+        if (!existingUser) {
+          // Create new user
+          const newUser = await prisma.user.create({
+            data: {
+              email: user.email!,
+              name: user.name || user.email!.split("@")[0],
+              role: "VOLUNTEER", // Default role for OAuth signups
+              isActive: true,
+              passwordHash: "", // No password for OAuth
+            },
+          });
+
+          // Update the user object with our data
+          user.id = newUser.id;
+          user.role = newUser.role;
+          user.activeCampaignId = newUser.activeCampaignId;
+        } else {
+          // Update last login
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: { lastLoginAt: new Date() },
+          });
+
+          user.id = existingUser.id;
+          user.role = existingUser.role;
+          user.activeCampaignId = existingUser.activeCampaignId;
+        }
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -87,6 +127,14 @@ export const authOptions: NextAuthOptions = {
           activeCampaignId: user.activeCampaignId ?? null,
         };
       },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    AppleProvider({
+      clientId: process.env.APPLE_CLIENT_ID!,
+      clientSecret: process.env.APPLE_CLIENT_SECRET!,
     }),
   ],
 };
