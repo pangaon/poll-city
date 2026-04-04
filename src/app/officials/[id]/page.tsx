@@ -4,7 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { differenceInDays } from "date-fns";
 import prisma from "@/lib/db/prisma";
-import { getPartyColour, partyGradientStyle } from "@/lib/party-colours";
+function getPartyColour(_name?: string | null) {
+  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
+}
+function partyGradientStyle(_name?: string | null): Record<string, string> {
+  return { background: "linear-gradient(135deg, #1E3A8A 0%, #1E3A8Acc 100%)" };
+}
 import {
   ShieldCheck, AlertCircle, Globe, Phone, Mail, Twitter,
   Facebook, Instagram, Linkedin, Trophy, CheckCircle, MapPin,

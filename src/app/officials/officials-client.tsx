@@ -7,7 +7,9 @@ import {
   ShieldCheck, AlertCircle, ChevronLeft, ChevronRight,
   Mail, Filter, X, SlidersHorizontal,
 } from "lucide-react";
-import { getPartyColour } from "@/lib/party-colours";
+function getPartyColour(_name?: string | null) {
+  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
+}
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Official {
