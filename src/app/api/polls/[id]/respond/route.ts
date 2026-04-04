@@ -253,7 +253,7 @@ export async function POST(
   if (poll.type === "binary") {
     const value = typeof body.value === "string" ? body.value.toLowerCase() : null;
     if (!value || !BINARY_VALUES.has(value)) {
-      return NextResponse.json({ error: `value must be one of: ${[...BINARY_VALUES].join(", ")}` }, { status: 422 });
+      return NextResponse.json({ error: `value must be one of: ${Array.from(BINARY_VALUES).join(", ")}` }, { status: 422 });
     }
 
     if (sessionUserId) {

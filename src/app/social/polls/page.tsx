@@ -23,7 +23,7 @@ export default function SocialPolls() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value, optionId }),
       });
-      setVoted(prev => new Set([...prev, pollId]));
+      setVoted(prev => new Set(Array.from(prev).concat(pollId)));
       toast.success("Vote recorded!");
     } catch { toast.error("Failed to record vote"); }
   }

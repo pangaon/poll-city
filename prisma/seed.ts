@@ -212,7 +212,7 @@ async function main() {
   });
   await prisma.volunteerProfile.upsert({
     where: { userId: volunteer1.id }, update: {},
-    create: { userId: volunteer1.id, skills: ["canvassing", "phone_bank", "data_entry"], availability: { mon: true, tue: false, wed: true, thu: true, fri: false, sat: true, sun: false }, maxHoursPerWeek: 10, hasVehicle: true },
+    create: { userId: volunteer1.id, skills: ["canvassing", "phone_bank", "data_entry"], availabilityJson: { mon: true, tue: false, wed: true, thu: true, fri: false, sat: true, sun: false }, maxHoursPerWeek: 10, hasVehicle: true },
   });
   await prisma.activityLog.createMany({
     data: [

@@ -28,7 +28,7 @@ export default function SocialOfficials() {
   async function sendSignal(officialId: string, type: string) {
     try {
       await fetch("/api/social/signal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ officialId, type }) });
-      setFollowed(prev => new Set([...prev, officialId]));
+      setFollowed(prev => new Set(Array.from(prev).concat(officialId)));
       toast.success("Signal sent!");
     } catch { toast.error("Failed to send signal"); }
   }

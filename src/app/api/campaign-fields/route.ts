@@ -126,7 +126,7 @@ export async function DELETE(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId: field.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (![Role.ADMIN, Role.SUPER_ADMIN].includes(membership.role as Role)) {
+  if (!([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(membership.role)) {
     return NextResponse.json({ error: "Forbidden — field deletion requires Admin role in this campaign" }, { status: 403 });
   }
 

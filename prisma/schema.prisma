@@ -185,6 +185,8 @@ model User {
   activityLogs         ActivityLog[]
   canvassAssignments   CanvassAssignment[]
   volunteerProfile     VolunteerProfile?
+  donationsRecorded    Donation[]           @relation("RecordedDonations")
+  gotvBatchesUploaded  GotvBatch[]          @relation("UploadedGotvBatches")
 
   // Social side
   pollResponses        PollResponse[]
@@ -416,12 +418,16 @@ model Contact {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  household    Household?    @relation(fields: [householdId], references: [id])
-  tags         ContactTag[]
-  interactions Interaction[]
-  tasks        Task[]
-  signRequests Sign[]
+  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  household         Household?         @relation(fields: [householdId], references: [id])
+  tags              ContactTag[]
+  interactions      Interaction[]
+  tasks             Task[]
+  signRequests      Sign[]
+  volunteerProfile  VolunteerProfile?
+  donations         Donation[]
+  gotvRecords       GotvRecord[]
+  customFieldValues CustomFieldValue[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -859,7 +865,7 @@ model Donation {
 
   campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact       Contact?       @relation(fields: [contactId], references: [id])
-  recordedBy    User           @relation(fields: [recordedById], references: [id])
+  recordedBy    User           @relation("RecordedDonations", fields: [recordedById], references: [id])
 
   @@index([campaignId])
   @@map("donations")
@@ -881,7 +887,7 @@ model GotvBatch {
   createdAt    DateTime  @default(now())
 
   campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  uploadedBy   User      @relation("UploadedGotvBatches", fields: [uploadedById], references: [id])
   records      GotvRecord[]
 
   @@map("gotv_batches")

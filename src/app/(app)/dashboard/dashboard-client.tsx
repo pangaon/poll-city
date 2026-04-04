@@ -26,7 +26,7 @@ interface DashboardProps {
     }[];
   };
   campaign: { name: string; candidateName: string | null; electionDate: Date | null };
-  user: { name?: string | null; role: string };
+  user: { id: string; name?: string | null; role: string };
 }
 
 function actionLabel(action: string, entityType: string, details: unknown): string {

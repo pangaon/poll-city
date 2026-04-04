@@ -86,13 +86,13 @@ export const contactPolicies = {
   canDelete(actor: Actor): PolicyResult {
     if (actor.appContext !== "admin") return deny("Contact data is campaign-private");
     if (!actor.membershipRole) return deny("No membership in this campaign");
-    const allowed = [MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER].includes(actor.membershipRole);
+    const allowed = ([MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER] as MembershipRole[]).includes(actor.membershipRole);
     return allowed ? allow() : deny("Requires Campaign Manager or above membership role");
   },
 
   canExport(actor: Actor): PolicyResult {
     if (actor.appContext !== "admin") return deny("Contact data is campaign-private");
-    const allowed = [MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER].includes(actor.membershipRole as MembershipRole);
+    const allowed = ([MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER] as MembershipRole[]).includes(actor.membershipRole as MembershipRole);
     return allowed ? allow() : deny("Requires Campaign Manager or above to export");
   },
 };
@@ -107,7 +107,7 @@ export const campaignFieldPolicies = {
 
   canWrite(actor: Actor): PolicyResult {
     if (!actor.membershipRole) return deny("No membership in this campaign");
-    const allowed = [MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER].includes(actor.membershipRole);
+    const allowed = ([MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER] as MembershipRole[]).includes(actor.membershipRole);
     return allowed ? allow() : deny("Requires Campaign Manager or above membership role");
   },
 
@@ -138,7 +138,7 @@ export const pollPolicies = {
 
   canCreate(actor: Actor): PolicyResult {
     if (actor.appContext !== "admin") return deny("Polls are created in Admin");
-    const allowed = [MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER].includes(actor.membershipRole as MembershipRole);
+    const allowed = ([MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER] as MembershipRole[]).includes(actor.membershipRole as MembershipRole);
     return allowed ? allow() : deny("Requires Campaign Manager or above to create polls");
   },
 };
@@ -165,7 +165,7 @@ export const bridgePolicies = {
 export const campaignPolicies = {
   canViewSettings(actor: Actor): PolicyResult {
     if (!actor.membershipRole) return deny("No membership in this campaign");
-    const allowed = [MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER].includes(actor.membershipRole);
+    const allowed = ([MembershipRole.ADMIN, MembershipRole.CAMPAIGN_MANAGER] as MembershipRole[]).includes(actor.membershipRole);
     return allowed ? allow() : deny("Requires Campaign Manager or above");
   },
 

@@ -190,17 +190,17 @@ export async function getContactIdsByCustomFilters(
       select: { contactId: true },
     });
 
-    const matchingIds = new Set(matching.map((m) => m.contactId));
+    const matchingIds = new Set<string>(matching.map((m) => m.contactId));
 
     // Intersect (AND logic across filters)
     if (contactIds === null) {
       contactIds = matchingIds;
     } else {
-      contactIds = new Set([...contactIds].filter((id) => matchingIds.has(id)));
+      contactIds = new Set(Array.from(contactIds as Set<string>).filter((id: string) => matchingIds.has(id)));
     }
   }
 
-  return contactIds ? [...contactIds] : [];
+  return contactIds ? Array.from(contactIds) : [];
 }
 
 // ─── Stats / Reports ──────────────────────────────────────────────────────────

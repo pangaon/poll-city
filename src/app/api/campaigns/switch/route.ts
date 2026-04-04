@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import { switchCampaign, getUserCampaigns } from "@/lib/auth/campaign-resolver";
+import type { Role } from "@prisma/client";
 
 /**
  * GET /api/campaigns/switch
@@ -10,14 +11,20 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
-  const campaigns = await getUserCampaigns(session!.user.id);
+  const user = session!.user as {
+    id: string;
+    role: Role;
+    activeCampaignId: string | null;
+  };
+
+  const campaigns = await getUserCampaigns(user.id);
   return NextResponse.json({
     data: campaigns.map(m => ({
       campaignId: m.campaignId,
       campaignName: m.campaign.name,
       electionType: m.campaign.electionType,
       role: m.role,
-      isActive: m.campaignId === session!.user.activeCampaignId,
+      isActive: m.campaignId === user.activeCampaignId,
     })),
   });
 }

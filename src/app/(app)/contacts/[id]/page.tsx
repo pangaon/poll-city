@@ -13,11 +13,11 @@ export default async function ContactDetailPage({ params }: { params: { id: stri
     include: {
       tags: { include: { tag: true } },
       interactions: { orderBy: { createdAt: "desc" }, take: 50, include: { user: { select: { id: true, name: true } } } },
-      tasks: { orderBy: { createdAt: "desc" }, include: { assignedTo: { select: { id: true, name: true } } } },
+      tasks: { orderBy: { createdAt: "desc" }, include: { assignedTo: { select: { id: true, name: true } }, createdBy: { select: { id: true, name: true } } } },
     },
   });
 
-  if (!contact) notFound();
+  if (!contact) return notFound();
 
   const [tags, teamMembers, customFields] = await Promise.all([
     prisma.tag.findMany({ where: { campaignId }, orderBy: { name: "asc" } }),

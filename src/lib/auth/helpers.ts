@@ -27,7 +27,7 @@ export function isAdmin(role: string): boolean {
 }
 
 export function isManagerOrAbove(role: string): boolean {
-  return [Role.ADMIN, Role.SUPER_ADMIN, Role.CAMPAIGN_MANAGER].includes(role as Role);
+  return ([Role.ADMIN, Role.SUPER_ADMIN, Role.CAMPAIGN_MANAGER] as Role[]).includes(role as Role);
 }
 
 /**

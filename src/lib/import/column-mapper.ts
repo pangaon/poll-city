@@ -84,6 +84,7 @@ export interface ColumnMapping {
   confidence: number;          // 0-100
   method: "exact" | "fuzzy" | "ai" | "manual";
   alternatives: string[];      // other possible target fields
+  sampleValues?: string[];
 }
 
 export type MappingResult = Record<string, ColumnMapping>;

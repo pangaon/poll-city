@@ -8,6 +8,6 @@ export const metadata = { title: "Field Configuration" };
 export default async function FieldsPage() {
   const { campaignId, role, userId } = await resolveActiveCampaign();
   
-  if (!["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"].includes(session.user.role)) redirect("/settings");
+  if (!["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"].includes(role)) redirect("/settings");
   return <FieldsSettingsClient campaignId={campaignId} />;
 }

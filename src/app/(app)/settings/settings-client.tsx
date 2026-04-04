@@ -4,8 +4,8 @@ import { PageHeader, Card, CardHeader, CardContent, FormField, Input, Button, Se
 import { toast } from "sonner";
 
 interface Props {
-  campaign: { id: string; name: string; slug: string; candidateName: string | null; candidateEmail: string | null; candidatePhone: string | null; primaryColor: string; electionType: string; jurisdiction: string | null; electionDate: string | null };
-  user: { id: string; name: string | null; email: string; phone: string | null; role: string };
+  campaign: { id: string; name: string; slug: string; candidateName: string | null; candidateEmail: string | null; candidatePhone: string | null; primaryColor: string; electionType: string; jurisdiction: string | null; electionDate: Date | null };
+  user: { id: string; name: string | null; email: string; phone: string | null };
   userRole: string;
 }
 

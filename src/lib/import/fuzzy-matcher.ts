@@ -257,7 +257,6 @@ const NAME_VARIANTS: Record<string, string[]> = {
   "samuel": ["sam"],
   "benjamin": ["ben"],
   "stephen": ["steve"],
-  "raymond": ["ray"],
   "peter": ["pete"],
   "harold": ["harry"],
   "arthur": ["art"],

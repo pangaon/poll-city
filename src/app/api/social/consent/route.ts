@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   // Fetch campaign names separately to avoid leaking campaign-private data
   // Only return: campaign name + slug (public-facing info)
-  const campaignIds = [...new Set(consents.map(c => c.campaignId))];
+  const campaignIds = Array.from(new Set(consents.map(c => c.campaignId)));
   const campaigns = await prisma.campaign.findMany({
     where: { id: { in: campaignIds } },
     select: { id: true, name: true, slug: true },

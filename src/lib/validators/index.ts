@@ -58,6 +58,7 @@ export const createContactSchema = z.object({
   phone2: z.string().max(30).optional(),
   address1: z.string().max(200).optional(),
   address2: z.string().max(200).optional(),
+  streetNumber: z.string().max(25).optional(),
   city: z.string().max(100).optional(),
   province: z.string().max(50).optional(),
   postalCode: z.string().max(10).optional(),

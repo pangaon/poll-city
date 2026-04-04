@@ -17,18 +17,22 @@ interface Contact {
   province: string | null; postalCode: string | null; ward: string | null; riding: string | null;
   supportLevel: SupportLevel; notes: string | null; preferredLanguage: string;
   doNotContact: boolean; signRequested: boolean; signPlaced: boolean; volunteerInterest: boolean;
-  issues: string[]; lastContactedAt: string | null; followUpNeeded: boolean; followUpDate: string | null;
+  issues: string[]; lastContactedAt: string | Date | null; followUpNeeded: boolean; followUpDate: string | Date | null;
   tags: { tag: { id: string; name: string; color: string } }[];
-  interactions: { id: string; type: string; notes: string | null; supportLevel: string | null; createdAt: string; user: { id: string; name: string | null } }[];
-  tasks: { id: string; title: string; status: string; priority: string; dueDate: string | null; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
+  interactions: { id: string; type: string; notes: string | null; supportLevel: string | null; createdAt: string | Date; user: { id: string; name: string | null } }[];
+  tasks: { id: string; title: string; status: string; priority: string; dueDate: string | Date | null; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
 }
 
 interface Props {
-  contact: Contact; userRole: string; currentUserId: string; campaignId: string;
+  contact: Contact;
+  userRole: string;
+  campaignId: string;
   teamMembers: { id: string; name: string | null; email: string | null }[];
+  tags: { id: string; campaignId: string; createdAt: Date; name: string; color: string }[];
+  customFields: unknown[];
 }
 
-export default function ContactDetailClient({ contact: initialContact, userRole, currentUserId, campaignId, teamMembers }: Props) {
+export default function ContactDetailClient({ contact: initialContact, userRole, campaignId, teamMembers }: Props) {
   const router = useRouter();
   const [contact, setContact] = useState(initialContact);
   const [editing, setEditing] = useState(false);

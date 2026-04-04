@@ -36,8 +36,9 @@ export async function resolveActiveCampaign(): Promise<ResolvedCampaign> {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const userId = session.user.id;
-  const activeCampaignId = session.user.activeCampaignId;
+  const user = session.user as typeof session.user & { activeCampaignId?: string | null };
+  const userId = user.id;
+  const activeCampaignId = user.activeCampaignId;
 
   // Build the where clause
   const where = activeCampaignId

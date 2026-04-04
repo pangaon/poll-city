@@ -98,7 +98,19 @@ export async function POST(req: NextRequest) {
 
     const dedupResults = await matchLists(
       matchResults.map(r => r.mergedRecord ?? r.recordA),
-      existingContacts.map(c => ({ ...c, id: c.id })),
+      existingContacts.map(c => ({
+        id: c.id,
+        firstName: c.firstName ?? undefined,
+        lastName: c.lastName ?? undefined,
+        phone: c.phone ?? undefined,
+        email: c.email ?? undefined,
+        address1: c.address1 ?? undefined,
+        streetNumber: c.streetNumber ?? undefined,
+        streetName: c.streetName ?? undefined,
+        postalCode: c.postalCode ?? undefined,
+        city: c.city ?? undefined,
+        externalId: c.externalId ?? undefined,
+      })),
       { ...DEFAULT_CONFIG, autoMergeThreshold: 90 }
     );
 

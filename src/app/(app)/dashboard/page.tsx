@@ -32,8 +32,9 @@ async function getDashboardData(campaignId: string) {
         action: true,
         entityType: true,
         entityId: true,
+        details: true,
         createdAt: true,
-        user: { select: { name: true } },
+        user: { select: { name: true, email: true } },
       },
     }),
     prisma.interaction.findMany({
