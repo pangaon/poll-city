@@ -4,6 +4,7 @@
 import { cn } from "@/lib/utils";
 import { forwardRef, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
+import React from "react";
 
 // ─── Button ──────────────────────────────────────────────────────────────────
 
@@ -11,10 +12,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "outline" | "ghost" | "destructive" | "secondary";
   size?: "sm" | "md" | "lg" | "icon";
   loading?: boolean;
+  asChild?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "md", loading, disabled, children, ...props }, ref) => {
+  ({ className, variant = "default", size = "md", loading, disabled, children, asChild, ...props }, ref) => {
     const base = "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:pointer-events-none disabled:opacity-50";
     const variants = {
       default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
@@ -29,6 +31,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       lg: "text-sm px-5 py-2.5 h-10",
       icon: "w-9 h-9 p-0",
     };
+
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, {
+        className: cn(base, variants[variant], sizes[size], className),
+        disabled: disabled || loading,
+        ...props,
+      } as any);
+    }
+
     return (
       <button ref={ref} disabled={disabled || loading} className={cn(base, variants[variant], sizes[size], className)} {...props}>
         {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -128,6 +139,120 @@ export function CardHeader({ children, className }: { children: React.ReactNode;
 
 export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cn("px-6 py-4", className)}>{children}</div>;
+}
+
+export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <h3 className={cn("text-lg font-semibold text-gray-900", className)}>{children}</h3>;
+}
+
+// ─── Switch ──────────────────────────────────────────────────────────────────
+
+interface SwitchProps {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function Switch({ checked, onCheckedChange, disabled, className }: SwitchProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+        checked ? "bg-blue-600" : "bg-gray-200",
+        disabled && "opacity-50 cursor-not-allowed",
+        className
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+          checked ? "translate-x-6" : "translate-x-1"
+        )}
+      />
+    </button>
+  );
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+
+interface TabsProps {
+  children: React.ReactNode;
+  defaultValue: string;
+  className?: string;
+}
+
+interface TabsContextType {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+const TabsContext = React.createContext<TabsContextType | undefined>(undefined);
+
+export function Tabs({ children, defaultValue, className }: TabsProps) {
+  const [value, setValue] = React.useState(defaultValue);
+
+  return (
+    <TabsContext.Provider value={{ value, onValueChange: setValue }}>
+      <div className={className}>{children}</div>
+    </TabsContext.Provider>
+  );
+}
+
+export function TabsList({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex space-x-1 rounded-lg bg-gray-100 p-1", className)}>
+      {children}
+    </div>
+  );
+}
+
+interface TabsTriggerProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
+  const context = React.useContext(TabsContext);
+  if (!context) throw new Error("TabsTrigger must be used within Tabs");
+
+  const isActive = context.value === value;
+
+  return (
+    <button
+      onClick={() => context.onValueChange(value)}
+      className={cn(
+        "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        isActive
+          ? "bg-white text-gray-900 shadow-sm"
+          : "text-gray-500 hover:text-gray-700",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface TabsContentProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function TabsContent({ value, children, className }: TabsContentProps) {
+  const context = React.useContext(TabsContext);
+  if (!context) throw new Error("TabsContent must be used within Tabs");
+
+  if (context.value !== value) return null;
+
+  return <div className={className}>{children}</div>;
 }
 
 // ─── Badge ───────────────────────────────────────────────────────────────────

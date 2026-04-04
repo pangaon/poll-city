@@ -24,6 +24,7 @@
     "@hookform/resolvers": "^3.6.0",
     "@prisma/client": "^5.15.0",
     "@stripe/stripe-js": "^9.0.1",
+    "@vercel/blob": "^2.3.3",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
@@ -59,6 +60,7 @@
     "prisma": "^5.15.0",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
     "tsx": "^4.15.7",
     "typescript": "^5"
   }

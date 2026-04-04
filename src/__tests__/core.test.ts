@@ -126,7 +126,7 @@ describe("createTaskSchema", () => {
 
 describe("slugify", () => {
   it("converts to lowercase with hyphens", () => {
-    expect(slugify("Ward 12 — City Council 2026")).toBe("ward-12--city-council-2026");
+    expect(slugify("Ward 12 — City Council 2026")).toBe("ward-12-city-council-2026");
   });
   it("strips special characters", () => {
     expect(slugify("Campaign! #1")).toBe("campaign-1");

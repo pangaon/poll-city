@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
-/**
- * GET /api/geo?postalCode=M4C1A1
- * Returns ward + riding info for a postal code prefix
- */
+const POSTAL_CODE_PREFIX_REGEX = /^[A-Z0-9]{3}$/;
+
 export async function GET(req: NextRequest) {
   const postalCode = req.nextUrl.searchParams.get("postalCode");
-  if (!postalCode) return NextResponse.json({ error: "postalCode required" }, { status: 400 });
+  if (!postalCode) {
+    return NextResponse.json({ error: "postalCode is required" }, { status: 400 });
+  }
 
-  const prefix = postalCode.replace(/\s/g, "").slice(0, 3).toUpperCase();
+  const normalized = postalCode.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const prefix = normalized.slice(0, 3);
+
+  if (!POSTAL_CODE_PREFIX_REGEX.test(prefix)) {
+    return NextResponse.json({ error: "postalCode must contain a valid 3 character prefix" }, { status: 422 });
+  }
 
   const districts = await prisma.geoDistrict.findMany({
     where: { postalPrefix: prefix },
@@ -19,9 +24,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: null, message: `No district data found for ${prefix}` });
   }
 
-  const municipal = districts.find(d => d.level === "municipal");
-  const federal = districts.find(d => d.level === "federal");
-  const provincial = districts.find(d => d.level === "provincial");
+  const municipal = districts.find((d) => d.level === "municipal");
+  const federal = districts.find((d) => d.level === "federal");
+  const provincial = districts.find((d) => d.level === "provincial");
 
   return NextResponse.json({
     data: {

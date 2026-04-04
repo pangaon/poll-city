@@ -62,6 +62,14 @@ export function formatPhone(phone?: string | null): string {
   if (!phone) return "—";
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 10) {
+    // Check if already formatted in common formats
+    const formattedPatterns = [
+      /^\(\d{3}\) \d{3}-\d{4}$/, // (416) 555-0100
+      /^\d{3}-\d{3}-\d{4}$/,     // 416-555-0100
+    ];
+    if (formattedPatterns.some(pattern => pattern.test(phone))) {
+      return phone;
+    }
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
   return phone;

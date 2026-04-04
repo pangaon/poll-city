@@ -232,8 +232,9 @@ model Campaign {
   candidatePhone  String?
   logoUrl         String?
   websiteUrl      String?
+  customDomain    String?
   primaryColor    String       @default("#1e40af")
-  // Linked to Official profile if candidate claimed it
+  isPublic        Boolean      @default(false)
   officialId      String?
   isActive        Boolean      @default(true)
   createdAt       DateTime     @default(now())
@@ -255,7 +256,10 @@ model Campaign {
   gotvBatches     GotvBatch[]
   qrCodes         QrCode[]
   volunteerProfiles VolunteerProfile[]
+  signRequests    SignRequest[]
+  questions       Question[]
 
+  @@unique([customDomain])
   @@map("campaigns")
 }
 
@@ -1095,6 +1099,38 @@ model CustomFieldValue {
   @@index([fieldKey, valueText])   // for filtering by field value
   @@index([fieldKey, valueBool])
   @@map("custom_field_values")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC CAMPAIGN PAGE MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SignRequest {
+  id         String   @id @default(cuid())
+  campaignId String
+  address    String
+  name       String
+  email      String
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("sign_requests")
+}
+
+model Question {
+  id         String   @id @default(cuid())
+  campaignId String
+  name       String
+  email      String
+  question   String
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("questions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -34,7 +34,7 @@ export default function PricingPage() {
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Mobile canvassing app</li>
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Email support</li>
               </ul>
-              <Button className="w-full" asChild>
+              <Button className="w-full">
                 <Link href="/login">Start Free Trial</Link>
               </Button>
             </CardContent>
@@ -58,7 +58,7 @@ export default function PricingPage() {
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Priority support</li>
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Custom fields</li>
               </ul>
-              <Button className="w-full" asChild>
+              <Button className="w-full">
                 <Link href="/login">Start Starter Plan</Link>
               </Button>
             </CardContent>
@@ -81,7 +81,7 @@ export default function PricingPage() {
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />API access</li>
                 <li className="flex items-center"><CheckCircle className="w-4 h-4 text-green-600 mr-2" />Dedicated support</li>
               </ul>
-              <Button className="w-full" variant="outline" asChild>
+              <Button className="w-full" variant="outline">
                 <Link href="/login">Contact Sales</Link>
               </Button>
             </CardContent>

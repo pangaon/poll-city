@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
   Settings, Sparkles, BarChart3, ChevronDown, Vote, Menu, X,
-  Phone, Search, Target, Zap, DollarSign, CreditCard
+  Phone, Search, Target, Zap, DollarSign, CreditCard, Globe
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
@@ -29,6 +29,7 @@ const navItems = [
   { href: "/admin", icon: Shield, label: "Admin" },
   { href: "/ai-assist", icon: Sparkles, label: "AI Assist" },
   { href: "/billing", icon: CreditCard, label: "Billing" },
+  { href: "/settings/public-page", icon: Globe, label: "Public Page" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 

@@ -46,7 +46,32 @@ export const createCampaignSchema = z.object({
 });
 
 export const updateCampaignSchema = createCampaignSchema.partial();
+export const publicCandidateQuestionSchema = z.object({
+  name: z.string().min(2, "Name is required").max(120),
+  email: z.string().email("Please enter a valid email address"),
+  question: z.string().min(5, "Question is required").max(2000),
+});
 
+export const publicCandidateSignRequestSchema = z.object({
+  address: z.string().min(5, "Address is required").max(300),
+  name: z.string().min(2, "Name is required").max(120),
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const publicCandidateSupportSchema = z.object({
+  name: z.string().min(2, "Name is required").max(120),
+  email: z.string().email("Please enter a valid email address"),
+  householdCount: z
+    .union([z.string().max(50), z.number().int().nonnegative().max(999)])
+    .optional(),
+});
+
+export const publicCandidateVolunteerSchema = z.object({
+  name: z.string().min(2, "Name is required").max(120),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().max(30).optional(),
+  message: z.string().max(2000).optional(),
+});
 // ─── Contact ──────────────────────────────────────────────────────────────
 
 export const createContactSchema = z.object({

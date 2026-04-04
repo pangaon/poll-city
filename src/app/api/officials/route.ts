@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
-// Fields returned in list view — bio included for preview, heavy fields excluded
 const LIST_SELECT = {
   id: true,
   name: true,
@@ -15,15 +14,26 @@ const LIST_SELECT = {
   _count: { select: { follows: true } },
 } as const;
 
+const VALID_LEVELS = new Set(["municipal", "provincial", "federal"]);
+const POSTAL_CODE_PREFIX_REGEX = /^[A-Z0-9]{3}$/;
+
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const postalCode = sp.get("postalCode");
   const level = sp.get("level");
   const search = sp.get("search");
 
-  // Postal code lookup: used by Social discover page to find local reps
+  if (level && !VALID_LEVELS.has(level)) {
+    return NextResponse.json({ error: "Invalid level" }, { status: 422 });
+  }
+
   if (postalCode) {
-    const prefix = postalCode.replace(/\s/g, "").slice(0, 3).toUpperCase();
+    const normalized = postalCode.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    const prefix = normalized.slice(0, 3);
+    if (!POSTAL_CODE_PREFIX_REGEX.test(prefix)) {
+      return NextResponse.json({ error: "postalCode must contain a valid 3 character prefix" }, { status: 422 });
+    }
+
     const officials = await prisma.official.findMany({
       where: {
         isActive: true,
@@ -31,15 +41,18 @@ export async function GET(req: NextRequest) {
         ...(level && { level: level as any }),
       },
       orderBy: { level: "asc" },
-      take: 10, // max 10 officials per postal prefix — covers federal + provincial + municipal
+      take: 10,
       select: LIST_SELECT,
     });
     return NextResponse.json({ data: officials, postalPrefix: prefix });
   }
 
-  // Search by name/district/title
   if (search) {
-    const trimmed = search.trim().slice(0, 100); // cap search string length
+    const trimmed = search.trim();
+    if (trimmed.length === 0 || trimmed.length > 100) {
+      return NextResponse.json({ error: "Search must be between 1 and 100 characters" }, { status: 422 });
+    }
+
     const officials = await prisma.official.findMany({
       where: {
         isActive: true,
@@ -55,7 +68,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: officials });
   }
 
-  // Default: featured/verified officials — capped at 50
   const officials = await prisma.official.findMany({
     where: { isActive: true },
     orderBy: [{ subscriptionStatus: "desc" }, { name: "asc" }],

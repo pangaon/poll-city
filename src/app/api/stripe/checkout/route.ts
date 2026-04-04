@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/auth-options";
 import Stripe from "stripe";
+import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -10,53 +9,59 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 
 export async function POST(request: NextRequest) {
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 500 });
+  }
+
+  const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID;
+  const proPriceId = process.env.STRIPE_PRO_PRICE_ID;
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  if (!starterPriceId || !proPriceId || !nextAuthUrl) {
+    return NextResponse.json({ error: "Stripe checkout is not fully configured" }, { status: 500 });
+  }
+
+  const { session, error } = await apiAuth(request);
+  if (error) return error;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const plan = typeof body === "object" && body !== null && "plan" in body ? (body as any).plan : null;
+  if (plan !== "starter" && plan !== "pro") {
+    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+  }
+
+  const userId = session!.user.id;
+
+  const existingSub = await prisma.subscription.findUnique({
+    where: { userId },
+  });
+
+  if (existingSub?.status === "active") {
+    return NextResponse.json({ error: "Already have an active subscription" }, { status: 400 });
+  }
+
+  let customer;
+  if (existingSub?.stripeCustomerId) {
+    customer = await stripe.customers.retrieve(existingSub.stripeCustomerId);
+  } else {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true },
+    });
+
+    customer = await stripe.customers.create({
+      email: user?.email ?? undefined,
+      name: user?.name ?? undefined,
+      metadata: { userId },
+    });
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { plan } = await request.json();
-    if (!plan || !["starter", "pro"].includes(plan)) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
-
-    const userId = session.user.id;
-
-    // Check if user already has an active subscription
-    const existingSub = await prisma.subscription.findUnique({
-      where: { userId },
-    });
-
-    if (existingSub?.status === "active") {
-      return NextResponse.json({ error: "Already have active subscription" }, { status: 400 });
-    }
-
-    // Create or retrieve Stripe customer
-    let customer;
-    if (existingSub?.stripeCustomerId) {
-      customer = await stripe.customers.retrieve(existingSub.stripeCustomerId);
-    } else {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true, name: true },
-      });
-
-      customer = await stripe.customers.create({
-        email: user?.email,
-        name: user?.name ?? undefined,
-        metadata: { userId },
-      });
-    }
-
-    // Create checkout session
-    const priceId = plan === "starter"
-      ? process.env.STRIPE_STARTER_PRICE_ID!
-      : process.env.STRIPE_PRO_PRICE_ID!;
-
+    const priceId = plan === "starter" ? starterPriceId : proPriceId;
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: typeof customer === "string" ? customer : customer.id,
       payment_method_types: ["card"],
@@ -67,8 +72,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXTAUTH_URL}/billing?success=true`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/billing?canceled=true`,
+      success_url: `${nextAuthUrl}/billing?success=true`,
+      cancel_url: `${nextAuthUrl}/billing?canceled=true`,
       metadata: {
         userId,
         plan,
