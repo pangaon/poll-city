@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import {
-  MapPin, Calendar, Users, Heart, Share2, MessageSquare,
-  CheckCircle, Phone, Mail, Globe, QrCode
+  MapPin, Calendar, Users, Share2, AlertCircle,
+  CheckCircle, Globe, Phone, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface Campaign {
   logoUrl: string | null;
   primaryColor: string;
   supporterCount: number;
+  official: { id: string; isClaimed: boolean; name: string } | null;
 }
 
 interface Poll {
@@ -154,7 +156,25 @@ export default function CandidatePageClient({ campaign, polls }: CandidatePageCl
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Unclaimed profile banner */}
+      {campaign.official && !campaign.official.isClaimed && (
+        <div className="bg-amber-50 border-b border-amber-200 py-3 px-4">
+          <div className="container mx-auto max-w-4xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-800">
+                <span className="font-semibold">Unclaimed Profile.</span>{" "}
+                Are you {campaign.official.name}? Claim this profile to manage your page.
+              </p>
+            </div>
+            <Link href={`/claim/${campaign.slug}`}>
+              <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100 flex-shrink-0">
+                Claim this profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
       <div
         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-12 px-4"
         style={{ backgroundColor: campaign.primaryColor }}

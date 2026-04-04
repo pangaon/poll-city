@@ -301,10 +301,14 @@ model Official {
   postalCodes      String[]        @default([]) // postal prefixes served
   province         String?
   // Profile status
+  isClaimed        Boolean         @default(false)
   claimedAt        DateTime?
   claimedByUserId  String?
   subscriptionStatus String?       @default("free") // free | pro | verified
   isActive         Boolean         @default(true)
+  // External data provenance
+  externalId       String?         // e.g. Represent API slug
+  externalSource   String?         // "represent_opennorth" | "manual"
   termStart        DateTime?
   termEnd          DateTime?
   createdAt        DateTime        @default(now())

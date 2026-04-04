@@ -38,6 +38,9 @@ export default async function CandidatePage({ params }: PageProps) {
   const campaign = await prisma.campaign.findUnique({
     where: { slug: params.slug },
     include: {
+      official: {
+        select: { id: true, isClaimed: true, name: true, title: true },
+      },
       polls: {
         where: { isActive: true, visibility: "public" },
         include: {
@@ -93,6 +96,9 @@ export default async function CandidatePage({ params }: PageProps) {
         logoUrl: campaign.logoUrl,
         primaryColor: campaign.primaryColor,
         supporterCount: campaign._count.contacts,
+        official: campaign.official
+          ? { id: campaign.official.id, isClaimed: campaign.official.isClaimed, name: campaign.official.name }
+          : null,
       }}
       polls={pollsWithResults}
     />
