@@ -39,7 +39,23 @@ export default async function CandidatePage({ params }: PageProps) {
     where: { slug: params.slug },
     include: {
       official: {
-        select: { id: true, isClaimed: true, name: true, title: true },
+        select: {
+          id: true,
+          isClaimed: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          title: true,
+          photoUrl: true,
+          website: true,
+          twitter: true,
+          facebook: true,
+          instagram: true,
+          linkedIn: true,
+          phone: true,
+          address: true,
+          email: true,
+        },
       },
       polls: {
         where: { isActive: true, visibility: "public" },
@@ -97,7 +113,21 @@ export default async function CandidatePage({ params }: PageProps) {
         primaryColor: campaign.primaryColor,
         supporterCount: campaign._count.contacts,
         official: campaign.official
-          ? { id: campaign.official.id, isClaimed: campaign.official.isClaimed, name: campaign.official.name }
+          ? {
+              id: campaign.official.id,
+              isClaimed: campaign.official.isClaimed,
+              name: campaign.official.name,
+              title: campaign.official.title,
+              photoUrl: campaign.official.photoUrl,
+              website: campaign.official.website,
+              twitter: campaign.official.twitter,
+              facebook: campaign.official.facebook,
+              instagram: campaign.official.instagram,
+              linkedIn: campaign.official.linkedIn,
+              phone: campaign.official.phone,
+              address: campaign.official.address,
+              email: campaign.official.email,
+            }
           : null,
       }}
       polls={pollsWithResults}
