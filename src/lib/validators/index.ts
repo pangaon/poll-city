@@ -1,0 +1,195 @@
+import { z } from "zod";
+import {
+  SupportLevel,
+  InteractionType,
+  ElectionType,
+  TaskStatus,
+  TaskPriority,
+  Role,
+} from "@prisma/client";
+
+// ─── Auth ──────────────────────────────────────────────────────────────────
+
+export const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const registerSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  role: z.nativeEnum(Role).optional(),
+});
+
+// ─── Campaign ─────────────────────────────────────────────────────────────
+
+export const createCampaignSchema = z.object({
+  name: z.string().min(3, "Campaign name must be at least 3 characters").max(120),
+  description: z.string().max(500).optional(),
+  electionType: z.nativeEnum(ElectionType),
+  jurisdiction: z.string().max(200).optional(),
+  electionDate: z.string().optional().nullable(), // accepts YYYY-MM-DD or full ISO datetime
+  candidateName: z.string().max(120).optional(),
+  candidateTitle: z.string().max(200).optional(),
+  candidateBio: z.string().max(2000).optional(),
+  candidateEmail: z.string().email().optional().or(z.literal("")),
+  candidatePhone: z.string().max(30).optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color")
+    .optional(),
+});
+
+export const updateCampaignSchema = createCampaignSchema.partial();
+
+// ─── Contact ──────────────────────────────────────────────────────────────
+
+export const createContactSchema = z.object({
+  campaignId: z.string().cuid(),
+  firstName: z.string().min(1, "First name is required").max(80),
+  lastName: z.string().min(1, "Last name is required").max(80),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  phone: z.string().max(30).optional(),
+  phone2: z.string().max(30).optional(),
+  address1: z.string().max(200).optional(),
+  address2: z.string().max(200).optional(),
+  city: z.string().max(100).optional(),
+  province: z.string().max(50).optional(),
+  postalCode: z.string().max(10).optional(),
+  ward: z.string().max(50).optional(),
+  riding: z.string().max(100).optional(),
+  supportLevel: z.nativeEnum(SupportLevel).optional(),
+  notes: z.string().max(5000).optional(),
+  preferredLanguage: z.string().max(10).optional(),
+  doNotContact: z.boolean().optional(),
+  signRequested: z.boolean().optional(),
+  volunteerInterest: z.boolean().optional(),
+  issues: z.array(z.string()).optional(),
+  followUpNeeded: z.boolean().optional(),
+  followUpDate: z.string().datetime().optional().nullable(),
+  householdId: z.string().cuid().optional().nullable(),
+});
+
+export const updateContactSchema = createContactSchema
+  .omit({ campaignId: true })
+  .partial();
+
+// ─── Interaction ─────────────────────────────────────────────────────────
+
+export const createInteractionSchema = z.object({
+  contactId: z.string().cuid("Invalid contact ID"),
+  type: z.nativeEnum(InteractionType),
+  notes: z.string().max(5000).optional(),
+  supportLevel: z.nativeEnum(SupportLevel).optional().nullable(),
+  issues: z.array(z.string()).optional(),
+  signRequested: z.boolean().optional(),
+  volunteerInterest: z.boolean().optional(),
+  followUpNeeded: z.boolean().optional(),
+  followUpDate: z.string().datetime().optional().nullable(),
+  doorNumber: z.string().max(20).optional(),
+  duration: z.number().int().positive().optional(),
+});
+
+// ─── Task ─────────────────────────────────────────────────────────────────
+
+export const createTaskSchema = z.object({
+  campaignId: z.string().cuid(),
+  contactId: z.string().cuid().optional().nullable(),
+  assignedToId: z.string().cuid().optional().nullable(),
+  title: z.string().min(3, "Task title is required").max(200),
+  description: z.string().max(2000).optional(),
+  status: z.nativeEnum(TaskStatus).optional(),
+  priority: z.nativeEnum(TaskPriority).optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
+
+export const updateTaskSchema = createTaskSchema
+  .omit({ campaignId: true })
+  .partial();
+
+// ─── Canvass List ─────────────────────────────────────────────────────────
+
+export const createCanvassListSchema = z.object({
+  campaignId: z.string().cuid(),
+  name: z.string().min(3, "List name is required").max(120),
+  description: z.string().max(500).optional(),
+});
+
+export const assignCanvassSchema = z.object({
+  canvassListId: z.string().cuid(),
+  userId: z.string().cuid(),
+});
+
+// ─── Import ───────────────────────────────────────────────────────────────
+
+export const importContactRowSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email().optional().or(z.literal("")).optional(),
+  phone: z.string().optional(),
+  address1: z.string().optional(),
+  city: z.string().optional(),
+  province: z.string().optional(),
+  postalCode: z.string().optional(),
+  ward: z.string().optional(),
+  riding: z.string().optional(),
+  supportLevel: z.nativeEnum(SupportLevel).optional(),
+  notes: z.string().optional(),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
+export type CreateContactInput = z.infer<typeof createContactSchema>;
+export type UpdateContactInput = z.infer<typeof updateContactSchema>;
+export type CreateInteractionInput = z.infer<typeof createInteractionSchema>;
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type CreateCanvassListInput = z.infer<typeof createCanvassListSchema>;
+export type ImportContactRow = z.infer<typeof importContactRowSchema>;
+
+// ─── Extended Contact (leadership races + full address decomposition) ─────────
+
+export const extendedContactFields = {
+  nameTitle: z.string().max(20).optional(),
+  middleName: z.string().max(80).optional(),
+  nameSuffix: z.string().max(20).optional(),
+  gender: z.string().max(30).optional(),
+  streetNumberSuffix: z.string().max(10).optional(),
+  streetName: z.string().max(200).optional(),
+  streetType: z.string().max(30).optional(),
+  streetDirection: z.string().max(10).optional(),
+  unitApt: z.string().max(30).optional(),
+  firstChoice: z.string().max(200).optional(),
+  secondChoice: z.string().max(200).optional(),
+  membershipSold: z.boolean().optional(),
+  isActiveMember: z.boolean().optional(),
+  captain: z.string().max(200).optional(),
+  subCaptain: z.string().max(200).optional(),
+};
+
+// ─── Phone decomposition + electoral districts ─────────────────────────────
+
+export const phoneElectoralFields = {
+  phoneAreaCode: z.string().max(10).optional(),
+  cellAreaCode: z.string().max(10).optional(),
+  email2: z.string().email().optional().or(z.literal("")),
+  businessEmail: z.string().email().optional().or(z.literal("")),
+  businessPhone: z.string().max(30).optional(),
+  businessPhoneExt: z.string().max(10).optional(),
+  wechat: z.string().max(100).optional(),
+  federalDistrict: z.string().max(200).optional(),
+  federalPoll: z.string().max(20).optional(),
+  provincialDistrict: z.string().max(200).optional(),
+  provincialPoll: z.string().max(20).optional(),
+  municipalDistrict: z.string().max(200).optional(),
+  municipalPoll: z.string().max(20).optional(),
+  censusDivision: z.string().max(100).optional(),
+  votingLocation: z.string().max(200).optional(),
+  votingAddress: z.string().max(300).optional(),
+  isDeceased: z.boolean().optional(),
+};

@@ -1,0 +1,14 @@
+{
+  "name": "Poll City Social",
+  "short_name": "Poll City",
+  "description": "Civic engagement, live polling, and your local representatives",
+  "start_url": "/social",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

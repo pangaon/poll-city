@@ -1,0 +1,1137 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// POLL CITY ECOSYSTEM — FULL PRISMA SCHEMA
+// Serves both Poll City (campaign ops) and Poll City Social (public civic app)
+// ═══════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  CAMPAIGN_MANAGER
+  VOLUNTEER
+  PUBLIC_USER
+}
+
+enum SupportLevel {
+  strong_support
+  leaning_support
+  undecided
+  leaning_opposition
+  strong_opposition
+  unknown
+}
+
+enum InteractionType {
+  door_knock
+  phone_call
+  text
+  email
+  event
+  note
+  follow_up
+}
+
+enum ElectionType {
+  municipal
+  provincial
+  federal
+  by_election
+  other
+}
+
+enum GovernmentLevel {
+  municipal
+  provincial
+  federal
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum CanvassStatus {
+  not_started
+  in_progress
+  completed
+  paused
+}
+
+enum PollType {
+  binary
+  multiple_choice
+  ranked
+  slider
+  swipe          // Tinder-style left/right
+  image_swipe    // swipe on images
+  emoji_react    // react with emoji
+  priority_rank  // drag to rank issues
+}
+
+enum SwipeDirection {
+  left
+  right
+  up
+  down
+}
+
+enum PollVisibility {
+  public
+  campaign_only
+  unlisted
+}
+
+enum SignStatus {
+  requested
+  scheduled
+  installed
+  removed
+  declined
+}
+
+enum ServiceCategory {
+  canvassing
+  sign_installation
+  lit_drop
+  phone_bank
+  event_staff
+  other
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  in_progress
+  completed
+  cancelled
+}
+
+enum SupportSignalType {
+  strong_support
+  general_support
+  sign_request
+  do_not_contact
+  volunteer_interest
+  question
+}
+
+
+enum GotvStatus {
+  not_checked
+  not_home
+  voted
+  will_vote
+  refused
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER & AUTH
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  passwordHash     String
+  role             Role      @default(VOLUNTEER)
+  avatarUrl        String?
+  phone            String?
+  // Multi-campaign: which campaign this user is currently viewing
+  // Set on login and updated via /api/campaigns/switch
+  activeCampaignId String?
+  // Geo fields for Social users
+  postalCode       String?
+  address          String?
+  ward             String?
+  riding           String?
+  geoLat           Float?
+  geoLng           Float?
+  // Social preferences
+  emailVerified    Boolean   @default(false)
+  pushEnabled      Boolean   @default(true)
+  notifyElections  Boolean   @default(true)
+  notifyPolls      Boolean   @default(true)
+  isActive         Boolean   @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Campaign side
+  memberships          Membership[]
+  interactions         Interaction[]
+  tasksAssigned        Task[]              @relation("AssignedTasks")
+  tasksCreated         Task[]              @relation("CreatedTasks")
+  activityLogs         ActivityLog[]
+  canvassAssignments   CanvassAssignment[]
+  volunteerProfile     VolunteerProfile?
+
+  // Social side
+  pollResponses        PollResponse[]
+  supportSignals       SupportSignal[]
+  officialFollows      OfficialFollow[]
+  questions            PublicQuestion[]
+  notifications        Notification[]
+  consentLogs          ConsentLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMPAIGN
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id              String       @id @default(cuid())
+  name            String
+  slug            String       @unique
+  description     String?
+  electionType    ElectionType @default(municipal)
+  jurisdiction    String?
+  electionDate    DateTime?
+  candidateName   String?
+  candidateTitle  String?
+  candidateBio    String?
+  candidateEmail  String?
+  candidatePhone  String?
+  logoUrl         String?
+  websiteUrl      String?
+  primaryColor    String       @default("#1e40af")
+  // Linked to Official profile if candidate claimed it
+  officialId      String?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  official        Official?    @relation(fields: [officialId], references: [id])
+  memberships     Membership[]
+  contacts        Contact[]
+  households      Household[]
+  canvassLists    CanvassList[]
+  tasks           Task[]
+  activityLogs    ActivityLog[]
+  tags            Tag[]
+  signs           Sign[]
+  serviceBookings ServiceBooking[]
+  polls           Poll[]
+  campaignFields  CampaignField[]
+  donations       Donation[]
+  gotvBatches     GotvBatch[]
+  qrCodes         QrCode[]
+  volunteerProfiles VolunteerProfile[]
+
+  @@map("campaigns")
+}
+
+model Membership {
+  id         String   @id @default(cuid())
+  userId     String
+  campaignId String
+  role       Role     @default(VOLUNTEER)
+  joinedAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@map("memberships")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OFFICIALS / ELECTED REPRESENTATIVES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Official {
+  id               String          @id @default(cuid())
+  name             String
+  title            String          // e.g. "Mayor", "MP", "MPP", "Councillor"
+  level            GovernmentLevel
+  district         String          // ward, riding, or constituency name
+  districtCode     String?         // official electoral district code
+  party            String?
+  email            String?
+  phone            String?
+  website          String?
+  photoUrl         String?
+  bio              String?
+  // Geographic coverage
+  postalCodes      String[]        @default([]) // postal prefixes served
+  province         String?
+  // Profile status
+  claimedAt        DateTime?
+  claimedByUserId  String?
+  subscriptionStatus String?       @default("free") // free | pro | verified
+  isActive         Boolean         @default(true)
+  termStart        DateTime?
+  termEnd          DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  campaigns        Campaign[]
+  follows          OfficialFollow[]
+  questions        PublicQuestion[]
+  polls            Poll[]
+
+  @@index([level, district])
+  @@index([postalCodes])
+  @@map("officials")
+}
+
+model OfficialFollow {
+  userId     String
+  officialId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  official   Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@id([userId, officialId])
+  @@map("official_follows")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTACTS / VOTERS (Campaign side)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Household {
+  id         String    @id @default(cuid())
+  address1   String
+  address2   String?
+  city       String?
+  province   String?
+  postalCode String?
+  ward       String?
+  riding     String?
+  lat        Float?
+  lng        Float?
+  totalVoters Int?      // from official voter file
+  campaignId String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts   Contact[]
+
+  @@map("households")
+}
+
+model Contact {
+  id                String       @id @default(cuid())
+  campaignId        String
+  householdId       String?
+  nameTitle         String?      // Mr, Ms, Dr, etc
+  firstName         String
+  middleName        String?
+  lastName          String
+  nameSuffix        String?      // Jr, Sr, III, etc
+  gender            String?      // M, F, NB, prefer_not_to_say
+  email             String?
+  phone             String?
+  phone2            String?
+  address1          String?
+  address2          String?
+  city              String?
+  province          String?
+  postalCode        String?
+  ward              String?
+  riding            String?
+  supportLevel      SupportLevel @default(unknown)
+  notes             String?
+  preferredLanguage String       @default("en")
+  doNotContact      Boolean      @default(false)
+  signRequested     Boolean      @default(false)
+  signPlaced        Boolean      @default(false)
+  volunteerInterest Boolean      @default(false)
+  gotvStatus        GotvStatus   @default(not_checked)
+  facebook          String?
+  twitter           String?
+  instagram         String?
+  wechat            String?
+  // Secondary contact
+  email2            String?
+  businessEmail     String?
+  businessPhone     String?
+  businessPhoneExt  String?
+  phoneAreaCode     String?      // stored separately for voter file compatibility
+  cellAreaCode      String?
+  // Electoral geography (from official voter file)
+  federalDistrict   String?
+  federalPoll       String?
+  provincialDistrict String?
+  provincialPoll    String?
+  municipalDistrict String?
+  municipalPoll     String?
+  censusDivision    String?
+  votingLocation    String?
+  votingAddress     String?
+  // Flags
+  isDeceased        Boolean      @default(false)
+  skipHouse         Boolean      @default(false)  // canvasser deliberately skipping
+  membershipExpiry  DateTime?
+  partyMember       Boolean      @default(false)
+  // Custom fields stored in CustomFieldValue table (queryable)
+  streetNumber      String?
+  streetNumberSuffix String?     // A, B, 1/2 etc
+  streetName        String?
+  streetType        String?      // Ave, Blvd, Rd, Dr, St etc
+  streetDirection   String?      // E, W, N, S, NE etc
+  unitApt           String?
+  pollDistrict      String?
+  // Leadership race fields
+  firstChoice       String?      // for leadership/nomination races
+  secondChoice      String?
+  membershipSold    Boolean      @default(false)
+  isActiveMember    Boolean      @default(false)
+  captain           String?
+  subCaptain        String?
+  issues            String[]     @default([])
+  lastContactedAt   DateTime?
+  followUpNeeded    Boolean      @default(false)
+  followUpDate      DateTime?
+  importSource      String?      // csv | canvass | phone | event | web
+  externalId        String?
+  source            String?      // PC | Liberal | NDP | canvass | referral etc
+  notHome           Boolean      @default(false)
+  totalVotersAtAddress Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  household    Household?    @relation(fields: [householdId], references: [id])
+  tags         ContactTag[]
+  interactions Interaction[]
+  tasks        Task[]
+  signRequests Sign[]
+
+  @@index([campaignId])
+  @@index([lastName, firstName])
+  @@index([supportLevel])
+  @@index([postalCode])
+  @@map("contacts")
+}
+
+model Tag {
+  id         String       @id @default(cuid())
+  name       String
+  color      String       @default("#6b7280")
+  campaignId String
+  createdAt  DateTime     @default(now())
+
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts   ContactTag[]
+
+  @@unique([name, campaignId])
+  @@map("tags")
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@map("contact_tags")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVASSING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CanvassList {
+  id          String        @id @default(cuid())
+  campaignId  String
+  name        String
+  description String?
+  status      CanvassStatus @default(not_started)
+  geoArea     Json?         // GeoJSON polygon for map rendering
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  campaign    Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignments CanvassAssignment[]
+
+  @@map("canvass_lists")
+}
+
+model CanvassAssignment {
+  id            String        @id @default(cuid())
+  canvassListId String
+  userId        String
+  status        CanvassStatus @default(not_started)
+  notes         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  canvassList   CanvassList   @relation(fields: [canvassListId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("canvass_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERACTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Interaction {
+  id               String          @id @default(cuid())
+  contactId        String
+  userId           String
+  type             InteractionType
+  notes            String?
+  supportLevel     SupportLevel?
+  issues           String[]        @default([])
+  signRequested    Boolean         @default(false)
+  volunteerInterest Boolean        @default(false)
+  followUpNeeded   Boolean         @default(false)
+  followUpDate     DateTime?
+  doorNumber       String?
+  duration         Int?
+  createdAt        DateTime        @default(now())
+
+  contact          Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user             User            @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([userId])
+  @@map("interactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TASKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Task {
+  id           String       @id @default(cuid())
+  campaignId   String
+  contactId    String?
+  assignedToId String?
+  createdById  String
+  title        String
+  description  String?
+  status       TaskStatus   @default(pending)
+  priority     TaskPriority @default(medium)
+  dueDate      DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  @@index([campaignId])
+  @@index([assignedToId])
+  @@map("tasks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGN TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Sign {
+  id           String     @id @default(cuid())
+  campaignId   String
+  contactId    String?
+  address1     String
+  city         String?
+  postalCode   String?
+  lat          Float?
+  lng          Float?
+  signType     String     @default("standard") // standard | large | window
+  status       SignStatus @default(requested)
+  assignedTeam String?
+  notes        String?
+  requestedAt  DateTime   @default(now())
+  installedAt  DateTime?
+  removedAt    DateTime?
+  photoUrl     String?
+  quantity     Int        @default(1)
+  isOpponent   Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact      Contact?   @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([lat, lng])
+  @@map("signs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOLUNTEER MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VolunteerProfile {
+  id              String    @id @default(cuid())
+  // Volunteer is either a registered user OR a field-captured contact (or both)
+  userId          String?   @unique  // set if they have a login
+  contactId       String?   @unique  // set if captured in field without login
+  campaignId      String?            // which campaign they volunteered for
+  skills          String[]  @default([])
+  availability    String?            // free text: "weekends", "evenings after 6pm"
+  availabilityJson Json?             // structured: { mon: true, tue: false, ... }
+  maxHoursPerWeek Int?
+  hasVehicle      Boolean   @default(false)
+  notes           String?
+  totalHours      Float     @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact         Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign        Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@map("volunteer_profiles")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLLING ENGINE (shared — used by both apps)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Poll {
+  id               String         @id @default(cuid())
+  question         String
+  description      String?
+  type             PollType       @default(binary)
+  visibility       PollVisibility @default(public)
+  // Geographic targeting
+  targetRegion     String?        // ward, riding, province, or "national"
+  targetPostalPrefixes String[]   @default([])
+  // Attribution
+  campaignId       String?
+  officialId       String?
+  createdByUserId  String?
+  // Options (for multiple_choice / ranked)
+  options          PollOption[]
+  responses        PollResponse[]
+  // Timing
+  startsAt         DateTime       @default(now())
+  endsAt           DateTime?
+  // Metadata
+  totalResponses   Int            @default(0)
+  isActive         Boolean        @default(true)
+  isFeatured       Boolean        @default(false)
+  tags             String[]       @default([])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  campaign         Campaign?      @relation(fields: [campaignId], references: [id])
+  official         Official?      @relation(fields: [officialId], references: [id])
+
+  @@index([targetRegion])
+  @@index([isActive, isFeatured])
+  @@map("polls")
+}
+
+model PollOption {
+  id        String         @id @default(cuid())
+  pollId    String
+  text      String
+  order     Int            @default(0)
+  responses PollResponse[]
+
+  poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@map("poll_options")
+}
+
+model PollResponse {
+  id           String      @id @default(cuid())
+  pollId       String
+  userId       String?     // null = public (unauthenticated) response
+  optionId     String?     // for multiple choice / ranked
+  value        String?     // for binary (yes/no/left/right) or slider (0-100)
+  rank         Int?        // for ranked polls
+  // Geo snapshot at time of response (self-reported or derived from postal code)
+  postalCode   String?
+  ward         String?
+  riding       String?
+  // Rate limiting only — NOT stored for identity. Hashed before storage.
+  ipHash       String?     // SHA-256 of IP+salt — used only for spam prevention, not identification
+  createdAt    DateTime    @default(now())
+
+  poll         Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option       PollOption? @relation(fields: [optionId], references: [id])
+  user         User?       @relation(fields: [userId], references: [id])
+
+  // Duplicate vote prevention uses two layers:
+  // 1. Application layer: findFirst check before every insert (see polls/[id]/respond/route.ts)
+  // 2. Database layer: partial unique indexes in prisma/setup-indexes.sql (run via npm run db:indexes)
+  //    - poll_responses_single_vote_uniq: (pollId, userId) WHERE userId IS NOT NULL AND optionId IS NULL
+  //    - poll_responses_swipe_vote_uniq:  (pollId, userId, optionId) WHERE both IS NOT NULL
+  // Prisma schema.prisma does not support partial indexes — they are applied via setup-indexes.sql.
+  // If setup-indexes.sql has not been run, the DB backstop is absent and only app-layer protection applies.
+  @@index([pollId])
+  @@index([postalCode])
+  @@map("poll_responses")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPPORT SIGNALS (Poll City Social)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportSignal {
+  id           String            @id @default(cuid())
+  userId       String
+  officialId   String?
+  campaignSlug String?
+  type         SupportSignalType
+  message      String?
+  postalCode   String?
+  ward         String?
+  riding       String?
+  isPublic     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([officialId])
+  @@index([campaignSlug])
+  @@map("support_signals")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC Q&A (Candidate Interaction — Poll City Social)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PublicQuestion {
+  id          String    @id @default(cuid())
+  userId      String
+  officialId  String
+  question    String
+  answer      String?
+  answeredAt  DateTime?
+  isPublic    Boolean   @default(true)
+  upvotes     Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  official    Official  @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId])
+  @@map("public_questions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GEO REFERENCE (ward/riding lookup by postal code)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model GeoDistrict {
+  id           String          @id @default(cuid())
+  postalPrefix String          // e.g. "M4C", "K1A"
+  ward         String?
+  wardCode     String?
+  riding       String?
+  ridingCode   String?
+  province     String
+  city         String?
+  level        GovernmentLevel
+  createdAt    DateTime        @default(now())
+
+  @@unique([postalPrefix, level])
+  @@index([postalPrefix])
+  @@map("geo_districts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  body        String
+  type        String   // poll | election | signal | task | system | staff_alert
+  link        String?
+  isRead      Boolean  @default(false)
+  entityType  String?  // contact | campaign | poll | task
+  entityId    String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMPAIGN SERVICES MARKETPLACE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ServiceProvider {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  category     ServiceCategory
+  contactEmail String
+  contactPhone String?
+  website      String?
+  regions      String[]        @default([])
+  rateInfo     String?
+  isVerified   Boolean         @default(false)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+
+  bookings     ServiceBooking[]
+
+  @@map("service_providers")
+}
+
+model ServiceBooking {
+  id               String          @id @default(cuid())
+  campaignId       String
+  providerId       String
+  category         ServiceCategory
+  description      String
+  targetArea       String?
+  quantity         Int?
+  scheduledDate    DateTime?
+  status           BookingStatus   @default(pending)
+  totalCost        Float?
+  notes            String?
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  campaign         Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  provider         ServiceProvider @relation(fields: [providerId], references: [id])
+
+  @@map("service_bookings")
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DONATIONS (pledged on the fly by canvassers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DonationStatus {
+  pledged      // captured at door/phone, not yet processed
+  processed    // payment received
+  cancelled
+  refunded
+}
+
+model Donation {
+  id            String         @id @default(cuid())
+  campaignId    String
+  contactId     String?
+  recordedById  String         // user who captured it
+  amount        Float
+  status        DonationStatus @default(pledged)
+  method        String?        // cash | cheque | credit | e-transfer
+  notes         String?
+  collectedAt   DateTime       @default(now())
+  processedAt   DateTime?
+  receiptNumber String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact       Contact?       @relation(fields: [contactId], references: [id])
+  recordedBy    User           @relation(fields: [recordedById], references: [id])
+
+  @@index([campaignId])
+  @@map("donations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GOTV — GET OUT THE VOTE ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model GotvBatch {
+  id           String    @id @default(cuid())
+  campaignId   String
+  name         String    // e.g. "Election Day 9am upload"
+  uploadedById String
+  totalRecords Int       @default(0)
+  matchedCount Int       @default(0)
+  struckCount  Int       @default(0)
+  sourceFile   String?
+  createdAt    DateTime  @default(now())
+
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  records      GotvRecord[]
+
+  @@map("gotv_batches")
+}
+
+model GotvRecord {
+  id           String    @id @default(cuid())
+  batchId      String
+  contactId    String?   // matched contact in our DB
+  externalId   String?   // voter ID from elections office
+  firstName    String?
+  lastName     String?
+  address      String?
+  hasVoted     Boolean   @default(true)
+  matchScore   Float?    // 0-100 confidence of the match
+  createdAt    DateTime  @default(now())
+
+  batch        GotvBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  contact      Contact?  @relation(fields: [contactId], references: [id])
+
+  @@index([batchId])
+  @@index([contactId])
+  @@map("gotv_records")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUSH NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum NotificationChannel {
+  push
+  email
+  sms
+  in_app
+}
+
+model NotificationTemplate {
+  id         String   @id @default(cuid())
+  campaignId String?  // null = system-wide
+  key        String   // e.g. "sign_request", "volunteer_signup", "task_assigned"
+  title      String
+  body       String
+  channel    NotificationChannel @default(in_app)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("notification_templates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QR CODES
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum QrCodeType {
+  contact       // scan → open contact profile
+  volunteer     // scan → volunteer sign-up form
+  sign_request  // scan → sign request form
+  event         // scan → event check-in
+  poll          // scan → poll
+}
+
+model QrCode {
+  id         String      @id @default(cuid())
+  campaignId String
+  type       QrCodeType
+  entityId   String?     // contactId, eventId, pollId etc.
+  token      String      @unique @default(cuid())
+  label      String?
+  scanCount  Int         @default(0)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scans      QrScan[]
+
+  @@map("qr_codes")
+}
+
+model QrScan {
+  id         String   @id @default(cuid())
+  qrCodeId   String
+  scannedBy  String?  // userId if logged in
+  ipAddress  String?
+  userAgent  String?
+  result     Json?    // what happened as a result
+  createdAt  DateTime @default(now())
+
+  qrCode     QrCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+
+  @@map("qr_scans")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HISTORICAL ELECTION DATA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ElectionResult {
+  id             String   @id @default(cuid())
+  electionDate   DateTime
+  electionType   String   // municipal | provincial | federal
+  jurisdiction   String   // riding or ward name
+  jurisdictionCode String?
+  candidateName  String
+  partyName      String?
+  votesReceived  Int
+  totalVotesCast Int
+  percentage     Float
+  won            Boolean  @default(false)
+  pollNumber     String?  // for poll-by-poll breakdown
+  province       String?
+  source         String?  // "elections_canada" | "elections_ontario" | manual
+  createdAt      DateTime @default(now())
+
+  @@index([jurisdiction, electionDate])
+  @@index([electionDate, electionType])
+  @@map("election_results")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM FIELD DEFINITIONS (per-campaign configurable fields)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum FieldType {
+  text
+  textarea
+  boolean
+  number
+  date
+  select       // single-select from options list
+  multiselect  // multi-select from options list
+}
+
+enum FieldCategory {
+  contact_info    // shown on contact card
+  canvassing      // shown in walk list / canvass view
+  membership      // party membership fields
+  electoral       // electoral geography fields
+  custom          // user-defined
+}
+
+model CampaignField {
+  id           String        @id @default(cuid())
+  campaignId   String
+  key          String        // internal key, e.g. "hydro_concern"
+  label        String        // display label, e.g. "Hydro Concern"
+  fieldType    FieldType     @default(text)
+  category     FieldCategory @default(custom)
+  options      String[]      @default([]) // for select/multiselect
+  isVisible    Boolean       @default(true)
+  isRequired   Boolean       @default(false)
+  showOnCard   Boolean       @default(true)  // show in canvassing card
+  showOnList   Boolean       @default(false) // show in contact table
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  values       CustomFieldValue[]
+
+  @@unique([campaignId, key])
+  @@map("campaign_fields")
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM FIELD VALUES
+// Stores actual values for custom fields per contact.
+// Separate table = fully queryable, filterable, exportable.
+// Standard fields stay as real columns on Contact for performance.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CustomFieldValue {
+  id         String        @id @default(cuid())
+  contactId  String
+  fieldId    String        // references CampaignField.id
+  fieldKey   String        // denormalized for fast lookup without join
+  // Value stored in appropriate column based on fieldType
+  valueText  String?       // text, textarea, select
+  valueBool  Boolean?      // boolean
+  valueNum   Float?        // number
+  valueDate  DateTime?     // date
+  valueList  String[]      @default([]) // multiselect
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  contact    Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  field      CampaignField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, fieldId])
+  @@index([contactId])
+  @@index([fieldId])
+  @@index([fieldKey, valueText])   // for filtering by field value
+  @@index([fieldKey, valueBool])
+  @@map("custom_field_values")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([campaignId])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSENT LOG
+// Records every consent bridge transfer from Poll City Social into the campaign
+// CRM. Written on every POST /api/social/signal that executes a bridge transfer.
+// Used for user-facing consent display and revocation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ConsentLog {
+  id             String    @id @default(cuid())
+  // Who consented
+  userId         String
+  // Which campaign received the signal
+  campaignId     String
+  // What type of signal triggered the bridge
+  signalType     String    // matches SupportSignalType enum values
+  // What purpose the user agreed to
+  consentScope   String    // "campaign_awareness" | "volunteer_contact" | "sign_installation" | "do_not_contact"
+  // Which fields were written to the CRM Contact record
+  fieldsXferred  String[]  // e.g. ["postalCode", "ward"] — never includes email/phone unless provided
+  // Traceability — links to the ActivityLog entry written at the same time
+  activityLogId  String?
+  // The CRM Contact record created or updated by this bridge transfer
+  contactId      String?
+  // Revocation — null = active consent, set = revoked
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Idempotency guard: one active consent record per (user, campaign, signalType)
+  // A revoked record allows re-consenting (revokedAt IS NOT NULL = inactive)
+  @@unique([userId, campaignId, signalType], name: "unique_active_consent")
+  @@index([userId])
+  @@index([campaignId])
+  @@map("consent_logs")
+}
