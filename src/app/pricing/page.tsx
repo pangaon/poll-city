@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui";
+import { Card, CardContent, CardHeader } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { CheckCircle } from "lucide-react";
 
 export default function PricingPage() {
@@ -20,12 +20,12 @@ export default function PricingPage() {
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
           <Card className="border-2 border-green-200">
             <CardHeader>
-              <CardTitle className="text-center">Free Trial</CardTitle>
+              <h3 className="text-xl font-semibold text-center">Free Trial</h3>
               <div className="text-center">
                 <span className="text-3xl font-bold">$0</span>
                 <span className="text-gray-500">/14 days</span>
               </div>
-              <CardDescription className="text-center">Perfect for getting started</CardDescription>
+              <p className="text-center text-gray-600">Perfect for getting started</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 mb-6">
@@ -43,12 +43,12 @@ export default function PricingPage() {
           <Card className="border-2 border-blue-200 relative">
             <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-600">Most Popular</Badge>
             <CardHeader>
-              <CardTitle className="text-center">Starter</CardTitle>
+              <h3 className="text-xl font-semibold text-center">Starter</h3>
               <div className="text-center">
                 <span className="text-3xl font-bold">$49</span>
                 <span className="text-gray-500">/month</span>
               </div>
-              <CardDescription className="text-center">For growing campaigns</CardDescription>
+              <p className="text-center text-gray-600">For growing campaigns</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 mb-6">
@@ -66,12 +66,12 @@ export default function PricingPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-center">Pro</CardTitle>
+              <h3 className="text-xl font-semibold text-center">Pro</h3>
               <div className="text-center">
                 <span className="text-3xl font-bold">$99</span>
                 <span className="text-gray-500">/month</span>
               </div>
-              <CardDescription className="text-center">For professional campaigns</CardDescription>
+              <p className="text-center text-gray-600">For professional campaigns</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 mb-6">
