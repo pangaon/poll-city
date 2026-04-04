@@ -90,8 +90,8 @@ export default function BillingClient({
                   </p>
                 </div>
                 <Badge variant={
-                  subscription.status === "active" ? "success" :
-                  subscription.status === "past_due" ? "danger" : "default"
+                  subscription.status === "active" ? "default" :
+                  subscription.status === "past_due" ? "danger" : "warning"
                 }>
                   {subscription.status.replace("_", " ")}
                 </Badge>
