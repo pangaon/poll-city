@@ -18,6 +18,7 @@ const navItems = [
   { href: "/canvassing/walk", icon: Map, label: "Walk List" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/gotv", icon: Target, label: "GOTV" },
+  { href: "/signs", icon: Map, label: "Signs" },
   { href: "/call-list", icon: Phone, label: "Call List" },
   { href: "/lookup", icon: Search, label: "Address Lookup" },
   { href: "/capture", icon: Zap, label: "Quick Capture" },
