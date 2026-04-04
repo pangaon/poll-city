@@ -15,31 +15,48 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const uploadType = (formData.get("uploadType") as string | null) ?? "logo";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "File must be an image" }, { status: 400 });
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
+    if (uploadType === "logo") {
+      if (!file.type.startsWith("image/")) {
+        return NextResponse.json({ error: "File must be an image" }, { status: 400 });
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
+      }
+    } else if (uploadType === "print") {
+      const allowed = [
+        "application/pdf",
+        "application/postscript",
+        "application/illustrator",
+        "image/png",
+        "image/jpeg",
+        "image/tiff",
+      ];
+      if (!allowed.includes(file.type) && !file.name.toLowerCase().endsWith(".ai")) {
+        return NextResponse.json({ error: "Supported print formats: PDF, AI, PNG, JPG, TIFF" }, { status: 400 });
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        return NextResponse.json({ error: "Print files must be under 25MB" }, { status: 400 });
+      }
     }
 
     // Upload to Vercel Blob
-    const blob = await put(`campaign-logos/${campaignId}-${Date.now()}.${file.name.split('.').pop()}`, file, {
+    const folder = uploadType === "print" ? "print-files" : "campaign-logos";
+    const blob = await put(`${folder}/${campaignId}-${Date.now()}.${file.name.split('.').pop()}`, file, {
       access: "public",
     });
 
-    // Update campaign with new logo URL
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { logoUrl: blob.url },
-    });
+    if (uploadType === "logo") {
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { logoUrl: blob.url },
+      });
+    }
 
     return NextResponse.json({ url: blob.url });
   } catch (error) {

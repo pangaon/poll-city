@@ -214,6 +214,7 @@ model User {
   notifications        Notification[]
   consentLogs          ConsentLog[]
   pushSubscriptions    PushSubscription[]
+  notificationLogs     NotificationLog[]
 
   @@map("users")
 }
@@ -264,6 +265,7 @@ model Campaign {
   signRequests    SignRequest[]
   questions       Question[]
   pushSubscriptions PushSubscription[]
+  notificationLogs  NotificationLog[]
   printJobs         PrintJob[]
   turfs             Turf[]
 
@@ -993,6 +995,31 @@ model PushSubscription {
   @@map("push_subscriptions")
 }
 
+model NotificationLog {
+  id                String   @id @default(cuid())
+  campaignId        String
+  userId            String?
+  title             String
+  body              String
+  audience          Json?
+  status            String   @default("sent") // scheduled | sent | cancelled
+  scheduledFor      DateTime?
+  sentAt            DateTime?
+  totalSubscribers  Int      @default(0)
+  deliveredCount    Int      @default(0)
+  failedCount       Int      @default(0)
+  failedEndpoints   String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [userId], references: [id])
+
+  @@index([campaignId, createdAt])
+  @@index([campaignId, status])
+  @@map("notification_logs")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // QR CODES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1284,7 +1311,8 @@ enum PrintJobStatus {
   bidding
   awarded
   in_production
-  ready
+  quality_check
+  shipped
   delivered
   cancelled
 }
@@ -1304,6 +1332,11 @@ model PrintShop {
   isVerified   Boolean  @default(false)
   isActive     Boolean  @default(true)
   logoUrl      String?
+  stripeAccountId String?
+  stripeOnboarded Boolean @default(false)
+  portfolio    String[] @default([])
+  provincesServed String[] @default([])
+  averageResponseHours Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1330,6 +1363,11 @@ model PrintJob {
   budgetMax       Float?
   status          PrintJobStatus   @default(draft)
   awardedBidId    String?
+  paymentIntentId String?
+  paymentStatus   String?          @default("pending") // pending | paid | released | refunded
+  trackingNumber  String?
+  carrier         String?
+  estimatedDelivery DateTime?
   notes           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

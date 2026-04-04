@@ -1,5 +1,94 @@
 # Poll City Changelog
 
+## [1.5.0] - April 4, 2026
+
+### Officials Public Directory
+
+- Rebuilt public Officials Directory at `/officials` as server + client architecture.
+- Added SEO metadata:
+  - Title: Find Your Elected Officials - Poll City Canada
+  - Description for 1100+ Canadian officials search intent.
+- Implemented paginated directory API at `/api/officials/directory` (24 cards per page).
+- Added live search (300ms debounce), province filter, level filter, role filter, and municipality search.
+- Added official cards with:
+  - photo and initials fallback
+  - bold name, title, district
+  - province + level badges
+  - claimed/verified and unclaimed status badges
+  - social icon links for available channels
+  - View Profile and Claim Profile actions
+- Added campaign slug linkage support from officials API for profile routing.
+
+### Bulletproof Push Notifications
+
+- Added VAPID validation utility and hardened push send pipeline in `src/lib/notifications/push.ts`.
+- Updated `/api/notifications/send`:
+  - validates NEXT_PUBLIC_VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY
+  - catches/logs per-subscription failures without aborting whole batch
+  - returns sent, failed, total, and failed endpoints
+- Added `/api/notifications/test` for browser subscription test sends.
+- Added `/api/notifications/schedule`:
+  - create scheduled sends
+  - list scheduled sends
+  - cancel scheduled sends
+- Added `/api/notifications/stats` aggregated delivery reporting.
+- Added NotificationLog data model and switched history/stats storage to NotificationLog.
+- Rebuilt Notifications UI:
+  - Send Test Notification
+  - Schedule tab with date/time/message/audience + phone preview
+  - 120-char counter
+  - cancel scheduled notifications
+  - delivery stats cards and history table
+- Updated social opt-in flow:
+  - success confirmation copy
+  - send test notification action
+  - clear manage preferences path to `/social/profile`
+
+### Vistaprint-Level Print Marketplace
+
+- Rebuilt print catalog landing page at `/print` with 8 product category cards and premium gradient illustrations.
+- Added product detail pages at `/print/products/[product]` with specs, pricing matrices, and turnaround guidance.
+- Rebuilt `/print/jobs/new` into a 5-step wizard:
+  - product selection
+  - specifications + real-time price model + turnaround modifiers
+  - design method and print file upload support
+  - delivery details
+  - review and post
+- Updated upload API (`/api/upload/logo`) to support print files (`uploadType=print`).
+- Rebuilt `/print/jobs/[id]` with:
+  - 8-stage timeline (Posted, Bidding, Awarded, In Production, Quality Check, Shipped, Delivered, Cancelled)
+  - bid comparison + award flow
+  - proof approval/change request workflow
+  - tracking controls (carrier, tracking number, estimated delivery)
+  - reorder action after delivery
+- Rebuilt `/print/shops` vendor directory cards and added `/print/shops/register` registration flow.
+- Added `/api/print/shops/onboard` Stripe Connect onboarding endpoint.
+- Added payment endpoints:
+  - `/api/print/payment/create-intent` (15% application fee)
+  - `/api/print/payment/release`
+- Extended PrintShop schema with Stripe and operational fields:
+  - stripeAccountId, stripeOnboarded, portfolio, provincesServed, averageResponseHours
+
+### Navigation and Public Access
+
+- Added Officials Directory placement in marketing nav and products/footer messaging.
+- Added Officials Directory to authenticated sidebar under Analytics.
+- Verified middleware public path coverage includes `/officials` and `/api/officials/*`.
+
+### Documentation
+
+- Updated `docs/USER_GUIDE.md` with SOP addendum sections for:
+  - Officials Directory
+  - Notifications (campaign + voter)
+  - Print Marketplace (campaign + print shops)
+- Added/updated VAPID setup documentation in `docs/VAPID_SETUP.md`.
+
+### Quality Gates
+
+- `npx tsc --noEmit`: pass.
+- `npm run build`: pass (105 routes generated).
+- Manual runtime smoke tests were blocked in this environment by missing NextAuth secret (`NO_SECRET`), which causes auth middleware redirects in local dev mode.
+
 ## [1.4.0] - April 4, 2026
 
 ### Major Features

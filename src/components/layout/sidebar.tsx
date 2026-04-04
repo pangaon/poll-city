@@ -30,6 +30,7 @@ const navItems = [
   { href: "/lookup", icon: Search, label: "Address Lookup" },
   { href: "/capture", icon: Zap, label: "Quick Capture" },
   { href: "/analytics", icon: BarChart3, label: "Analytics" },
+  { href: "/officials", icon: Globe, label: "Officials Directory" },
   { href: "/import-export", icon: Upload, label: "Import / Export" },
   { href: "/settings", icon: Settings, label: "Settings" },
   { href: "/billing", icon: CreditCard, label: "Billing" },

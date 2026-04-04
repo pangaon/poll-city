@@ -1,20 +1,17 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft, CheckCircle, Clock, Package, Star, ExternalLink,
-  Send, AlertCircle, Truck, Archive
-} from "lucide-react";
-import { Button, Badge, Card, CardContent, CardHeader, Modal } from "@/components/ui";
+import { ArrowLeft, CheckCircle, Star, Truck, RotateCcw } from "lucide-react";
+import { Button, Badge, Card, CardContent, CardHeader, Modal, Textarea, Input, Select } from "@/components/ui";
 import { toast } from "sonner";
 
 interface PrintShop {
   id: string;
   name: string;
   rating: number | null;
+  reviewCount?: number;
   isVerified: boolean;
-  specialties: string[];
-  serviceAreas: string[];
+  provincesServed?: string[];
 }
 
 interface PrintBid {
@@ -35,16 +32,10 @@ interface PrintJob {
   title: string;
   quantity: number;
   description: string | null;
-  deadline: string | null;
-  deliveryAddress: string | null;
-  deliveryCity: string | null;
-  deliveryPostal: string | null;
-  fileUrl: string | null;
-  budgetMin: number | null;
-  budgetMax: number | null;
   status: string;
-  awardedBidId: string | null;
-  notes: string | null;
+  trackingNumber: string | null;
+  carrier: string | null;
+  estimatedDelivery: string | null;
   createdAt: string;
   bids: PrintBid[];
   _count: { bids: number };
@@ -52,350 +43,212 @@ interface PrintJob {
 
 interface Props { jobId: string; campaignId: string; }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
+const STATUS_FLOW = ["posted", "bidding", "awarded", "in_production", "quality_check", "shipped", "delivered", "cancelled"];
+
+const LABELS: Record<string, string> = {
   posted: "Posted",
   bidding: "Bidding",
   awarded: "Awarded",
   in_production: "In Production",
-  ready: "Ready for Pickup",
+  quality_check: "Quality Check",
+  shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
 
-const STATUS_VARIANTS: Record<string, "default" | "info" | "warning" | "success" | "danger"> = {
-  draft: "default",
-  posted: "info",
-  bidding: "warning",
-  awarded: "success",
-  in_production: "info",
-  ready: "success",
-  delivered: "success",
-  cancelled: "danger",
-};
-
-const PRODUCT_LABELS: Record<string, string> = {
-  door_hanger: "Door Hanger", lawn_sign: "Lawn Sign", flyer: "Flyer",
-  palm_card: "Palm Card", mailer_postcard: "Mailer / Postcard",
-  banner: "Banner", button_pin: "Button / Pin", window_sign: "Window Sign",
-};
-
-const STATUS_FLOW = ["draft", "posted", "bidding", "awarded", "in_production", "ready", "delivered"];
-
-export default function JobDetailClient({ jobId, campaignId }: Props) {
+export default function JobDetailClient({ jobId }: Props) {
   const [job, setJob] = useState<PrintJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [awardConfirm, setAwardConfirm] = useState<PrintBid | null>(null);
-  const [advancing, setAdvancing] = useState(false);
+  const [proofFeedback, setProofFeedback] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrier, setCarrier] = useState("Canada Post");
+  const [estimatedDelivery, setEstimatedDelivery] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const loadJob = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/print/jobs/${jobId}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to load job");
+      if (!res.ok) throw new Error(data.error || "Failed to load job");
       setJob(data.data);
-    } catch (err) {
-      toast.error((err as Error).message);
+      setTrackingNumber(data.data.trackingNumber || "");
+      setCarrier(data.data.carrier || "Canada Post");
+      setEstimatedDelivery(data.data.estimatedDelivery ? data.data.estimatedDelivery.slice(0, 10) : "");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load job");
     } finally {
       setLoading(false);
     }
   }, [jobId]);
 
-  useEffect(() => { loadJob(); }, [loadJob]);
+  useEffect(() => {
+    loadJob();
+  }, [loadJob]);
 
-  async function postJob() {
-    await updateStatus("posted");
-  }
+  const acceptedBid = useMemo(() => job?.bids.find((b) => b.isAccepted) ?? null, [job]);
 
-  async function updateStatus(status: string, extra: Record<string, unknown> = {}) {
-    setAdvancing(true);
+  async function patchJob(payload: Record<string, unknown>) {
+    setBusy(true);
     try {
       const res = await fetch(`/api/print/jobs/${jobId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, ...extra }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Update failed");
+      if (!res.ok) throw new Error(data.error || "Update failed");
       setJob(data.data);
-      toast.success("Status updated");
-    } catch (err) {
-      toast.error((err as Error).message);
+      toast.success("Job updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Update failed");
     } finally {
-      setAdvancing(false);
+      setBusy(false);
     }
   }
 
-  async function awardBid(bid: PrintBid) {
+  async function awardBid() {
+    if (!awardConfirm) return;
+    await patchJob({ awardedBidId: awardConfirm.id });
     setAwardConfirm(null);
-    setAdvancing(true);
-    try {
-      const res = await fetch(`/api/print/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ awardedBidId: bid.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Award failed");
-      setJob(data.data);
-      toast.success(`Bid awarded to ${bid.shop.name}`);
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setAdvancing(false);
-    }
   }
 
-  if (loading) return (
-    <div className="space-y-4 animate-fade-in">
-      {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />)}
-    </div>
-  );
+  async function approveProof() {
+    await patchJob({ status: "in_production", notes: "Proof approved" });
+  }
 
-  if (!job) return (
-    <div className="text-center py-12 text-gray-500">Job not found.</div>
-  );
+  async function requestProofChanges() {
+    await patchJob({ status: "quality_check", notes: `Proof changes requested: ${proofFeedback}` });
+    setProofFeedback("");
+  }
 
-  const currentStepIdx = STATUS_FLOW.indexOf(job.status);
-  const nextStatus = STATUS_FLOW[currentStepIdx + 1] as string | undefined;
+  async function saveTracking() {
+    await patchJob({ status: "shipped", trackingNumber, carrier, estimatedDelivery });
+  }
 
-  const acceptedBid = job.bids.find((b) => b.isAccepted);
+  async function markDelivered() {
+    await fetch("/api/print/payment/release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId }),
+    });
+    await patchJob({ status: "delivered" });
+  }
+
+  if (loading) return <div className="h-40 rounded-xl bg-gray-100 animate-pulse" />;
+  if (!job) return <div className="text-sm text-gray-500">Job not found.</div>;
+
+  const currentIdx = STATUS_FLOW.indexOf(job.status);
 
   return (
-    <div className="space-y-5 animate-fade-in max-w-3xl">
-      {/* Header */}
+    <div className="space-y-5 max-w-4xl">
       <div className="flex items-start gap-3">
-        <Link href="/print/jobs">
-          <Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4" /></Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold text-gray-900">{job.title}</h1>
-            <Badge variant={STATUS_VARIANTS[job.status] ?? "default"}>
-              {STATUS_LABELS[job.status] ?? job.status}
-            </Badge>
-          </div>
-          <p className="text-sm text-gray-500">
-            {PRODUCT_LABELS[job.productType] ?? job.productType} · {job.quantity.toLocaleString()} units ·
-            Created {new Date(job.createdAt).toLocaleDateString()}
-          </p>
+        <Link href="/print/jobs"><Button variant="ghost" size="sm"><ArrowLeft className="w-4 h-4" /></Button></Link>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{job.title}</h1>
+          <p className="text-sm text-gray-500">{job.quantity.toLocaleString()} units</p>
         </div>
       </div>
 
-      {/* Progress bar */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex items-center gap-1 overflow-x-auto pb-1">
-            {STATUS_FLOW.map((s, i) => (
-              <div key={s} className="flex items-center gap-1 flex-shrink-0">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                  ${i < currentStepIdx ? "bg-emerald-500 text-white" : i === currentStepIdx ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"}`}>
-                  {i < currentStepIdx ? "✓" : i + 1}
-                </div>
-                <span className={`text-xs whitespace-nowrap ${i === currentStepIdx ? "font-semibold text-blue-600" : "text-gray-400"}`}>
-                  {STATUS_LABELS[s]}
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_FLOW.map((status, idx) => (
+              <div key={status} className="flex items-center gap-2">
+                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${idx <= currentIdx ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-500"}`}>
+                  {idx < currentIdx ? <CheckCircle className="w-4 h-4" /> : idx + 1}
                 </span>
-                {i < STATUS_FLOW.length - 1 && <div className="w-6 h-px bg-gray-200 flex-shrink-0" />}
+                <span className={`text-xs ${idx === currentIdx ? "font-semibold text-gray-900" : "text-gray-500"}`}>{LABELS[status]}</span>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Details */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><h3 className="font-semibold text-sm text-gray-700">Job Details</h3></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {[
-              ["Product", PRODUCT_LABELS[job.productType] ?? job.productType],
-              ["Quantity", job.quantity.toLocaleString()],
-              ["Deadline", job.deadline ? new Date(job.deadline).toLocaleDateString() : "—"],
-              ["Budget", job.budgetMin || job.budgetMax
-                ? `$${job.budgetMin ?? "?"} – $${job.budgetMax ?? "?"}`
-                : "Not specified"],
-            ].map(([label, value]) => (
-              <div key={label} className="flex justify-between">
-                <span className="text-gray-500">{label}</span>
-                <span className="text-gray-900 font-medium">{value}</span>
-              </div>
-            ))}
-            {job.description && (
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-gray-500 text-xs mb-1">Description</p>
-                <p className="text-gray-700">{job.description}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><h3 className="font-semibold text-sm text-gray-700">Delivery</h3></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {(job.deliveryAddress || job.deliveryCity) ? (
-              <p className="text-gray-700">
-                {[job.deliveryAddress, job.deliveryCity, job.deliveryPostal].filter(Boolean).join(", ")}
-              </p>
-            ) : (
-              <p className="text-gray-400">No delivery address set</p>
-            )}
-            {job.fileUrl && (
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-1">Design File</p>
-                <a href={job.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs flex items-center gap-1 hover:underline">
-                  <ExternalLink className="w-3 h-3" /> View File
-                </a>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Actions */}
-      {job.status === "draft" && (
-        <Card className="border-blue-200 bg-blue-50/30">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium text-blue-900">This job is a draft</p>
-              <p className="text-sm text-blue-700">Post it to the marketplace to start receiving bids from print shops.</p>
-            </div>
-            <Button onClick={postJob} loading={advancing} size="sm">
-              <Send className="w-4 h-4" />Post Job
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {job.status === "awarded" && acceptedBid && (
-        <Card className="border-emerald-200 bg-emerald-50/30">
-          <CardContent className="flex items-center gap-4 py-4">
-            <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium text-emerald-900">Awarded to {acceptedBid.shop.name}</p>
-              <p className="text-sm text-emerald-700">${acceptedBid.price} · {acceptedBid.turnaround} day turnaround</p>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => updateStatus("in_production")} loading={advancing}>
-                <Package className="w-4 h-4" /> Mark In Production
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {job.status === "in_production" && (
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => updateStatus("ready")} loading={advancing}>
-            <CheckCircle className="w-4 h-4" />Mark Ready
-          </Button>
-        </div>
-      )}
-
-      {job.status === "ready" && (
-        <div className="flex gap-2">
-          <Button onClick={() => updateStatus("delivered")} loading={advancing}>
-            <Truck className="w-4 h-4" />Mark Delivered
-          </Button>
-        </div>
-      )}
-
-      {!["cancelled", "delivered"].includes(job.status) && (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => updateStatus("cancelled")} loading={advancing} className="text-red-500 hover:text-red-600">
-            <Archive className="w-4 h-4" />Cancel Job
-          </Button>
-        </div>
-      )}
-
-      {/* Bids */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-gray-900">
-            Bids {job._count.bids > 0 && <span className="text-gray-400 font-normal">({job._count.bids})</span>}
-          </h2>
-          {job.status === "bidding" && (
-            <Badge variant="warning">Accepting bids</Badge>
-          )}
-        </div>
-
-        {job.bids.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-gray-400">
-              <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">
-                {job.status === "draft" ? "Post this job to start receiving bids." :
-                 job.status === "posted" ? "Waiting for shops to submit bids..." :
-                 "No bids received."}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {job.bids.map((bid) => (
-              <Card key={bid.id} className={bid.isAccepted ? "border-emerald-300 bg-emerald-50/20" : ""}>
-                <CardContent className="flex items-start gap-4 py-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{bid.shop.name}</p>
+        <h2 className="font-semibold text-gray-900 mb-3">Bids</h2>
+        <div className="space-y-3">
+          {job.bids.map((bid) => (
+            <Card key={bid.id} className={bid.isAccepted ? "border-emerald-400" : ""}>
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold">{bid.shop.name}</p>
                       {bid.shop.isVerified && <Badge variant="success">Verified</Badge>}
-                      {bid.isAccepted && <Badge variant="success">Accepted</Badge>}
+                      {bid.isAccepted && <Badge variant="success">Awarded</Badge>}
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <span className="font-semibold text-gray-900 text-base">${bid.price.toFixed(2)}</span>
-                      <span>·</span>
-                      <span>{bid.turnaround} day{bid.turnaround !== 1 ? "s" : ""} turnaround</span>
-                      {bid.shop.rating && (
-                        <>
-                          <span>·</span>
-                          <span className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                            {bid.shop.rating.toFixed(1)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    {bid.notes && <p className="text-xs text-gray-500 mt-1">{bid.notes}</p>}
-                    {bid.fileUrl && (
-                      <a href={bid.fileUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
-                        <ExternalLink className="w-3 h-3" />View proof
-                      </a>
+                    <p className="text-sm text-gray-600">{bid.shop.provincesServed?.join(", ") || "Canada"}</p>
+                    <p className="text-sm text-gray-600 flex items-center gap-1"><Star className="w-3 h-3 text-amber-500" />{bid.shop.rating?.toFixed(1) || "New"}</p>
+                    <p className="text-sm mt-1">{bid.notes || "No shop message"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">${bid.price.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Per unit ${(bid.price / Math.max(job.quantity, 1)).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Turnaround {bid.turnaround} days</p>
+                    <Badge variant="info" className="mt-1">Proof included: {bid.fileUrl ? "Yes" : "No"}</Badge>
+                    {!bid.isAccepted && ["posted", "bidding"].includes(job.status) && (
+                      <Button size="sm" className="mt-2" onClick={() => setAwardConfirm(bid)}>Award This Bid</Button>
                     )}
                   </div>
-                  {!bid.isAccepted && ["posted", "bidding"].includes(job.status) && (
-                    <Button
-                      size="sm"
-                      onClick={() => setAwardConfirm(bid)}
-                    >
-                      Award Bid
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {job.bids.length === 0 && <p className="text-sm text-gray-500">No bids yet.</p>}
+        </div>
       </div>
 
-      {/* Award confirmation modal */}
+      {job.status === "awarded" && (
+        <Card>
+          <CardHeader><h3 className="font-semibold">Proof Approval</h3></CardHeader>
+          <CardContent className="space-y-3">
+            {acceptedBid?.fileUrl ? <img src={acceptedBid.fileUrl} alt="Proof" className="rounded-lg border border-gray-200" /> : <p className="text-sm text-gray-500">No proof uploaded yet.</p>}
+            <div className="flex gap-2">
+              <Button onClick={approveProof} loading={busy}>Approve Proof</Button>
+              <Button variant="outline" onClick={requestProofChanges} loading={busy}>Request Changes</Button>
+            </div>
+            <Textarea rows={3} value={proofFeedback} onChange={(e) => setProofFeedback(e.target.value)} placeholder="Requested proof changes..." />
+          </CardContent>
+        </Card>
+      )}
+
+      {["in_production", "quality_check", "shipped"].includes(job.status) && (
+        <Card>
+          <CardHeader><h3 className="font-semibold">Tracking</h3></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Input value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="Tracking number" />
+              <Select value={carrier} onChange={(e) => setCarrier(e.target.value)}>
+                <option>Canada Post</option>
+                <option>UPS</option>
+                <option>FedEx</option>
+                <option>Purolator</option>
+              </Select>
+              <Input type="date" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={saveTracking} loading={busy}><Truck className="w-4 h-4 mr-1" />Save Tracking</Button>
+              <Button onClick={markDelivered} loading={busy}>Mark as Delivered</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {job.status === "delivered" && (
+        <Link href={`/print/jobs/new?product=${job.productType.replace(/_/g, "-")}`}>
+          <Button variant="outline"><RotateCcw className="w-4 h-4 mr-1" />Reorder</Button>
+        </Link>
+      )}
+
       <Modal open={!!awardConfirm} onClose={() => setAwardConfirm(null)} title="Award this bid?">
         {awardConfirm && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              You are awarding the job <strong>{job.title}</strong> to{" "}
-              <strong>{awardConfirm.shop.name}</strong> for{" "}
-              <strong>${awardConfirm.price.toFixed(2)}</strong>.
-            </p>
-            <p className="text-sm text-gray-500">
-              {awardConfirm.turnaround}-day turnaround. Contact the shop directly to confirm payment and next steps.
-            </p>
-            <div className="flex gap-3 justify-end">
+            <p className="text-sm text-gray-600">Award <strong>{awardConfirm.shop.name}</strong> for <strong>${awardConfirm.price.toFixed(2)}</strong>?</p>
+            <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAwardConfirm(null)}>Cancel</Button>
-              <Button onClick={() => awardBid(awardConfirm)} loading={advancing}>
-                <CheckCircle className="w-4 h-4" />Confirm Award
-              </Button>
+              <Button onClick={awardBid} loading={busy}>Confirm Award</Button>
             </div>
           </div>
         )}

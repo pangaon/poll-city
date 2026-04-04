@@ -26,7 +26,8 @@ const STATUS_LABELS: Record<string, string> = {
   bidding: "Bidding",
   awarded: "Awarded",
   in_production: "In Production",
-  ready: "Ready",
+  quality_check: "Quality Check",
+  shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
@@ -37,7 +38,8 @@ const STATUS_VARIANTS: Record<string, "default" | "info" | "warning" | "success"
   bidding: "warning",
   awarded: "success",
   in_production: "info",
-  ready: "success",
+  quality_check: "info",
+  shipped: "info",
   delivered: "success",
   cancelled: "danger",
 };
@@ -101,7 +103,7 @@ export default function PrintJobsClient({ campaignId }: Props) {
 
       {/* Status filter tabs */}
       <div className="flex flex-wrap gap-2">
-        {["all", "draft", "posted", "bidding", "awarded", "in_production", "ready", "delivered", "cancelled"].map((s) => (
+        {["all", "draft", "posted", "bidding", "awarded", "in_production", "quality_check", "shipped", "delivered", "cancelled"].map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}

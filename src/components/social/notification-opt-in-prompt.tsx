@@ -54,6 +54,8 @@ export default function NotificationOptInPrompt({
   onDismiss,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [optedIn, setOptedIn] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   async function handleOptIn() {
     if (!("Notification" in window)) {
@@ -78,7 +80,8 @@ export default function NotificationOptInPrompt({
       });
 
       if (res.ok) {
-        toast.success(`You'll receive election reminders from ${candidateName}!`);
+        toast.success(`You will receive election day reminders from ${candidateName}`);
+        setOptedIn(true);
       } else {
         const data = await res.json();
         toast.error(data.error ?? "Could not save notification preference");
@@ -88,7 +91,26 @@ export default function NotificationOptInPrompt({
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
-      onDismiss();
+    }
+  }
+
+  async function sendTestNow() {
+    setTesting(true);
+    try {
+      const res = await fetch("/api/notifications/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Unable to send test notification");
+      }
+      toast.success("Test notification sent to your device");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send test notification");
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -106,14 +128,16 @@ export default function NotificationOptInPrompt({
           </button>
           <Bell className="w-7 h-7 mb-2 opacity-90" />
           <h2 className="font-bold text-base leading-snug">
-            Get election day reminders from {candidateName}?
+            {optedIn ? `You're opted in for ${candidateName}` : `Get election day reminders from ${candidateName}?`}
           </h2>
         </div>
 
         {/* Body */}
         <div className="px-5 py-4 space-y-3">
           <p className="text-sm text-gray-700 leading-relaxed">
-            We'll notify you where to vote and when polls close.
+            {optedIn
+              ? `You will receive election day reminders from ${candidateName}.`
+              : "We'll notify you where to vote and when polls close."}
           </p>
 
           <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
@@ -133,9 +157,9 @@ export default function NotificationOptInPrompt({
           </div>
 
           <p className="text-xs text-gray-400">
-            You can unsubscribe at any time from your{" "}
+            Manage notification preferences at{" "}
             <a href="/social/profile" className="text-blue-600 underline underline-offset-2">
-              profile
+              /social/profile
             </a>
             .
           </p>
@@ -143,20 +167,40 @@ export default function NotificationOptInPrompt({
 
         {/* Actions */}
         <div className="px-5 pb-5 flex gap-2">
-          <button
-            onClick={onDismiss}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold active:scale-95 transition-all"
-          >
-            Maybe later
-          </button>
-          <button
-            onClick={handleOptIn}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Bell className="w-4 h-4" />
-            {loading ? "Saving…" : "Yes, notify me"}
-          </button>
+          {!optedIn && (
+            <button
+              onClick={onDismiss}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold active:scale-95 transition-all"
+            >
+              Maybe later
+            </button>
+          )}
+          {optedIn ? (
+            <>
+              <button
+                onClick={sendTestNow}
+                disabled={testing}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all"
+              >
+                {testing ? "Sending…" : "Send Test Notification"}
+              </button>
+              <button
+                onClick={onDismiss}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold active:scale-95 transition-all"
+              >
+                Done
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleOptIn}
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Bell className="w-4 h-4" />
+              {loading ? "Saving…" : "Yes, notify me"}
+            </button>
+          )}
         </div>
       </div>
     </div>

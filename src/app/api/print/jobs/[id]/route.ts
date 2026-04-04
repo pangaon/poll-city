@@ -60,6 +60,9 @@ export async function PATCH(
     budgetMin: number;
     budgetMax: number;
     notes: string;
+    trackingNumber: string;
+    carrier: string;
+    estimatedDelivery: string;
   }>;
 
   try {
@@ -96,6 +99,9 @@ export async function PATCH(
       ...(body.budgetMin !== undefined ? { budgetMin: body.budgetMin } : {}),
       ...(body.budgetMax !== undefined ? { budgetMax: body.budgetMax } : {}),
       ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      ...(body.trackingNumber !== undefined ? { trackingNumber: body.trackingNumber } : {}),
+      ...(body.carrier !== undefined ? { carrier: body.carrier } : {}),
+      ...(body.estimatedDelivery !== undefined ? { estimatedDelivery: new Date(body.estimatedDelivery) } : {}),
     },
     include: {
       bids: { include: { shop: true } },

@@ -1,5 +1,102 @@
 # Poll City User Guide
 
+## April 2026 Feature SOP Addendum
+
+### Officials Directory SOP (`/officials`)
+
+1. Open the public Officials Directory at `/officials`.
+2. Use the search box to find officials by name (search is debounced automatically).
+3. Filter by Province to limit results to a province.
+4. Filter by Level (Federal, Provincial, Municipal).
+5. Filter by Role (Mayor, Councillor, MP, MPP, Trustee, Reeve, etc.).
+6. Use Municipality search to narrow district/municipality matching.
+7. Review official cards:
+   - profile photo or initials avatar fallback
+   - title and district
+   - province and level badges
+   - verified badge for claimed profiles
+   - unclaimed badge for unclaimed profiles
+8. Click View Profile to open the linked candidate profile.
+9. Click Claim Profile on unclaimed records to start profile claim.
+
+### Push Notifications SOP (Campaign Managers)
+
+1. Open Notifications at `/notifications`.
+2. Click Send Test Notification to validate your browser subscription.
+3. Use Send Notification for immediate sends:
+   - enter title and message
+   - optionally filter by ward, riding, or role
+   - submit send
+4. Review Delivery Statistics cards:
+   - total subscribers sent to
+   - delivered count
+   - failed count
+   - delivery rate percentage
+5. Open the Schedule tab for scheduled campaigns.
+6. Select send date and time.
+7. Enter message (max 120 characters) and check live counter.
+8. Select audience: All Subscribers or Specific Tags.
+9. Review phone preview block.
+10. Click Schedule.
+11. In Scheduled Notifications, click Cancel to cancel pending sends.
+12. In Delivery Statistics & History, verify each send's delivered/failed totals.
+
+### Voter Opt-In Confirmation SOP (Poll City Social)
+
+1. On `/social/officials/[id]`, voters can opt in after following/supporting.
+2. Confirm opt-in prompt to subscribe to election day reminders.
+3. Verify success message: "You will receive election day reminders from [candidate name]".
+4. Click Send Test Notification to verify push delivery on device.
+5. Use `/social/profile` to manage notification preferences.
+
+### Print Marketplace SOP (Campaigns)
+
+1. Open Print at `/print`.
+2. Review 8 product categories and click View Product for specs/pricing.
+3. Start a new job at `/print/jobs/new`.
+4. Complete Step 1 Product Selection.
+5. Complete Step 2 Specifications:
+   - quantity
+   - size
+   - stock/coating options
+   - turnaround (Rush, Standard, Economy)
+   - monitor running total and unit price
+6. Complete Step 3 Design:
+   - upload print-ready file, or
+   - use template links, or
+   - provide designer brief and email
+7. Complete Step 4 Delivery Details:
+   - address, city, province, postal code
+   - requested date
+   - special instructions
+8. Complete Step 5 Review and Post.
+9. Click Post to Marketplace.
+10. Open `/print/jobs/[id]` to manage bids and production status.
+
+### Print Marketplace SOP (Bid Award, Proof, Tracking)
+
+1. On `/print/jobs/[id]`, compare bid cards by price, turnaround, rating, and notes.
+2. Click Award This Bid on the selected vendor.
+3. In Proof Approval, review proof and choose:
+   - Approve Proof to proceed to production, or
+   - Request Changes with feedback
+4. In Tracking section, enter tracking number and carrier.
+5. Save tracking and monitor shipped status.
+6. Click Mark as Delivered when received.
+7. Use Reorder on delivered jobs to prefill a new request.
+
+### Print Shop SOP (Vendor Registration + Stripe Connect)
+
+1. Open `/print/shops/register`.
+2. Enter business profile (business/contact/email/phone/address).
+3. Select provinces served.
+4. Select product specialties (matching all 8 products).
+5. Enter minimum order details and average response time.
+6. Add portfolio URLs.
+7. Click Register Shop.
+8. Click Stripe Connect Onboarding to start payouts onboarding.
+9. Complete Stripe onboarding flow and return to Poll City.
+
 ## Section 1: Getting Started
 
 ### How to Create Your Poll City Account

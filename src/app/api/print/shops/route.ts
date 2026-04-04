@@ -33,3 +33,50 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ data: shops });
 }
+
+export async function POST(req: NextRequest) {
+  const { error } = await apiAuth(req);
+  if (error) return error;
+
+  let body: {
+    name?: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    description?: string;
+    provincesServed?: string[];
+    specialties?: PrintProductType[];
+    minimumOrder?: number;
+    averageResponseHours?: number;
+    portfolio?: string[];
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!body.name || !body.email) {
+    return NextResponse.json({ error: "Business name and email are required" }, { status: 400 });
+  }
+
+  const shop = await prisma.printShop.create({
+    data: {
+      name: body.name,
+      contactName: body.contactName ?? null,
+      email: body.email,
+      phone: body.phone ?? null,
+      website: body.website ?? null,
+      description: body.description ?? null,
+      provincesServed: body.provincesServed ?? [],
+      serviceAreas: body.provincesServed ?? [],
+      specialties: body.specialties ?? [],
+      averageResponseHours: body.averageResponseHours ?? null,
+      portfolio: body.portfolio ?? [],
+    },
+  });
+
+  return NextResponse.json({ data: shop }, { status: 201 });
+}
