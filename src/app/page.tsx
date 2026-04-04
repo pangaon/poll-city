@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui";
+import { Card, CardContent, CardHeader } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { CheckCircle, Users, MapPin, BarChart3, Zap, Shield } from "lucide-react";
 
 export default function MarketingPage() {
@@ -69,55 +69,55 @@ export default function MarketingPage() {
             <Card>
               <CardHeader>
                 <Users className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>Voter CRM</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">Voter CRM</h3>
+                <p className="text-gray-600">
                   Track every interaction, support level, and contact detail for your entire voter base.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
                 <MapPin className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>Canvassing & GOTV</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">Canvassing & GOTV</h3>
+                <p className="text-gray-600">
                   Door-to-door tracking, walk lists, and get-out-the-vote coordination for maximum turnout.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
                 <BarChart3 className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>Analytics Dashboard</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">Analytics Dashboard</h3>
+                <p className="text-gray-600">
                   Real-time insights into support rates, volunteer activity, and campaign progress.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
                 <Zap className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>AI Campaign Assistant</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">AI Campaign Assistant</h3>
+                <p className="text-gray-600">
                   Get strategic advice, script suggestions, and automated task prioritization.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
                 <Shield className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>Sign & Volunteer Tracking</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">Sign & Volunteer Tracking</h3>
+                <p className="text-gray-600">
                   Manage sign placements, volunteer schedules, and campaign logistics.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
                 <CheckCircle className="w-10 h-10 text-blue-600 mb-2" />
-                <CardTitle>Mobile Optimized</CardTitle>
-                <CardDescription>
+                <h3 className="text-lg font-semibold">Mobile Optimized</h3>
+                <p className="text-gray-600">
                   Full mobile canvassing interface for volunteers working from their phones.
-                </CardDescription>
+                </p>
               </CardHeader>
             </Card>
           </div>
@@ -172,12 +172,12 @@ export default function MarketingPage() {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <Card className="border-2 border-green-200">
               <CardHeader>
-                <CardTitle className="text-center">Free Trial</CardTitle>
+                <h3 className="text-xl font-semibold text-center">Free Trial</h3>
                 <div className="text-center">
                   <span className="text-3xl font-bold">$0</span>
                   <span className="text-gray-500">/14 days</span>
                 </div>
-                <CardDescription className="text-center">Perfect for getting started</CardDescription>
+                <p className="text-center text-gray-600">Perfect for getting started</p>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -194,12 +194,12 @@ export default function MarketingPage() {
             <Card className="border-2 border-blue-200 relative">
               <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-600">Most Popular</Badge>
               <CardHeader>
-                <CardTitle className="text-center">Starter</CardTitle>
+                <h3 className="text-xl font-semibold text-center">Starter</h3>
                 <div className="text-center">
                   <span className="text-3xl font-bold">$49</span>
                   <span className="text-gray-500">/month</span>
                 </div>
-                <CardDescription className="text-center">For growing campaigns</CardDescription>
+                <p className="text-center text-gray-600">For growing campaigns</p>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -216,12 +216,12 @@ export default function MarketingPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-center">Pro</CardTitle>
+                <h3 className="text-xl font-semibold text-center">Pro</h3>
                 <div className="text-center">
                   <span className="text-3xl font-bold">$99</span>
                   <span className="text-gray-500">/month</span>
                 </div>
-                <CardDescription className="text-center">For professional campaigns</CardDescription>
+                <p className="text-center text-gray-600">For professional campaigns</p>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">

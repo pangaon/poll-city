@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui";
+import { Card, CardContent, CardHeader } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { CheckCircle, CreditCard, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,10 +69,10 @@ export default function BillingClient({
       {/* Current Plan */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <h3 className="flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
             Current Plan
-          </CardTitle>
+          </h3>
         </CardHeader>
         <CardContent>
           {subscription ? (
@@ -123,8 +123,8 @@ export default function BillingClient({
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="border-2 border-blue-200">
               <CardHeader>
-                <CardTitle>Starter</CardTitle>
-                <CardDescription>$49/month</CardDescription>
+                <h3>Starter</h3>
+                <p>$49/month</p>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 mb-4">
@@ -145,8 +145,8 @@ export default function BillingClient({
 
             <Card>
               <CardHeader>
-                <CardTitle>Pro</CardTitle>
-                <CardDescription>$99/month</CardDescription>
+                <h3>Pro</h3>
+                <p>$99/month</p>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 mb-4">
@@ -173,7 +173,7 @@ export default function BillingClient({
       {/* Account Info */}
       <Card>
         <CardHeader>
-          <CardTitle>Account Information</CardTitle>
+          <h3>Account Information</h3>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

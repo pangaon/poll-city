@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui";
+import { Card, CardContent, CardHeader } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { MapPin, Phone, CheckCircle, Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
