@@ -202,6 +202,10 @@ model User {
   gotvBatchesUploaded  GotvBatch[]          @relation("UploadedGotvBatches")
   subscription         Subscription?
 
+  // Turf canvassing
+  turfAssignments      Turf[]              @relation("TurfAssignee")
+  canvasserLocation    CanvasserLocation?
+
   // Social side
   pollResponses        PollResponse[]
   supportSignals       SupportSignal[]
@@ -261,6 +265,7 @@ model Campaign {
   questions       Question[]
   pushSubscriptions PushSubscription[]
   printJobs         PrintJob[]
+  turfs             Turf[]
 
   @@unique([customDomain])
   @@map("campaigns")
@@ -306,9 +311,18 @@ model Official {
   claimedByUserId  String?
   subscriptionStatus String?       @default("free") // free | pro | verified
   isActive         Boolean         @default(true)
+  // Social media
+  twitter          String?
+  facebook         String?
+  instagram        String?
+  linkedIn         String?
+  // Extended identity fields
+  firstName        String?
+  lastName         String?
+  address          String?
   // External data provenance
   externalId       String?         // e.g. Represent API slug
-  externalSource   String?         // "represent_opennorth" | "manual"
+  externalSource   String?         // "represent_opennorth" | "manual" | "open_north"
   termStart        DateTime?
   termEnd          DateTime?
   createdAt        DateTime        @default(now())
@@ -453,6 +467,7 @@ model Contact {
   donations         Donation[]
   gotvRecords       GotvRecord[]
   customFieldValues CustomFieldValue[]
+  turfStops         TurfStop[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -1244,6 +1259,14 @@ model ConsentLog {
 // Campaigns post print jobs, registered print shops bid, campaign awards bid.
 // ─────────────────────────────────────────────────────────────────────────────
 
+enum TurfStatus {
+  draft
+  assigned
+  in_progress
+  completed
+  reassigned
+}
+
 enum PrintProductType {
   door_hanger
   lawn_sign
@@ -1336,4 +1359,65 @@ model PrintBid {
   @@index([jobId])
   @@index([shopId])
   @@map("print_bids")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TURF CUTTING & ROUTE OPTIMIZATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Turf {
+  id             String     @id @default(cuid())
+  campaignId     String
+  name           String
+  ward           String?
+  pollNumber     String?
+  streets        String[]   @default([])
+  oddEven        String     @default("all")
+  status         TurfStatus @default(draft)
+  assignedUserId String?
+  totalStops     Int        @default(0)
+  completedStops Int        @default(0)
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  campaign       Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedUser   User?      @relation("TurfAssignee", fields: [assignedUserId], references: [id])
+  stops          TurfStop[]
+
+  @@index([campaignId])
+  @@map("turfs")
+}
+
+model TurfStop {
+  id          String    @id @default(cuid())
+  turfId      String
+  contactId   String
+  order       Int
+  visited     Boolean   @default(false)
+  visitedAt   DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  turf        Turf      @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  contact     Contact   @relation(fields: [contactId], references: [id])
+
+  @@unique([turfId, contactId])
+  @@index([turfId])
+  @@map("turf_stops")
+}
+
+model CanvasserLocation {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  campaignId String
+  lat        Float
+  lng        Float
+  accuracy   Float?
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("canvasser_locations")
 }

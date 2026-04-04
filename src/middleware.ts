@@ -46,9 +46,13 @@ export default withAuth(
           "/api/social",      // social signals (auth handled inside route)
           "/candidates",      // public candidate pages
           "/api/public",      // public API routes
+          "/terms",
+          "/privacy-policy",
+          "/pricing",
         ];
 
-        if (publicPaths.some(p => path.startsWith(p))) {
+        // Root marketing site is always public
+        if (path === "/" || publicPaths.some(p => path.startsWith(p))) {
           return true;
         }
 

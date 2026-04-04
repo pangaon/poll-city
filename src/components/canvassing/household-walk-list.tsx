@@ -7,6 +7,34 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Filter, Navigation, Phone, ChevronDown, ChevronUp, Users, WifiOff } from "lucide-react";
+
+// Post canvasser GPS location to manager map (every 30s while on walk list)
+function useGpsTracking(campaignId: string) {
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+    let intervalId: ReturnType<typeof setInterval>;
+
+    function postLocation(pos: GeolocationPosition) {
+      fetch("/api/canvasser/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        }),
+      }).catch(() => { /* silent — offline */ });
+    }
+
+    navigator.geolocation.getCurrentPosition(postLocation, () => {}, { enableHighAccuracy: false });
+    intervalId = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(postLocation, () => {}, { enableHighAccuracy: true });
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [campaignId]);
+}
 import { SupportLevelBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { SupportLevel, SUPPORT_LEVEL_LABELS } from "@/types";
@@ -103,6 +131,7 @@ function groupContacts(contacts: (Person & {
 }
 
 export default function HouseholdWalkList({ campaignId }: Props) {
+  useGpsTracking(campaignId);
   const [households, setHouseholds] = useState<Household[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);

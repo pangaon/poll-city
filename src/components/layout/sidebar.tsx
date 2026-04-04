@@ -17,6 +17,7 @@ const navItems = [
   { href: "/volunteers", icon: Users, label: "Volunteers" },
   { href: "/canvassing", icon: Map, label: "Canvassing" },
   { href: "/canvassing/walk", icon: Map, label: "Walk List" },
+  { href: "/canvassing/turf-builder", icon: Map, label: "Turf Builder" },
   { href: "/notifications", icon: Bell, label: "Notifications" },
   { href: "/polls", icon: BarChart3, label: "Polls" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },

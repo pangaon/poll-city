@@ -240,6 +240,42 @@ async function main() {
   console.log("✅ Custom field definitions seeded");
 
   console.log("✅ Signals, questions, follows, volunteer profile, activity logs\n");
+
+  // ── Demo Campaign for admin@pollcity.dev ───────────────────────────────────
+  const demoCampaign = await prisma.campaign.upsert({
+    where: { slug: "demo-campaign-2026" },
+    update: { isPublic: true, isActive: true },
+    create: {
+      name: "Demo Campaign 2026",
+      slug: "demo-campaign-2026",
+      description: "Demo campaign for platform evaluation and testing.",
+      electionType: ElectionType.municipal,
+      jurisdiction: "Ward 1",
+      electionDate: new Date("2026-10-26"),
+      candidateName: "Alex Admin",
+      candidateTitle: "Candidate",
+      candidateBio: "Alex Admin is running for Ward 1 council to demonstrate the full capabilities of Poll City.",
+      primaryColor: "#1e40af",
+      isPublic: true,
+      isActive: true,
+    },
+  });
+
+  // Assign admin as ADMIN on the demo campaign
+  await prisma.membership.upsert({
+    where: { userId_campaignId: { userId: admin.id, campaignId: demoCampaign.id } },
+    update: { role: Role.ADMIN },
+    create: { userId: admin.id, campaignId: demoCampaign.id, role: Role.ADMIN },
+  });
+
+  // Set admin's active campaign so they land on demo campaign after login
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { activeCampaignId: demoCampaign.id },
+  });
+
+  console.log("✅ Demo Campaign 2026 created, admin active campaign set\n");
+
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
   console.log("CAMPAIGN APP:  admin@pollcity.dev / password123");

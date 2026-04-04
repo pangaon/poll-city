@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
     where: { postalPrefix: prefix },
   });
 
-  // 2) If nothing in DB, call Represent API and cache the result
+  // 2) If nothing in DB, try live lookup — fall back to "no data" gracefully if unreachable
   if (districts.length === 0) {
     const live = await lookupFromRepresent(prefix);
     if (live) {
@@ -157,10 +157,14 @@ export async function GET(req: NextRequest) {
       // Re-fetch from DB after cache write
       districts = await prisma.geoDistrict.findMany({ where: { postalPrefix: prefix } });
     }
+    // If live lookup failed (API unreachable), districts remains empty — handled below
   }
 
   if (districts.length === 0) {
-    return NextResponse.json({ data: null, message: `No district data found for ${prefix}` });
+    return NextResponse.json({
+      data: null,
+      message: `No district data found for postal code ${prefix}. This postal code may not be in our database yet, or the boundary data lookup service may be temporarily unavailable.`,
+    });
   }
 
   const municipal = districts.find((d) => d.level === "municipal");
