@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Users, Map, CheckSquare, Upload,
+  LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
   Settings, Sparkles, ChevronDown, Vote, Menu, X,
   Phone, Search, Target, Zap, DollarSign
 } from "lucide-react";
@@ -12,6 +12,7 @@ import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/campaigns", icon: Building2, label: "Campaigns" },
   { href: "/contacts", icon: Users, label: "Contacts" },
   { href: "/volunteers", icon: Users, label: "Volunteers" },
   { href: "/canvassing", icon: Map, label: "Canvassing" },
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/lookup", icon: Search, label: "Address Lookup" },
   { href: "/capture", icon: Zap, label: "Quick Capture" },
   { href: "/import-export", icon: Upload, label: "Import / Export" },
+  { href: "/admin", icon: Shield, label: "Admin" },
   { href: "/ai-assist", icon: Sparkles, label: "AI Assist" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
