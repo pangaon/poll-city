@@ -1,11 +1,7 @@
 "use client";
-import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { signOut } from "next-auth/react";
-import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { LogOut, User, ChevronDown } from "lucide-react";
-import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useState } from "react";
-import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { Role } from "@prisma/client";
 
 interface TopBarProps {
@@ -33,7 +29,6 @@ export default function TopBar({ user }: TopBarProps) {
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
       <div className="flex-1" />
-
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
