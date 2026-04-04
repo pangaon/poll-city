@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v2.1.1 Combined Release Note — April 4, 2026
+
+This deployment combines the latest dashboard, officials directory, and platform wiring updates into one production push.
+
+Quick checks after deploy:
+
+1. Verify Dashboard loads with war-room overview cards.
+2. Verify Officials Directory search and profile links open correctly.
+3. Verify push notification subscription setup still works in browser settings and notifications screens.
+
 ## v2.0.0 Feature SOP Addendum — April 4, 2026
 
 ### Campaign Website URL Card SOP (`/settings/public-page`)

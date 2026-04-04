@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
   const pageSize = 24;
 
-  const where: Record<string, unknown> = { isActive: true };
+  const where: Record<string, unknown> = {};
 
   if (search) {
     where.OR = [
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const [officials, total] = await Promise.all([
     prisma.official.findMany({
       where,
-      orderBy: [{ isClaimed: "desc" }, { name: "asc" }],
+      orderBy: [{ isClaimed: "desc" }, { isActive: "desc" }, { name: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
@@ -39,6 +39,9 @@ export async function GET(req: NextRequest) {
         district: true,
         province: true,
         isClaimed: true,
+        isActive: true,
+        partyName: true,
+        party: true,
         photoUrl: true,
         twitter: true,
         facebook: true,
@@ -58,36 +61,53 @@ export async function GET(req: NextRequest) {
     prisma.official.count({ where }),
   ]);
 
-  const [provinceRows, roleRows] = await Promise.all([
+  const [provinceRows] = await Promise.all([
     prisma.official.findMany({
-      where: { isActive: true, province: { not: null } },
+      where: { province: { not: null } },
       select: { province: true },
       distinct: ["province"],
       orderBy: { province: "asc" },
     }),
-    prisma.official.findMany({
-      where: { isActive: true },
-      select: { title: true },
-      distinct: ["title"],
-      orderBy: { title: "asc" },
-    }),
   ]);
 
   const mapped = officials.map((o) => ({
-    ...o,
+    id: o.id,
+    name: o.name,
+    title: o.title,
+    level: String(o.level),
+    district: o.district,
+    province: o.province,
+    isClaimed: o.isClaimed,
+    isActive: o.isActive,
+    partyName: o.partyName,
+    party: o.party,
+    photoUrl: o.photoUrl,
+    twitter: o.twitter,
+    facebook: o.facebook,
+    instagram: o.instagram,
+    linkedIn: o.linkedIn,
+    website: o.website,
+    email: o.email,
+    phone: o.phone,
+    externalId: o.externalId,
     campaignSlug: o.campaigns[0]?.slug ?? null,
   }));
 
-  return NextResponse.json({
-    data: mapped,
-    total,
-    page,
-    pageSize,
-    pages: Math.ceil(total / pageSize),
-    filters: {
-      provinces: provinceRows.map((p) => p.province).filter((v): v is string => Boolean(v)),
-      levels: ["federal", "provincial", "municipal"],
-      roles: roleRows.map((r) => r.title).filter((v): v is string => Boolean(v)),
+  return NextResponse.json(
+    {
+      officials: mapped,
+      total,
+      page,
+      pageSize,
+      pages: Math.ceil(total / pageSize),
+      filterOptions: {
+        provinces: provinceRows.map((p) => p.province).filter((v): v is string => Boolean(v)),
+        levels: ["federal", "provincial", "municipal"],
+        roles: [],
+      },
     },
-  });
+    {
+      headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=600" },
+    }
+  );
 }

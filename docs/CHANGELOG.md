@@ -1,5 +1,22 @@
 # Poll City Changelog
 
+## [2.1.1] - April 4, 2026
+
+### Combined Push: Dashboard + Officials + Platform Wiring
+
+- Consolidated and shipped the current combined workstream from both Copilot and Claude Code.
+- Dashboard war-room enhancements remain active and build-clean.
+- Officials directory and officials profile routing/data updates included in this push.
+- Middleware and deployment wiring updates included for production flow alignment.
+- Added `NEXT_PUBLIC_VAPID_PUBLIC_KEY` passthrough in Next config for client notification setup.
+
+### Quality Gates
+
+- `npm exec tsc -- --noEmit`: pass.
+- `npm run build`: pass.
+
+---
+
 ## [2.0.0] - April 4, 2026
 
 ### v2.0.0 — World-Class Officials Directory, Individual Profiles, Party Colours, Candidate Pages, Performance

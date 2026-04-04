@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   Users, ThumbsUp, HelpCircle, ThumbsDown, Bell, CheckSquare,
   Clock, ArrowRight, Settings, GripVertical, X, DollarSign,
   MapPin, UserCheck, Target, Phone,
+  PlusCircle, Send, BarChart2, Sunrise, Sunset,
 } from "lucide-react";
 import { StatCard, Card, CardHeader, CardContent, Badge } from "@/components/ui";
 import { formatRelative, fullName } from "@/lib/utils";
@@ -36,7 +37,7 @@ interface DashboardProps {
       user: { name: string | null };
     }[];
   };
-  campaign: { name: string; candidateName: string | null; electionDate: Date | null };
+  campaign: { id: string; name: string; candidateName: string | null; electionDate: Date | null; isPublic?: boolean | null };
   user: { id: string; name?: string | null; role: string };
   official?: OfficialInfo;
 }
@@ -115,6 +116,8 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   const [activePreset, setActivePreset] = useState("Overview");
   const [extraData, setExtraData] = useState({ donations: 0, signs: 0, doorsToday: 0, gotvPct: 0, callPct: 0 });
   const [officialMode, setOfficialMode] = useState(false);
+  const [volunteerCount, setVolunteerCount] = useState(0);
+  const [tick, setTick] = useState(0);
   const dragId = useRef<WidgetId | null>(null);
 
   // Load official mode preference
@@ -133,6 +136,11 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       localStorage.setItem(`${OFFICIAL_MODE_KEY}-${user.id}`, next ? "constituent" : "campaign");
     } catch { /* ignore */ }
   }
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((v) => v + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const supportRate = data.totalContacts > 0
     ? Math.round((data.supporters / data.totalContacts) * 100)
@@ -172,6 +180,59 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     }
     loadExtra();
   }, []);
+
+  useEffect(() => {
+    async function loadVolunteerCount() {
+      try {
+        const res = await fetch(`/api/volunteers?campaignId=${campaign.id}&pageSize=1`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        setVolunteerCount(payload?.total ?? 0);
+      } catch {
+        setVolunteerCount(0);
+      }
+    }
+    loadVolunteerCount();
+  }, [campaign.id]);
+
+  const electionDate = useMemo(() => {
+    return campaign.electionDate ? new Date(campaign.electionDate) : new Date("2026-10-26T20:00:00-04:00");
+  }, [campaign.electionDate]);
+
+  const timeToElection = useMemo(() => {
+    const diff = Math.max(0, electionDate.getTime() - Date.now());
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+    };
+  }, [electionDate, tick]);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const countdownTone = timeToElection.days > 100 ? "text-emerald-600" : timeToElection.days > 30 ? "text-amber-600" : "text-red-600";
+
+  const healthChecks = [
+    { label: "Contacts imported", done: data.totalContacts >= 100 },
+    { label: "Canvassing started", done: data.recentInteractions.length > 0 },
+    { label: "Volunteers recruited", done: volunteerCount >= 5 },
+    { label: "Signs deployed", done: extraData.signs > 0 },
+    { label: "Notifications set up", done: data.recentActivity.some((a) => `${a.action} ${a.entityType}`.toLowerCase().includes("notification")) },
+    { label: "Public page live", done: !!campaign.isPublic },
+  ];
+
+  const healthScore = Math.round((healthChecks.filter((c) => c.done).length / healthChecks.length) * 100);
+  const healthTone = healthScore <= 40 ? "text-red-600" : healthScore <= 70 ? "text-amber-600" : "text-emerald-600";
+
+  const priorities = [
+    data.totalContacts < 100 ? `Import your voter list (${100 - data.totalContacts} to go)` : "Refresh and segment your contact universe",
+    data.recentInteractions.length === 0 ? `Start canvassing - you have ${Math.max(50, data.totalContacts)} doors to knock` : "Review today's canvassing outcomes",
+    volunteerCount < 5 ? `Recruit more volunteers (${5 - volunteerCount} short of baseline)` : "Assign next volunteer shift coverage",
+    !data.recentActivity.some((a) => `${a.action} ${a.entityType}`.toLowerCase().includes("notification")) ? "Set up election-day push notifications" : "Schedule your next supporter reminder",
+    !campaign.isPublic ? "Make your candidate page public" : "Update your public page hero and endorsements",
+  ];
+
+  const gotvReadiness = Math.min(100, data.totalContacts > 0 ? Math.round((data.supporters / data.totalContacts) * 100) : 0);
 
   const visibleOrder = order.filter((id) => !hidden.includes(id));
 
@@ -487,6 +548,79 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
             {customising ? "Done" : "Customise"}
           </button>
         </div>
+      </div>
+
+      {/* War-room overview */}
+      <div className="grid xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5">
+          <div className="flex items-center gap-2 mb-1 text-blue-700 text-xs font-semibold uppercase tracking-wide">
+            {hour < 18 ? <Sunrise className="w-4 h-4" /> : <Sunset className="w-4 h-4" />}
+            Campaign War Room
+          </div>
+          <h2 className="text-2xl font-extrabold text-gray-900">{greeting} {user.name ? user.name.split(" ")[0] : "George"}.</h2>
+          <p className="text-sm text-gray-600 mt-1">Your election is in {timeToElection.days} days. Here is where your campaign stands today.</p>
+
+          <div className="mt-4 grid md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-700">Campaign health score</p>
+                <p className={`text-2xl font-black ${healthTone}`}>{healthScore}%</p>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-3">
+                <div className={`h-full transition-all duration-700 ${healthScore <= 40 ? "bg-red-500" : healthScore <= 70 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${healthScore}%` }} />
+              </div>
+              <div className="space-y-1.5">
+                {healthChecks.map((check) => (
+                  <div key={check.label} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">{check.label}</span>
+                    <span className={check.done ? "text-emerald-600 font-semibold" : "text-gray-400"}>{check.done ? "Done" : "Pending"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Election day countdown</p>
+              <p className={`text-3xl font-black ${countdownTone}`}>{timeToElection.days}d {timeToElection.hours}h {timeToElection.minutes}m</p>
+              <p className="text-xs text-gray-500 mt-1">to October 26, 2026</p>
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-2">GOTV readiness</p>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500" style={{ width: `${gotvReadiness}%` }} />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{gotvReadiness}% toward 80% target</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-white p-4">
+          <p className="text-sm font-semibold text-gray-900 mb-2">Today's priorities</p>
+          <ul className="space-y-2">
+            {priorities.map((item) => (
+              <li key={item} className="text-sm text-gray-700 rounded-lg bg-gray-50 px-3 py-2">{item}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-2">
+        {[
+          { label: "Add Contact", href: "/contacts", icon: PlusCircle, hotkey: "G C" },
+          { label: "Record Door Knock", href: "/canvassing/walk", icon: UserCheck, hotkey: "G W" },
+          { label: "Request Sign", href: "/signs", icon: MapPin, hotkey: "S" },
+          { label: "Add Volunteer", href: "/volunteers", icon: Users, hotkey: "G V" },
+          { label: "Send Notification", href: "/notifications", icon: Send, hotkey: "G N" },
+          { label: "View Analytics", href: "/analytics", icon: BarChart2, hotkey: "G D" },
+        ].map(({ label, href, icon: Icon, hotkey }) => (
+          <Link key={label} href={href} className="rounded-xl border border-gray-200 bg-white hover:bg-blue-50 transition-colors p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Icon className="w-4 h-4 text-blue-700" />
+              <span className="text-[10px] text-gray-400 font-semibold">{hotkey}</span>
+            </div>
+            <p className="text-xs font-semibold text-gray-700">{label}</p>
+          </Link>
+        ))}
       </div>
 
       {/* Customise panel */}

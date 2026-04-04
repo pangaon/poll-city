@@ -15,6 +15,7 @@
     "db:seed:boundaries": "tsx prisma/seeds/ingest-boundaries.ts",
     "db:seed:boundaries:gis": "tsx prisma/seeds/ingest-gis-boundaries.ts",
     "db:seed:all": "npm run db:seed:election-results && npm run db:seed:officials && npm run db:seed:boundaries",
+    "db:update-2025": "tsx prisma/seeds/update-officials-2025.ts",
     "db:dedup:election-results": "tsx prisma/seeds/dedup-election-results.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npm run db:seed",

@@ -88,6 +88,7 @@ export default async function DashboardPage() {
         primaryColor: true,
         electionDate: true,
         officialId: true,
+        isPublic: true,
       },
     }),
     getDashboardData(campaignId),

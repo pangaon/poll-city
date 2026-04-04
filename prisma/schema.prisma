@@ -332,6 +332,8 @@ model Campaign {
   superSupporterTasks  SuperSupporterTask[]
 
   @@unique([customDomain])
+  @@index([slug])
+  @@index([isPublic, isActive])
   @@map("campaigns")
 }
 
@@ -360,7 +362,8 @@ model Official {
   level            GovernmentLevel
   district         String          // ward, riding, or constituency name
   districtCode     String?         // official electoral district code
-  party            String?
+  party            String?         // legacy field
+  partyName        String?         // canonical party name — used for colour lookup
   email            String?
   phone            String?
   website          String?
@@ -399,6 +402,9 @@ model Official {
 
   @@index([level, district])
   @@index([postalCodes])
+  @@index([province, level])
+  @@index([isClaimed])
+  @@index([isActive, level])
   @@map("officials")
 }
 
