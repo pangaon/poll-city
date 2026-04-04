@@ -79,7 +79,7 @@ export default async function CampaignsPage() {
       <div className="space-y-4">
         <p className="text-sm font-semibold text-gray-900">My campaigns</p>
         <div className="grid gap-4">
-          {memberships.map((membership) => (
+          {memberships.map((membership: (typeof memberships)[number]) => (
             <Card key={membership.campaign.id}>
               <CardContent className="grid gap-3 sm:grid-cols-[1.5fr_0.8fr] items-start">
                 <div>

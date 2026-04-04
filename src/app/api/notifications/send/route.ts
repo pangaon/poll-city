@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const delivery = await sendPushBatch({
-      subscriptions: subscriptions.map((sub) => ({
+      subscriptions: subscriptions.map((sub: (typeof subscriptions)[number]) => ({
         id: sub.id,
         userId: sub.userId,
         endpoint: sub.endpoint,

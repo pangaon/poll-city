@@ -2,7 +2,8 @@
 import { signOut } from "next-auth/react";
 import { LogOut, User, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { Role } from "@prisma/client";
+
+type Role = "SUPER_ADMIN" | "ADMIN" | "CAMPAIGN_MANAGER" | "VOLUNTEER" | string;
 
 interface TopBarProps {
   user: { name?: string | null; email?: string | null; role: Role };

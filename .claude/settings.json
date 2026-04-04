@@ -17,7 +17,11 @@
       "Bash(grep -rn \"?? \\\\`\\\\${.*\\\\`\\\\.trim\\(\\) ||\" src/ --include=\"*.tsx\" --include=\"*.ts\" -l)",
       "Bash(grep -n \"?? \\\\`\\\\${profile\" \"src/app/\\(app\\)/volunteers/groups/volunteers-groups-client.tsx\")",
       "Bash(dir \"c:\\\\Users\\\\14168\\\\Documents\\\\Projects\\\\poll-city\\\\src\\\\app\\\\officials\")",
-      "Read(//c/Users/14168/AppData/Local/Temp/claude//**)"
+      "Read(//c/Users/14168/AppData/Local/Temp/claude//**)",
+      "Bash(ls src/components/error-boundary*)",
+      "Bash(npm audit:*)",
+      "Bash(ls src/lib/email*)",
+      "Bash(ls src/lib/mail*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",

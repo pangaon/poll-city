@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   });
 
   const totals = logs.reduce(
-    (acc, row) => {
+    (acc: { total: number; delivered: number; failed: number }, row: (typeof logs)[number]) => {
       acc.total += row.totalSubscribers;
       acc.delivered += row.deliveredCount;
       acc.failed += row.failedCount;

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      data: notifications.map((n) => ({
+      data: notifications.map((n: (typeof notifications)[number]) => ({
         id: n.id,
         title: n.title,
         body: n.body,
