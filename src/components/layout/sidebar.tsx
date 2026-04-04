@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Users, Map, CheckSquare, Upload,
   Settings, Sparkles, ChevronDown, Vote, Menu, X,
-  Phone, Search, Target, Zap
+  Phone, Search, Target, Zap, DollarSign
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/gotv", icon: Target, label: "GOTV" },
   { href: "/signs", icon: Map, label: "Signs" },
+  { href: "/donations", icon: DollarSign, label: "Donations" },
   { href: "/call-list", icon: Phone, label: "Call List" },
   { href: "/lookup", icon: Search, label: "Address Lookup" },
   { href: "/capture", icon: Zap, label: "Quick Capture" },
