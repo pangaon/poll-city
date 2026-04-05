@@ -172,7 +172,20 @@ export async function POST(req: NextRequest) {
       assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, systemPrompt, messages);
     }
 
-    await prisma.adoniConversation.create({
+    const adoniConversation = (prisma as unknown as {
+      adoniConversation: {
+        create: (args: {
+          data: {
+            campaignId: string | null;
+            userId: string;
+            page: string;
+            messages: Record<string, unknown>;
+          };
+        }) => Promise<unknown>;
+      };
+    }).adoniConversation;
+
+    await adoniConversation.create({
       data: {
         campaignId: activeCampaignId,
         userId: session!.user.id,

@@ -30,6 +30,13 @@
 
 ## v4.0.6 Security Hardening + Bot Ops Addendum — April 5, 2026
 
+### v4.0.7 Logic and Journey Reliability Update — April 5, 2026
+
+1. Password recovery now applies distributed limiter checks for both requester and email target to reduce reset abuse at scale.
+2. Adoni assistant API routes now include dedicated rate limiting to protect response reliability.
+3. Adoni panel auto-opens only once per browser session to reduce workflow interruption while keeping discoverability.
+4. Full integration checks (security gates, contract checks, tests, build) were re-run and passed.
+
 ### Password Recovery SOP
 
 1. Users can request reset links via `POST /api/auth/forgot-password`.

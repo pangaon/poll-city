@@ -1,5 +1,23 @@
 # Poll City Changelog
 
+## [4.0.8] - April 5, 2026 — INTEGRATION LOGIC + UX RELIABILITY PASS
+
+### Endpoint and Journey Reliability
+- Added distributed rate limiting for forgot-password flows (request and email-key checks).
+- Added rate limiting to Adoni chat and suggestions endpoints for stability and cost protection.
+- Resolved Adoni conversation persistence typing drift in API route implementation.
+
+### UX Continuity
+- Updated Adoni UI behavior to auto-open once per browser session instead of reopening on each navigation.
+
+### Verification
+- Re-ran full verification suite:
+  - `npm run security:gates`
+  - `npm run test:contracts`
+  - `npm run test`
+  - `npm run build`
+  All passed.
+
 ## [4.0.7] - April 5, 2026 — ADONI LIVE ASSISTANT INTEGRATION
 
 ### Adoni Chat APIs
