@@ -24,7 +24,8 @@
       "Bash(ls src/lib/mail*)",
       "Bash(find \"c:/Users/14168/Documents/Projects/poll-city/src/app/\\(app\\)/settings\" -name \"*.tsx\" -exec grep -l \"team\" {} \\\\;)",
       "Bash(git pull:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(echo \"EXIT: $?\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",

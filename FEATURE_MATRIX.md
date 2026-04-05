@@ -43,7 +43,13 @@ v1.8.0 additions included in this baseline:
 | Candidate Public Profile | Candidate Public Pages | ✅ Built & Verified | /candidates/[slug] | /api/public/candidates/[slug] | Campaign, Official | Partial | High | Public campaign microsite implemented. |
 | Public Candidate Engagement | Candidate Public Pages | ✅ Built & Verified | /candidates/[slug] | /api/public/candidates/[slug]/question, /support, /volunteer, /sign-request | Question, SupportSignal, SignRequest | Partial | High | Public inbound actions flow into campaign data. |
 | Officials Directory Search | Officials Directory | ✅ Built & Verified | /officials | /api/officials/directory, /api/officials | Official | Yes | High | Postal/search + filters + pagination. |
-| Officials Claim Link Request | Claim Flow | ⚠️ Partially Built | /claim/[slug] | /api/claim/request | Official | Partial | High | No outbound email provider wired yet. |
+| Officials Claim Link Request | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/request | Official | Yes | High | Resend email provider wired (v3.0.0). |
+| In-App Help Center | Support | ✅ Built & Verified | /help | — | — | Yes | Medium | 16 articles across 13 categories with search (v4.0.0). |
+| Specialized CSV Exports | Import/Export | ✅ Built & Verified | /import-export | /api/export/* (7 endpoints) | ExportLog | Yes | High | GOTV, walk list, signs, donations, volunteers, interactions (v4.0.0). |
+| Team Management | Team | ✅ Built & Verified | /settings/team | /api/team, /api/team/invite | Membership | Yes | High | Role change, invite, remove (v4.0.0). |
+| Feature Flags / Tier Gating | Billing | ✅ Built & Verified | — | src/lib/feature-flags.ts | — | Yes | High | 21 features × 5 plans with FeatureGate component (v4.0.0). |
+| Contact Slide-Over Panel | CRM | ✅ Built & Verified | /contacts | /api/contacts/[id] | Contact | Yes | High | Inline edit, support level, notes, activity (v4.0.0). |
+| Error System | UX | ✅ Built & Verified | — | src/lib/errors.ts | — | Yes | Medium | 25+ error codes with recovery actions (v4.0.0). |
 | Officials Claim Verification | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/verify | Official | Partial | High | Token verification + claim status update. |
 | Campaign Creation Wizard | Campaign Registration | ⚠️ Partially Built | /campaigns/new | /api/campaigns | Campaign | Yes | Medium | Province/ward UX still limited. |
 | Credentials Login | Authentication | ✅ Built & Verified | /login | /api/auth/[...nextauth] | User, Membership | Yes | High | Session/JWT auth path validated. |
