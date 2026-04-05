@@ -110,3 +110,5 @@ function roleLabel(role: string): string {
   };
   return map[role] ?? role;
 }
+
+export const dynamic = "force-dynamic";
