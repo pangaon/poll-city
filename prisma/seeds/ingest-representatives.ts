@@ -1,12 +1,14 @@
 /**
- * Ingest Ontario elected representatives from the Represent OpenNorth API.
- * For every official imported, auto-creates a public Campaign profile.
+ * Ingest representatives from the Represent OpenNorth API.
  *
- * Sources:
- *   - https://represent.opennorth.ca/ (representative sets, representatives)
- *   - Ontario MPP list via Ontario Legislative Assembly representative set
+ * Fetches:
+ *   - All 338 federal MPs (House of Commons)
+ *   - All Ontario MPPs (Ontario Legislature)
+ *   - All Toronto City Councillors
  *
- * Usage:  npx tsx prisma/seeds/ingest-representatives.ts
+ * Upserts each into the Official table with correct level and province.
+ *
+ * Usage: npx tsx prisma/seeds/ingest-representatives.ts
  */
 
 import { PrismaClient, GovernmentLevel } from "@prisma/client";
@@ -15,269 +17,239 @@ const prisma = new PrismaClient();
 
 const BASE = "https://represent.opennorth.ca";
 
-// Ontario MPPs live in this representative set
-const ONTARIO_MPP_SET = "ontario-legislative-assembly";
-
-// Keywords that identify Ontario representative sets (case-insensitive)
-const ONTARIO_KEYWORDS = [
-  "ontario",
-  "toronto",
-  "ottawa",
-  "hamilton",
-  "london",
-  "brampton",
-  "mississauga",
-  "markham",
-  "vaughan",
-  "richmond hill",
-  "kingston",
-  "windsor",
-  "sudbury",
-  "thunder bay",
-  "barrie",
-  "guelph",
-  "kitchener",
-  "waterloo",
-  "cambridge",
-  "oshawa",
-  "ajax",
-  "pickering",
-  "whitby",
-  "durham",
-  "peel",
-  "york",
-  "halton",
-  "niagara",
-  "peterborough",
-  "brantford",
-  "belleville",
-  "sault ste. marie",
-];
-
-interface RepresentativeSet {
-  name: string;
-  url: string;
-  related: { representatives_url: string };
-}
-
-interface ApiList<T> {
-  count: number;
-  next: string | null;
-  objects: T[];
+interface Office {
+  tel?: string;
+  fax?: string;
+  postal?: string;
+  type?: string;
 }
 
 interface Representative {
   name: string;
+  first_name?: string;
+  last_name?: string;
   elected_office: string;
   district_name: string;
-  district_id: string;
+  district_id?: string;
   party_name?: string;
   email?: string;
-  phone?: string;
   photo_url?: string;
   personal_url?: string;
+  url?: string;
   source_url?: string;
-  extra?: {
-    ward_name?: string;
-    riding?: string;
-  };
+  offices?: Office[];
+  representative_set_name?: string;
 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+interface ApiMeta {
+  offset: number;
+  limit: number;
+  total_count: number;
+  previous: string | null;
+  next: string | null;
+}
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
-    return res.json() as Promise<T>;
-  } catch {
-    return null;
-  }
+interface ApiList<T> {
+  objects: T[];
+  meta: ApiMeta;
 }
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function isOntario(name: string): boolean {
-  const lower = name.toLowerCase();
-  return ONTARIO_KEYWORDS.some((kw) => lower.includes(kw));
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/['"]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
-
-async function ensureUniqueSlug(base: string): Promise<string> {
-  let slug = base;
-  let attempt = 0;
-  while (true) {
-    const existing = await prisma.campaign.findUnique({ where: { slug } });
-    if (!existing) return slug;
-    attempt++;
-    slug = `${base}-${attempt}`;
-  }
-}
-
-function detectLevel(setName: string, office: string): GovernmentLevel {
-  const combined = (setName + " " + office).toLowerCase();
-  if (combined.includes("mp ") || combined.includes("federal") || combined.includes("parliament") || combined.includes("house of commons")) {
-    return "federal";
-  }
-  if (combined.includes("mpp") || combined.includes("provincial") || combined.includes("legislative assembly") || combined.includes("legislature")) {
-    return "provincial";
-  }
-  return "municipal";
-}
-
-// ─── core logic ──────────────────────────────────────────────────────────────
-
-async function paginateRepresentatives(url: string): Promise<Representative[]> {
-  const allReps: Representative[] = [];
-  const separator = url.includes("?") ? "&" : "?";
-  let nextUrl: string | null = `${BASE}${url}${separator}limit=200`;
-
-  while (nextUrl) {
-    const data = await fetchJson<ApiList<Representative>>(nextUrl);
-    if (!data) break;
-    allReps.push(...data.objects);
-    nextUrl = data.next ? `${BASE}${data.next}` : null;
-    if (nextUrl) await sleep(1000); // respect rate limiting
-  }
-
-  return allReps;
-}
-
-async function importRepresentativeSet(set: RepresentativeSet): Promise<number> {
-  const reps = await paginateRepresentatives(set.related.representatives_url);
-  let count = 0;
-
-  for (const rep of reps) {
-    if (!rep.name?.trim() || !rep.district_name?.trim()) continue;
-
-    const level = detectLevel(set.name, rep.elected_office ?? "");
-    const externalId = `${set.url.replace(/\//g, ":")}:${rep.district_id ?? rep.district_name}`;
-
-    // Upsert Official
-    const official = await prisma.official.upsert({
-      where: { id: externalId },
-      create: {
-        id: externalId,
-        name: rep.name.trim(),
-        title: rep.elected_office?.trim() || "Councillor",
-        level,
-        district: rep.district_name.trim(),
-        party: rep.party_name || null,
-        email: rep.email || null,
-        phone: rep.phone || null,
-        photoUrl: rep.photo_url || null,
-        website: rep.personal_url || rep.source_url || null,
-        province: "ON",
-        isClaimed: false,
-        isActive: true,
-        externalId: rep.district_id ?? null,
-        externalSource: "represent_opennorth",
-      },
-      update: {
-        name: rep.name.trim(),
-        title: rep.elected_office?.trim() || "Councillor",
-        district: rep.district_name.trim(),
-        party: rep.party_name || null,
-        email: rep.email || null,
-        phone: rep.phone || null,
-        photoUrl: rep.photo_url || null,
-        website: rep.personal_url || rep.source_url || null,
-      },
-    });
-
-    // Auto-create a public Campaign for this official (if not already exists)
-    const existingCampaign = await prisma.campaign.findFirst({
-      where: { officialId: official.id },
-    });
-
-    if (!existingCampaign) {
-      const nameParts = rep.name.trim().split(/\s+/);
-      const firstName = nameParts[0] ?? "rep";
-      const lastName = nameParts.slice(1).join(" ") || "unknown";
-      const baseSlug = slugify(`${firstName} ${lastName} ${rep.district_name}`);
-      const slug = await ensureUniqueSlug(baseSlug);
-
-      await prisma.campaign.create({
-        data: {
-          name: rep.name.trim(),
-          slug,
-          candidateName: rep.name.trim(),
-          candidateTitle: rep.elected_office?.trim() || "Councillor",
-          jurisdiction: rep.district_name.trim(),
-          isPublic: true,
-          isActive: true,
-          officialId: official.id,
-          electionType: level === "federal" ? "federal" : level === "provincial" ? "provincial" : "municipal",
-        },
-      });
-
-      count++;
+async function fetchJson<T>(url: string, attempts = 3): Promise<T | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+      if (!res.ok) {
+        console.error(`  HTTP ${res.status} for ${url}`);
+        if (i === attempts - 1) return null;
+        await sleep(2000);
+        continue;
+      }
+      return (await res.json()) as T;
+    } catch (err) {
+      console.error(`  fetch error: ${(err as Error).message}`);
+      if (i === attempts - 1) return null;
+      await sleep(2000);
     }
   }
-
-  return count;
+  return null;
 }
+
+/**
+ * Fetch every representative from a set, paginating via meta.next.
+ */
+async function fetchAllReps(setSlug: string): Promise<Representative[]> {
+  const all: Representative[] = [];
+  let nextUrl: string | null = `${BASE}/representatives/${setSlug}/?limit=200`;
+  let page = 0;
+
+  while (nextUrl) {
+    page++;
+    console.log(`  Fetching page ${page}: ${nextUrl}`);
+    const data = await fetchJson<ApiList<Representative>>(nextUrl);
+    if (!data) {
+      console.error(`  Failed to fetch page ${page}, stopping.`);
+      break;
+    }
+    console.log(`    Got ${data.objects.length} records (total so far: ${all.length + data.objects.length} / ${data.meta.total_count})`);
+    all.push(...data.objects);
+    nextUrl = data.meta?.next ? `${BASE}${data.meta.next}` : null;
+    if (nextUrl) await sleep(600);
+  }
+
+  return all;
+}
+
+function extractPhone(offices: Office[] | undefined): string | null {
+  if (!offices || offices.length === 0) return null;
+  const constit = offices.find((o) => o.type === "constituency" && o.tel);
+  if (constit?.tel) return constit.tel;
+  const first = offices.find((o) => o.tel);
+  return first?.tel ?? null;
+}
+
+function extractAddress(offices: Office[] | undefined): string | null {
+  if (!offices || offices.length === 0) return null;
+  const constit = offices.find((o) => o.type === "constituency" && o.postal);
+  if (constit?.postal) return constit.postal.replace(/\n/g, ", ");
+  const first = offices.find((o) => o.postal);
+  return first?.postal ? first.postal.replace(/\n/g, ", ") : null;
+}
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      await sleep(2000 * (i + 1));
+    }
+  }
+  throw lastErr;
+}
+
+async function upsertRep(
+  rep: Representative,
+  setSlug: string,
+  level: GovernmentLevel,
+  province: string | null
+): Promise<"created" | "updated" | "skipped"> {
+  if (!rep.name?.trim() || !rep.district_name?.trim()) return "skipped";
+
+  const districtKey = rep.district_id ?? rep.district_name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  const externalId = `${setSlug}-${districtKey}`.slice(0, 180);
+
+  const phone = extractPhone(rep.offices);
+  const address = extractAddress(rep.offices);
+
+  try {
+    const existing = await withRetry(() =>
+      prisma.official.findFirst({ where: { externalId } })
+    );
+
+    const data = {
+      name: rep.name.trim(),
+      firstName: rep.first_name?.trim() || null,
+      lastName: rep.last_name?.trim() || null,
+      title: rep.elected_office?.trim() || "Councillor",
+      level,
+      district: rep.district_name.trim(),
+      districtCode: rep.district_id ?? null,
+      party: rep.party_name || null,
+      partyName: rep.party_name || null,
+      email: rep.email || null,
+      phone,
+      address,
+      photoUrl: rep.photo_url || null,
+      website: rep.personal_url || rep.url || rep.source_url || null,
+      province,
+      isActive: true,
+      externalSource: "represent_opennorth",
+    };
+
+    if (existing) {
+      await withRetry(() =>
+        prisma.official.update({ where: { id: existing.id }, data })
+      );
+      return "updated";
+    } else {
+      await withRetry(() =>
+        prisma.official.create({
+          data: { ...data, isClaimed: false, externalId },
+        })
+      );
+      return "created";
+    }
+  } catch (err) {
+    console.error(`  ❌ ${rep.name}: ${(err as Error).message.split("\n")[0]}`);
+    return "skipped";
+  }
+}
+
+interface IngestJob {
+  slug: string;
+  label: string;
+  level: GovernmentLevel;
+  province: string | null;
+}
+
+const JOBS: IngestJob[] = [
+  { slug: "house-of-commons", label: "Federal MPs (House of Commons)", level: "federal", province: null },
+  { slug: "ontario-legislature", label: "Ontario MPPs (Legislative Assembly)", level: "provincial", province: "ON" },
+  { slug: "bc-legislature", label: "BC MLAs (Legislative Assembly)", level: "provincial", province: "BC" },
+  { slug: "toronto-city-council", label: "Toronto City Council", level: "municipal", province: "ON" },
+];
 
 async function main() {
-  console.log("🏛  Ontario Representatives Ingestion");
-  console.log("══════════════════════════════════════");
+  console.log("🏛  Canadian Representatives Ingestion");
+  console.log("═══════════════════════════════════════════════════════════════════\n");
 
-  // 1) Paginate all representative sets
-  console.log("\n📋 Fetching representative sets...");
-  const allSets: RepresentativeSet[] = [];
-  let nextUrl: string | null = `${BASE}/representative-sets/?limit=200`;
+  let grandCreated = 0;
+  let grandUpdated = 0;
+  let grandSkipped = 0;
 
-  while (nextUrl) {
-    const data = await fetchJson<ApiList<RepresentativeSet>>(nextUrl);
-    if (!data) break;
-    allSets.push(...data.objects);
-    nextUrl = data.next ? `${BASE}${data.next}` : null;
-    if (nextUrl) await sleep(1000);
-  }
+  for (const job of JOBS) {
+    console.log(`\n📋 ${job.label}`);
+    console.log("───────────────────────────────────────────────────────────────────");
 
-  console.log(`  Found ${allSets.length} total representative sets`);
+    const reps = await fetchAllReps(job.slug);
+    console.log(`  Total fetched: ${reps.length}`);
 
-  // 2) Filter for Ontario sets
-  const ontarioSets = allSets.filter((s) => isOntario(s.name));
-  console.log(`  Filtered to ${ontarioSets.length} Ontario representative sets`);
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
 
-  // 3) Also ensure provincial MPP set is included
-  if (!ontarioSets.find((s) => s.url.includes(ONTARIO_MPP_SET))) {
-    const mppSet = allSets.find((s) => s.url.includes(ONTARIO_MPP_SET));
-    if (mppSet) {
-      ontarioSets.unshift(mppSet);
-      console.log(`  + Added Ontario MPP set explicitly`);
+    for (const rep of reps) {
+      const result = await upsertRep(rep, job.slug, job.level, job.province);
+      if (result === "created") created++;
+      else if (result === "updated") updated++;
+      else skipped++;
     }
+
+    console.log(`  ✅ ${created} created, ${updated} updated${skipped > 0 ? `, ${skipped} skipped` : ""}`);
+
+    grandCreated += created;
+    grandUpdated += updated;
+    grandSkipped += skipped;
   }
 
-  // 4) Import each set
-  let totalCreated = 0;
+  const totalInDb = await prisma.official.count();
 
-  for (const set of ontarioSets) {
-    process.stdout.write(`  → ${set.name}... `);
-    try {
-      const created = await importRepresentativeSet(set);
-      console.log(`${created} new profiles`);
-      totalCreated += created;
-    } catch (err) {
-      console.log(`ERROR: ${(err as Error).message}`);
-    }
-    await sleep(1000); // respect rate limiting between sets
-  }
-
-  console.log(`\n✅ Total new Official + Campaign profiles created: ${totalCreated}`);
+  console.log("\n═══════════════════════════════════════════════════════════════════");
+  console.log(`✅ Created:  ${grandCreated}`);
+  console.log(`🔄 Updated:  ${grandUpdated}`);
+  console.log(`⏭  Skipped:  ${grandSkipped}`);
+  console.log(`📊 Total officials in database: ${totalInDb}`);
+  console.log("═══════════════════════════════════════════════════════════════════\n");
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => {
+    console.error("Ingestion failed:", e);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

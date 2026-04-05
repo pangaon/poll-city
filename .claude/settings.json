@@ -26,7 +26,9 @@
       "Bash(git pull:*)",
       "Bash(git commit:*)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representative-sets/?limit=5\")",
+      "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representatives/house-of-commons/?limit=2\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",
