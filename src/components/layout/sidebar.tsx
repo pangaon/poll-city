@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
   Settings, Sparkles, BarChart3, ChevronDown, Vote, Menu, X,
   Phone, Search, Target, Zap, DollarSign, CreditCard, Globe, Bell, Printer,
-  MessageSquare, Star
+  MessageSquare, Star, HelpCircle
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
@@ -45,6 +45,7 @@ const navItems = [
   { href: "/import-export", icon: Upload, label: "Import / Export" },
   { href: "/settings", icon: Settings, label: "Settings" },
   { href: "/settings/team", icon: Users, label: "Team" },
+  { href: "/help", icon: HelpCircle, label: "Help Center" },
   { href: "/billing", icon: CreditCard, label: "Billing" },
 ];
 
