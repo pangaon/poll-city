@@ -46,6 +46,7 @@ interface DuplicatePreview {
 
 interface PhoneMatchPreview {
   summary: {
+    totalMatches?: number;
     voterRows: number;
     phoneRows: number;
     autoMerged: number;
@@ -53,6 +54,7 @@ interface PhoneMatchPreview {
     unmatched: number;
     highConfidence: number;
     mediumConfidence: number;
+    eligibleAtThreshold?: number;
   };
   samples: Array<{
     rowIndex: number;
@@ -60,9 +62,22 @@ interface PhoneMatchPreview {
     confidence: string;
     score: number;
     matchedOn: string[];
+    eligibleByThreshold?: boolean;
     voter: { firstName?: string; lastName?: string; phone?: string; email?: string };
     phoneRecord: { firstName?: string; lastName?: string; phone?: string; email?: string };
   }>;
+}
+
+interface PhoneApplyResult {
+  considered: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  applied: number;
+  strategy: string;
+  threshold: number;
+  scope?: string;
+  allowCreateFromUnmatched?: boolean;
 }
 
 interface ImportHistoryItem {
@@ -142,6 +157,13 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [exportingByEndpoint, setExportingByEndpoint] = useState<Record<string, boolean>>({});
   const [useAiMatch, setUseAiMatch] = useState(true);
   const [matchMode, setMatchMode] = useState<"strict" | "balanced" | "aggressive">("balanced");
+  const [applyConfidenceThreshold, setApplyConfidenceThreshold] = useState(80);
+  const [applyStrategy, setApplyStrategy] = useState<"threshold" | "selected" | "selected_or_threshold">("selected_or_threshold");
+  const [applyScope, setApplyScope] = useState<"preview_sample" | "all_matches">("preview_sample");
+  const [allowCreateFromUnmatched, setAllowCreateFromUnmatched] = useState(false);
+  const [selectedMatchRows, setSelectedMatchRows] = useState<number[]>([]);
+  const [applyingMatchRows, setApplyingMatchRows] = useState(false);
+  const [phoneApplyResult, setPhoneApplyResult] = useState<PhoneApplyResult | null>(null);
 
   const mappingHealth = useMemo(() => {
     if (!analysis) return { mapped: 0, total: 0, hasNameField: false };
@@ -300,12 +322,74 @@ export default function ImportExportClient({ campaignId }: Props) {
       }
 
       setPhoneMatch(payload.data as PhoneMatchPreview);
+      setPhoneApplyResult(null);
+      const sampleRows = (payload.data as PhoneMatchPreview).samples.map((s) => s.rowIndex);
+      setSelectedMatchRows(sampleRows);
       toast.success("Phone matching preview generated");
     } catch {
       toast.error("Phone matching failed");
     } finally {
       setMatchingPhoneList(false);
     }
+  }
+
+  async function applyPhoneMatchesBatch() {
+    if (!selectedFile || !phoneFile) {
+      toast.error("Upload both files first");
+      return;
+    }
+
+    setApplyingMatchRows(true);
+    try {
+      const thresholds =
+        matchMode === "strict"
+          ? { autoMergeThreshold: 92, reviewThreshold: 70 }
+          : matchMode === "aggressive"
+            ? { autoMergeThreshold: 80, reviewThreshold: 45 }
+            : { autoMergeThreshold: 86, reviewThreshold: 55 };
+
+      const formData = new FormData();
+      formData.set("mode", "apply");
+      formData.set("campaignId", campaignId);
+      formData.set("voterFile", selectedFile);
+      formData.set("phoneFile", phoneFile);
+      formData.set("voterMappings", JSON.stringify(getMappingConfig(mappings)));
+      formData.set("phoneMappings", JSON.stringify(getMappingConfig(phoneMappings)));
+      formData.set("autoMergeThreshold", String(thresholds.autoMergeThreshold));
+      formData.set("reviewThreshold", String(thresholds.reviewThreshold));
+      formData.set("useAI", useAiMatch ? "true" : "false");
+      formData.set("applyStrategy", applyStrategy);
+      formData.set("applyScope", applyScope);
+      formData.set("applyConfidenceThreshold", String(applyConfidenceThreshold));
+      formData.set("selectedRowIndexes", JSON.stringify(selectedMatchRows));
+      formData.set("allowCreateFromUnmatched", allowCreateFromUnmatched ? "true" : "false");
+
+      const res = await fetch("/api/import/match-files", { method: "POST", body: formData });
+      const payload = await res.json();
+      if (!res.ok || !payload?.data) {
+        toast.error(payload?.error ?? "Batch apply failed");
+        return;
+      }
+
+      const data = payload.data as PhoneMatchPreview & { apply?: PhoneApplyResult };
+      setPhoneMatch(data);
+      setPhoneApplyResult(data.apply ?? null);
+      await loadImportHistory();
+      toast.success(`Batch apply complete: ${data.apply?.applied ?? 0} rows applied`);
+    } catch {
+      toast.error("Batch apply failed");
+    } finally {
+      setApplyingMatchRows(false);
+    }
+  }
+
+  function selectRowsByThreshold() {
+    if (!phoneMatch) return;
+    setSelectedMatchRows(
+      phoneMatch.samples
+        .filter((sample) => sample.score >= applyConfidenceThreshold && sample.action !== "new_record")
+        .map((sample) => sample.rowIndex)
+    );
   }
 
   async function doQuickImport() {
@@ -584,13 +668,82 @@ export default function ImportExportClient({ campaignId }: Props) {
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
               <p className="text-sm font-semibold text-blue-900">Phone Match Summary</p>
               <p className="text-xs text-blue-800">
-                Auto-merge: {phoneMatch.summary.autoMerged} · Review: {phoneMatch.summary.needsReview} · Unmatched: {phoneMatch.summary.unmatched}
+                Total: {phoneMatch.summary.totalMatches ?? 0} · Auto-merge: {phoneMatch.summary.autoMerged} · Review: {phoneMatch.summary.needsReview} · Unmatched: {phoneMatch.summary.unmatched} · Eligible @ threshold: {phoneMatch.summary.eligibleAtThreshold ?? 0}
               </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                <label className="text-xs text-blue-900">
+                  Auto-apply threshold
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={applyConfidenceThreshold}
+                    onChange={(e) => setApplyConfidenceThreshold(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="mt-1 w-full rounded-md border border-blue-300 px-2 py-1 bg-white text-slate-800"
+                  />
+                </label>
+                <label className="text-xs text-blue-900">
+                  Apply strategy
+                  <Select value={applyStrategy} onChange={(e) => setApplyStrategy(e.target.value as "threshold" | "selected" | "selected_or_threshold") }>
+                    <option value="selected_or_threshold">Selected OR threshold</option>
+                    <option value="threshold">Threshold only</option>
+                    <option value="selected">Selected rows only</option>
+                  </Select>
+                </label>
+                <label className="text-xs text-blue-900">
+                  Apply scope
+                  <Select value={applyScope} onChange={(e) => setApplyScope(e.target.value as "preview_sample" | "all_matches") }>
+                    <option value="preview_sample">Preview sample only (safe default)</option>
+                    <option value="all_matches">All matched rows</option>
+                  </Select>
+                </label>
+                <Button onClick={applyPhoneMatchesBatch} loading={applyingMatchRows}>
+                  <Link2 className="w-4 h-4" />Apply Batch Matches
+                </Button>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-blue-900">
+                <input
+                  type="checkbox"
+                  checked={allowCreateFromUnmatched}
+                  onChange={(e) => setAllowCreateFromUnmatched(e.target.checked)}
+                />
+                Allow create from unmatched rows (off by default)
+              </label>
+              {applyScope === "all_matches" && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                  You are applying to all matched rows, not just preview samples.
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setSelectedMatchRows(phoneMatch.samples.map((s) => s.rowIndex))}>Select all samples</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedMatchRows([])}>Clear selection</Button>
+                <Button size="sm" variant="outline" onClick={selectRowsByThreshold}>Select by threshold</Button>
+                <span className="text-xs text-blue-800 self-center">Selected: {selectedMatchRows.length}</span>
+              </div>
               {phoneMatch.samples.slice(0, 6).map((sample) => (
-                <p key={`${sample.rowIndex}-${sample.score}`} className="text-xs text-blue-800">
-                  Row {sample.rowIndex} ({sample.action}, {sample.score}%): {sample.voter.firstName} {sample.voter.lastName} {"->"} {sample.phoneRecord.firstName} {sample.phoneRecord.lastName}
-                </p>
+                <label key={`${sample.rowIndex}-${sample.score}`} className="flex items-start gap-2 text-xs text-blue-800">
+                  <input
+                    type="checkbox"
+                    checked={selectedMatchRows.includes(sample.rowIndex)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedMatchRows((prev) => Array.from(new Set([...prev, sample.rowIndex])));
+                      } else {
+                        setSelectedMatchRows((prev) => prev.filter((r) => r !== sample.rowIndex));
+                      }
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Row {sample.rowIndex} ({sample.action}, {sample.score}%): {sample.voter.firstName} {sample.voter.lastName} {"->"} {sample.phoneRecord.firstName} {sample.phoneRecord.lastName}
+                  </span>
+                </label>
               ))}
+              {phoneApplyResult && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
+                  Applied: {phoneApplyResult.applied} (created {phoneApplyResult.created}, updated {phoneApplyResult.updated}, skipped {phoneApplyResult.skipped})
+                </div>
+              )}
             </div>
           )}
         </CardContent>

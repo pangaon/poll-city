@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.16] - April 5, 2026 — BATCH APPLY MATCHES BY CONFIDENCE
+
+### Enterprise Phone/Voter Matching Ops
+- Added batch apply workflow for matched records in `/import-export`.
+- Added `Select all samples`, `Clear selection`, and `Select by threshold` controls.
+- Added confidence-threshold auto-apply controls (for example, apply all matches >= 80%).
+- Added apply strategies:
+  - selected rows only
+  - threshold only
+  - selected OR threshold
+- Added backend apply mode for `POST /api/import/match-files` with audit logging and contact create/update writes.
+
+### Outcome
+- Operators can now run high-confidence bulk reconciliation without manual row-by-row processing while retaining explicit selection override controls.
+
 ## [4.0.15] - April 5, 2026 — ENTERPRISE LIST MATCHING + DUPLICATE INTELLIGENCE
 
 ### Import/Export Intelligence

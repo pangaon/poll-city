@@ -1,5 +1,22 @@
 # Poll City User Guide
 
+## v4.0.16 Batch Apply Matching Addendum — April 5, 2026
+
+### Confidence-Based Batch Apply (`/import-export`)
+
+1. Run **Voter-to-Phone Matching**.
+2. Set **Auto-apply threshold** (example: `80`).
+3. Choose an apply strategy:
+   - selected rows only
+   - threshold only
+   - selected OR threshold
+4. Use bulk selection controls:
+   - **Select all samples**
+   - **Clear selection**
+   - **Select by threshold**
+5. Click **Apply Batch Matches**.
+6. Review created/updated/skipped summary after apply completes.
+
 ## v4.0.15 Enterprise List Matching Addendum — April 5, 2026
 
 ### Intuitive Column Mapping (`/import-export`)
