@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock
+  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock, Palette
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
@@ -91,6 +91,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     icon: Settings,
     items: [
       { href: "/settings", icon: Settings, label: "Settings" },
+      { href: "/settings/brand", icon: Palette, label: "Brand Kit" },
       { href: "/settings/team", icon: Users, label: "Team" },
       { href: "/settings/security", icon: Lock, label: "Security" },
       { href: "/billing", icon: CreditCard, label: "Billing" },

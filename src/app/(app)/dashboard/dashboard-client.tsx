@@ -573,8 +573,49 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     );
   }
 
+  const electionPassed = electionDate.getTime() < Date.now();
+  const daysSinceElection = electionPassed
+    ? Math.floor((Date.now() - electionDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Post-election banner */}
+      {electionPassed && (
+        <div
+          className="rounded-2xl p-5 md:p-6 text-white shadow-lg"
+          style={{ background: "linear-gradient(135deg,#1E3A8A 0%,#7C3AED 100%)" }}
+        >
+          <div className="flex items-start gap-4 flex-col md:flex-row">
+            <div className="flex-1">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
+                Election complete · {daysSinceElection} day{daysSinceElection === 1 ? "" : "s"} ago
+              </p>
+              <h2 className="text-xl md:text-2xl font-extrabold mt-1">
+                Thank your supporters, archive your campaign, or switch to Constituent Mode.
+              </h2>
+              <p className="text-sm text-blue-100 mt-1">
+                Send a wrap-up email, export your contact list, and keep your voter relationships alive.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <button
+                className="h-11 px-4 rounded-lg bg-white text-blue-900 font-bold hover:bg-blue-50"
+                onClick={() => (window.location.href = "/communications/email?template=thank-you")}
+              >
+                Send thank-you
+              </button>
+              <button
+                className="h-11 px-4 rounded-lg border-2 border-white/40 text-white font-bold hover:bg-white/10"
+                onClick={() => (window.location.href = "/import-export")}
+              >
+                Export contacts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
