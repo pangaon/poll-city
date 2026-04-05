@@ -53,3 +53,59 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   pages: number;
 }
+
+// ─── Additions: civic + geo + cursor pagination ──────────────────────────────
+
+export type GovernmentLevel = "federal" | "provincial" | "municipal";
+
+export interface OfficialSummary {
+  id: string;
+  name: string;
+  title: string;
+  level: GovernmentLevel;
+  district: string;
+  province: string | null;
+  partyName: string | null;
+  photoUrl: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  isClaimed: boolean;
+}
+
+export interface RepresentativeLookup {
+  id: string;
+  name: string;
+  title: string;
+  label: string;
+  district: string;
+  level: GovernmentLevel;
+  party: string | null;
+  partyName: string | null;
+  photoUrl: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  sourceUrl: string | null;
+  officialId: string | null;
+  labelColour: string;
+}
+
+export interface GeoLookupResponse {
+  representatives: RepresentativeLookup[];
+  inputType: "postalCode" | "address" | "coordinates";
+  cached: boolean;
+  error?: string;
+}
+
+export interface CursorPaginatedResponse<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total?: number;
+}
+
+export interface ApiError {
+  error: string;
+  details?: string[] | Record<string, string>;
+}

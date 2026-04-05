@@ -1,5 +1,33 @@
 # Poll City User Guide
 
+## v4.0.7 Adoni Assistant Addendum — April 5, 2026
+
+### Adoni In-App Assistant (`/app` pages)
+
+1. Adoni now appears as a floating assistant button in authenticated campaign pages.
+2. Click the blue Adoni button to open the assistant panel.
+3. The panel includes:
+   - time-of-day greeting
+   - current page context
+   - proactive suggestion
+   - streaming chat response output
+4. Adoni suggestions adapt by route (for example Contacts, GOTV, Dashboard).
+5. If `ANTHROPIC_API_KEY` is not configured, Adoni responds gracefully with setup guidance.
+
+### Adoni API Endpoints
+
+1. `POST /api/adoni/chat`
+   - injects campaign context (page, campaign name, days to election, contact count, supporter count, volunteer count, user name)
+   - streams response text back to client
+   - logs exchanges in `AdoniConversation`
+2. `GET /api/adoni/suggestions?page=<route>`
+   - returns page-aware proactive suggestions and context summary
+
+### Environment Setup
+
+1. Set `ANTHROPIC_API_KEY` in deployment environment variables for live responses.
+2. Without key, Adoni remains available with safe fallback guidance.
+
 ## v4.0.6 Security Hardening + Bot Ops Addendum — April 5, 2026
 
 ### Password Recovery SOP

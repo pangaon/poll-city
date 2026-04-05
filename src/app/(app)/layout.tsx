@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/helpers";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { AppShellClient } from "@/components/app-shell-client";
+import AdoniButton from "@/components/ai/adoni";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="p-6">{children}</div>
           </main>
         </div>
+        <AdoniButton />
       </div>
     </AppShellClient>
   );

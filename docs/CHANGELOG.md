@@ -1,5 +1,24 @@
 # Poll City Changelog
 
+## [4.0.7] - April 5, 2026 — ADONI LIVE ASSISTANT INTEGRATION
+
+### Adoni Chat APIs
+- Added `POST /api/adoni/chat`:
+  - campaign-aware prompt context injection (page, campaign, election timing, contact/supporter/volunteer counts, user name)
+  - live AI completion via Anthropic `claude-sonnet-4-20250514`
+  - graceful fallback messaging when `ANTHROPIC_API_KEY` is not configured
+  - conversation persistence into `AdoniConversation`
+- Added `GET /api/adoni/suggestions` for page-aware proactive guidance.
+
+### Adoni UI
+- Added floating assistant UI component at `src/components/ai/adoni.tsx`.
+- Wired Adoni assistant into authenticated app layout (`src/app/(app)/layout.tsx`).
+- Assistant now provides:
+  - time-of-day greeting
+  - route context awareness
+  - proactive suggestion quick action
+  - streaming response rendering
+
 ## [4.0.6] - April 5, 2026 — SECURITY HARDENING + AUTONOMOUS OPS BASELINE
 
 ### Critical Security Remediation
