@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { publicCandidateSupportSchema } from "@/lib/validators";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
 
 interface RouteParams {
   params: { slug: string };
@@ -21,6 +22,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const captchaToken = typeof body === "object" && body !== null
+    ? (body as { captchaToken?: string }).captchaToken
+    : undefined;
+  const captchaValid = await verifyTurnstileToken(request, captchaToken);
+  if (!captchaValid) {
+    return NextResponse.json(
+      {
+        error: isTurnstileEnabled()
+          ? "Captcha verification failed"
+          : "Captcha token missing",
+      },
+      { status: 400 }
+    );
   }
 
   const parsed = publicCandidateSupportSchema.safeParse(body);

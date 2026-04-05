@@ -1,5 +1,24 @@
 # Poll City Changelog
 
+## [4.0.1] - April 5, 2026 — CAPTCHA HARDENING
+
+### Public Form CAPTCHA Enforcement
+- Added Cloudflare Turnstile verification utility at `src/lib/security/turnstile.ts`.
+- Enforced CAPTCHA checks on all public candidate intake routes:
+  - `POST /api/public/candidates/[slug]/question`
+  - `POST /api/public/candidates/[slug]/support`
+  - `POST /api/public/candidates/[slug]/volunteer`
+  - `POST /api/public/candidates/[slug]/sign-request`
+- Enforced CAPTCHA check on claim intake route:
+  - `POST /api/claim/request`
+- Validation behavior:
+  - If `TURNSTILE_SECRET_KEY` is configured: token is validated against Cloudflare siteverify.
+  - If secret is not configured: request returns explicit captcha-missing error so production cannot silently bypass.
+
+### Quality Gates
+- `npm run build`: pass.
+
+
 ## [4.0.0] - April 5, 2026 — ENTERPRISE RELEASE
 
 ### Vercel Build Fix

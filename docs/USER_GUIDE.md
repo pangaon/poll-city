@@ -1,5 +1,18 @@
 # Poll City User Guide
 
+## v4.0.1 CAPTCHA Protection Addendum — April 5, 2026
+
+### Public Form Submission Security
+
+1. Public candidate forms now require CAPTCHA verification before submission.
+2. This applies to: Ask a Question, Support Pledge, Volunteer Signup, Sign Request, and Profile Claim Request.
+3. If CAPTCHA fails, the form will not submit and shows a verification error.
+4. Ensure Turnstile is configured in production with valid keys before launch:
+   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+   - `TURNSTILE_SECRET_KEY`
+5. If keys are missing, API submissions are rejected with a clear captcha-missing message.
+
+
 ## v4.0.0 Enterprise Release SOP Addendum — April 5, 2026
 
 ### Team Management SOP (`/settings/team`)

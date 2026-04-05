@@ -3,6 +3,7 @@ import { createHmac } from "crypto";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
+import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
 
 const SECRET = process.env.NEXTAUTH_SECRET ?? "dev-secret";
 
@@ -11,7 +12,19 @@ export async function POST(req: NextRequest) {
   if (limited) return limited;
 
   try {
-    const { officialId, email, campaignSlug } = await req.json();
+    const { officialId, email, campaignSlug, captchaToken } = await req.json();
+
+    const captchaValid = await verifyTurnstileToken(req, captchaToken);
+    if (!captchaValid) {
+      return NextResponse.json(
+        {
+          error: isTurnstileEnabled()
+            ? "Captcha verification failed"
+            : "Captcha token missing",
+        },
+        { status: 400 }
+      );
+    }
 
     if (!officialId || !email || !campaignSlug) {
       return NextResponse.json({ error: "officialId, email, and campaignSlug are required" }, { status: 400 });

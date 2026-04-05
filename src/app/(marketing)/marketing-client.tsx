@@ -239,6 +239,7 @@ const PRODUCTS = [
       "Volunteer onboarding links, group leadership, and shift check-ins",
       "Sign tracking with map view",
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
+      "CAPTCHA-protected public supporter, volunteer, and sign request forms",
       "Donation tracking and pledge management",
       "Budget tracker with allocation versus actual spend",
       "Volunteer expenses and reimbursement workflow",
