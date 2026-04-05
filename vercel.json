@@ -14,6 +14,14 @@
     {
       "path": "/api/cron/sync-officials",
       "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/adoni-briefing",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/claim-outreach",
+      "schedule": "0 13 * * 1"
     }
   ]
 }

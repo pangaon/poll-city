@@ -21,6 +21,11 @@ const PUBLIC_PATHS = [
   "/verify-vote",
   "/sentiment",
   "/api/polls/verify-receipt",
+  "/resources",
+  "/demo",
+  "/api/resources",
+  "/api/health",
+  "/reset-password",
 ];
 
 function isPublicPath(path: string) {
