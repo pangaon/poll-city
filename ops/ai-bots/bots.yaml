@@ -1,0 +1,118 @@
+version: 1
+updated: 2026-04-05
+orchestrator:
+  owner: Product Lead Bot A
+  policy:
+    blockOnCritical: true
+    requireGreenBuild: true
+    requireSecurityReviewForPublicRoutes: true
+bots:
+  - id: product-lead-a
+    role: Product Lead
+    mission: Priority and scope control
+    outputs:
+      - sprint-plan
+      - release-scope
+    gates:
+      - acceptance-criteria-complete
+  - id: product-lead-b
+    role: Product Lead
+    mission: Journey mapping and acceptance criteria
+    outputs:
+      - story-specs
+      - ux-acceptance
+  - id: backend-a
+    role: Backend Engineer
+    mission: Auth permissions tenancy
+    outputs:
+      - auth-safe-api
+    gates:
+      - no-cross-tenant-access
+  - id: backend-b
+    role: Backend Engineer
+    mission: Core domain APIs
+    outputs:
+      - domain-endpoints
+      - schema-updates
+  - id: backend-c
+    role: Backend Engineer
+    mission: Reliability and scaling
+    outputs:
+      - streaming-exports
+      - performance-fixes
+  - id: web-a
+    role: Web Engineer
+    mission: Admin UX
+    outputs:
+      - admin-flows
+  - id: web-b
+    role: Web Engineer
+    mission: CRM Field GOTV UX
+    outputs:
+      - campaign-ops-ui
+  - id: web-c
+    role: Web Engineer
+    mission: Billing settings help UX
+    outputs:
+      - account-and-billing-ui
+  - id: ios-a
+    role: iOS Engineer
+    mission: App shell auth navigation
+    outputs:
+      - ios-architecture
+  - id: ios-b
+    role: iOS Engineer
+    mission: Data and offline layer
+    outputs:
+      - cache-and-queue
+  - id: ios-c
+    role: iOS Engineer
+    mission: Sync push telemetry
+    outputs:
+      - sync-engine
+      - push-and-crash-hooks
+  - id: qa-a
+    role: QA Automation
+    mission: Web API regression
+    outputs:
+      - regression-report
+  - id: qa-b
+    role: QA Automation
+    mission: Mobile E2E and contracts
+    outputs:
+      - mobile-e2e
+      - contract-report
+  - id: devops
+    role: DevOps/SRE
+    mission: Pipelines environment release
+    outputs:
+      - ci-cd
+      - deploy-runbook
+  - id: security
+    role: Security Engineer
+    mission: Threat and hardening checks
+    outputs:
+      - security-findings
+      - remediation-gates
+  - id: design
+    role: Enterprise Workflow Designer
+    mission: Enterprise task-flow UX
+    outputs:
+      - workflow-specs
+      - interaction-patterns
+required_external:
+  accounts:
+    - github-admin
+    - vercel-admin
+    - db-admin
+    - apple-developer
+  secrets:
+    - OPENAI_API_KEY
+    - DATABASE_URL
+    - NEXTAUTH_SECRET
+    - NEXTAUTH_URL
+    - RESEND_API_KEY
+    - TURNSTILE_SECRET_KEY
+    - NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    - STRIPE_SECRET_KEY
+    - STRIPE_WEBHOOK_SECRET

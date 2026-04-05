@@ -9,5 +9,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/sync-officials",
+      "schedule": "0 6 * * 0"
+    }
   ]
 }

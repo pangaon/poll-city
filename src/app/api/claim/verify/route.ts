@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import prisma from "@/lib/db/prisma";
 
-const SECRET = process.env.NEXTAUTH_SECRET ?? "dev-secret";
+const SECRET = process.env.NEXTAUTH_SECRET;
 const TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 
 export async function GET(req: NextRequest) {
+  if (!SECRET) {
+    return new NextResponse(
+      "<html><body><h2>Server configuration error.</h2></body></html>",
+      { status: 500, headers: { "Content-Type": "text/html" } }
+    );
+  }
+
   const token = req.nextUrl.searchParams.get("token");
 
   if (!token) {

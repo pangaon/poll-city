@@ -117,53 +117,27 @@ async function main() {
     },
   });
 
-  const byName = new Map<string, OfficialRow[]>();
+  // Dedup key = name + level. Two people with the same name at different
+  // levels (e.g. Jonathan Tsao MP vs Jonathan Tsao MPP, or repeated name across
+  // municipal councils) are different records and MUST NOT be merged.
+  const byNameLevel = new Map<string, OfficialRow[]>();
   for (const official of allOfficials) {
-    const key = normalize(official.name);
-    if (!byName.has(key)) byName.set(key, []);
-    byName.get(key)?.push({ ...official, level: String(official.level), district: official.district ?? "" });
-  }
-
-  const byNameResult = collectLosers(byName);
-  const firstPassDeleteIds = Array.from(new Set(byNameResult.losers));
-  const deletedByName = await deleteDuplicateOfficials(firstPassDeleteIds);
-
-  const remainingAfterFirstPass = await prisma.official.findMany({
-    select: {
-      id: true,
-      name: true,
-      level: true,
-      district: true,
-      photoUrl: true,
-      email: true,
-      website: true,
-      twitter: true,
-      facebook: true,
-      instagram: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  const byNameDistrict = new Map<string, OfficialRow[]>();
-  for (const official of remainingAfterFirstPass) {
-    const key = `${normalize(official.name)}|${normalize(official.district ?? "")}`;
-    if (!byNameDistrict.has(key)) byNameDistrict.set(key, []);
-    byNameDistrict
+    const key = `${normalize(official.name)}|${normalize(String(official.level))}`;
+    if (!byNameLevel.has(key)) byNameLevel.set(key, []);
+    byNameLevel
       .get(key)
       ?.push({ ...official, level: String(official.level), district: official.district ?? "" });
   }
 
-  const byNameDistrictResult = collectLosers(byNameDistrict);
-  const secondPassDeleteIds = Array.from(new Set(byNameDistrictResult.losers));
-  const deletedByNameDistrict = await deleteDuplicateOfficials(secondPassDeleteIds);
+  const result = collectLosers(byNameLevel);
+  const deleteIds = Array.from(new Set(result.losers));
+  const deleted = await deleteDuplicateOfficials(deleteIds);
 
   const officialsRemaining = await prisma.official.count();
-  const duplicatesFound = byNameResult.losers.length + byNameDistrictResult.losers.length;
-  const recordsDeleted = deletedByName + deletedByNameDistrict;
 
-  console.log(`X duplicates found: ${duplicatesFound}`);
-  console.log(`X records deleted: ${recordsDeleted}`);
+  console.log(`X duplicate groups: ${result.duplicateGroups}`);
+  console.log(`X duplicates found: ${result.losers.length}`);
+  console.log(`X records deleted: ${deleted}`);
   console.log(`X officials remaining: ${officialsRemaining}`);
 }
 

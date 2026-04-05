@@ -1,42 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const checks = {
-    database: false,
+export async function GET(request: NextRequest) {
+  const publicResponse = {
+    status: "ok",
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || "5.0.0",
-    environment: process.env.NODE_ENV,
-    envVars: {
-      nextauthSecret: !!process.env.NEXTAUTH_SECRET,
-      databaseUrl: !!process.env.DATABASE_URL,
-      nextauthUrl: !!process.env.NEXTAUTH_URL,
-      anthropicKey: !!process.env.ANTHROPIC_API_KEY,
-      resendKey: !!process.env.RESEND_API_KEY,
-      vapidKeys: !!(process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-      stripeKey: !!process.env.STRIPE_SECRET_KEY,
-      redisUrl: !!process.env.UPSTASH_REDIS_REST_URL,
-      turnstileKey: !!process.env.TURNSTILE_SECRET_KEY,
-      pollAnonymitySalt: !!process.env.POLL_ANONYMITY_SALT,
-      ipHashSalt: !!process.env.IP_HASH_SALT,
-      cronSecret: !!process.env.CRON_SECRET,
-    },
   };
 
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    checks.database = true;
-  } catch {
-    checks.database = false;
+  const healthSecret = process.env.HEALTH_CHECK_SECRET;
+  const headerSecret = request.headers.get("x-health-secret");
+  const isInternal = Boolean(healthSecret) && headerSecret === healthSecret;
+
+  if (!isInternal) {
+    return NextResponse.json(publicResponse, { status: 200 });
   }
 
-  const allCriticalPass =
-    checks.database &&
-    checks.envVars.nextauthSecret &&
-    checks.envVars.databaseUrl &&
-    checks.envVars.nextauthUrl;
+  const dbOk = await prisma.$queryRaw`SELECT 1`
+    .then(() => true)
+    .catch(() => false);
 
-  return NextResponse.json(checks, { status: allCriticalPass ? 200 : 503 });
+  return NextResponse.json(
+    {
+      ...publicResponse,
+      database: dbOk,
+      env: {
+        nextauthSecret: !!process.env.NEXTAUTH_SECRET,
+        database: !!process.env.DATABASE_URL,
+        anthropic: !!process.env.ANTHROPIC_API_KEY,
+        resend: !!process.env.RESEND_API_KEY,
+      },
+    },
+    { status: dbOk ? 200 : 503 }
+  );
 }

@@ -40,13 +40,11 @@ interface FilterOptions {
 }
 
 interface GeoLookupResponse {
-  federalRiding: string | null;
-  provincialRiding: string | null;
-  municipalWard: string | null;
-  municipality: string | null;
-  province: string | null;
   representatives: Official[];
-  message: string | null;
+  inputType?: "postalCode" | "address" | "coordinates";
+  cached?: boolean;
+  error?: string | null;
+  message?: string | null;
 }
 
 /* ─── Constants ──────────────────────────────────────────────────────────── */
@@ -282,6 +280,8 @@ export default function OfficialsClient() {
   const [error, setError] = useState<string | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [locationInput, setLocationInput] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
@@ -340,6 +340,47 @@ export default function OfficialsClient() {
     setPage(1);
   }
 
+  // Format as user types: auto-uppercase + auto-space for postal codes.
+  function handleLocationInput(value: string) {
+    const isPostalShape = /^[A-Za-z]\d[A-Za-z]/.test(value.replace(/\s/g, ""));
+    if (isPostalShape) {
+      const clean = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
+      const formatted = clean.length > 3 ? `${clean.slice(0, 3)} ${clean.slice(3)}` : clean;
+      setLocationInput(formatted);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setLocationInput(value);
+    // Debounced address autocomplete (Nominatim)
+    if (value.length >= 5) {
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }
+
+  // Debounce nominatim calls
+  useEffect(() => {
+    if (!showSuggestions || locationInput.length < 5) return;
+    if (/^[A-Z]\d[A-Z]/.test(locationInput.replace(/\s/g, ""))) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationInput + " Canada")}&format=json&addressdetails=1&limit=5`,
+        );
+        const places = (await res.json()) as Array<{ display_name: string }>;
+        setSuggestions(
+          places.map((p) => p.display_name.split(",").slice(0, 3).join(",").trim()),
+        );
+      } catch {
+        setSuggestions([]);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [locationInput, showSuggestions]);
+
   async function findMyOfficials(rawInput?: string) {
     const query = (rawInput ?? locationInput).trim();
     if (!query) {
@@ -369,15 +410,15 @@ export default function OfficialsClient() {
       const payload = (await res.json()) as GeoLookupResponse;
 
       if (!res.ok) {
-        setLocationError(payload.message || "Unable to find officials for that location.");
+        setLocationError(payload.error || payload.message || "Unable to find officials for that location.");
         setYourRepresentatives([]);
         return;
       }
 
       setYourRepresentatives(payload.representatives ?? []);
       setLocationMessage(payload.message ?? null);
-      if (!payload.representatives?.length && payload.message) {
-        setLocationError(payload.message);
+      if (!payload.representatives?.length) {
+        setLocationError(payload.message || "No local officials found for that location yet.");
       }
     } catch {
       setLocationError("Unable to lookup representatives right now. Please try again in a moment.");
@@ -470,17 +511,42 @@ export default function OfficialsClient() {
               <input
                 type="search"
                 value={locationInput}
-                onChange={(e) => setLocationInput(e.target.value)}
+                onChange={(e) => handleLocationInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
+                    setShowSuggestions(false);
                     void findMyOfficials();
+                  } else if (e.key === "Escape") {
+                    setShowSuggestions(false);
                   }
                 }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 placeholder="Enter postal code (e.g. M4C 1B2) or your address..."
                 className="w-full rounded-xl border border-blue-200 bg-white pl-11 pr-4 py-3.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 aria-label="Find officials for your address or postal code"
+                autoComplete="off"
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={`${s}-${i}`}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setLocationInput(s);
+                        setShowSuggestions(false);
+                        void findMyOfficials(s);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 flex items-start gap-2 border-b border-slate-100 last:border-b-0"
+                    >
+                      <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                      <span className="truncate">{s}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               onClick={() => void findMyOfficials()}

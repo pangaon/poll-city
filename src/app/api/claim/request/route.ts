@@ -5,11 +5,15 @@ import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
 
-const SECRET = process.env.NEXTAUTH_SECRET ?? "dev-secret";
+const SECRET = process.env.NEXTAUTH_SECRET;
 
 export async function POST(req: NextRequest) {
   const limited = rateLimit(req, "auth");
   if (limited) return limited;
+
+  if (!SECRET) {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
 
   try {
     const { officialId, email, campaignSlug, captchaToken } = await req.json();
