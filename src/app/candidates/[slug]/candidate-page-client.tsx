@@ -9,17 +9,6 @@ import {
   ShieldCheck, Building2, ExternalLink, Trophy, Star, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-function getPartyColour(partyName?: string | null): { primary: string; secondary: string; text: string } {
-  const name = (partyName ?? "").toLowerCase();
-  if (name.includes("liberal")) return { primary: "#D71920", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("conservative") || name.includes(" pc") || name.startsWith("pc")) return { primary: "#1A4782", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("ndp") || name.includes("new democrat")) return { primary: "#F37021", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("bloc") || name.includes("bq")) return { primary: "#0088CE", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("green")) return { primary: "#24A348", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("people") || name.includes("ppc")) return { primary: "#4B306A", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("independent")) return { primary: "#6B7280", secondary: "#FFFFFF", text: "#FFFFFF" };
-  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
-}
 
 /* ─── Customization types ────────────────────────────────────────────────── */
 
@@ -166,8 +155,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
 
   const cx = campaign.customization ?? {};
   const off = campaign.official;
-  const partyColour = getPartyColour(off?.partyName ?? off?.party ?? null);
-  const primaryColor = cx.primaryColor ?? (campaign.primaryColor !== "#1e40af" ? campaign.primaryColor : partyColour.primary);
+  const primaryColor = cx.primaryColor ?? campaign.primaryColor ?? "#1E3A8A";
   const accentColor = cx.accentColor ?? primaryColor;
   const theme = cx.theme ?? "classic-blue";
   const themeColors = THEME_COLORS[theme] ?? THEME_COLORS["classic-blue"];
@@ -241,7 +229,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
       {/* ── Hero ── */}
       <div
         className="text-white py-12 px-4 relative overflow-hidden"
-        style={{ background: cx.heroBannerUrl ? `url(${cx.heroBannerUrl}) center/cover` : `linear-gradient(135deg, ${primaryColor} 0%, ${partyColour.secondary} 100%)` }}
+        style={{ background: cx.heroBannerUrl ? `url(${cx.heroBannerUrl}) center/cover` : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}cc 100%)` }}
       >
         {cx.heroBannerUrl && <div className="absolute inset-0 bg-black/50" />}
         {cx.heroVideoUrl && (

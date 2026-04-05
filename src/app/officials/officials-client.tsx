@@ -7,17 +7,7 @@ import {
   ShieldCheck, AlertCircle, ChevronLeft, ChevronRight,
   Mail, Filter, X, SlidersHorizontal,
 } from "lucide-react";
-function getPartyColour(partyName?: string | null): { primary: string; secondary: string; text: string } {
-  const name = (partyName ?? "").toLowerCase();
-  if (name.includes("liberal")) return { primary: "#D71920", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("conservative") || name.includes(" pc") || name.startsWith("pc")) return { primary: "#1A4782", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("ndp") || name.includes("new democrat")) return { primary: "#F37021", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("bloc") || name.includes("bq")) return { primary: "#0088CE", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("green")) return { primary: "#24A348", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("people") || name.includes("ppc")) return { primary: "#4B306A", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("independent")) return { primary: "#6B7280", secondary: "#FFFFFF", text: "#FFFFFF" };
-  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
-}
+const BRAND_COLOUR = "#1E3A8A";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Official {
@@ -75,7 +65,6 @@ function OfficialCard({ official }: { official: Official }) {
   const profilePath = `/officials/${official.id}`;
   const claimPath = `/claim/${official.externalId ?? official.id}`;
   const party = official.partyName ?? official.party ?? null;
-  const partyColour = getPartyColour(party);
   const levelBadge = LEVEL_BADGE[official.level] ?? "bg-gray-100 text-gray-700 border-gray-200";
   const hasSocial = official.twitter || official.facebook || official.instagram || official.linkedIn || official.website;
 
@@ -88,7 +77,7 @@ function OfficialCard({ official }: { official: Official }) {
       <div
         className="relative flex flex-col items-center pt-6 pb-4 px-4"
         style={{
-          background: `linear-gradient(135deg, ${partyColour.primary} 0%, ${partyColour.primary}cc 100%)`,
+          background: `linear-gradient(135deg, ${BRAND_COLOUR} 0%, ${BRAND_COLOUR}cc 100%)`,
         }}
       >
         {/* Former member badge */}
@@ -213,7 +202,7 @@ function OfficialCard({ official }: { official: Official }) {
           <Link
             href={profilePath}
             className="flex-1 text-center text-xs font-semibold py-2 px-3 rounded-lg text-white transition-colors hover:opacity-90"
-            style={{ backgroundColor: partyColour.primary }}
+            style={{ backgroundColor: BRAND_COLOUR }}
             aria-label={`View profile for ${official.name}`}
           >
             View Profile

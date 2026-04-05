@@ -4,21 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { differenceInDays } from "date-fns";
 import prisma from "@/lib/db/prisma";
-function getPartyColour(partyName?: string | null): { primary: string; secondary: string; text: string } {
-  const name = (partyName ?? "").toLowerCase();
-  if (name.includes("liberal")) return { primary: "#D71920", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("conservative") || name.includes(" pc") || name.startsWith("pc")) return { primary: "#1A4782", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("ndp") || name.includes("new democrat")) return { primary: "#F37021", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("bloc") || name.includes("bq")) return { primary: "#0088CE", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("green")) return { primary: "#24A348", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("people") || name.includes("ppc")) return { primary: "#4B306A", secondary: "#FFFFFF", text: "#FFFFFF" };
-  if (name.includes("independent")) return { primary: "#6B7280", secondary: "#FFFFFF", text: "#FFFFFF" };
-  return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
-}
-function partyGradientStyle(partyName?: string | null): Record<string, string> {
-  const c = getPartyColour(partyName);
-  return { background: `linear-gradient(135deg, ${c.primary} 0%, ${c.primary}cc 100%)` };
-}
+
+const BRAND_COLOUR = "#1E3A8A";
+const HERO_STYLE: Record<string, string> = {
+  background: `linear-gradient(135deg, ${BRAND_COLOUR} 0%, ${BRAND_COLOUR}cc 100%)`,
+};
 import {
   ShieldCheck, AlertCircle, Globe, Phone, Mail, Twitter,
   Facebook, Instagram, Linkedin, Trophy, CheckCircle, MapPin,
@@ -100,8 +90,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
   if (!official) notFound();
 
   const party = official.partyName ?? official.party ?? null;
-  const partyColour = getPartyColour(party);
-  const heroStyle = partyGradientStyle(party);
+  const heroStyle = HERO_STYLE;
   const campaign = official.campaigns[0] ?? null;
   const initials = official.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   const hasSocial = official.twitter || official.facebook || official.instagram || official.linkedIn || official.website;
@@ -170,7 +159,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
             <div className="relative flex-shrink-0">
               <div
                 className="w-36 h-36 rounded-full border-4 border-white shadow-2xl overflow-hidden flex items-center justify-center"
-                style={{ boxShadow: `0 0 0 4px ${partyColour.primary}80, 0 20px 40px rgba(0,0,0,0.3)` }}
+                style={{ boxShadow: `0 0 0 4px ${BRAND_COLOUR}80, 0 20px 40px rgba(0,0,0,0.3)` }}
               >
                 {official.photoUrl ? (
                   <Image
@@ -309,7 +298,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
                   {official.name} has not yet claimed their Poll City profile. Claim this profile to add your biography, platform, and connect with constituents.
                 </p>
                 <Link href={`/claim/${official.externalId ?? official.id}`}>
-                  <button className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors" style={{ backgroundColor: partyColour.primary }}>
+                  <button className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors" style={{ backgroundColor: BRAND_COLOUR }}>
                     Claim This Profile
                   </button>
                 </Link>
@@ -320,31 +309,31 @@ export default async function OfficialProfilePage({ params }: PageProps) {
             {hasContact && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Building2 className="w-5 h-5" style={{ color: partyColour.primary }} />
+                  <Building2 className="w-5 h-5" style={{ color: BRAND_COLOUR }} />
                   Office Information
                 </h2>
                 <ul className="space-y-3">
                   {official.address && (
                     <li className="flex items-start gap-3 text-sm text-gray-700">
-                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: partyColour.primary }} />
+                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: BRAND_COLOUR }} />
                       {official.address}
                     </li>
                   )}
                   {official.phone && (
                     <li className="flex items-center gap-3">
-                      <Phone className="w-4 h-4 flex-shrink-0" style={{ color: partyColour.primary }} />
+                      <Phone className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_COLOUR }} />
                       <a href={`tel:${official.phone}`} className="text-sm text-gray-700 hover:underline">{official.phone}</a>
                     </li>
                   )}
                   {official.email && (
                     <li className="flex items-center gap-3">
-                      <Mail className="w-4 h-4 flex-shrink-0" style={{ color: partyColour.primary }} />
+                      <Mail className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_COLOUR }} />
                       <a href={`mailto:${official.email}`} className="text-sm text-gray-700 hover:underline break-all">{official.email}</a>
                     </li>
                   )}
                   {official.website && (
                     <li className="flex items-center gap-3">
-                      <ExternalLink className="w-4 h-4 flex-shrink-0" style={{ color: partyColour.primary }} />
+                      <ExternalLink className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_COLOUR }} />
                       <a href={official.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate">{official.website}</a>
                     </li>
                   )}
@@ -407,7 +396,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Constituent Q&amp;A</h2>
                 <div className="space-y-4">
                   {official.questions.map((q) => (
-                    <div key={q.id} className="border-l-4 pl-4" style={{ borderColor: partyColour.primary }}>
+                    <div key={q.id} className="border-l-4 pl-4" style={{ borderColor: BRAND_COLOUR }}>
                       <p className="font-semibold text-gray-900 text-sm">{q.question}</p>
                       <p className="text-gray-600 text-sm mt-1">{q.answer}</p>
                       {q.answeredAt && (
@@ -439,7 +428,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
                           poll.city/candidates/{campaign.slug}
                         </div>
                       </div>
-                      <div className="p-4" style={{ background: `linear-gradient(135deg, ${partyColour.primary} 0%, ${partyColour.primary}99 100%)` }}>
+                      <div className="p-4" style={{ background: `linear-gradient(135deg, ${BRAND_COLOUR} 0%, ${BRAND_COLOUR}99 100%)` }}>
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg border-2 border-white">
                             {initials}
@@ -456,7 +445,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
                       <span className="font-mono text-blue-600">poll.city/candidates/{campaign.slug}</span>
                     </p>
                     <Link href={`/candidates/${campaign.slug}`} target="_blank">
-                      <button className="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90" style={{ backgroundColor: partyColour.primary }}>
+                      <button className="w-full py-3 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90" style={{ backgroundColor: BRAND_COLOUR }}>
                         View My Campaign Website →
                       </button>
                     </Link>
@@ -468,7 +457,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
                     </p>
                     <p className="text-gray-400 text-xs mb-4">Replaces a $5,000 custom website — live in minutes.</p>
                     <Link href={`/claim/${official.externalId ?? official.id}`}>
-                      <button className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90" style={{ backgroundColor: partyColour.primary }}>
+                      <button className="px-6 py-2.5 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90" style={{ backgroundColor: BRAND_COLOUR }}>
                         Claim This Profile
                       </button>
                     </Link>
@@ -483,7 +472,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
 
             {/* Election countdown */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
-              <Calendar className="w-8 h-8 mx-auto mb-2" style={{ color: partyColour.primary }} />
+              <Calendar className="w-8 h-8 mx-auto mb-2" style={{ color: BRAND_COLOUR }} />
               <div className="text-3xl font-black text-gray-900">{days}</div>
               <div className="text-gray-500 text-xs mt-0.5">Days until Oct 26, 2026</div>
             </div>
@@ -493,7 +482,7 @@ export default async function OfficialProfilePage({ params }: PageProps) {
               <h3 className="font-bold text-gray-900 text-sm mb-3">Get Involved</h3>
               {campaign?.slug && campaign.isPublic ? (
                 <>
-                  <Link href={`/candidates/${campaign.slug}`} className="block w-full text-center py-2.5 px-4 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90" style={{ backgroundColor: partyColour.primary }}>
+                  <Link href={`/candidates/${campaign.slug}`} className="block w-full text-center py-2.5 px-4 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90" style={{ backgroundColor: BRAND_COLOUR }}>
                     Follow on Poll City
                   </Link>
                   <Link href={`/candidates/${campaign.slug}#volunteer`} className="block w-full text-center py-2.5 px-4 rounded-xl bg-gray-50 text-gray-700 border border-gray-200 text-sm font-medium hover:bg-gray-100 transition-colors">
