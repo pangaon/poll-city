@@ -44,6 +44,7 @@ const navItems = [
   { href: "/officials", icon: Globe, label: "Officials Directory" },
   { href: "/import-export", icon: Upload, label: "Import / Export" },
   { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/settings/team", icon: Users, label: "Team" },
   { href: "/billing", icon: CreditCard, label: "Billing" },
 ];
 

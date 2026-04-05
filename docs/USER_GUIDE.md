@@ -1,5 +1,52 @@
 # Poll City User Guide
 
+## v4.0.0 Enterprise Release SOP Addendum — April 5, 2026
+
+### Team Management SOP (`/settings/team`)
+
+1. Navigate to **Settings → Team** in the sidebar.
+2. See every team member on this campaign with name, email, role, last login, and joined date.
+3. **Invite a new member:** click **Invite member** in the top right.
+4. Enter their email address and choose a role (Admin, Manager, Volunteer Leader, or Canvasser).
+5. Click **Send invite** — they'll receive an email with a sign-in link.
+6. **Change a role:** click the role dropdown next to any member — the change saves immediately.
+7. **Remove a member:** click the trash icon — confirm to remove them from the campaign.
+8. You cannot change your own role or remove yourself.
+9. Only Admins can invite, change roles, or remove members.
+10. The **Role permissions** table shows exactly what each role can do across all features.
+
+### Specialized CSV Exports SOP (`/import-export`)
+
+1. Navigate to **Import / Export** in the sidebar.
+2. Find the **Specialized Exports** card.
+3. Click any export button to download a CSV:
+   - **All Contacts** — every contact with full details and tags
+   - **GOTV Priority List** — supporters for election day phone banking
+   - **Walk List** — canvassing order by street name and house number
+   - **Signs** — all sign requests and installs with addresses and status
+   - **Donations** — Ontario-compliant donor report with names, addresses, amounts
+   - **Volunteers** — all volunteers with skills, availability, and hours
+   - **Interaction Log** — every door knock, call, email, and note
+4. Files are named with your campaign slug and today's date.
+5. Every export is logged in ExportLog for audit compliance.
+
+### Feature Flags & Tier Gating
+
+1. Locked features display a lock icon with the minimum plan required.
+2. Click **Upgrade Now** on any locked feature to go to billing.
+3. You can always see what's locked — features are never hidden.
+4. Pro unlocks: Smart Import AI, custom fields, advanced analytics, SMS, custom domain, route optimization.
+5. Command unlocks: API access, white label, dedicated database.
+
+### Error Messages SOP
+
+1. Every error now shows: what went wrong, why, and what to do next.
+2. Errors include a unique code (e.g., `IMPORT_001`) for support tickets.
+3. When you see an error with a button, click it to recover (sign in, download template, etc.).
+4. Network errors auto-show your data will sync when reconnected.
+
+---
+
 ## v3.0.1 Smart Import Operations Addendum — April 5, 2026
 
 ### Enterprise Smart Import SOP (`/import-export/smart-import`)

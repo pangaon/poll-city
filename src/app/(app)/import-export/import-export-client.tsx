@@ -166,6 +166,35 @@ export default function ImportExportClient({ campaignId }: Props) {
     a.download = "poll-city-import-template.csv"; a.click();
   }
 
+  async function downloadExport(endpoint: string, label: string) {
+    try {
+      const res = await fetch(`${endpoint}?campaignId=${campaignId}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      const filename = filenameMatch?.[1] ?? `${label}-${new Date().toISOString().slice(0, 10)}.csv`;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success(`${label} exported`);
+    } catch {
+      toast.error(`Failed to export ${label.toLowerCase()}`);
+    }
+  }
+
+  const EXPORT_TYPES: Array<{ endpoint: string; label: string; description: string }> = [
+    { endpoint: "/api/export/contacts", label: "All Contacts", description: "Every contact with full details and tags" },
+    { endpoint: "/api/export/gotv", label: "GOTV Priority List", description: "Supporters for election day outreach" },
+    { endpoint: "/api/export/walklist", label: "Walk List", description: "Canvassing order by street and house number" },
+    { endpoint: "/api/export/signs", label: "Signs", description: "All sign requests and installs" },
+    { endpoint: "/api/export/donations", label: "Donations", description: "Ontario-compliant donor report" },
+    { endpoint: "/api/export/volunteers", label: "Volunteers", description: "Volunteers with skills and availability" },
+    { endpoint: "/api/export/interactions", label: "Interaction Log", description: "Every door knock, call, email, note" },
+  ];
+
   return (
     <div className="max-w-3xl space-y-5 animate-fade-in">
       <PageHeader title="Import / Export" description="Bulk manage your voter contacts via CSV" />
@@ -182,6 +211,31 @@ export default function ImportExportClient({ campaignId }: Props) {
             <Button onClick={exportComplianceSnapshot} variant="outline">
               <FileText className="w-4 h-4" />Compliance JSON Snapshot
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Specialized Exports */}
+      <Card>
+        <CardHeader>
+          <h3 className="font-semibold text-gray-900">Specialized Exports</h3>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600 mb-3">Purpose-built CSV exports for GOTV, canvassing, volunteers, donations, and compliance reporting.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {EXPORT_TYPES.map((ex) => (
+              <button
+                key={ex.endpoint}
+                onClick={() => downloadExport(ex.endpoint, ex.label)}
+                className="flex items-start gap-2 text-left p-3 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50/40 transition-colors"
+              >
+                <Download className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{ex.label}</p>
+                  <p className="text-xs text-gray-500 truncate">{ex.description}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </CardContent>
       </Card>

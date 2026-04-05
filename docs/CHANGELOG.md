@@ -1,5 +1,81 @@
 # Poll City Changelog
 
+## [4.0.0] - April 5, 2026 — ENTERPRISE RELEASE
+
+### Vercel Build Fix
+- Deleted `src/lib/party-colours.ts` and inlined rich Canadian party colour logic directly into 3 consuming files (candidate-page-client, officials-client, officials/[id]/page).
+- Function now detects Liberal, Conservative, NDP, Bloc, Green, PPC, Independent, and unknown parties with proper hex colour codes.
+- Eliminates case-sensitivity risk on Vercel's Linux build environment.
+
+### Team Management (`/settings/team`)
+- New page listing all campaign members with name, email, role, last login, joined date.
+- Invite team members by email — sends sign-in link via Resend.
+- Change member roles inline from dropdown — saves immediately.
+- Remove members with confirmation.
+- Role permissions matrix shown as a table (10 features × 4 roles).
+- Added `Team` link to sidebar.
+- New API: GET/PATCH/DELETE `/api/team/[id]`, POST `/api/team/invite`, GET `/api/team`.
+
+### Specialized CSV Exports (`/api/export/*`)
+- 7 new export endpoints, each with rowsToCsv + exportFilename helpers:
+  - `/api/export/contacts` — full contact export
+  - `/api/export/gotv` — supporters sorted by support level
+  - `/api/export/walklist` — canvassing order by street and house number
+  - `/api/export/signs` — sign requests with contact and status
+  - `/api/export/donations` — Ontario municipal finance compliant donor report
+  - `/api/export/volunteers` — skills, availability, hours logged
+  - `/api/export/interactions` — every door knock, call, email, note
+- New `/api/import/template` endpoint — downloadable sample CSV with headers.
+- Every export logged to ExportLog for audit compliance.
+- Added `src/lib/export/csv.ts` with RFC 4180 compliant CSV helpers.
+- UI: new "Specialized Exports" card on `/import-export` page.
+
+### Feature Flags System (`src/lib/feature-flags.ts`)
+- Central tier gating: `hasFeature(plan, feature)` returns boolean.
+- 21 gated features mapped to 5 plans (free_trial, starter, pro, official, command).
+- Starter: contacts import/export, GOTV, push notifications, basic analytics, print marketplace, team management, bulk actions, email, basic analytics.
+- Pro: smart import AI, unlimited contacts, custom fields, advanced analytics, AI predictions, route optimization, SMS, custom domain, social media.
+- Command: API access, white label, dedicated database.
+- New `<FeatureGate>` component wraps locked features with greyed-out overlay + upgrade CTA.
+- `<UpgradePrompt>` banner component for inline upgrade prompts.
+
+### Error Handling System
+- New `src/lib/errors.ts` with 25+ user-friendly error definitions (title, description, action, code).
+- New `<ErrorMessage>` component in `src/components/ui/error-message.tsx` — accepts ErrorInfo or title/description.
+- Error categories: IMPORT, CONTACT, AUTH, NET, NOTIFY, EXPORT, POLL, BILL, TEAM.
+- Every error has a unique code for support tickets (e.g., IMPORT_001, AUTH_002).
+
+### Tooltip & Field Help System
+- New `<FieldHelp>` component with hover tooltip (top/bottom/left/right positioning).
+- Tooltip content fields: content, example, tip.
+- `<Tooltip>` alias for backwards compatibility.
+- Focus-keyboard accessible with `aria-label`.
+
+### Contact Slide-Over Panel
+- New `<ContactSlideOver>` component (`src/components/contacts/contact-slideover.tsx`).
+- Slides in from right on contact row click — no page navigation required.
+- Shows editable support level (5-button selector), phone/email/address with action links.
+- Inline flag toggles (Follow up, Volunteer, Sign).
+- Tags display with party colours.
+- Editable notes with auto-save.
+- Recent interaction timeline.
+- Link to full contact profile.
+- New `slide-in-right` animation in tailwind.config.ts.
+- Integrated into contacts-client.tsx.
+
+### Database Schema (Additive Only)
+- New `ExportLog` model: id, campaignId, userId, exportType, format, recordCount, filters, createdAt.
+- Existing `ImportLog` model verified and wired up.
+- Added relations to Campaign: `importLogs`, `exportLogs`.
+
+### Quality Gates
+- `npx tsc --noEmit`: zero TypeScript errors.
+- `npm run build`: pass (142+ routes).
+- All new endpoints: authenticated, tenant-isolated, rate-limited where public.
+- All new components: TypeScript strict mode, accessible.
+
+---
+
 ## [3.0.1] - April 5, 2026
 
 ### Enterprise Smart Import Pipeline
