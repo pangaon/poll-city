@@ -1,5 +1,22 @@
 # Poll City User Guide
 
+## v4.0.19 GOTV Command Center Addendum — April 5, 2026
+
+### GOTV Tabs (`/gotv`)
+
+1. Open GOTV and switch between Priority List, Strike Off, Upload Voted, and Election Day tabs.
+2. Use **Priority List** to work contacts by Priority 1-4 tiers and score.
+3. Use **Strike Off** to monitor voted progress by tier in real time.
+4. Use **Upload Voted** to upload clerk files and mark matched voters as voted.
+5. Use **Election Day** to track live vote pace, projected total votes, and outstanding Priority 1 contacts.
+
+### Tier Interpretation
+
+1. Priority 1: highest urgency election-day contacts.
+2. Priority 2: likely supporters to confirm before close.
+3. Priority 3: persuadable contacts requiring additional outreach.
+4. Priority 4: low-priority contacts for remaining capacity.
+
 ## v4.0.18 Drag-and-Drop Import Addendum — April 5, 2026
 
 ### Drag-and-Drop Upload (`/import-export`)

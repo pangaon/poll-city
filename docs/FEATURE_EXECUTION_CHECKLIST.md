@@ -25,7 +25,7 @@ Dependency planning requirement before implementation starts:
 - [ ] 5. Custom Fields  | status: Pending  | commit: -  | report: -
 - [ ] 6. Turf Builder  | status: Pending  | commit: -  | report: -
 - [ ] 7. Walk App + GPS  | status: Pending  | commit: -  | report: -
-- [ ] 8. GOTV Priority + Upload  | status: Pending  | commit: -  | report: -
+- [x] 8. GOTV Priority + Upload  | status: Built & Verified (tabbed GOTV engine + tiers API + election-day command metrics)  | commit: pending  | report: Completed with campaign-scoped scoring, strike-off progress, and live command-center pacing
 - [ ] 9. Volunteer Management  | status: Pending  | commit: -  | report: -
 - [ ] 10. Sign Tracking  | status: Pending  | commit: -  | report: -
 - [ ] 11. Donation Logging  | status: Pending  | commit: -  | report: -

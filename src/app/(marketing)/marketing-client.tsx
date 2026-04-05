@@ -263,6 +263,7 @@ const PRODUCTS = [
       "Reliability-tuned AI assistant with per-user rate limiting, safer auth recovery controls, and smoother in-app assistant behavior",
       "Backwards-compatible GOTV upload API support (`/api/gotv/upload` and `/api/gotv/upload-voted`) for legacy integration continuity",
       "Hardened GOTV ingestion guards: expected-column validation, input sanitization, file-size limits, and row-volume protection",
+      "GOTV command center with live Priority 1-4 tier tracking, strike-off progress, and election-day vote pace projection",
       "Polished high-density UX with thin cross-browser scrollbars and smoother in-panel/table scrolling behavior",
       "Reorganized operations sidebar with collapsible campaign sections and one-click Ask Adoni assistant access",
       "Mobile-first bottom navigation with safe-area support and a slide-up quick-actions menu",

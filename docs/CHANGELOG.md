@@ -1,5 +1,28 @@
 # Poll City Changelog
 
+## [4.0.19] - April 5, 2026 — GOTV COMMAND CENTER + LIVE PRIORITY TIERS
+
+### GOTV Engine Upgrade (`/gotv`)
+- Rebuilt GOTV into a four-tab operational workflow:
+  - Priority List
+  - Strike Off
+  - Upload Voted
+  - Election Day Command
+- Added live tier cards and contact scoring surface with Priority 1-4 segmentation.
+- Added strike-off progress tracking by tier with voted percentages.
+
+### New GOTV APIs
+- Added `GET /api/gotv/tiers` for campaign-scoped tiered GOTV scoring and lists.
+- Added `GET /api/gotv/command` for election-day command metrics (pace, projected total, outstanding P1, recent activity).
+- Added `src/lib/gotv/score.ts` scoring utility with reusable tier logic and colors.
+
+### Security and Validation
+- Added Zod query validation for new GOTV API routes.
+- Enforced campaign membership checks before returning campaign GOTV data.
+
+### Outcome
+- Campaign operators now have a live command-center view to convert identified supporters into confirmed votes with clear tier priorities and real-time election-day pacing signals.
+
 ## [4.0.18] - April 5, 2026 — DRAG-AND-DROP LIST IMPORT UX
 
 ### Import/Export Usability

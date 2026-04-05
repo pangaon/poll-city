@@ -15,6 +15,35 @@ Purpose: shared cross-developer status, handoffs, blockers, and dependency readi
 ## 2026-04-05  |  Contributor: GitHub Copilot
 
 ### Completed
+- Shipped GOTV engine UI refresh at `/gotv` with four tabs: Priority List, Strike Off, Upload Voted, Election Day.
+- Added `GET /api/gotv/tiers` for tiered scoring and campaign-scoped contact prioritization.
+- Added `GET /api/gotv/command` for election-day pace and projection metrics.
+- Added reusable GOTV scoring utility in `src/lib/gotv/score.ts`.
+- Hardened new GOTV routes with Zod query validation and membership enforcement.
+
+### Changed Files
+- src/app/(app)/gotv/page.tsx
+- src/app/(app)/gotv/gotv-client.tsx
+- src/app/api/gotv/tiers/route.ts
+- src/app/api/gotv/command/route.ts
+- src/lib/gotv/score.ts
+- docs/CHANGELOG.md
+- docs/USER_GUIDE.md
+- src/app/(marketing)/marketing-client.tsx
+- docs/FEATURE_EXECUTION_CHECKLIST.md
+
+### Validation
+- npx tsc --noEmit: pass
+- npm run verify:regression: pass
+- npm run build: pass
+
+### Dependency Readiness
+- Ready now: core GOTV scoring, priority lists, strike-off progress, election-day command metrics.
+- Optional for enhanced operations: Twilio and push-notification keys for full communications-trigger workflows.
+
+## 2026-04-05  |  Contributor: GitHub Copilot
+
+### Completed
 - Added master-document consistency gate script and npm command.
 - Corrected Feature Matrix source reference note.
 - Added feature completion standard document and checklist completion criteria.
