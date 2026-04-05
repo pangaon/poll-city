@@ -18,6 +18,8 @@ export interface ActionContext {
   userId: string;
   campaignId: string;
   userName: string;
+  userRole: string; // SUPER_ADMIN | ADMIN | CAMPAIGN_MANAGER | CANVASSER | VOLUNTEER | VIEWER
+  autoExecuteEnabled: boolean; // campaign-level toggle
 }
 
 export interface ActionResult {
@@ -169,6 +171,56 @@ export const ADONI_TOOLS = [
   },
 ];
 
+// ─── Role-gated permissions ─────────────────────────────────────────────────
+
+type PermLevel = "read" | "write" | "admin";
+
+const TOOL_PERMISSIONS: Record<string, PermLevel> = {
+  get_campaign_stats: "read",
+  search_contacts: "read",
+  count_contacts_in_area: "read",
+  get_gotv_summary: "read",
+  get_volunteer_roster: "read",
+  create_task: "write",
+  send_team_alert: "write",
+  update_contact_support: "write",
+  schedule_canvass: "write",
+  log_interaction: "write",
+};
+
+const ROLE_LEVEL: Record<string, PermLevel> = {
+  SUPER_ADMIN: "admin",
+  ADMIN: "admin",
+  CAMPAIGN_MANAGER: "write",
+  CANVASSER: "write",
+  FIELD_LEAD: "write",
+  VOLUNTEER: "read",
+  VIEWER: "read",
+  FINANCE: "read",
+};
+
+const LEVEL_ORDER: Record<PermLevel, number> = { read: 0, write: 1, admin: 2 };
+
+function hasPermission(role: string, required: PermLevel): boolean {
+  const userLevel = ROLE_LEVEL[role] ?? "read";
+  return LEVEL_ORDER[userLevel] >= LEVEL_ORDER[required];
+}
+
+const FUNNY_DENIALS: readonly string[] = [
+  "Nice try. That action requires a higher clearance. Ask your campaign manager — or bring donuts to the next strategy meeting.",
+  "I'd love to help, but your role doesn't have the keys to that particular drawer. Talk to an admin?",
+  "Hmm, that's above my pay grade for your current role. The campaign manager can do this one.",
+  "I checked the permissions list and... yeah, you'll need to level up first. Maybe volunteer for an extra canvass shift?",
+  "Can't do that one for you — your role doesn't have write access. But I can absolutely help you look things up!",
+  "That action needs manager-level permissions. Think of it as campaign security — nobody wants an accidental mass text at 2am.",
+  "Ooh, that's a manager-and-above action. I'll keep it in my notes though — want me to suggest it to your campaign lead?",
+];
+
+function denyWithHumour(): ActionResult {
+  const msg = FUNNY_DENIALS[Math.floor(Math.random() * FUNNY_DENIALS.length)];
+  return { success: false, message: msg };
+}
+
 // ─── Action executors ───────────────────────────────────────────────────────
 
 export async function executeAction(
@@ -176,6 +228,20 @@ export async function executeAction(
   input: Record<string, unknown>,
   ctx: ActionContext,
 ): Promise<ActionResult> {
+  // Auto-execute gate: if the campaign has disabled auto-execute, block all writes
+  const required = TOOL_PERMISSIONS[toolName] ?? "write";
+  if (required !== "read" && !ctx.autoExecuteEnabled) {
+    return {
+      success: false,
+      message: `Auto-execute is turned off for this campaign. I can tell you what I'd do, but I can't do it until an admin enables "Adoni Auto-Execute" in campaign settings. Here's what I would have done: ${toolName}(${JSON.stringify(input)}).`,
+    };
+  }
+
+  // Role check
+  if (!hasPermission(ctx.userRole, required)) {
+    return denyWithHumour();
+  }
+
   try {
     switch (toolName) {
       case "get_campaign_stats":

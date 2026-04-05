@@ -199,8 +199,29 @@ export async function POST(req: NextRequest) {
       assistantText =
         "Adoni is ready, but ANTHROPIC_API_KEY is not configured yet. Add it in Vercel environment variables to enable live strategy responses.";
     } else {
+      // Look up role + auto-execute setting for action gating
+      let userRole = "VOLUNTEER";
+      let autoExecuteEnabled = true; // default on — campaign can disable
+      if (activeCampaignId) {
+        const [membership, campaignSettings] = await Promise.all([
+          prisma.membership.findUnique({
+            where: { userId_campaignId: { userId: session!.user.id, campaignId: activeCampaignId } },
+            select: { role: true },
+          }),
+          prisma.campaign.findUnique({
+            where: { id: activeCampaignId },
+            select: { customization: true },
+          }),
+        ]);
+        userRole = membership?.role ?? "VOLUNTEER";
+        // Auto-execute stored in campaign.customization JSON: { adoniAutoExecute: boolean }
+        const custom = campaignSettings?.customization as Record<string, unknown> | null;
+        if (custom && typeof custom.adoniAutoExecute === "boolean") {
+          autoExecuteEnabled = custom.adoniAutoExecute;
+        }
+      }
       const actionCtx: ActionContext | null = activeCampaignId
-        ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member" }
+        ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member", userRole, autoExecuteEnabled }
         : null;
       assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, systemPrompt, messages, actionCtx);
     }
