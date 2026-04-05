@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2 } from "lucide-react";
 import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
@@ -48,6 +48,73 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [signOnly, setSignOnly] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [wards, setWards] = useState<string[]>([]);
+
+  // Filter presets
+  interface FilterPreset { id: string; name: string; filters: Record<string, unknown>; isDefault: boolean; }
+  const [presets, setPresets] = useState<{ builtin: FilterPreset[]; saved: FilterPreset[] }>({ builtin: [], saved: [] });
+  const [showPresetsMenu, setShowPresetsMenu] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [presetName, setPresetName] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/contacts/filter-presets?campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((d) => setPresets(d.data ?? { builtin: [], saved: [] }))
+      .catch(() => { /* ignore */ });
+  }, [campaignId]);
+
+  function applyPreset(preset: FilterPreset) {
+    const f = preset.filters as {
+      supportLevels?: string[]; tags?: string[]; wards?: string[];
+      followUp?: boolean; volunteerInterest?: boolean; signRequested?: boolean;
+      search?: string;
+    };
+    setSupportLevels(f.supportLevels ?? []);
+    setSelectedTags(f.tags ?? []);
+    setWards(f.wards ?? []);
+    setFollowUp(f.followUp ?? false);
+    setVolunteerOnly(f.volunteerInterest ?? false);
+    setSignOnly(f.signRequested ?? false);
+    setSearch(f.search ?? "");
+    setShowPresetsMenu(false);
+    toast.success(`Applied "${preset.name}"`);
+  }
+
+  async function saveCurrentFilters() {
+    if (!presetName.trim()) { toast.error("Name required"); return; }
+    try {
+      const res = await fetch("/api/contacts/filter-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          name: presetName.trim(),
+          filters: {
+            supportLevels, tags: selectedTags, wards, followUp,
+            volunteerInterest: volunteerOnly, signRequested: signOnly, search,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Filter saved");
+      setShowSavePrompt(false);
+      setPresetName("");
+      // Refresh presets
+      const r2 = await fetch(`/api/contacts/filter-presets?campaignId=${campaignId}`);
+      const d2 = await r2.json();
+      setPresets(d2.data ?? { builtin: [], saved: [] });
+    } catch { toast.error("Save failed"); }
+  }
+
+  async function deletePreset(id: string) {
+    if (!confirm("Delete this saved filter?")) return;
+    try {
+      const res = await fetch(`/api/contacts/filter-presets/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Deleted");
+      setPresets((p) => ({ ...p, saved: p.saved.filter((s) => s.id !== id) }));
+    } catch { toast.error("Delete failed"); }
+  }
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -177,7 +244,73 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
           <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="w-3.5 h-3.5" />More Filters{(followUp || volunteerOnly || signOnly || wards.length > 0) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
           </Button>
+          {/* Presets */}
+          <div className="relative">
+            <Button variant="outline" size="sm" onClick={() => setShowPresetsMenu(!showPresetsMenu)}>
+              <Bookmark className="w-3.5 h-3.5" /> Presets
+            </Button>
+            {showPresetsMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowPresetsMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-40 py-1 max-h-80 overflow-y-auto">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 px-3 py-1.5">Built-in</p>
+                  {presets.builtin.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => applyPreset(p)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-900 font-medium"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                  {presets.saved.length > 0 && (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 px-3 py-1.5 border-t border-gray-100 mt-1">Saved</p>
+                      {presets.saved.map((p) => (
+                        <div key={p.id} className="flex items-center group hover:bg-gray-50">
+                          <button onClick={() => applyPreset(p)} className="flex-1 text-left px-3 py-2 text-sm text-gray-900">
+                            {p.name}
+                          </button>
+                          <button
+                            onClick={() => deletePreset(p.id)}
+                            aria-label="Delete preset"
+                            className="p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      onClick={() => { setShowSavePrompt(true); setShowPresetsMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 font-semibold flex items-center gap-2"
+                    >
+                      <Save className="w-3.5 h-3.5" /> Save current filters…
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Save preset prompt */}
+        {showSavePrompt && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+            <Input
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder="Preset name (e.g. 'Downtown Supporters')"
+              className="flex-1"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") saveCurrentFilters(); }}
+            />
+            <Button size="sm" onClick={saveCurrentFilters}>Save</Button>
+            <Button size="sm" variant="outline" onClick={() => { setShowSavePrompt(false); setPresetName(""); }}>Cancel</Button>
+          </div>
+        )}
         {showFilters && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100 flex-wrap">
             <Checkbox label="Follow-up needed" checked={followUp} onChange={(e) => setFollowUp(e.target.checked)} />

@@ -332,6 +332,7 @@ model Campaign {
   budgetItems          BudgetItem[]
   budgetRules          BudgetRule[]
   budgetTemplates      BudgetTemplate[]
+  contactFilterPresets ContactFilterPreset[]
   superSupporterTasks  SuperSupporterTask[]
   importLogs           ImportLog[]
   exportLogs           ExportLog[]
@@ -1880,6 +1881,25 @@ model BudgetRule {
 // BudgetTemplate — named preset budget distributions for campaigns to apply in one click.
 // System seeds defaults like "Municipal (Small)", "Municipal (Large City)", "Federal Riding".
 // Custom templates belong to one campaign; system templates have campaignId = null.
+// ContactFilterPreset — saved filter combinations for the contacts page.
+// Users can save any filter combination with a name for one-click reload.
+model ContactFilterPreset {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String?  // null = campaign-wide preset
+  name       String
+  filters    Json     // { supportLevels, tags, wards, search, followUp, etc. }
+  isDefault  Boolean  @default(false)  // true = built-in, cannot be deleted
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([campaignId, userId])
+  @@map("contact_filter_presets")
+}
+
 model BudgetTemplate {
   id          String   @id @default(cuid())
   campaignId  String?                           // null = system-wide template
