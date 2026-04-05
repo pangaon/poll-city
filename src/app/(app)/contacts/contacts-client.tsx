@@ -19,6 +19,12 @@ interface ContactRow {
   phone: string | null; supportLevel: SupportLevel; followUpNeeded: boolean;
   volunteerInterest: boolean; signRequested: boolean; ward: string | null;
   lastContactedAt: string | null;
+  // Extended fields for dynamic columns
+  address1?: string | null; city?: string | null; postalCode?: string | null;
+  riding?: string | null; gotvStatus?: string | null; doNotContact?: boolean;
+  issues?: string[]; notes?: string | null; followUpDate?: string | null;
+  captain?: string | null; signPlaced?: boolean; superSupporter?: boolean;
+  partyMember?: boolean; preferredLanguage?: string | null;
   tags: { tag: { id: string; name: string; color: string } }[];
   _count: { interactions: number };
 }
@@ -31,7 +37,14 @@ interface Props {
 
 const pageSize = 25;
 
-type ColumnKey = "name" | "contact" | "support" | "ward" | "tags" | "lastContact" | "flags";
+type ColumnKey =
+  | "name" | "contact" | "support" | "ward" | "tags" | "lastContact" | "flags"
+  // Extended columns
+  | "phone" | "email" | "address" | "city" | "postalCode" | "riding"
+  | "gotvStatus" | "gotvScore" | "issues" | "notes" | "followUpDate"
+  | "captain" | "signPlaced" | "superSupporter" | "partyMember" | "language"
+  | "interactions" | "volunteer" | "dnc";
+
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   name: "Name",
   contact: "Contact",
@@ -40,17 +53,59 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   tags: "Tags",
   lastContact: "Last Contact",
   flags: "Flags",
+  phone: "Phone",
+  email: "Email",
+  address: "Address",
+  city: "City",
+  postalCode: "Postal Code",
+  riding: "Riding",
+  gotvStatus: "GOTV Status",
+  gotvScore: "GOTV Score",
+  issues: "Issues",
+  notes: "Notes",
+  followUpDate: "Follow-up Date",
+  captain: "Captain",
+  signPlaced: "Sign Placed",
+  superSupporter: "Super Supporter",
+  partyMember: "Party Member",
+  language: "Language",
+  interactions: "# Interactions",
+  volunteer: "Volunteer",
+  dnc: "Do Not Contact",
 };
+
+const COLUMN_CATEGORIES: Record<string, ColumnKey[]> = {
+  "Identity": ["name", "phone", "email", "language"],
+  "Location": ["address", "city", "postalCode", "ward", "riding"],
+  "Canvassing": ["support", "gotvStatus", "gotvScore", "lastContact", "interactions", "issues", "notes"],
+  "Engagement": ["tags", "flags", "volunteer", "signPlaced", "followUpDate", "captain"],
+  "Flags": ["superSupporter", "partyMember", "dnc"],
+};
+
 const DEFAULT_COLUMN_ORDER: ColumnKey[] = ["name", "contact", "support", "ward", "tags", "lastContact", "flags"];
 const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
-  name: 220,
-  contact: 230,
-  support: 170,
-  ward: 130,
-  tags: 220,
-  lastContact: 150,
-  flags: 150,
+  name: 220, contact: 230, support: 170, ward: 130, tags: 220, lastContact: 150, flags: 150,
+  phone: 140, email: 200, address: 220, city: 110, postalCode: 110, riding: 160,
+  gotvStatus: 140, gotvScore: 110, issues: 200, notes: 240, followUpDate: 140,
+  captain: 140, signPlaced: 110, superSupporter: 130, partyMember: 130, language: 110,
+  interactions: 110, volunteer: 110, dnc: 110,
 };
+
+// GOTV score heuristic (0-100): supporter weight + recency of contact + commitment
+function computeGotvScore(c: ContactRow): number {
+  const supportPts =
+    c.supportLevel === "strong_support" ? 50 :
+    c.supportLevel === "leaning_support" ? 35 :
+    c.supportLevel === "undecided" ? 15 : 0;
+  const commitPts =
+    c.gotvStatus === "voted" ? 30 :
+    c.gotvStatus === "will_vote" ? 20 :
+    c.gotvStatus === "not_checked" ? 0 : 5;
+  const contactPts = c.lastContactedAt
+    ? Math.max(0, 20 - Math.floor((Date.now() - new Date(c.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24 * 7)) * 2)
+    : 0;
+  return Math.min(100, supportPts + commitPts + contactPts);
+}
 
 export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const router = useRouter();
@@ -378,9 +433,10 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             {showColumnManager && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowColumnManager(false)} />
-                <div className="absolute right-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-40 p-3">
-                  <p className="text-xs font-semibold text-gray-600 mb-2">Reorder and toggle CRM columns</p>
-                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-40 p-3 max-h-[70vh] overflow-y-auto">
+                  <p className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Active columns</p>
+                  <p className="text-[11px] text-gray-500 mb-2">Drag to reorder · Uncheck to hide</p>
+                  <div className="space-y-1 mb-3">
                     {columnOrder.map((key) => {
                       const hidden = hiddenColumns.includes(key);
                       return (
@@ -400,27 +456,71 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                             setColumnOrder(next);
                             setDraggingColumn(null);
                           }}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-2 py-1.5"
+                          className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-2 py-1.5 cursor-grab active:cursor-grabbing hover:border-gray-200"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <GripVertical className="w-3.5 h-3.5 text-gray-400" />
                             <span className="text-xs font-medium text-gray-800 truncate">{COLUMN_LABELS[key]}</span>
                           </div>
-                          <input
-                            type="checkbox"
-                            checked={!hidden}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setHiddenColumns((prev) => prev.filter((x) => x !== key));
-                              } else {
-                                setHiddenColumns((prev) => [...prev, key]);
-                              }
-                            }}
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={!hidden}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setHiddenColumns((prev) => prev.filter((x) => x !== key));
+                                } else {
+                                  setHiddenColumns((prev) => [...prev, key]);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setColumnOrder((prev) => prev.filter((k) => k !== key))}
+                              className="text-gray-400 hover:text-red-600 text-xs font-bold w-5 h-5 rounded hover:bg-red-50"
+                              aria-label={`Remove ${COLUMN_LABELS[key]}`}
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* Add column picker, grouped by category */}
+                  <div className="border-t border-gray-200 pt-3">
+                    <p className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">+ Add column</p>
+                    {Object.entries(COLUMN_CATEGORIES).map(([cat, keys]) => {
+                      const available = keys.filter((k) => !columnOrder.includes(k));
+                      if (available.length === 0) return null;
+                      return (
+                        <div key={cat} className="mb-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">{cat}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {available.map((key) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setColumnOrder((prev) => [...prev, key])}
+                                className="text-[11px] px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 text-gray-700"
+                              >
+                                + {COLUMN_LABELS[key]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setColumnOrder(DEFAULT_COLUMN_ORDER); setHiddenColumns([]); setColumnWidths(DEFAULT_COLUMN_WIDTHS); }}
+                    className="mt-3 w-full h-8 text-xs font-semibold text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    Reset to default
+                  </button>
                 </div>
               </>
             )}
@@ -668,6 +768,45 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full" title="Sign requested" />}
                         </div>
                       )}
+                      {key === "phone" && <span className="text-gray-600 text-xs">{c.phone ? formatPhone(c.phone) : "—"}</span>}
+                      {key === "email" && <span className="text-gray-500 text-xs truncate block max-w-[180px]">{c.email ?? "—"}</span>}
+                      {key === "address" && <span className="text-gray-600 text-xs truncate block max-w-[200px]">{c.address1 ?? "—"}</span>}
+                      {key === "city" && <span className="text-gray-500 text-xs">{c.city ?? "—"}</span>}
+                      {key === "postalCode" && <span className="text-gray-500 text-xs font-mono">{c.postalCode ?? "—"}</span>}
+                      {key === "riding" && <span className="text-gray-500 text-xs truncate block max-w-[140px]">{c.riding ?? "—"}</span>}
+                      {key === "gotvStatus" && (
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                          c.gotvStatus === "voted" && "bg-emerald-100 text-emerald-800",
+                          c.gotvStatus === "will_vote" && "bg-blue-100 text-blue-800",
+                          c.gotvStatus === "refused" && "bg-red-100 text-red-800",
+                          c.gotvStatus === "not_home" && "bg-amber-100 text-amber-800",
+                          (!c.gotvStatus || c.gotvStatus === "not_checked") && "bg-gray-100 text-gray-600"
+                        )}>{c.gotvStatus?.replace("_", " ") ?? "not checked"}</span>
+                      )}
+                      {key === "gotvScore" && (() => {
+                        const score = computeGotvScore(c);
+                        const tone = score >= 70 ? "text-emerald-700 bg-emerald-50" : score >= 40 ? "text-amber-700 bg-amber-50" : "text-gray-600 bg-gray-100";
+                        return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums", tone)}>{score}</span>;
+                      })()}
+                      {key === "issues" && (
+                        <div className="flex gap-1 flex-wrap">
+                          {(c.issues ?? []).slice(0, 2).map((i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{i}</span>
+                          ))}
+                          {(c.issues ?? []).length > 2 && <span className="text-[10px] text-gray-400">+{(c.issues ?? []).length - 2}</span>}
+                        </div>
+                      )}
+                      {key === "notes" && <span className="text-gray-500 text-xs truncate block max-w-[220px]">{c.notes ?? "—"}</span>}
+                      {key === "followUpDate" && <span className="text-gray-500 text-xs">{formatDate(c.followUpDate)}</span>}
+                      {key === "captain" && <span className="text-gray-500 text-xs">{c.captain ?? "—"}</span>}
+                      {key === "signPlaced" && <span className="text-xs">{c.signPlaced ? "✓" : "—"}</span>}
+                      {key === "superSupporter" && <span className="text-xs">{c.superSupporter ? "★" : "—"}</span>}
+                      {key === "partyMember" && <span className="text-xs">{c.partyMember ? "✓" : "—"}</span>}
+                      {key === "language" && <span className="text-gray-500 text-xs uppercase">{c.preferredLanguage ?? "en"}</span>}
+                      {key === "interactions" && <span className="text-gray-600 text-xs tabular-nums">{c._count.interactions}</span>}
+                      {key === "volunteer" && <span className="text-xs">{c.volunteerInterest ? "✓" : "—"}</span>}
+                      {key === "dnc" && <span className="text-xs">{c.doNotContact ? <span className="text-red-700 font-bold">DNC</span> : "—"}</span>}
                     </td>
                   ))}
                 </tr>
