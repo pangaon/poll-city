@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/api/resources",
   "/api/health",
   "/reset-password",
+  "/store",
 ];
 
 function isPublicPath(path: string) {

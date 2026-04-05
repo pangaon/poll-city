@@ -1,5 +1,34 @@
 # Poll City User Guide
 
+## v4.0.14 Enterprise Quick List Operations Addendum — April 5, 2026
+
+### Quick Import (`/import-export`)
+
+1. Open Import / Export and upload your list file directly (`.csv`, `.tsv`, `.txt`, `.xls`, `.xlsx`).
+2. Poll City auto-analyzes the file and suggests field mappings server-side.
+3. Review file summary (rows, file type, mapped columns).
+4. Click **Run Import** to execute deduping import.
+5. Results show **imported**, **updated**, and **skipped** counts with row-level errors when applicable.
+
+### Campaign Operations Export Pack
+
+1. Open Import / Export.
+2. Click **Export Campaign Operations Pack**.
+3. Poll City downloads all core campaign list exports in sequence:
+   - Contacts
+   - GOTV Priority List
+   - Walk List
+   - Signs
+   - Donations
+   - Volunteers
+   - Interaction Log
+
+### Import History
+
+1. The bottom of Import / Export now shows recent imports for your campaign.
+2. Each row includes file name, status, imported count, updated count, skipped count, and timestamp.
+3. Use this as your first verification checkpoint after any large list ingest.
+
 ## v4.0.13 Mobile Navigation Addendum — April 5, 2026
 
 ### Bottom Navigation (Mobile)

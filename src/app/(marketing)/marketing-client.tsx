@@ -239,6 +239,7 @@ const PRODUCTS = [
       "Volunteer onboarding links, group leadership, and shift check-ins",
       "Sign tracking with map view",
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
+      "Enterprise quick list operations: upload CSV/XLSX, auto-map fields, run dedupe import, and export campaign ops packs in one screen",
       "Nationwide representative and electoral-boundary ingestion across all Canadian jurisdictions",
       "CAPTCHA-protected public supporter, volunteer, sign request, and profile-claim forms",
       "Security hardening release: password reset flow, account lockout controls, fail-closed anti-bot validation, and protected health diagnostics",

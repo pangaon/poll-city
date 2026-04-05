@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.14] - April 5, 2026 — ENTERPRISE QUICK LIST IMPORT/EXPORT
+
+### Import/Export Operations
+- Rebuilt `/import-export` into an enterprise quick-ops workflow focused on campaign list velocity.
+- Replaced legacy row-post import behavior with server-driven file analysis and execution:
+  - `POST /api/import/analyze` for schema detection and mapping suggestions
+  - `POST /api/import/execute` for deduping import execution and update-aware writes
+- Added support for quick list upload across `.csv`, `.tsv`, `.txt`, `.xls`, and `.xlsx` from the main Import/Export page.
+- Added in-page import analysis summary (file type, row count, mapped columns, mapping health).
+- Added recent import history visibility (status + imported/updated/skipped counts) for operator confidence.
+- Added one-click "Campaign Operations Pack" export action to download all major list exports in sequence.
+
+### Outcome
+- Core campaign list workflows are now simple for daily operators while retaining enterprise protections (auth checks, campaign scope, dedupe, audit logs).
+
 ## [4.0.13] - April 5, 2026 — MOBILE BOTTOM NAVIGATION
 
 ### Mobile Navigation

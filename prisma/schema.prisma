@@ -329,6 +329,16 @@ model Campaign {
   require2FA             Boolean      @default(false)
   allowedIpRanges        String[]     @default([])
   sessionTimeoutHours    Int          @default(24)
+  // Brand Kit
+  secondaryColor         String?      @default("#d71920")
+  accentColor            String?      @default("#f5a623")
+  logoPublicId           String?
+  fontPrimary            String       @default("inter")
+  tagline                String?
+  twitterHandle          String?
+  facebookUrl            String?
+  instagramHandle        String?
+  brandKitComplete       Boolean      @default(false)
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
@@ -375,6 +385,8 @@ model Campaign {
   documents                 CampaignDocument[]
   votedListTemplates        VotedListTemplate[]
   votedListUploads          VotedListUpload[]
+  PrintOrder                PrintOrder[]
+  MerchProduct              MerchProduct[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -2221,4 +2233,101 @@ model SecurityEvent {
   @@index([userId, createdAt])
   @@index([type, createdAt])
   @@map("security_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINT MARKETPLACE (templates + orders)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PrintTemplate {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  category     String // lawn-sign | door-hanger | flyer | palm-card | postcard | button | sticker | shirt | tote | hat
+  width        Float // inches
+  height       Float // inches
+  bleed        Float    @default(0.125)
+  thumbnail    String?
+  htmlTemplate String   @db.Text
+  isPremium    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  orders PrintOrder[]
+
+  @@index([category, isActive])
+  @@map("print_templates")
+}
+
+model PrintOrder {
+  id            String   @id @default(cuid())
+  campaignId    String
+  templateId    String?
+  productType   String
+  quantity      Int      @default(1)
+  status        String   @default("draft") // draft | proof | approved | printing | shipped | delivered | cancelled
+  designData    Json?
+  downloadUrl   String?
+  supplierOrder String?
+  unitPriceCad  Float?
+  totalPriceCad Float?
+  shippingAddr  Json?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template PrintTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([campaignId, createdAt])
+  @@map("print_orders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MERCH STORE (print-on-demand storefront)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MerchProduct {
+  id              String   @id @default(cuid())
+  campaignId      String
+  slug            String // "classic-tee" | "snapback-hat" | etc.
+  name            String
+  description     String?
+  productType     String // tshirt | hoodie | hat | tote | mug | sticker | button
+  supplierCostCad Float // fulfillment cost (e.g. Printful base)
+  retailPriceCad  Float // what supporters pay
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  imageUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, slug])
+  @@index([campaignId, isActive])
+  @@map("merch_products")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OUTREACH EMAIL TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OutreachLog {
+  id             String    @id @default(cuid())
+  type           String // "official-claim" | "candidate-signup"
+  recipientEmail String
+  recipientName  String?
+  subject        String
+  templateSlug   String?
+  sentAt         DateTime  @default(now())
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  converted      Boolean   @default(false)
+  convertedAt    DateTime?
+
+  @@index([type, sentAt])
+  @@index([recipientEmail])
+  @@map("outreach_logs")
 }

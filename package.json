@@ -24,6 +24,7 @@
     "db:seed:officials": "tsx prisma/seeds/ingest-representatives.ts",
     "db:seed:mps": "tsx prisma/seeds/import-federal-mps.ts",
     "db:seed:mpps": "tsx prisma/seeds/import-ontario-mpps.ts",
+    "db:seed:print-templates": "tsx prisma/seeds/print-templates.ts",
     "db:seed:boundaries": "tsx prisma/seeds/ingest-boundaries.ts",
     "db:seed:boundaries:gis": "tsx prisma/seeds/ingest-gis-boundaries.ts",
     "db:seed:all": "npm run db:seed:election-results && npm run db:seed:officials && npm run db:seed:boundaries",
