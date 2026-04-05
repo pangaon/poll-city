@@ -98,10 +98,10 @@ enum PollType {
   multiple_choice
   ranked
   slider
-  swipe          // Tinder-style left/right
-  image_swipe    // swipe on images
-  emoji_react    // react with emoji
-  priority_rank  // drag to rank issues
+  swipe // Tinder-style left/right
+  image_swipe // swipe on images
+  emoji_react // react with emoji
+  priority_rank // drag to rank issues
 }
 
 enum SwipeDirection {
@@ -150,7 +150,6 @@ enum SupportSignalType {
   volunteer_interest
   question
 }
-
 
 enum GotvStatus {
   not_checked
@@ -240,29 +239,32 @@ model User {
   // Campaign side
   memberships          Membership[]
   interactions         Interaction[]
-  tasksAssigned        Task[]              @relation("AssignedTasks")
-  tasksCreated         Task[]              @relation("CreatedTasks")
+  tasksAssigned        Task[]                   @relation("AssignedTasks")
+  tasksCreated         Task[]                   @relation("CreatedTasks")
   activityLogs         ActivityLog[]
   canvassAssignments   CanvassAssignment[]
   volunteerProfile     VolunteerProfile?
-  donationsRecorded    Donation[]           @relation("RecordedDonations")
-  gotvBatchesUploaded  GotvBatch[]          @relation("UploadedGotvBatches")
+  donationsRecorded    Donation[]               @relation("RecordedDonations")
+  gotvBatchesUploaded  GotvBatch[]              @relation("UploadedGotvBatches")
   subscription         Subscription?
-  importLogs          ImportLog[]
+  importLogs           ImportLog[]
+  crmColumnPreferences CrmColumnPreference[]
+  importTemplates      CampaignImportTemplate[]
+  uploadedDocuments    CampaignDocument[]       @relation("UserUploadedDocuments")
 
   // Turf canvassing
-  turfAssignments      Turf[]              @relation("TurfAssignee")
-  canvasserLocation    CanvasserLocation?
+  turfAssignments   Turf[]             @relation("TurfAssignee")
+  canvasserLocation CanvasserLocation?
 
   // Social side
-  pollResponses        PollResponse[]
-  supportSignals       SupportSignal[]
-  officialFollows      OfficialFollow[]
-  questions            PublicQuestion[]
-  notifications        Notification[]
-  consentLogs          ConsentLog[]
-  pushSubscriptions    PushSubscription[]
-  notificationLogs     NotificationLog[]
+  pollResponses     PollResponse[]
+  supportSignals    SupportSignal[]
+  officialFollows   OfficialFollow[]
+  questions         PublicQuestion[]
+  notifications     Notification[]
+  consentLogs       ConsentLog[]
+  pushSubscriptions PushSubscription[]
+  notificationLogs  NotificationLog[]
 
   @@map("users")
 }
@@ -272,73 +274,80 @@ model User {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Campaign {
-  id              String       @id @default(cuid())
-  name            String
-  slug            String       @unique
-  description     String?
-  electionType    ElectionType @default(municipal)
-  jurisdiction    String?
-  electionDate    DateTime?
+  id                     String       @id @default(cuid())
+  name                   String
+  slug                   String       @unique
+  description            String?
+  electionType           ElectionType @default(municipal)
+  jurisdiction           String?
+  electionDate           DateTime?
   // Election finance spending limits (from EC/provincial regulators)
-  spendingLimit   Float?
-  partyExpenseLimit Float?
-  candidateName   String?
-  candidateTitle  String?
-  candidateBio    String?
-  candidateEmail  String?
-  candidatePhone  String?
-  logoUrl         String?
-  websiteUrl      String?
-  customDomain    String?
+  spendingLimit          Float?
+  partyExpenseLimit      Float?
+  candidateName          String?
+  candidateTitle         String?
+  candidateBio           String?
+  candidateEmail         String?
+  candidatePhone         String?
+  logoUrl                String?
+  websiteUrl             String?
+  customDomain           String?
   volunteerIntroVideoUrl String?
   volunteerCodeOfConduct String?
-  primaryColor    String       @default("#1e40af")
-  isPublic        Boolean      @default(false)
-  officialId      String?
-  isActive        Boolean      @default(true)
-  customization   Json?
-  pageViews       Int          @default(0)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  primaryColor           String       @default("#1e40af")
+  isPublic               Boolean      @default(false)
+  officialId             String?
+  isActive               Boolean      @default(true)
+  customization          Json?
+  pageViews              Int          @default(0)
+  votedDisplayMode       String       @default("strikethrough")
+  onboardingComplete     Boolean      @default(false)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
-  official        Official?    @relation(fields: [officialId], references: [id])
-  memberships     Membership[]
-  contacts        Contact[]
-  households      Household[]
-  canvassLists    CanvassList[]
-  tasks           Task[]
-  activityLogs    ActivityLog[]
-  tags            Tag[]
-  signs           Sign[]
-  serviceBookings ServiceBooking[]
-  polls           Poll[]
-  campaignFields  CampaignField[]
-  donations       Donation[]
-  gotvBatches     GotvBatch[]
-  qrCodes         QrCode[]
-  volunteerProfiles VolunteerProfile[]
-  signRequests    SignRequest[]
-  questions       Question[]
-  pushSubscriptions PushSubscription[]
-  notificationLogs  NotificationLog[]
-  printJobs         PrintJob[]
-  turfs             Turf[]
+  official                  Official?                  @relation(fields: [officialId], references: [id])
+  memberships               Membership[]
+  contacts                  Contact[]
+  households                Household[]
+  canvassLists              CanvassList[]
+  tasks                     Task[]
+  activityLogs              ActivityLog[]
+  tags                      Tag[]
+  signs                     Sign[]
+  serviceBookings           ServiceBooking[]
+  polls                     Poll[]
+  campaignFields            CampaignField[]
+  donations                 Donation[]
+  gotvBatches               GotvBatch[]
+  qrCodes                   QrCode[]
+  volunteerProfiles         VolunteerProfile[]
+  signRequests              SignRequest[]
+  questions                 Question[]
+  pushSubscriptions         PushSubscription[]
+  notificationLogs          NotificationLog[]
+  printJobs                 PrintJob[]
+  turfs                     Turf[]
   volunteerOnboardingTokens VolunteerOnboardingToken[]
-  volunteerGroups   VolunteerGroup[]
-  volunteerShifts   VolunteerShift[]
-  canvassingScripts CanvassingScript[]
-  mediaMentions     MediaMention[]
-  coalitions        Coalition[]
-  opponentIntel     OpponentIntel[]
-  events            Event[]
-  volunteerExpenses    VolunteerExpense[]
-  budgetItems          BudgetItem[]
-  budgetRules          BudgetRule[]
-  budgetTemplates      BudgetTemplate[]
-  contactFilterPresets ContactFilterPreset[]
-  superSupporterTasks  SuperSupporterTask[]
-  importLogs           ImportLog[]
-  exportLogs           ExportLog[]
+  volunteerGroups           VolunteerGroup[]
+  volunteerShifts           VolunteerShift[]
+  canvassingScripts         CanvassingScript[]
+  mediaMentions             MediaMention[]
+  coalitions                Coalition[]
+  opponentIntel             OpponentIntel[]
+  events                    Event[]
+  volunteerExpenses         VolunteerExpense[]
+  budgetItems               BudgetItem[]
+  budgetRules               BudgetRule[]
+  budgetTemplates           BudgetTemplate[]
+  contactFilterPresets      ContactFilterPreset[]
+  superSupporterTasks       SuperSupporterTask[]
+  importLogs                ImportLog[]
+  exportLogs                ExportLog[]
+  crmColumnPreferences      CrmColumnPreference[]
+  importTemplates           CampaignImportTemplate[]
+  documents                 CampaignDocument[]
+  votedListTemplates        VotedListTemplate[]
+  votedListUploads          VotedListUpload[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -353,8 +362,8 @@ model Membership {
   role       Role     @default(VOLUNTEER)
   joinedAt   DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([userId, campaignId])
   @@map("memberships")
@@ -365,44 +374,44 @@ model Membership {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Official {
-  id               String          @id @default(cuid())
-  name             String
-  title            String          // e.g. "Mayor", "MP", "MPP", "Councillor"
-  level            GovernmentLevel
-  district         String          // ward, riding, or constituency name
-  districtCode     String?         // official electoral district code
-  party            String?         // legacy field
-  partyName        String?         // canonical party name — used for colour lookup
-  email            String?
-  phone            String?
-  website          String?
-  photoUrl         String?
-  bio              String?
+  id                 String          @id @default(cuid())
+  name               String
+  title              String // e.g. "Mayor", "MP", "MPP", "Councillor"
+  level              GovernmentLevel
+  district           String // ward, riding, or constituency name
+  districtCode       String? // official electoral district code
+  party              String? // legacy field
+  partyName          String? // canonical party name — used for colour lookup
+  email              String?
+  phone              String?
+  website            String?
+  photoUrl           String?
+  bio                String?
   // Geographic coverage
-  postalCodes      String[]        @default([]) // postal prefixes served
-  province         String?
+  postalCodes        String[]        @default([]) // postal prefixes served
+  province           String?
   // Profile status
-  isClaimed        Boolean         @default(false)
-  claimedAt        DateTime?
-  claimedByUserId  String?
-  subscriptionStatus String?       @default("free") // free | pro | verified
-  isActive         Boolean         @default(true)
+  isClaimed          Boolean         @default(false)
+  claimedAt          DateTime?
+  claimedByUserId    String?
+  subscriptionStatus String?         @default("free") // free | pro | verified
+  isActive           Boolean         @default(true)
   // Social media
-  twitter          String?
-  facebook         String?
-  instagram        String?
-  linkedIn         String?
+  twitter            String?
+  facebook           String?
+  instagram          String?
+  linkedIn           String?
   // Extended identity fields
-  firstName        String?
-  lastName         String?
-  address          String?
+  firstName          String?
+  lastName           String?
+  address            String?
   // External data provenance
-  externalId       String?         // e.g. Represent API slug
-  externalSource   String?         // "represent_opennorth" | "manual" | "open_north"
-  termStart        DateTime?
-  termEnd          DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  externalId         String? // e.g. Represent API slug
+  externalSource     String? // "represent_opennorth" | "manual" | "open_north"
+  termStart          DateTime?
+  termEnd            DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   campaigns        Campaign[]
   follows          OfficialFollow[]
@@ -410,6 +419,7 @@ model Official {
   polls            Poll[]
   approvalRating   ApprovalRating?
   sentimentSignals SentimentSignal[]
+  outreach         OfficialOutreach[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -424,8 +434,8 @@ model OfficialFollow {
   officialId String
   createdAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  official   Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
 
   @@id([userId, officialId])
   @@map("official_follows")
@@ -436,123 +446,126 @@ model OfficialFollow {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Household {
-  id         String    @id @default(cuid())
-  address1   String
-  address2   String?
-  city       String?
-  province   String?
-  postalCode String?
-  ward       String?
-  riding     String?
-  lat        Float?
-  lng        Float?
-  totalVoters Int?      // from official voter file
-  campaignId String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  address1    String
+  address2    String?
+  city        String?
+  province    String?
+  postalCode  String?
+  ward        String?
+  riding      String?
+  lat         Float?
+  lng         Float?
+  totalVoters Int? // from official voter file
+  campaignId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contacts   Contact[]
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts Contact[]
 
   @@map("households")
 }
 
 model Contact {
-  id                String       @id @default(cuid())
-  campaignId        String
-  householdId       String?
-  householdRole     String?
-  nameTitle         String?      // Mr, Ms, Dr, etc
-  firstName         String
-  middleName        String?
-  lastName          String
-  nameSuffix        String?      // Jr, Sr, III, etc
-  gender            String?      // M, F, NB, prefer_not_to_say
-  email             String?
-  phone             String?
-  phone2            String?
-  address1          String?
-  address2          String?
-  city              String?
-  province          String?
-  postalCode        String?
-  ward              String?
-  riding            String?
-  supportLevel      SupportLevel @default(unknown)
-  notes             String?
-  preferredLanguage String       @default("en")
-  languagePreference String?
-  accessibilityFlag Boolean      @default(false)
-  doNotContact      Boolean      @default(false)
-  superSupporter    Boolean      @default(false)
-  signRequested     Boolean      @default(false)
-  signPlaced        Boolean      @default(false)
-  volunteerInterest Boolean      @default(false)
-  gotvStatus        GotvStatus   @default(not_checked)
-  facebook          String?
-  twitter           String?
-  instagram         String?
-  wechat            String?
+  id                   String       @id @default(cuid())
+  campaignId           String
+  householdId          String?
+  householdRole        String?
+  nameTitle            String? // Mr, Ms, Dr, etc
+  firstName            String
+  middleName           String?
+  lastName             String
+  nameSuffix           String? // Jr, Sr, III, etc
+  gender               String? // M, F, NB, prefer_not_to_say
+  email                String?
+  phone                String?
+  phone2               String?
+  address1             String?
+  address2             String?
+  city                 String?
+  province             String?
+  postalCode           String?
+  ward                 String?
+  riding               String?
+  supportLevel         SupportLevel @default(unknown)
+  notes                String?
+  preferredLanguage    String       @default("en")
+  languagePreference   String?
+  accessibilityFlag    Boolean      @default(false)
+  doNotContact         Boolean      @default(false)
+  superSupporter       Boolean      @default(false)
+  signRequested        Boolean      @default(false)
+  signPlaced           Boolean      @default(false)
+  volunteerInterest    Boolean      @default(false)
+  gotvStatus           GotvStatus   @default(not_checked)
+  facebook             String?
+  twitter              String?
+  instagram            String?
+  wechat               String?
   // Secondary contact
-  email2            String?
-  businessEmail     String?
-  businessPhone     String?
-  businessPhoneExt  String?
-  phoneAreaCode     String?      // stored separately for voter file compatibility
-  cellAreaCode      String?
+  email2               String?
+  businessEmail        String?
+  businessPhone        String?
+  businessPhoneExt     String?
+  phoneAreaCode        String? // stored separately for voter file compatibility
+  cellAreaCode         String?
   // Electoral geography (from official voter file)
-  federalDistrict   String?
-  federalPoll       String?
-  provincialDistrict String?
-  provincialPoll    String?
-  municipalDistrict String?
-  municipalPoll     String?
-  censusDivision    String?
-  votingLocation    String?
-  votingAddress     String?
+  federalDistrict      String?
+  federalPoll          String?
+  provincialDistrict   String?
+  provincialPoll       String?
+  municipalDistrict    String?
+  municipalPoll        String?
+  censusDivision       String?
+  votingLocation       String?
+  votingAddress        String?
   // Flags
-  isDeceased        Boolean      @default(false)
-  skipHouse         Boolean      @default(false)  // canvasser deliberately skipping
-  membershipExpiry  DateTime?
-  partyMember       Boolean      @default(false)
+  isDeceased           Boolean      @default(false)
+  skipHouse            Boolean      @default(false) // canvasser deliberately skipping
+  membershipExpiry     DateTime?
+  partyMember          Boolean      @default(false)
   // Custom fields stored in CustomFieldValue table (queryable)
-  streetNumber      String?
-  streetNumberSuffix String?     // A, B, 1/2 etc
-  streetName        String?
-  streetType        String?      // Ave, Blvd, Rd, Dr, St etc
-  streetDirection   String?      // E, W, N, S, NE etc
-  unitApt           String?
-  pollDistrict      String?
+  streetNumber         String?
+  streetNumberSuffix   String? // A, B, 1/2 etc
+  streetName           String?
+  streetType           String? // Ave, Blvd, Rd, Dr, St etc
+  streetDirection      String? // E, W, N, S, NE etc
+  unitApt              String?
+  pollDistrict         String?
   // Leadership race fields
-  firstChoice       String?      // for leadership/nomination races
-  secondChoice      String?
-  membershipSold    Boolean      @default(false)
-  isActiveMember    Boolean      @default(false)
-  captain           String?
-  subCaptain        String?
-  issues            String[]     @default([])
-  lastContactedAt   DateTime?
-  followUpNeeded    Boolean      @default(false)
-  followUpDate      DateTime?
-  importSource      String?      // csv | canvass | phone | event | web
-  externalId        String?
-  source            String?      // PC | Liberal | NDP | canvass | referral etc
-  notHome           Boolean      @default(false)
+  firstChoice          String? // for leadership/nomination races
+  secondChoice         String?
+  membershipSold       Boolean      @default(false)
+  isActiveMember       Boolean      @default(false)
+  captain              String?
+  subCaptain           String?
+  issues               String[]     @default([])
+  lastContactedAt      DateTime?
+  followUpNeeded       Boolean      @default(false)
+  followUpDate         DateTime?
+  importSource         String? // csv | canvass | phone | event | web
+  externalId           String?
+  source               String? // PC | Liberal | NDP | canvass | referral etc
+  notHome              Boolean      @default(false)
   totalVotersAtAddress Int?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  voted                Boolean      @default(false)
+  votedAt              DateTime?
+  votedListUploadId    String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
-  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  household         Household?         @relation(fields: [householdId], references: [id])
-  tags              ContactTag[]
-  interactions      Interaction[]
-  tasks             Task[]
-  signRequests      Sign[]
-  volunteerProfile  VolunteerProfile?
-  donations         Donation[]
-  gotvRecords       GotvRecord[]
-  customFieldValues CustomFieldValue[]
-  turfStops         TurfStop[]
+  campaign            Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  household           Household?           @relation(fields: [householdId], references: [id])
+  tags                ContactTag[]
+  interactions        Interaction[]
+  tasks               Task[]
+  signRequests        Sign[]
+  volunteerProfile    VolunteerProfile?
+  donations           Donation[]
+  gotvRecords         GotvRecord[]
+  customFieldValues   CustomFieldValue[]
+  turfStops           TurfStop[]
   superSupporterTasks SuperSupporterTask[]
 
   @@index([campaignId])
@@ -566,14 +579,14 @@ model Contact {
 }
 
 model Tag {
-  id         String       @id @default(cuid())
+  id         String   @id @default(cuid())
   name       String
-  color      String       @default("#6b7280")
+  color      String   @default("#6b7280")
   campaignId String
-  createdAt  DateTime     @default(now())
+  createdAt  DateTime @default(now())
 
-  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contacts   ContactTag[]
+  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts ContactTag[]
 
   @@unique([name, campaignId])
   @@map("tags")
@@ -584,8 +597,8 @@ model ContactTag {
   tagId     String
   createdAt DateTime @default(now())
 
-  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([contactId, tagId])
   @@map("contact_tags")
@@ -601,11 +614,11 @@ model CanvassList {
   name        String
   description String?
   status      CanvassStatus @default(not_started)
-  geoArea     Json?         // GeoJSON polygon for map rendering
+  geoArea     Json? // GeoJSON polygon for map rendering
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  campaign    Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   assignments CanvassAssignment[]
 
   @@map("canvass_lists")
@@ -622,8 +635,8 @@ model CanvassAssignment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  canvassList   CanvassList   @relation(fields: [canvassListId], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canvassList CanvassList @relation(fields: [canvassListId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("canvass_assignments")
 }
@@ -633,25 +646,25 @@ model CanvassAssignment {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Interaction {
-  id               String          @id @default(cuid())
-  contactId        String
-  userId           String
-  type             InteractionType
-  notes            String?
-  supportLevel     SupportLevel?
-  issues           String[]        @default([])
-  signRequested    Boolean         @default(false)
-  volunteerInterest Boolean        @default(false)
-  followUpNeeded   Boolean         @default(false)
-  followUpDate     DateTime?
-  doorNumber       String?
-  duration         Int?
-  latitude         Float?
-  longitude        Float?
-  createdAt        DateTime        @default(now())
+  id                String          @id @default(cuid())
+  contactId         String
+  userId            String
+  type              InteractionType
+  notes             String?
+  supportLevel      SupportLevel?
+  issues            String[]        @default([])
+  signRequested     Boolean         @default(false)
+  volunteerInterest Boolean         @default(false)
+  followUpNeeded    Boolean         @default(false)
+  followUpDate      DateTime?
+  doorNumber        String?
+  duration          Int?
+  latitude          Float?
+  longitude         Float?
+  createdAt         DateTime        @default(now())
 
-  contact          Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  user             User            @relation(fields: [userId], references: [id])
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
 
   @@index([contactId])
   @@index([userId])
@@ -677,10 +690,10 @@ model Task {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact      Contact?     @relation(fields: [contactId], references: [id])
-  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
-  createdBy    User         @relation("CreatedTasks", fields: [createdById], references: [id])
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  assignedTo User?    @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy  User     @relation("CreatedTasks", fields: [createdById], references: [id])
 
   @@index([campaignId])
   @@index([assignedToId])
@@ -713,8 +726,8 @@ model Sign {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact      Contact?   @relation(fields: [contactId], references: [id])
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id])
 
   @@index([campaignId, status])
   @@index([lat, lng])
@@ -726,28 +739,28 @@ model Sign {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model VolunteerProfile {
-  id              String    @id @default(cuid())
+  id               String   @id @default(cuid())
   // Volunteer is either a registered user OR a field-captured contact (or both)
-  userId          String?   @unique  // set if they have a login
-  contactId       String?   @unique  // set if captured in field without login
-  campaignId      String?            // which campaign they volunteered for
-  skills          String[]  @default([])
-  availability    String?            // free text: "weekends", "evenings after 6pm"
-  availabilityJson Json?             // structured: { mon: true, tue: false, ... }
-  maxHoursPerWeek Int?
-  hasVehicle      Boolean   @default(false)
-  notes           String?
-  totalHours      Float     @default(0)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  userId           String?  @unique // set if they have a login
+  contactId        String?  @unique // set if captured in field without login
+  campaignId       String? // which campaign they volunteered for
+  skills           String[] @default([])
+  availability     String? // free text: "weekends", "evenings after 6pm"
+  availabilityJson Json? // structured: { mon: true, tue: false, ... }
+  maxHoursPerWeek  Int?
+  hasVehicle       Boolean  @default(false)
+  notes            String?
+  totalHours       Float    @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contact         Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  campaign        Campaign? @relation(fields: [campaignId], references: [id])
-  ledGroups       VolunteerGroup[] @relation("VolunteerGroupLeader")
-  groupMemberships VolunteerGroupMember[]
-  shiftSignups    VolunteerShiftSignup[]
+  user              User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact           Contact?               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign          Campaign?              @relation(fields: [campaignId], references: [id])
+  ledGroups         VolunteerGroup[]       @relation("VolunteerGroupLeader")
+  groupMemberships  VolunteerGroupMember[]
+  shiftSignups      VolunteerShiftSignup[]
   submittedExpenses VolunteerExpense[]
 
   @@index([campaignId])
@@ -760,34 +773,34 @@ model VolunteerProfile {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Poll {
-  id               String         @id @default(cuid())
-  question         String
-  description      String?
-  type             PollType       @default(binary)
-  visibility       PollVisibility @default(public)
+  id                   String         @id @default(cuid())
+  question             String
+  description          String?
+  type                 PollType       @default(binary)
+  visibility           PollVisibility @default(public)
   // Geographic targeting
-  targetRegion     String?        // ward, riding, province, or "national"
-  targetPostalPrefixes String[]   @default([])
+  targetRegion         String? // ward, riding, province, or "national"
+  targetPostalPrefixes String[]       @default([])
   // Attribution
-  campaignId       String?
-  officialId       String?
-  createdByUserId  String?
+  campaignId           String?
+  officialId           String?
+  createdByUserId      String?
   // Options (for multiple_choice / ranked)
-  options          PollOption[]
-  responses        PollResponse[]
+  options              PollOption[]
+  responses            PollResponse[]
   // Timing
-  startsAt         DateTime       @default(now())
-  endsAt           DateTime?
+  startsAt             DateTime       @default(now())
+  endsAt               DateTime?
   // Metadata
-  totalResponses   Int            @default(0)
-  isActive         Boolean        @default(true)
-  isFeatured       Boolean        @default(false)
-  tags             String[]       @default([])
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  totalResponses       Int            @default(0)
+  isActive             Boolean        @default(true)
+  isFeatured           Boolean        @default(false)
+  tags                 String[]       @default([])
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
-  campaign         Campaign?      @relation(fields: [campaignId], references: [id])
-  official         Official?      @relation(fields: [officialId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  official Official? @relation(fields: [officialId], references: [id])
 
   @@index([targetRegion])
   @@index([isActive, isFeatured])
@@ -801,38 +814,38 @@ model PollOption {
   order     Int            @default(0)
   responses PollResponse[]
 
-  poll      Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
 
   @@map("poll_options")
 }
 
 model PollResponse {
-  id           String      @id @default(cuid())
-  pollId       String
+  id          String   @id @default(cuid())
+  pollId      String
   // ANONYMOUS POLLING: userId is kept for backward compatibility but new responses
   // use voteHash (SHA-256 of pollId + voterId + secret salt) for duplicate prevention.
   // userId is NOT used to trace votes — only voteHash is checked.
-  userId       String?     // DEPRECATED — kept for legacy data; new responses store null or hash only
-  optionId     String?     // for multiple choice / ranked
-  value        String?     // for binary (yes/no/left/right) or slider (0-100)
-  rank         Int?        // for ranked polls
+  userId      String? // DEPRECATED — kept for legacy data; new responses store null or hash only
+  optionId    String? // for multiple choice / ranked
+  value       String? // for binary (yes/no/left/right) or slider (0-100)
+  rank        Int? // for ranked polls
   // Anonymous vote hash: SHA-256(pollId + identifier + POLL_ANONYMITY_SALT)
   // Cannot be reversed to find the voter. Prevents double-voting.
-  voteHash     String?     @unique
+  voteHash    String?  @unique
   // Voter receipt: SHA-256(pollId + optionId/value + random nonce)
   // Given to voter after voting so they can verify their vote was counted.
-  receiptHash  String?     @unique
+  receiptHash String?  @unique
   // Geo snapshot — aggregate only, never linked to identity
-  postalCode   String?
-  ward         String?
-  riding       String?
+  postalCode  String?
+  ward        String?
+  riding      String?
   // Rate limiting only — NOT stored for identity. Hashed before storage.
-  ipHash       String?
-  createdAt    DateTime    @default(now())
+  ipHash      String?
+  createdAt   DateTime @default(now())
 
-  poll         Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  option       PollOption? @relation(fields: [optionId], references: [id])
-  user         User?       @relation(fields: [userId], references: [id])
+  poll   Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption? @relation(fields: [optionId], references: [id])
+  user   User?       @relation(fields: [userId], references: [id])
 
   @@index([pollId])
   @@index([postalCode])
@@ -857,7 +870,7 @@ model SupportSignal {
   isPublic     Boolean           @default(true)
   createdAt    DateTime          @default(now())
 
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([officialId])
   @@index([campaignSlug])
@@ -869,19 +882,19 @@ model SupportSignal {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model PublicQuestion {
-  id          String    @id @default(cuid())
-  userId      String
-  officialId  String
-  question    String
-  answer      String?
-  answeredAt  DateTime?
-  isPublic    Boolean   @default(true)
-  upvotes     Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  userId     String
+  officialId String
+  question   String
+  answer     String?
+  answeredAt DateTime?
+  isPublic   Boolean   @default(true)
+  upvotes    Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  official    Official  @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
 
   @@index([officialId])
   @@map("public_questions")
@@ -893,7 +906,7 @@ model PublicQuestion {
 
 model GeoDistrict {
   id           String          @id @default(cuid())
-  postalPrefix String?         // e.g. "M4C", "K1A" — null for boundary-only records
+  postalPrefix String? // e.g. "M4C", "K1A" — null for boundary-only records
   ward         String?
   wardCode     String?
   riding       String?
@@ -902,13 +915,13 @@ model GeoDistrict {
   city         String?
   level        GovernmentLevel
   // GIS boundary fields — added for choropleth heat maps
-  name         String?         // human-readable district/municipality name
-  slug         String?         // canonical district slug
-  districtType String?         // "municipal" | "provincial" | "federal"
-  externalId   String?         // source system identifier
-  centroid     Json?           // { lat, lng } for map centering
-  metadata     Json?           // raw source metadata (boundary set, area id, etc.)
-  geoJson      Json?           // GeoJSON geometry (Polygon or MultiPolygon)
+  name         String? // human-readable district/municipality name
+  slug         String? // canonical district slug
+  districtType String? // "municipal" | "provincial" | "federal"
+  externalId   String? // source system identifier
+  centroid     Json? // { lat, lng } for map centering
+  metadata     Json? // raw source metadata (boundary set, area id, etc.)
+  geoJson      Json? // GeoJSON geometry (Polygon or MultiPolygon)
   createdAt    DateTime        @default(now())
 
   @@unique([postalPrefix, level])
@@ -924,18 +937,18 @@ model GeoDistrict {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  body        String
-  type        String   // poll | election | signal | task | system | staff_alert
-  link        String?
-  isRead      Boolean  @default(false)
-  entityType  String?  // contact | campaign | poll | task
-  entityId    String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  body       String
+  type       String // poll | election | signal | task | system | staff_alert
+  link       String?
+  isRead     Boolean  @default(false)
+  entityType String? // contact | campaign | poll | task
+  entityId   String?
+  createdAt  DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@map("notifications")
@@ -959,42 +972,40 @@ model ServiceProvider {
   isActive     Boolean         @default(true)
   createdAt    DateTime        @default(now())
 
-  bookings     ServiceBooking[]
+  bookings ServiceBooking[]
 
   @@map("service_providers")
 }
 
 model ServiceBooking {
-  id               String          @id @default(cuid())
-  campaignId       String
-  providerId       String
-  category         ServiceCategory
-  description      String
-  targetArea       String?
-  quantity         Int?
-  scheduledDate    DateTime?
-  status           BookingStatus   @default(pending)
-  totalCost        Float?
-  notes            String?
-  completedAt      DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id            String          @id @default(cuid())
+  campaignId    String
+  providerId    String
+  category      ServiceCategory
+  description   String
+  targetArea    String?
+  quantity      Int?
+  scheduledDate DateTime?
+  status        BookingStatus   @default(pending)
+  totalCost     Float?
+  notes         String?
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  campaign         Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  provider         ServiceProvider @relation(fields: [providerId], references: [id])
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  provider ServiceProvider @relation(fields: [providerId], references: [id])
 
   @@map("service_bookings")
 }
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DONATIONS (pledged on the fly by canvassers)
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum DonationStatus {
-  pledged      // captured at door/phone, not yet processed
-  processed    // payment received
+  pledged // captured at door/phone, not yet processed
+  processed // payment received
   cancelled
   refunded
 }
@@ -1003,10 +1014,10 @@ model Donation {
   id            String         @id @default(cuid())
   campaignId    String
   contactId     String?
-  recordedById  String         // user who captured it
+  recordedById  String // user who captured it
   amount        Float
   status        DonationStatus @default(pledged)
-  method        String?        // cash | cheque | credit | e-transfer
+  method        String? // cash | cheque | credit | e-transfer
   notes         String?
   collectedAt   DateTime       @default(now())
   processedAt   DateTime?
@@ -1014,9 +1025,9 @@ model Donation {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact       Contact?       @relation(fields: [contactId], references: [id])
-  recordedBy    User           @relation("RecordedDonations", fields: [recordedById], references: [id])
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  recordedBy User     @relation("RecordedDonations", fields: [recordedById], references: [id])
 
   @@index([campaignId])
   @@map("donations")
@@ -1027,37 +1038,37 @@ model Donation {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model GotvBatch {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   campaignId   String
-  name         String    // e.g. "Election Day 9am upload"
+  name         String // e.g. "Election Day 9am upload"
   uploadedById String
-  totalRecords Int       @default(0)
-  matchedCount Int       @default(0)
-  struckCount  Int       @default(0)
+  totalRecords Int      @default(0)
+  matchedCount Int      @default(0)
+  struckCount  Int      @default(0)
   sourceFile   String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
-  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  uploadedBy   User      @relation("UploadedGotvBatches", fields: [uploadedById], references: [id])
-  records      GotvRecord[]
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploadedBy User         @relation("UploadedGotvBatches", fields: [uploadedById], references: [id])
+  records    GotvRecord[]
 
   @@map("gotv_batches")
 }
 
 model GotvRecord {
-  id           String    @id @default(cuid())
-  batchId      String
-  contactId    String?   // matched contact in our DB
-  externalId   String?   // voter ID from elections office
-  firstName    String?
-  lastName     String?
-  address      String?
-  hasVoted     Boolean   @default(true)
-  matchScore   Float?    // 0-100 confidence of the match
-  createdAt    DateTime  @default(now())
+  id         String   @id @default(cuid())
+  batchId    String
+  contactId  String? // matched contact in our DB
+  externalId String? // voter ID from elections office
+  firstName  String?
+  lastName   String?
+  address    String?
+  hasVoted   Boolean  @default(true)
+  matchScore Float? // 0-100 confidence of the match
+  createdAt  DateTime @default(now())
 
-  batch        GotvBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  contact      Contact?  @relation(fields: [contactId], references: [id])
+  batch   GotvBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  contact Contact?  @relation(fields: [contactId], references: [id])
 
   @@index([batchId])
   @@index([contactId])
@@ -1076,14 +1087,14 @@ enum NotificationChannel {
 }
 
 model NotificationTemplate {
-  id         String   @id @default(cuid())
-  campaignId String?  // null = system-wide
-  key        String   // e.g. "sign_request", "volunteer_signup", "task_assigned"
+  id         String              @id @default(cuid())
+  campaignId String? // null = system-wide
+  key        String // e.g. "sign_request", "volunteer_signup", "task_assigned"
   title      String
   body       String
   channel    NotificationChannel @default(in_app)
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
 
   @@map("notification_templates")
 }
@@ -1097,32 +1108,32 @@ model PushSubscription {
   auth       String
   createdAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([userId, campaignId])
   @@map("push_subscriptions")
 }
 
 model NotificationLog {
-  id                String   @id @default(cuid())
-  campaignId        String
-  userId            String?
-  title             String
-  body              String
-  audience          Json?
-  status            String   @default("sent") // scheduled | sent | cancelled
-  scheduledFor      DateTime?
-  sentAt            DateTime?
-  totalSubscribers  Int      @default(0)
-  deliveredCount    Int      @default(0)
-  failedCount       Int      @default(0)
-  failedEndpoints   String[] @default([])
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String    @id @default(cuid())
+  campaignId       String
+  userId           String?
+  title            String
+  body             String
+  audience         Json?
+  status           String    @default("sent") // scheduled | sent | cancelled
+  scheduledFor     DateTime?
+  sentAt           DateTime?
+  totalSubscribers Int       @default(0)
+  deliveredCount   Int       @default(0)
+  failedCount      Int       @default(0)
+  failedEndpoints  String[]  @default([])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user              User?    @relation(fields: [userId], references: [id])
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
 
   @@index([campaignId, createdAt])
   @@index([campaignId, status])
@@ -1134,40 +1145,40 @@ model NotificationLog {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum QrCodeType {
-  contact       // scan → open contact profile
-  volunteer     // scan → volunteer sign-up form
-  sign_request  // scan → sign request form
-  event         // scan → event check-in
-  poll          // scan → poll
+  contact // scan → open contact profile
+  volunteer // scan → volunteer sign-up form
+  sign_request // scan → sign request form
+  event // scan → event check-in
+  poll // scan → poll
 }
 
 model QrCode {
-  id         String      @id @default(cuid())
+  id         String     @id @default(cuid())
   campaignId String
   type       QrCodeType
-  entityId   String?     // contactId, eventId, pollId etc.
-  token      String      @unique @default(cuid())
+  entityId   String? // contactId, eventId, pollId etc.
+  token      String     @unique @default(cuid())
   label      String?
-  scanCount  Int         @default(0)
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
+  scanCount  Int        @default(0)
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
 
-  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  scans      QrScan[]
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scans    QrScan[]
 
   @@map("qr_codes")
 }
 
 model QrScan {
-  id         String   @id @default(cuid())
-  qrCodeId   String
-  scannedBy  String?  // userId if logged in
-  ipAddress  String?
-  userAgent  String?
-  result     Json?    // what happened as a result
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  qrCodeId  String
+  scannedBy String? // userId if logged in
+  ipAddress String?
+  userAgent String?
+  result    Json? // what happened as a result
+  createdAt DateTime @default(now())
 
-  qrCode     QrCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  qrCode QrCode @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
 
   @@map("qr_scans")
 }
@@ -1177,21 +1188,21 @@ model QrScan {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model ElectionResult {
-  id             String   @id @default(cuid())
-  electionDate   DateTime
-  electionType   String   // municipal | provincial | federal
-  jurisdiction   String   // riding or ward name
+  id               String   @id @default(cuid())
+  electionDate     DateTime
+  electionType     String // municipal | provincial | federal
+  jurisdiction     String // riding or ward name
   jurisdictionCode String?
-  candidateName  String
-  partyName      String?
-  votesReceived  Int
-  totalVotesCast Int
-  percentage     Float
-  won            Boolean  @default(false)
-  pollNumber     String?  // for poll-by-poll breakdown
-  province       String?
-  source         String?  // "elections_canada" | "elections_ontario" | manual
-  createdAt      DateTime @default(now())
+  candidateName    String
+  partyName        String?
+  votesReceived    Int
+  totalVotesCast   Int
+  percentage       Float
+  won              Boolean  @default(false)
+  pollNumber       String? // for poll-by-poll breakdown
+  province         String?
+  source           String? // "elections_canada" | "elections_ontario" | manual
+  createdAt        DateTime @default(now())
 
   @@index([jurisdiction, electionDate])
   @@index([electionDate, electionType])
@@ -1210,40 +1221,39 @@ enum FieldType {
   boolean
   number
   date
-  select       // single-select from options list
-  multiselect  // multi-select from options list
+  select // single-select from options list
+  multiselect // multi-select from options list
 }
 
 enum FieldCategory {
-  contact_info    // shown on contact card
-  canvassing      // shown in walk list / canvass view
-  membership      // party membership fields
-  electoral       // electoral geography fields
-  custom          // user-defined
+  contact_info // shown on contact card
+  canvassing // shown in walk list / canvass view
+  membership // party membership fields
+  electoral // electoral geography fields
+  custom // user-defined
 }
 
 model CampaignField {
-  id           String        @id @default(cuid())
-  campaignId   String
-  key          String        // internal key, e.g. "hydro_concern"
-  label        String        // display label, e.g. "Hydro Concern"
-  fieldType    FieldType     @default(text)
-  category     FieldCategory @default(custom)
-  options      String[]      @default([]) // for select/multiselect
-  isVisible    Boolean       @default(true)
-  isRequired   Boolean       @default(false)
-  showOnCard   Boolean       @default(true)  // show in canvassing card
-  showOnList   Boolean       @default(false) // show in contact table
-  sortOrder    Int           @default(0)
-  createdAt    DateTime      @default(now())
+  id         String        @id @default(cuid())
+  campaignId String
+  key        String // internal key, e.g. "hydro_concern"
+  label      String // display label, e.g. "Hydro Concern"
+  fieldType  FieldType     @default(text)
+  category   FieldCategory @default(custom)
+  options    String[]      @default([]) // for select/multiselect
+  isVisible  Boolean       @default(true)
+  isRequired Boolean       @default(false)
+  showOnCard Boolean       @default(true) // show in canvassing card
+  showOnList Boolean       @default(false) // show in contact table
+  sortOrder  Int           @default(0)
+  createdAt  DateTime      @default(now())
 
-  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  values       CustomFieldValue[]
+  campaign Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  values   CustomFieldValue[]
 
   @@unique([campaignId, key])
   @@map("campaign_fields")
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOM FIELD VALUES
@@ -1253,26 +1263,26 @@ model CampaignField {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model CustomFieldValue {
-  id         String        @id @default(cuid())
-  contactId  String
-  fieldId    String        // references CampaignField.id
-  fieldKey   String        // denormalized for fast lookup without join
+  id        String    @id @default(cuid())
+  contactId String
+  fieldId   String // references CampaignField.id
+  fieldKey  String // denormalized for fast lookup without join
   // Value stored in appropriate column based on fieldType
-  valueText  String?       // text, textarea, select
-  valueBool  Boolean?      // boolean
-  valueNum   Float?        // number
-  valueDate  DateTime?     // date
-  valueList  String[]      @default([]) // multiselect
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  valueText String? // text, textarea, select
+  valueBool Boolean? // boolean
+  valueNum  Float? // number
+  valueDate DateTime? // date
+  valueList String[]  @default([]) // multiselect
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  contact    Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  field      CampaignField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  contact Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  field   CampaignField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
 
   @@unique([contactId, fieldId])
   @@index([contactId])
   @@index([fieldId])
-  @@index([fieldKey, valueText])   // for filtering by field value
+  @@index([fieldKey, valueText]) // for filtering by field value
   @@index([fieldKey, valueBool])
   @@map("custom_field_values")
 }
@@ -1289,7 +1299,7 @@ model SignRequest {
   email      String
   createdAt  DateTime @default(now())
 
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@map("sign_requests")
@@ -1303,7 +1313,7 @@ model Question {
   question   String
   createdAt  DateTime @default(now())
 
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@map("questions")
@@ -1323,8 +1333,8 @@ model ActivityLog {
   details    Json?
   createdAt  DateTime @default(now())
 
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
 
   @@index([campaignId])
   @@index([entityType, entityId])
@@ -1332,27 +1342,27 @@ model ActivityLog {
 }
 
 model ImportLog {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   campaignId    String
   userId        String
   filename      String
   fileType      String
   totalRows     Int
-  processedRows Int      @default(0)
-  importedCount Int      @default(0)
-  updatedCount  Int      @default(0)
-  skippedCount  Int      @default(0)
-  errorCount    Int      @default(0)
-  status        String   @default("processing")
+  processedRows Int       @default(0)
+  importedCount Int       @default(0)
+  updatedCount  Int       @default(0)
+  skippedCount  Int       @default(0)
+  errorCount    Int       @default(0)
+  status        String    @default("processing")
   mapping       Json?
   warnings      Json?
   invalidRows   Json?
   errors        Json?
   completedAt   DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
-  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, createdAt])
   @@index([userId, createdAt])
@@ -1360,14 +1370,14 @@ model ImportLog {
 }
 
 model ExportLog {
-  id           String   @id @default(cuid())
-  campaignId   String
-  userId       String?
-  exportType   String   // "contacts" | "gotv" | "walk_list" | "volunteers" | "donations" | "signs" | "interactions"
-  format       String   // "csv" | "xlsx" | "pdf" | "json"
-  recordCount  Int      @default(0)
-  filters      Json?
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  campaignId  String
+  userId      String?
+  exportType  String // "contacts" | "gotv" | "walk_list" | "volunteers" | "donations" | "signs" | "interactions"
+  format      String // "csv" | "xlsx" | "pdf" | "json"
+  recordCount Int      @default(0)
+  filters     Json?
+  createdAt   DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -1380,20 +1390,20 @@ model ExportLog {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Subscription {
-  id                String             @id @default(cuid())
-  userId            String
-  plan              SubscriptionPlan
-  status            SubscriptionStatus @default(incomplete)
-  stripeCustomerId  String?
+  id                   String             @id @default(cuid())
+  userId               String
+  plan                 SubscriptionPlan
+  status               SubscriptionStatus @default(incomplete)
+  stripeCustomerId     String?
   stripeSubscriptionId String?
-  currentPeriodStart DateTime?
-  currentPeriodEnd   DateTime?
-  trialEnd          DateTime?
-  cancelAtPeriodEnd Boolean            @default(false)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  trialEnd             DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
   @@map("subscriptions")
@@ -1407,26 +1417,26 @@ model Subscription {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model ConsentLog {
-  id             String    @id @default(cuid())
+  id            String    @id @default(cuid())
   // Who consented
-  userId         String
+  userId        String
   // Which campaign received the signal
-  campaignId     String
+  campaignId    String
   // What type of signal triggered the bridge
-  signalType     String    // matches SupportSignalType enum values
+  signalType    String // matches SupportSignalType enum values
   // What purpose the user agreed to
-  consentScope   String    // "campaign_awareness" | "volunteer_contact" | "sign_installation" | "do_not_contact"
+  consentScope  String // "campaign_awareness" | "volunteer_contact" | "sign_installation" | "do_not_contact"
   // Which fields were written to the CRM Contact record
-  fieldsXferred  String[]  // e.g. ["postalCode", "ward"] — never includes email/phone unless provided
+  fieldsXferred String[] // e.g. ["postalCode", "ward"] — never includes email/phone unless provided
   // Traceability — links to the ActivityLog entry written at the same time
-  activityLogId  String?
+  activityLogId String?
   // The CRM Contact record created or updated by this bridge transfer
-  contactId      String?
+  contactId     String?
   // Revocation — null = active consent, set = revoked
-  revokedAt      DateTime?
-  createdAt      DateTime  @default(now())
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Idempotency guard: one active consent record per (user, campaign, signalType)
   // A revoked record allows re-consenting (revokedAt IS NOT NULL = inactive)
@@ -1473,81 +1483,81 @@ enum PrintJobStatus {
 }
 
 model PrintShop {
-  id           String   @id @default(cuid())
-  name         String
-  contactName  String?
-  email        String
-  phone        String?
-  website      String?
-  description  String?
-  serviceAreas String[] @default([])
-  specialties  PrintProductType[] @default([])
-  rating       Float?
-  reviewCount  Int      @default(0)
-  isVerified   Boolean  @default(false)
-  isActive     Boolean  @default(true)
-  logoUrl      String?
-  stripeAccountId String?
-  stripeOnboarded Boolean @default(false)
-  portfolio    String[] @default([])
-  provincesServed String[] @default([])
+  id                   String             @id @default(cuid())
+  name                 String
+  contactName          String?
+  email                String
+  phone                String?
+  website              String?
+  description          String?
+  serviceAreas         String[]           @default([])
+  specialties          PrintProductType[] @default([])
+  rating               Float?
+  reviewCount          Int                @default(0)
+  isVerified           Boolean            @default(false)
+  isActive             Boolean            @default(true)
+  logoUrl              String?
+  stripeAccountId      String?
+  stripeOnboarded      Boolean            @default(false)
+  portfolio            String[]           @default([])
+  provincesServed      String[]           @default([])
   averageResponseHours Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  bids         PrintBid[]
+  bids PrintBid[]
 
   @@map("print_shops")
 }
 
 model PrintJob {
-  id              String           @id @default(cuid())
-  campaignId      String
-  userId          String
-  productType     PrintProductType
-  title           String
-  quantity        Int
-  description     String?
-  specs           Json?
-  deadline        DateTime?
-  deliveryAddress String?
-  deliveryCity    String?
-  deliveryPostal  String?
-  fileUrl         String?
-  budgetMin       Float?
-  budgetMax       Float?
-  status          PrintJobStatus   @default(draft)
-  awardedBidId    String?
-  paymentIntentId String?
-  paymentStatus   String?          @default("pending") // pending | paid | released | refunded
-  trackingNumber  String?
-  carrier         String?
+  id                String           @id @default(cuid())
+  campaignId        String
+  userId            String
+  productType       PrintProductType
+  title             String
+  quantity          Int
+  description       String?
+  specs             Json?
+  deadline          DateTime?
+  deliveryAddress   String?
+  deliveryCity      String?
+  deliveryPostal    String?
+  fileUrl           String?
+  budgetMin         Float?
+  budgetMax         Float?
+  status            PrintJobStatus   @default(draft)
+  awardedBidId      String?
+  paymentIntentId   String?
+  paymentStatus     String?          @default("pending") // pending | paid | released | refunded
+  trackingNumber    String?
+  carrier           String?
   estimatedDelivery DateTime?
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  campaign        Campaign         @relation(fields: [campaignId], references: [id])
-  bids            PrintBid[]
+  campaign Campaign   @relation(fields: [campaignId], references: [id])
+  bids     PrintBid[]
 
   @@index([campaignId, status])
   @@map("print_jobs")
 }
 
 model PrintBid {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   jobId      String
   shopId     String
   price      Float
   turnaround Int
   notes      String?
   fileUrl    String?
-  isAccepted Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  isAccepted Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  job        PrintJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  shop       PrintShop @relation(fields: [shopId], references: [id])
+  job  PrintJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  shop PrintShop @relation(fields: [shopId], references: [id])
 
   @@index([jobId])
   @@index([shopId])
@@ -1559,66 +1569,66 @@ model PrintBid {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Turf {
-  id             String     @id @default(cuid())
-  campaignId     String
-  name           String
-  ward           String?
-  pollNumber     String?
-  streets        String[]   @default([])
-  oddEven        String     @default("all")
-  status         TurfStatus @default(draft)
-  assignedUserId String?
+  id              String     @id @default(cuid())
+  campaignId      String
+  name            String
+  ward            String?
+  pollNumber      String?
+  streets         String[]   @default([])
+  oddEven         String     @default("all")
+  status          TurfStatus @default(draft)
+  assignedUserId  String?
   assignedGroupId String?
-  totalStops     Int        @default(0)
-  completedStops Int        @default(0)
-  notes          String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  totalStops      Int        @default(0)
+  completedStops  Int        @default(0)
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  campaign       Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  assignedUser   User?      @relation("TurfAssignee", fields: [assignedUserId], references: [id])
-  assignedGroup  VolunteerGroup? @relation(fields: [assignedGroupId], references: [id])
-  stops          TurfStop[]
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedUser  User?           @relation("TurfAssignee", fields: [assignedUserId], references: [id])
+  assignedGroup VolunteerGroup? @relation(fields: [assignedGroupId], references: [id])
+  stops         TurfStop[]
 
   @@index([campaignId])
   @@map("turfs")
 }
 
 model VolunteerOnboardingToken {
-  id             String                @id @default(cuid())
-  token          String                @unique
-  campaignId     String
-  firstName      String
-  lastName       String
-  email          String
-  phone          String?
-  preferredWard  String?
-  status         VolunteerInviteStatus @default(pending)
-  expiresAt      DateTime
-  consumedAt     DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id            String                @id @default(cuid())
+  token         String                @unique
+  campaignId    String
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  preferredWard String?
+  status        VolunteerInviteStatus @default(pending)
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
-  campaign       Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
   @@map("volunteer_onboarding_tokens")
 }
 
 model VolunteerGroup {
-  id                 String                  @id @default(cuid())
-  campaignId         String
-  name               String
-  description        String?
-  targetWard         String?
-  leaderProfileId    String?
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  id              String   @id @default(cuid())
+  campaignId      String
+  name            String
+  description     String?
+  targetWard      String?
+  leaderProfileId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  campaign           Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  leaderProfile      VolunteerProfile?       @relation("VolunteerGroupLeader", fields: [leaderProfileId], references: [id])
-  members            VolunteerGroupMember[]
-  turfs              Turf[]
+  campaign      Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leaderProfile VolunteerProfile?      @relation("VolunteerGroupLeader", fields: [leaderProfileId], references: [id])
+  members       VolunteerGroupMember[]
+  turfs         Turf[]
 
   @@unique([campaignId, name])
   @@index([campaignId])
@@ -1626,13 +1636,13 @@ model VolunteerGroup {
 }
 
 model VolunteerGroupMember {
-  id                 String            @id @default(cuid())
+  id                 String   @id @default(cuid())
   groupId            String
   volunteerProfileId String
-  createdAt          DateTime          @default(now())
+  createdAt          DateTime @default(now())
 
-  group              VolunteerGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  volunteerProfile   VolunteerProfile  @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+  group            VolunteerGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  volunteerProfile VolunteerProfile @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, volunteerProfileId])
   @@index([volunteerProfileId])
@@ -1640,23 +1650,23 @@ model VolunteerGroupMember {
 }
 
 model VolunteerShift {
-  id                String                  @id @default(cuid())
-  campaignId        String
-  name              String
-  shiftDate         DateTime
-  startTime         String
-  endTime           String
-  meetingLocation   String
-  targetTurfArea    String?
-  maxVolunteers     Int                     @default(10)
-  minVolunteers     Int                     @default(1)
-  notes             String?
-  checkInCode       String                  @unique
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
+  id              String   @id @default(cuid())
+  campaignId      String
+  name            String
+  shiftDate       DateTime
+  startTime       String
+  endTime         String
+  meetingLocation String
+  targetTurfArea  String?
+  maxVolunteers   Int      @default(10)
+  minVolunteers   Int      @default(1)
+  notes           String?
+  checkInCode     String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  campaign          Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  signups           VolunteerShiftSignup[]
+  campaign Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  signups  VolunteerShiftSignup[]
 
   @@index([campaignId, shiftDate])
   @@map("volunteer_shifts")
@@ -1671,8 +1681,8 @@ model VolunteerShiftSignup {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 
-  shift              VolunteerShift             @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  volunteerProfile   VolunteerProfile           @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+  shift            VolunteerShift   @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  volunteerProfile VolunteerProfile @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([shiftId, volunteerProfileId])
   @@index([volunteerProfileId])
@@ -1680,175 +1690,175 @@ model VolunteerShiftSignup {
 }
 
 model CanvassingScript {
-  id            String      @id @default(cuid())
-  campaignId    String
-  name          String
-  scriptType    ScriptType  @default(general)
-  openingLine   String
-  keyMessages   String[]    @default([])
+  id             String     @id @default(cuid())
+  campaignId     String
+  name           String
+  scriptType     ScriptType @default(general)
+  openingLine    String
+  keyMessages    String[]   @default([])
   issueResponses Json?
-  closingAsk    String
-  literature    String?
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  closingAsk     String
+  literature     String?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  campaign      Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, scriptType])
   @@map("canvassing_scripts")
 }
 
 model MediaMention {
-  id            String       @id @default(cuid())
-  campaignId    String
-  outlet        String
-  mentionDate   DateTime
-  url           String?
-  sentiment     SentimentType @default(neutral)
-  summary       String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  campaignId  String
+  outlet      String
+  mentionDate DateTime
+  url         String?
+  sentiment   SentimentType @default(neutral)
+  summary     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  campaign      Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, mentionDate])
   @@map("media_mentions")
 }
 
 model Coalition {
-  id             String      @id @default(cuid())
-  campaignId     String
+  id               String    @id @default(cuid())
+  campaignId       String
   organizationName String
-  contactName    String?
-  contactEmail   String?
-  memberCount    Int?
-  endorsementDate DateTime?
-  isPublic       Boolean     @default(false)
-  logoUrl        String?
-  memberList     Json?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  contactName      String?
+  contactEmail     String?
+  memberCount      Int?
+  endorsementDate  DateTime?
+  isPublic         Boolean   @default(false)
+  logoUrl          String?
+  memberList       Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@map("coalitions")
 }
 
 model OpponentIntel {
-  id             String            @id @default(cuid())
-  campaignId     String
-  type           OpponentIntelType
-  title          String
-  details        String?
-  lat            Float?
-  lng            Float?
-  eventDate      DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id         String            @id @default(cuid())
+  campaignId String
+  type       OpponentIntelType
+  title      String
+  details    String?
+  lat        Float?
+  lng        Float?
+  eventDate  DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
-  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, type])
   @@map("opponent_intel")
 }
 
 model Event {
-  id             String      @id @default(cuid())
-  campaignId     String
-  name           String
-  eventDate      DateTime
-  location       String
-  capacity       Int?
-  description    String?
-  isPublic       Boolean     @default(false)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id          String   @id @default(cuid())
+  campaignId  String
+  name        String
+  eventDate   DateTime
+  location    String
+  capacity    Int?
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  rsvps          EventRsvp[]
+  campaign Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rsvps    EventRsvp[]
 
   @@index([campaignId, eventDate])
   @@map("events")
 }
 
 model EventRsvp {
-  id             String      @id @default(cuid())
-  eventId        String
-  contactId      String?
-  name           String
-  email          String
-  attended       Boolean     @default(false)
-  createdAt      DateTime    @default(now())
+  id        String   @id @default(cuid())
+  eventId   String
+  contactId String?
+  name      String
+  email     String
+  attended  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  event          Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
   @@map("event_rsvps")
 }
 
 model SuperSupporterTask {
-  id             String      @id @default(cuid())
-  campaignId     String
-  contactId      String
-  title          String
-  status         String      @default("pending")
+  id                String   @id @default(cuid())
+  campaignId        String
+  contactId         String
+  title             String
+  status            String   @default("pending")
   contributionNotes String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact        Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
   @@map("super_supporter_tasks")
 }
 
 model VolunteerExpense {
-  id             String                @id @default(cuid())
-  campaignId     String
+  id                 String                 @id @default(cuid())
+  campaignId         String
   volunteerProfileId String
-  amount         Float
-  category       String
-  receiptUrl     String?
-  notes          String?
-  status         VolunteerExpenseStatus @default(pending)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  amount             Float
+  category           String
+  receiptUrl         String?
+  notes              String?
+  status             VolunteerExpenseStatus @default(pending)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
-  campaign       Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  volunteerProfile VolunteerProfile    @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
+  campaign         Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  volunteerProfile VolunteerProfile @relation(fields: [volunteerProfileId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, status])
   @@map("volunteer_expenses")
 }
 
 model BudgetItem {
-  id             String         @id @default(cuid())
-  campaignId     String
-  itemType       BudgetItemType
-  category       String
-  amount         Float
-  description    String?
+  id            String           @id @default(cuid())
+  campaignId    String
+  itemType      BudgetItemType
+  category      String
+  amount        Float
+  description   String?
   // Enterprise additions (all optional for backward compatibility)
-  vendor         String?                       // who was paid / from whom allocation came
-  paymentMethod  String?                       // cash | cheque | credit | e-transfer | invoice
-  receiptUrl     String?                       // Vercel Blob URL to uploaded receipt file
-  receiptNumber  String?                       // vendor invoice / receipt number
-  status         BudgetItemStatus @default(approved) // pending | approved | paid | rejected | reconciled
-  approvedById   String?                       // user who approved this expense
-  paidAt         DateTime?                     // when the payment actually cleared
-  tags           String[]       @default([])   // free-form tags (e.g. "q4", "gotv-push")
-  sourceRuleId   String?                       // if created from a BudgetRule suggestion
-  postElection   Boolean        @default(false) // true if incurredAt > campaign election date
-  importNotes    String?                        // freeform notes preserved from imports
-  incurredAt     DateTime       @default(now())
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  vendor        String? // who was paid / from whom allocation came
+  paymentMethod String? // cash | cheque | credit | e-transfer | invoice
+  receiptUrl    String? // Vercel Blob URL to uploaded receipt file
+  receiptNumber String? // vendor invoice / receipt number
+  status        BudgetItemStatus @default(approved) // pending | approved | paid | rejected | reconciled
+  approvedById  String? // user who approved this expense
+  paidAt        DateTime? // when the payment actually cleared
+  tags          String[]         @default([]) // free-form tags (e.g. "q4", "gotv-push")
+  sourceRuleId  String? // if created from a BudgetRule suggestion
+  postElection  Boolean          @default(false) // true if incurredAt > campaign election date
+  importNotes   String? // freeform notes preserved from imports
+  incurredAt    DateTime         @default(now())
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
-  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  payments       BudgetPayment[]
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  payments BudgetPayment[]
 
   @@index([campaignId, category])
   @@index([campaignId, status])
@@ -1859,15 +1869,15 @@ model BudgetItem {
 // BudgetPayment — individual payment records linked to a parent BudgetItem.
 // Real campaign finance files often have a parent expense row with multiple payment details.
 model BudgetPayment {
-  id               String     @id @default(cuid())
+  id               String    @id @default(cuid())
   budgetItemId     String
   amount           Float
-  paymentReference String?    // e.g. "Cheque #2", "E-transfer 1234"
+  paymentReference String? // e.g. "Cheque #2", "E-transfer 1234"
   paidAt           DateTime?
   notes            String?
-  createdAt        DateTime   @default(now())
+  createdAt        DateTime  @default(now())
 
-  budgetItem       BudgetItem @relation(fields: [budgetItemId], references: [id], onDelete: Cascade)
+  budgetItem BudgetItem @relation(fields: [budgetItemId], references: [id], onDelete: Cascade)
 
   @@index([budgetItemId])
   @@map("budget_payments")
@@ -1885,19 +1895,19 @@ enum BudgetItemStatus {
 // Campaigns define rules like "Spend 35% on signs, 20% on digital ads".
 // The suggestions API uses these rules + total budget to propose allocations.
 model BudgetRule {
-  id              String   @id @default(cuid())
-  campaignId      String
-  category        String                          // e.g. "Signs", "Digital Ads", "Events"
-  percentOfTotal  Float?                          // e.g. 0.35 for 35%
-  fixedAmount     Float?                          // alternative to percent
-  priority        Int      @default(1)            // 1 = highest
-  warnAtPercent   Float    @default(0.85)         // warn when spend hits 85% of allocation
-  notes           String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  campaignId     String
+  category       String // e.g. "Signs", "Digital Ads", "Events"
+  percentOfTotal Float? // e.g. 0.35 for 35%
+  fixedAmount    Float? // alternative to percent
+  priority       Int      @default(1) // 1 = highest
+  warnAtPercent  Float    @default(0.85) // warn when spend hits 85% of allocation
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, isActive])
   @@map("budget_rules")
@@ -1911,10 +1921,10 @@ model BudgetRule {
 model ContactFilterPreset {
   id         String   @id @default(cuid())
   campaignId String
-  userId     String?  // null = campaign-wide preset
+  userId     String? // null = campaign-wide preset
   name       String
-  filters    Json     // { supportLevels, tags, wards, search, followUp, etc. }
-  isDefault  Boolean  @default(false)  // true = built-in, cannot be deleted
+  filters    Json // { supportLevels, tags, wards, search, followUp, etc. }
+  isDefault  Boolean  @default(false) // true = built-in, cannot be deleted
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -1925,6 +1935,67 @@ model ContactFilterPreset {
   @@map("contact_filter_presets")
 }
 
+model CrmColumnPreference {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  tableKey   String   @default("contacts")
+  order      Json
+  hidden     Json
+  widths     Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId, tableKey])
+  @@index([campaignId, tableKey])
+  @@map("crm_column_preferences")
+}
+
+model CampaignImportTemplate {
+  id           String   @id @default(cuid())
+  campaignId   String
+  userId       String?
+  name         String
+  targetEntity String // contacts | volunteers | documents | custom_fields
+  mappings     Json
+  options      Json?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, targetEntity])
+  @@index([campaignId, isDefault])
+  @@map("campaign_import_templates")
+}
+
+model CampaignDocument {
+  id         String   @id @default(cuid())
+  campaignId String
+  uploadedBy String?
+  title      String
+  category   String?
+  fileUrl    String?
+  notes      String?
+  externalId String?
+  source     String?  @default("import")
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation("UserUploadedDocuments", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, category])
+  @@index([campaignId, createdAt])
+  @@map("campaign_documents")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // APPROVAL & SENTIMENT (Poll City Live Approval Rating Engine)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1932,18 +2003,18 @@ model ContactFilterPreset {
 // Live approval rating for every elected official.
 // Score calculated from weighted sentiment signals. Range 0-100 (display) and -100..+100 (net).
 model ApprovalRating {
-  id            String            @id @default(cuid())
-  officialId    String            @unique
-  score         Float             @default(50)   // 0-100 display score
-  netScore      Float             @default(0)    // -100..+100 net score
-  totalSignals  Int               @default(0)
-  positiveCount Int               @default(0)
-  negativeCount Int               @default(0)
-  neutralCount  Int               @default(0)
-  updatedAt     DateTime          @updatedAt
+  id            String   @id @default(cuid())
+  officialId    String   @unique
+  score         Float    @default(50) // 0-100 display score
+  netScore      Float    @default(0) // -100..+100 net score
+  totalSignals  Int      @default(0)
+  positiveCount Int      @default(0)
+  negativeCount Int      @default(0)
+  neutralCount  Int      @default(0)
+  updatedAt     DateTime @updatedAt
 
-  official      Official          @relation(fields: [officialId], references: [id], onDelete: Cascade)
-  history       ApprovalHistory[]
+  official Official          @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  history  ApprovalHistory[]
 
   @@index([score])
   @@index([updatedAt])
@@ -1952,14 +2023,14 @@ model ApprovalRating {
 
 // Time-series history of approval scores for trend analysis.
 model ApprovalHistory {
-  id         String         @id @default(cuid())
+  id         String   @id @default(cuid())
   approvalId String
   score      Float
   netScore   Float
-  signalType String         // which signal triggered this recalc
-  recordedAt DateTime       @default(now())
+  signalType String // which signal triggered this recalc
+  recordedAt DateTime @default(now())
 
-  approval   ApprovalRating @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  approval ApprovalRating @relation(fields: [approvalId], references: [id], onDelete: Cascade)
 
   @@index([approvalId, recordedAt])
   @@map("approval_history")
@@ -1970,14 +2041,14 @@ model ApprovalHistory {
 model SentimentSignal {
   id         String   @id @default(cuid())
   officialId String
-  type       String   // "poll_vote" | "support_signal" | "question_sentiment" | "follow" | "unfollow" | "interaction"
-  value      Float    // -1.0 to 1.0
+  type       String // "poll_vote" | "support_signal" | "question_sentiment" | "follow" | "unfollow" | "interaction"
+  value      Float // -1.0 to 1.0
   weight     Float    @default(1.0)
-  source     String   // "social_poll" | "candidate_page" | "canvassing" | "social_follow"
-  metadata   Json?    // e.g. { pollId, contactId, postalPrefix }
+  source     String // "social_poll" | "candidate_page" | "canvassing" | "social_follow"
+  metadata   Json? // e.g. { pollId, contactId, postalPrefix }
   createdAt  DateTime @default(now())
 
-  official   Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
 
   @@index([officialId, createdAt])
   @@index([type])
@@ -1986,18 +2057,18 @@ model SentimentSignal {
 }
 
 model BudgetTemplate {
-  id          String   @id @default(cuid())
-  campaignId  String?                           // null = system-wide template
-  name        String
-  description String?
-  electionLevel String?                         // "federal" | "provincial" | "municipal"
-  totalAmount Float?                            // suggested total budget (optional)
-  items       Json                              // [{category, percentOfTotal, priority, notes}, ...]
-  isSystem    Boolean  @default(false)          // true = built-in preset
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  campaignId    String? // null = system-wide template
+  name          String
+  description   String?
+  electionLevel String? // "federal" | "provincial" | "municipal"
+  totalAmount   Float? // suggested total budget (optional)
+  items         Json // [{category, percentOfTotal, priority, notes}, ...]
+  isSystem      Boolean  @default(false) // true = built-in preset
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@index([electionLevel])
@@ -2005,17 +2076,17 @@ model BudgetTemplate {
 }
 
 model TurfStop {
-  id          String    @id @default(cuid())
-  turfId      String
-  contactId   String
-  order       Int
-  visited     Boolean   @default(false)
-  visitedAt   DateTime?
-  notes       String?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(cuid())
+  turfId    String
+  contactId String
+  order     Int
+  visited   Boolean   @default(false)
+  visitedAt DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
 
-  turf        Turf      @relation(fields: [turfId], references: [id], onDelete: Cascade)
-  contact     Contact   @relation(fields: [contactId], references: [id])
+  turf    Turf    @relation(fields: [turfId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id])
 
   @@unique([turfId, contactId])
   @@index([turfId])
@@ -2031,8 +2102,80 @@ model CanvasserLocation {
   accuracy   Float?
   updatedAt  DateTime @updatedAt
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
   @@map("canvasser_locations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADONI AI ASSISTANT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdoniConversation {
+  id         String   @id @default(cuid())
+  campaignId String?
+  userId     String
+  messages   Json
+  page       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([campaignId])
+  @@map("adoni_conversations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GOTV VOTED LIST TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VotedListTemplate {
+  id            String   @id @default(cuid())
+  campaignId    String
+  name          String
+  columnMapping Json
+  sampleRows    Json?
+  createdAt     DateTime @default(now())
+
+  campaign Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploads  VotedListUpload[]
+
+  @@index([campaignId])
+  @@map("voted_list_templates")
+}
+
+model VotedListUpload {
+  id          String   @id @default(cuid())
+  campaignId  String
+  templateId  String?
+  fileName    String
+  totalVoters Int      @default(0)
+  matched     Int      @default(0)
+  supporters  Int      @default(0)
+  against     Int      @default(0)
+  unknown     Int      @default(0)
+  uploadedAt  DateTime @default(now())
+
+  campaign Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template VotedListTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([campaignId, uploadedAt])
+  @@map("voted_list_uploads")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OFFICIAL CLAIM OUTREACH TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OfficialOutreach {
+  id         String   @id @default(cuid())
+  officialId String
+  sentAt     DateTime @default(now())
+  claimed    Boolean  @default(false)
+
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId, sentAt])
+  @@map("official_outreach")
 }
