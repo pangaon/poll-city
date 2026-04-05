@@ -175,3 +175,226 @@ These two provinces represent 444 municipalities and 7,000+ elected officials th
 - Opponent sign spotting with map
 - School board trustee district data
 - Federal and provincial riding overlap display
+
+---
+
+## Master Product and System Specification (v5.0.0 Consolidated)
+
+Date: 2026-04-05
+Source: user-provided "DOCUMENT 1" and "DOCUMENT 2" synthesis.
+
+### Deduplication Rule (Mandatory)
+
+If an item appears in multiple docs, keep one canonical source only.
+All duplicate mentions must reference that canonical source instead of redefining it.
+
+### Canonical Source Map (Single Source of Truth)
+
+- Product modules and scope: this file (`PRODUCT_BRIEF.md`)
+- Research rationale and market context: `RESEARCH_BRIEF.md`
+- Security controls and compliance implementation: `SECURITY_BLUEPRINT.md`
+- Feature build/verify status matrix: `FEATURE_MATRIX.md`
+- Build and contributor process controls: `docs/FEATURE_COMPLETION_STANDARD.md`, `docs/DEVELOPER_HANDOFF_PROTOCOL.md`
+- Cross-developer coordination and handoffs: `docs/COORDINATION_THREAD.md`, `docs/PROGRESS_LOG.md`
+
+## 1) System Overview
+
+Poll City is a modular political-engagement ecosystem with four coordinated product surfaces plus a unified control center:
+
+- Poll City (Campaign OS)
+- Poll City Social (public/voter network + polling engine)
+- Poll City Print (on-demand campaign logistics + vendor network)
+- Poll City Marketplace (merch + fundraising engine)
+- Unified enterprise dashboard (cross-surface control center)
+
+## 2) Product Breakdown
+
+### 2.1 Poll City (Campaign OS)
+
+Purpose: full campaign operating system for candidates, teams, and political organizations.
+
+Core modules:
+
+1. Voter CRM
+- Contact profiles
+- Support tagging
+- Interaction logs
+- Household grouping
+- Issue tracking
+- Voting likelihood scoring
+
+2. Canvassing System
+- Mobile-first walk app
+- Map-based walk lists
+- Poll/ward/riding geo segmentation
+- Real-time capture of support, issues, notes, sign requests, and follow-ups
+
+3. Campaign Intelligence Engine
+- Support heatmaps
+- Geographic issue trends
+- Volunteer performance tracking
+- Predictive turnout modeling
+
+4. Volunteer Management
+- Signup funnel
+- Scheduling and shift tracking
+- Performance and communication tools
+
+5. Event System
+- RSVP management
+- QR check-in
+- Attendance tracking
+- Donor tagging
+
+6. Messaging Engine
+- SMS
+- Email
+- Push notifications
+- Geo-targeted delivery
+
+7. Sign and Literature Tracking
+- Inventory, install, and removal tracking
+- Opponent sign reporting
+
+8. Campaign Services Network (Uber-style)
+- On-demand sign teams, canvassers, and lit-drop crews
+- Ratings and marketplace pricing
+
+### 2.2 Poll City Social (Public Platform)
+
+Purpose: public engagement, civic identity, and enterprise polling.
+
+Core capabilities:
+
+1. User system
+- Account creation (email/phone/social)
+- Postal/address identity context
+- Anonymous and verified participation modes
+
+2. Civic mapping
+- Address -> elected officials and candidates by jurisdiction
+
+3. Polling engine
+- Flash polls
+- Structured surveys
+- Geo polls
+- Demographic polling
+- Live election polling
+- Issue-based polling
+
+4. Enterprise polling controls
+- Weighted polling
+- Sample balancing
+- Response validation
+- Anti-bot controls
+- Statistical confidence scoring
+
+5. Cross-industry applicability
+- Political, corporate, media, government, NGO, and education workflows
+
+6. Engagement
+- Comments, reactions, sharing, follows, and candidate questions
+
+7. Consent bridge (critical)
+- Explicit opt-in before sharing campaign-actionable signals
+- Revocation and data minimization constraints
+
+### 2.3 Poll City Print
+
+Purpose: campaign print logistics and fulfillment.
+
+- Campaign print ordering (signs, flyers, banners, apparel)
+- Vendor onboarding and bidding
+- Production and delivery tracking workflow
+
+### 2.4 Poll City Marketplace
+
+Purpose: campaign merch and fundraising monetization.
+
+- Multi-product campaign stores
+- Multi-vendor support
+- Revenue split logic
+- Commerce integration (including Shopify-compatible backend flows)
+
+### 2.5 Unified Dashboard
+
+Single-login control center for campaign managers, officials, and organizations:
+
+- CRM overview
+- Poll analytics
+- Messaging control
+- Financial tracking
+- Print operations
+- Marketplace revenue
+
+## 3) Technical Architecture and Build Instructions
+
+### 3.1 Frontend
+
+- Web: Next.js SSR + Tailwind UI
+- Mobile: React Native (Expo or bare RN based on performance constraints)
+
+### 3.2 Backend
+
+- Node.js API layer (Fastify-preferred performance target where applicable)
+- Service domains: auth, users, campaigns, polling, messaging, print, marketplace, analytics
+
+### 3.3 Data and Infra
+
+- Primary DB: PostgreSQL
+- Secondary cache/session: Redis
+- Analytics warehouse: BigQuery or ClickHouse (phase-dependent)
+- Infra target: AWS or GCP with Kubernetes and CDN edge support
+
+### 3.4 Authentication and Access
+
+- JWT-based auth
+- RBAC
+- Multi-tenant campaign isolation
+
+### 3.5 Performance Requirements
+
+- App size target under 50MB for mobile package constraints
+- API response target under 200ms for hot paths
+- Real-time updates through websocket/streaming channels where required
+
+### 3.6 AI Integration
+
+- Hybrid OpenAI and Claude usage
+- Messaging recommendations
+- Poll insights
+- Voter segmentation
+- Workflow automation recommendations
+
+### 3.7 Security Requirements
+
+- End-to-end encryption strategy by context
+- GDPR/PIPEDA-aligned controls
+- Campaign-level data segregation
+- Audit logging
+- Rate limiting and DDoS controls
+
+### 3.8 Critical Data Flow
+
+- Poll City Social -> Consent -> Poll City CRM only when user explicitly opts in
+
+### 3.9 Build Phases
+
+Phase 1 (MVP, 8-12 weeks): auth, polling, basic CRM, canvassing, dashboard
+
+Phase 2: print, marketplace, messaging
+
+Phase 3: AI optimization, predictive analytics, services marketplace
+
+### 3.10 Non-Negotiable Standards
+
+- Clean architecture (no shortcut monolith regressions)
+- Full API documentation
+- Test coverage target over 80%
+- CI/CD discipline
+- Version control hygiene
+
+## 4) Final Delivery Directive
+
+This ecosystem is not a prototype scope.
+It is an enterprise multi-product platform designed for municipal, provincial, federal, and eventual global scale operations.

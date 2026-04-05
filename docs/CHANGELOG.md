@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.20] - April 5, 2026 — CAMPAIGN SWITCHER UX + SESSION CONSISTENCY
+
+### Campaign Switcher Improvements
+- Improved campaign switching flow in `/campaigns` for faster context transitions.
+- Switch action now updates NextAuth session `activeCampaignId` immediately after API success.
+- Users are routed directly to `/dashboard` after a successful switch.
+- Added success and failure toast feedback for switch outcomes.
+
+### API Hardening
+- Added Zod input validation to `POST /api/campaigns/switch`.
+- Improved switch success payload messaging for consistent frontend feedback.
+
+### Outcome
+- Campaign context now changes more reliably without waiting for a fresh login, reducing operator confusion and stale-session behavior.
+
 ## [4.0.19] - April 5, 2026 — GOTV COMMAND CENTER + LIVE PRIORITY TIERS
 
 ### GOTV Engine Upgrade (`/gotv`)

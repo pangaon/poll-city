@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v4.0.20 Campaign Switcher Addendum — April 5, 2026
+
+### Switching Campaign Context (`/campaigns`)
+
+1. Open Campaigns and click **Switch** on the campaign you want to operate.
+2. Poll City updates your active campaign context immediately.
+3. You are redirected to Dashboard in the selected campaign context.
+4. A success toast confirms the switch.
+5. If switching fails (for example missing membership), Poll City shows an error toast and keeps your current context.
+
 ## v4.0.19 GOTV Command Center Addendum — April 5, 2026
 
 ### GOTV Tabs (`/gotv`)

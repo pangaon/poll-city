@@ -279,6 +279,7 @@ const PRODUCTS = [
       "Enterprise team management with role-based permissions (5 roles)",
       "7 specialized CSV exports: GOTV, walk list, signs, donations, volunteers, interactions",
       "Feature flags and tier gating — never hide locked features, always show upgrade path",
+      "Reliable multi-campaign switching with immediate session context updates",
       "Detailed error system with recovery guidance on every error",
     ],
   },
