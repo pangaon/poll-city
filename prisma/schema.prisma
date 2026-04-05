@@ -405,6 +405,8 @@ model Official {
   follows          OfficialFollow[]
   questions        PublicQuestion[]
   polls            Poll[]
+  approvalRating   ApprovalRating?
+  sentimentSignals SentimentSignal[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -1898,6 +1900,66 @@ model ContactFilterPreset {
   @@index([campaignId])
   @@index([campaignId, userId])
   @@map("contact_filter_presets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APPROVAL & SENTIMENT (Poll City Live Approval Rating Engine)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Live approval rating for every elected official.
+// Score calculated from weighted sentiment signals. Range 0-100 (display) and -100..+100 (net).
+model ApprovalRating {
+  id            String            @id @default(cuid())
+  officialId    String            @unique
+  score         Float             @default(50)   // 0-100 display score
+  netScore      Float             @default(0)    // -100..+100 net score
+  totalSignals  Int               @default(0)
+  positiveCount Int               @default(0)
+  negativeCount Int               @default(0)
+  neutralCount  Int               @default(0)
+  updatedAt     DateTime          @updatedAt
+
+  official      Official          @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  history       ApprovalHistory[]
+
+  @@index([score])
+  @@index([updatedAt])
+  @@map("approval_ratings")
+}
+
+// Time-series history of approval scores for trend analysis.
+model ApprovalHistory {
+  id         String         @id @default(cuid())
+  approvalId String
+  score      Float
+  netScore   Float
+  signalType String         // which signal triggered this recalc
+  recordedAt DateTime       @default(now())
+
+  approval   ApprovalRating @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId, recordedAt])
+  @@map("approval_history")
+}
+
+// Individual sentiment signals fed to the approval engine.
+// These come from poll votes, support signals, question sentiment, follows/unfollows.
+model SentimentSignal {
+  id         String   @id @default(cuid())
+  officialId String
+  type       String   // "poll_vote" | "support_signal" | "question_sentiment" | "follow" | "unfollow" | "interaction"
+  value      Float    // -1.0 to 1.0
+  weight     Float    @default(1.0)
+  source     String   // "social_poll" | "candidate_page" | "canvassing" | "social_follow"
+  metadata   Json?    // e.g. { pollId, contactId, postalPrefix }
+  createdAt  DateTime @default(now())
+
+  official   Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId, createdAt])
+  @@index([type])
+  @@index([source])
+  @@map("sentiment_signals")
 }
 
 model BudgetTemplate {

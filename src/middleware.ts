@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   "/officials",
   "/how-polling-works",
   "/verify-vote",
+  "/sentiment",
   "/api/polls/verify-receipt",
 ];
 

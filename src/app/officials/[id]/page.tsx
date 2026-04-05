@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { differenceInDays } from "date-fns";
 import prisma from "@/lib/db/prisma";
+import { ApprovalMeter } from "@/components/approval/approval-meter";
 
 const BRAND_COLOUR = "#1E3A8A";
 const HERO_STYLE: Record<string, string> = {
@@ -469,6 +470,11 @@ export default async function OfficialProfilePage({ params }: PageProps) {
 
           {/* Sidebar */}
           <div className="space-y-5">
+
+            {/* Live approval meter */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <ApprovalMeter officialId={official.id} size="md" showSparkline showDetails />
+            </div>
 
             {/* Election countdown */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
