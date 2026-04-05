@@ -1,57 +1,156 @@
 "use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Building2, Shield, Users, Map, CheckSquare, Upload,
-  Settings, Sparkles, BarChart3, ChevronDown, Vote, Menu, X,
-  Phone, Search, Target, Zap, DollarSign, CreditCard, Globe, Bell, Printer,
-  MessageSquare, Star, HelpCircle
+  LayoutDashboard, Shield, Users, Map, Upload,
+  Settings, Menu, X, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
+  HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
+  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/campaigns", icon: Building2, label: "Campaigns" },
-  { href: "/contacts", icon: Users, label: "Contacts" },
-  { href: "/volunteers", icon: Users, label: "Volunteers" },
-  { href: "/volunteers/groups", icon: Users, label: "Volunteer Groups" },
-  { href: "/volunteers/shifts", icon: Users, label: "Volunteer Shifts" },
-  { href: "/volunteers/expenses", icon: DollarSign, label: "Volunteer Expenses" },
-  { href: "/canvassing", icon: Map, label: "Canvassing" },
-  { href: "/canvassing/walk", icon: Map, label: "Walk List" },
-  { href: "/canvassing/turf-builder", icon: Map, label: "Turf Builder" },
-  { href: "/canvassing/scripts", icon: MessageSquare, label: "Canvassing Scripts" },
-  { href: "/events", icon: Bell, label: "Events" },
-  { href: "/coalitions", icon: Globe, label: "Coalitions" },
-  { href: "/media", icon: Globe, label: "Media" },
-  { href: "/intelligence", icon: Shield, label: "Intelligence" },
-  { href: "/supporters/super", icon: Star, label: "Super Supporters" },
-  { href: "/budget", icon: DollarSign, label: "Budget" },
-  { href: "/notifications", icon: Bell, label: "Notifications" },
-  { href: "/polls", icon: BarChart3, label: "Polls" },
-  { href: "/tasks", icon: CheckSquare, label: "Tasks" },
-  { href: "/gotv", icon: Target, label: "GOTV" },
-  { href: "/signs", icon: Map, label: "Signs" },
-  { href: "/print", icon: Printer, label: "Print" },
-  { href: "/donations", icon: DollarSign, label: "Donations" },
-  { href: "/call-list", icon: Phone, label: "Call List" },
-  { href: "/lookup", icon: Search, label: "Address Lookup" },
-  { href: "/capture", icon: Zap, label: "Quick Capture" },
-  { href: "/analytics", icon: BarChart3, label: "Analytics" },
-  { href: "/officials", icon: Globe, label: "Officials Directory" },
-  { href: "/import-export", icon: Upload, label: "Import / Export" },
-  { href: "/settings", icon: Settings, label: "Settings" },
-  { href: "/settings/team", icon: Users, label: "Team" },
-  { href: "/help", icon: HelpCircle, label: "Help Center" },
-  { href: "/billing", icon: CreditCard, label: "Billing" },
+type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
+type NavSection = { id: string; label: string; icon: ComponentType<{ className?: string }>; items: NavItem[] };
+
+const SIDEBAR_SECTIONS: NavSection[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: BarChart3,
+    items: [
+      { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+      { href: "/analytics", icon: BarChart3, label: "Analytics" },
+      { href: "/reports", icon: FileText, label: "Reports" },
+      { href: "/alerts", icon: Bell, label: "Alerts" },
+    ],
+  },
+  {
+    id: "contacts-field",
+    label: "Contacts & Field",
+    icon: Users,
+    items: [
+      { href: "/contacts", icon: Users, label: "Contacts" },
+      { href: "/canvassing", icon: Map, label: "Canvassing" },
+      { href: "/canvassing/walk", icon: Map, label: "Walk List" },
+      { href: "/gotv", icon: Target, label: "GOTV" },
+      { href: "/lookup", icon: Search, label: "Lookup" },
+    ],
+  },
+  {
+    id: "communications",
+    label: "Communications",
+    icon: Mail,
+    items: [
+      { href: "/communications/email", icon: Mail, label: "Email Campaigns" },
+      { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text" },
+      { href: "/communications/social", icon: Globe, label: "Social Media" },
+      { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox" },
+      { href: "/communications/ai-assistant", icon: Bot, label: "AI Assistant" },
+      { href: "/communications/monitoring", icon: Activity, label: "Monitoring" },
+      { href: "/communications/advertising", icon: Megaphone, label: "Advertising" },
+    ],
+  },
+  {
+    id: "campaign-ops",
+    label: "Campaign Ops",
+    icon: Target,
+    items: [
+      { href: "/volunteers", icon: Users, label: "Volunteers" },
+      { href: "/signs", icon: Map, label: "Signs" },
+      { href: "/donations", icon: DollarSign, label: "Donations" },
+      { href: "/events", icon: CalendarDays, label: "Events" },
+      { href: "/budget", icon: DollarSign, label: "Budget" },
+      { href: "/print", icon: Printer, label: "Print" },
+      { href: "/polls", icon: BarChart3, label: "Polls" },
+    ],
+  },
+  {
+    id: "intelligence",
+    label: "Intelligence",
+    icon: Shield,
+    items: [
+      { href: "/officials", icon: Landmark, label: "Officials" },
+      { href: "/media", icon: Globe, label: "Media" },
+      { href: "/coalitions", icon: Globe, label: "Coalitions" },
+      { href: "/intelligence", icon: Shield, label: "Opponent Intel" },
+    ],
+  },
+  {
+    id: "resources",
+    label: "Resources",
+    icon: BookOpen,
+    items: [{ href: "/resources", icon: BookOpen, label: "Resources" }],
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    items: [
+      { href: "/settings", icon: Settings, label: "Settings" },
+      { href: "/settings/team", icon: Users, label: "Team" },
+      { href: "/settings/security", icon: Lock, label: "Security" },
+      { href: "/billing", icon: CreditCard, label: "Billing" },
+      { href: "/import-export", icon: Upload, label: "Import/Export" },
+      { href: "/help", icon: HelpCircle, label: "Help" },
+    ],
+  },
 ];
+
+const STORAGE_KEY = "poll-city:sidebar-collapsed-sections";
+
+function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
+  return items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, boolean>;
+      setCollapsedSections(parsed);
+    } catch {
+      // ignore storage parse errors
+    }
+  }, []);
+
+  const sectionStates = useMemo(() => {
+    const next = { ...collapsedSections };
+    for (const section of SIDEBAR_SECTIONS) {
+      if (sectionHasActivePath(pathname, section.items)) {
+        next[section.id] = false;
+      }
+      if (!(section.id in next)) {
+        next[section.id] = false;
+      }
+    }
+    return next;
+  }, [collapsedSections, pathname]);
+
+  function toggleSection(id: string) {
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [id]: !(sectionStates[id] ?? false) };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage write errors
+      }
+      return next;
+    });
+  }
+
+  function openAdoni() {
+    window.dispatchEvent(new CustomEvent("pollcity:open-adoni"));
+    setMobileOpen(false);
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -69,35 +168,72 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          // Active: exact match OR starts with href (but avoid /canvassing matching /canvassing/walk)
-          const active = pathname === href ||
-            (href !== "/canvassing" && href !== "/import-export" && pathname.startsWith(href + "/"));
+      <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto">
+        {SIDEBAR_SECTIONS.map((section) => {
+          const isCollapsed = sectionStates[section.id] ?? false;
+          const isActiveSection = sectionHasActivePath(pathname, section.items);
+          const SectionIcon = section.icon;
+
           return (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all",
-                active
-                  ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+            <section key={section.id} className="rounded-xl border border-gray-100 bg-white/80">
+              <button
+                type="button"
+                onClick={() => toggleSection(section.id)}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2.5 text-left rounded-xl transition-colors",
+                  isActiveSection ? "bg-blue-50" : "hover:bg-gray-50"
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <SectionIcon className={cn("w-4 h-4 flex-shrink-0", isActiveSection ? "text-blue-700" : "text-gray-500")} />
+                  <span className={cn("text-xs font-semibold uppercase tracking-wide", isActiveSection ? "text-blue-700" : "text-gray-600")}>
+                    {section.label}
+                  </span>
+                </div>
+                {isCollapsed ? <ChevronRight className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </button>
+
+              {!isCollapsed && (
+                <div className="px-2 pb-2 space-y-0.5">
+                  {section.items.map(({ href, icon: Icon, label }) => {
+                    const active = pathname === href || pathname.startsWith(`${href}/`);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all",
+                          active
+                            ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+                        )}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </Link>
+            </section>
           );
         })}
       </nav>
 
       {/* Bottom */}
       <div className="px-4 py-3 border-t border-gray-100 space-y-2">
+        <button
+          type="button"
+          onClick={openAdoni}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2"
+        >
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-blue-700 text-xs font-bold">A</span>
+          Ask Adoni
+        </button>
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Search</span>
-          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">⌘K</kbd>
+          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Ctrl+K</kbd>
         </div>
         <div className="flex items-center justify-between text-xs text-gray-400">
           <span>Shortcuts</span>

@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.12] - April 5, 2026 — SIDEBAR INFORMATION ARCHITECTURE REBUILD
+
+### Sidebar UX
+- Rebuilt authenticated sidebar with collapsible section groups:
+  - Overview
+  - Contacts & Field
+  - Communications
+  - Campaign Ops
+  - Intelligence
+  - Resources
+  - Settings
+- Added persistent collapsed-state storage per section using `localStorage`.
+- Added sidebar footer `Ask Adoni` action to open assistant panel directly.
+- Kept active-route highlighting and mobile sidebar behavior aligned with new grouped navigation.
+
 ## [4.0.11] - April 5, 2026 — UI SCROLLBARS + SCROLL CONTAINERS
 
 ### Frontend UX Polish

@@ -1,5 +1,14 @@
 # Poll City User Guide
 
+## v4.0.12 Sidebar Navigation Rebuild Addendum — April 5, 2026
+
+### New Sectioned Sidebar
+
+1. The sidebar is now grouped into operational sections (Overview, Contacts & Field, Communications, Campaign Ops, Intelligence, Resources, Settings).
+2. Each section can be collapsed or expanded with an arrow toggle.
+3. Collapse state persists per section in your browser.
+4. A new `Ask Adoni` quick button is available at the bottom of the sidebar for one-click assistant access.
+
 ## v4.0.11 Scroll and Navigation Polish Addendum — April 5, 2026
 
 ### Scrollbar and Panel Behavior

@@ -260,6 +260,7 @@ const PRODUCTS = [
       "Backwards-compatible GOTV upload API support (`/api/gotv/upload` and `/api/gotv/upload-voted`) for legacy integration continuity",
       "Hardened GOTV ingestion guards: expected-column validation, input sanitization, file-size limits, and row-volume protection",
       "Polished high-density UX with thin cross-browser scrollbars and smoother in-panel/table scrolling behavior",
+      "Reorganized operations sidebar with collapsible campaign sections and one-click Ask Adoni assistant access",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",
           "AI campaign assistant for strategy and targeting",

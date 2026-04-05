@@ -52,6 +52,14 @@ export default function AdoniButton() {
   }, []);
 
   useEffect(() => {
+    function onOpenRequest() {
+      setOpen(true);
+    }
+    window.addEventListener("pollcity:open-adoni", onOpenRequest as EventListener);
+    return () => window.removeEventListener("pollcity:open-adoni", onOpenRequest as EventListener);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     fetch(`/api/adoni/suggestions?page=${encodeURIComponent(pathname)}`)
       .then((r) => r.json())
