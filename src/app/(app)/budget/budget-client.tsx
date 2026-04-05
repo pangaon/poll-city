@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import Papa from "papaparse";
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Plus, Download, Upload,
   Sparkles, Settings2, Trash2, Edit2, Paperclip, Tag as TagIcon, X, Check,
@@ -713,6 +715,13 @@ function ImportExportTab({
   onImported: () => void;
 }) {
   const [csvText, setCsvText] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewRows, setFilePreviewRows] = useState<Record<string, string>[]>([]);
+  const [filePreviewColumns, setFilePreviewColumns] = useState<string[]>([]);
+  const [fileTotalRows, setFileTotalRows] = useState(0);
+  const [foundRequiredColumns, setFoundRequiredColumns] = useState<string[]>([]);
+  const [missingRequiredColumns, setMissingRequiredColumns] = useState<string[]>([]);
+  const [previewSource, setPreviewSource] = useState<"csv" | "excel" | null>(null);
   const [preview, setPreview] = useState<{
     totalRows: number;
     validCount: number;
@@ -720,6 +729,89 @@ function ImportExportTab({
     errors: Array<{ row: number; message: string }>;
   } | null>(null);
   const [importing, setImporting] = useState(false);
+
+  const requiredColumns = ["Type", "Category", "Amount"];
+
+  function normalizeKey(key: string): string {
+    return key.trim().toLowerCase();
+  }
+
+  function computeRequiredColumns(columns: string[]) {
+    const normalized = new Set(columns.map(normalizeKey));
+    const found = requiredColumns.filter((c) => normalized.has(normalizeKey(c)));
+    const missing = requiredColumns.filter((c) => !normalized.has(normalizeKey(c)));
+    setFoundRequiredColumns(found);
+    setMissingRequiredColumns(missing);
+  }
+
+  function normalizePreviewRows(rows: Record<string, unknown>[]): Record<string, string>[] {
+    return rows.map((row) =>
+      Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [key, value === null || value === undefined ? "" : String(value)])
+      )
+    );
+  }
+
+  async function parseFilePreview(file: File) {
+    const lower = file.name.toLowerCase();
+    const isExcel = lower.endsWith(".xlsx") || lower.endsWith(".xls");
+
+    if (isExcel) {
+      toast.info("Excel file detected — parsing as spreadsheet");
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const firstSheet = workbook.SheetNames[0];
+      if (!firstSheet) throw new Error("Excel file contains no sheets");
+      const sheet = workbook.Sheets[firstSheet];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const normalizedRows = normalizePreviewRows(rows);
+      const columns = Array.from(new Set(normalizedRows.flatMap((row) => Object.keys(row))));
+
+      setPreviewSource("excel");
+      setFileTotalRows(normalizedRows.length);
+      setFilePreviewColumns(columns);
+      setFilePreviewRows(normalizedRows.slice(0, 5));
+      computeRequiredColumns(columns);
+      return;
+    }
+
+    const text = await file.text();
+    const parseResult = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
+    if (parseResult.errors.length > 0) {
+      throw new Error(parseResult.errors[0]?.message || "CSV parse failed");
+    }
+
+    const rows = parseResult.data;
+    const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+    setPreviewSource("csv");
+    setCsvText(text);
+    setFileTotalRows(rows.length);
+    setFilePreviewColumns(columns);
+    setFilePreviewRows(rows.slice(0, 5));
+    computeRequiredColumns(columns);
+  }
+
+  async function runDryRunWithFile(file: File) {
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.set("campaignId", campaignId);
+      formData.set("dryRun", "true");
+      formData.set("file", file);
+
+      const res = await fetch("/api/budget/import", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import preview failed");
+      setPreview(data.data);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function runDryRun() {
     if (!csvText.trim()) return;
@@ -741,18 +833,36 @@ function ImportExportTab({
   }
 
   async function runImport() {
-    if (!csvText.trim()) return;
+    if (!selectedFile && !csvText.trim()) return;
     setImporting(true);
     try {
-      const res = await fetch("/api/budget/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, csv: csvText, dryRun: false }),
-      });
+      const res = selectedFile
+        ? await fetch("/api/budget/import", {
+            method: "POST",
+            body: (() => {
+              const formData = new FormData();
+              formData.set("campaignId", campaignId);
+              formData.set("dryRun", "false");
+              formData.set("file", selectedFile);
+              return formData;
+            })(),
+          })
+        : await fetch("/api/budget/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaignId, csv: csvText, dryRun: false }),
+          });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast.success(`Imported ${data.data.imported} items`);
       setCsvText("");
+      setSelectedFile(null);
+      setFilePreviewRows([]);
+      setFilePreviewColumns([]);
+      setFileTotalRows(0);
+      setFoundRequiredColumns([]);
+      setMissingRequiredColumns([]);
+      setPreviewSource(null);
       setPreview(null);
       onImported();
     } catch (e) {
@@ -762,12 +872,24 @@ function ImportExportTab({
     }
   }
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setCsvText(String(ev.target?.result ?? ""));
-    reader.readAsText(file);
+
+    setSelectedFile(file);
+    setPreview(null);
+    setCsvText("");
+    try {
+      await parseFilePreview(file);
+      await runDryRunWithFile(file);
+    } catch (e) {
+      const lower = file.name.toLowerCase();
+      const isExcel = lower.endsWith(".xlsx") || lower.endsWith(".xls");
+      if (isExcel) {
+        toast.info("Excel file detected — parsing as spreadsheet");
+      }
+      toast.error((e as Error).message || "File parse failed");
+    }
   }
 
   return (
@@ -798,7 +920,7 @@ function ImportExportTab({
         <div className="flex items-start gap-3 mb-4">
           <Upload className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-gray-900">Import budget from CSV</h3>
+            <h3 className="font-semibold text-gray-900">Import budget from CSV or Excel</h3>
             <p className="text-sm text-gray-500">
               Required columns: <code className="text-xs bg-gray-100 px-1 rounded">Type</code>,{" "}
               <code className="text-xs bg-gray-100 px-1 rounded">Category</code>,{" "}
@@ -810,10 +932,52 @@ function ImportExportTab({
 
         <input
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           onChange={handleFile}
           className="mb-3 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-semibold hover:file:bg-blue-100"
         />
+
+        {previewSource === "excel" && fileTotalRows > 0 && (
+          <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+            Excel file detected — {fileTotalRows} rows found
+          </div>
+        )}
+
+        {filePreviewColumns.length > 0 && (
+          <div className="mb-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <p className="font-semibold text-emerald-800">Required columns found</p>
+              <p className="text-emerald-700 mt-1">{foundRequiredColumns.length ? foundRequiredColumns.join(", ") : "None"}</p>
+            </div>
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <p className="font-semibold text-red-800">Missing required columns</p>
+              <p className="text-red-700 mt-1">{missingRequiredColumns.length ? missingRequiredColumns.join(", ") : "None"}</p>
+            </div>
+          </div>
+        )}
+
+        {filePreviewRows.length > 0 && filePreviewColumns.length > 0 && (
+          <div className="mb-3 overflow-x-auto rounded-lg border border-gray-200">
+            <table className="min-w-full text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  {filePreviewColumns.map((col) => (
+                    <th key={col} className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {filePreviewRows.map((row, idx) => (
+                  <tr key={`preview-row-${idx}`}>
+                    {filePreviewColumns.map((col) => (
+                      <td key={`${idx}-${col}`} className="px-3 py-2 text-gray-700 whitespace-nowrap">{row[col] ?? ""}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {csvText && (
           <>
@@ -833,13 +997,32 @@ function ImportExportTab({
               </button>
               <button
                 onClick={runImport}
-                disabled={importing || !preview || preview.validCount === 0}
+                disabled={importing || !preview || preview.validCount === 0 || missingRequiredColumns.length > 0}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
               >
-                Import {preview?.validCount ?? 0} items
+                Import {(preview?.validCount ?? fileTotalRows) || 0} items
               </button>
             </div>
           </>
+        )}
+
+        {!csvText && selectedFile && (
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => selectedFile && void runDryRunWithFile(selectedFile)}
+              disabled={importing}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              Preview (dry run)
+            </button>
+            <button
+              onClick={runImport}
+              disabled={importing || !preview || preview.validCount === 0 || missingRequiredColumns.length > 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+            >
+              Import {(preview?.validCount ?? fileTotalRows) || 0} items
+            </button>
+          </div>
         )}
 
         {preview && (
