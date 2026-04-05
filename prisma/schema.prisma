@@ -248,6 +248,7 @@ model User {
   donationsRecorded    Donation[]           @relation("RecordedDonations")
   gotvBatchesUploaded  GotvBatch[]          @relation("UploadedGotvBatches")
   subscription         Subscription?
+  importLogs          ImportLog[]
 
   // Turf canvassing
   turfAssignments      Turf[]              @relation("TurfAssignee")
@@ -330,6 +331,8 @@ model Campaign {
   volunteerExpenses    VolunteerExpense[]
   budgetItems          BudgetItem[]
   superSupporterTasks  SuperSupporterTask[]
+  importLogs           ImportLog[]
+  exportLogs           ExportLog[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -1314,6 +1317,50 @@ model ActivityLog {
   @@index([campaignId])
   @@index([entityType, entityId])
   @@map("activity_logs")
+}
+
+model ImportLog {
+  id            String   @id @default(cuid())
+  campaignId    String
+  userId        String
+  filename      String
+  fileType      String
+  totalRows     Int
+  processedRows Int      @default(0)
+  importedCount Int      @default(0)
+  updatedCount  Int      @default(0)
+  skippedCount  Int      @default(0)
+  errorCount    Int      @default(0)
+  status        String   @default("processing")
+  mapping       Json?
+  warnings      Json?
+  invalidRows   Json?
+  errors        Json?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([userId, createdAt])
+  @@map("import_logs")
+}
+
+model ExportLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  userId       String?
+  exportType   String   // "contacts" | "gotv" | "walk_list" | "volunteers" | "donations" | "signs" | "interactions"
+  format       String   // "csv" | "xlsx" | "pdf" | "json"
+  recordCount  Int      @default(0)
+  filters      Json?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@map("export_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

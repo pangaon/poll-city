@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Tag } from "@prisma/client";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { ContactSlideOver } from "@/components/contacts/contact-slideover";
 
 interface ContactRow {
   id: string; firstName: string; lastName: string; email: string | null;
@@ -77,6 +78,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [slideOverContactId, setSlideOverContactId] = useState<string | null>(null);
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedContacts(checked ? contacts.map(c => c.id) : []);

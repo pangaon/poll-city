@@ -21,12 +21,14 @@
       "Bash(ls src/components/error-boundary*)",
       "Bash(npm audit:*)",
       "Bash(ls src/lib/email*)",
-      "Bash(ls src/lib/mail*)"
+      "Bash(ls src/lib/mail*)",
+      "Bash(find \"c:/Users/14168/Documents/Projects/poll-city/src/app/\\(app\\)/settings\" -name \"*.tsx\" -exec grep -l \"team\" {} \\\\;)"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\campaigns\\[id]",
-      "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\officials"
+      "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\officials",
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\team"
     ]
   }
 }

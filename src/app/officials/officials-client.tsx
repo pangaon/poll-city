@@ -7,7 +7,15 @@ import {
   ShieldCheck, AlertCircle, ChevronLeft, ChevronRight,
   Mail, Filter, X, SlidersHorizontal,
 } from "lucide-react";
-function getPartyColour(_name?: string | null) {
+function getPartyColour(partyName?: string | null): { primary: string; secondary: string; text: string } {
+  const name = (partyName ?? "").toLowerCase();
+  if (name.includes("liberal")) return { primary: "#D71920", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("conservative") || name.includes(" pc") || name.startsWith("pc")) return { primary: "#1A4782", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("ndp") || name.includes("new democrat")) return { primary: "#F37021", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("bloc") || name.includes("bq")) return { primary: "#0088CE", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("green")) return { primary: "#24A348", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("people") || name.includes("ppc")) return { primary: "#4B306A", secondary: "#FFFFFF", text: "#FFFFFF" };
+  if (name.includes("independent")) return { primary: "#6B7280", secondary: "#FFFFFF", text: "#FFFFFF" };
   return { primary: "#1E3A8A", secondary: "#FFFFFF", text: "#FFFFFF" };
 }
 

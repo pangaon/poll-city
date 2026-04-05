@@ -1,5 +1,27 @@
 # Poll City User Guide
 
+## v3.0.1 Smart Import Operations Addendum — April 5, 2026
+
+### Enterprise Smart Import SOP (`/import-export/smart-import`)
+
+1. Open Smart Import and upload your file (`.csv`, `.tsv`, `.txt`, `.xlsx`, or `.xls`).
+2. Review AI-suggested column mappings and manually fix any incorrect fields.
+3. Click **Review Import** to run cleaning and duplicate analysis before write.
+4. Confirm the review summary:
+   - valid rows
+   - invalid rows
+   - probable duplicates
+   - estimated new records
+5. Click **Import Contacts** to execute the campaign-scoped import.
+6. After completion, confirm Imported, Updated, and Skipped counts.
+7. If there are skipped rows, review the error sample and correct source data for re-import.
+
+### Import History SOP (`/api/import/history`)
+
+1. Query import history with campaign context using `campaignId`.
+2. Confirm each entry includes filename, file type, status, row counts, and completion timestamp.
+3. Use history records when reconciling CRM totals after major data loads.
+
 ## v3.0.0 Security Release SOP Addendum — April 4, 2026
 
 ### Anonymous Polling — How Your Vote Is Protected

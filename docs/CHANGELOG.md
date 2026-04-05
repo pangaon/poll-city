@@ -1,5 +1,26 @@
 # Poll City Changelog
 
+## [3.0.1] - April 5, 2026
+
+### Enterprise Smart Import Pipeline
+
+- Added dedicated enterprise import endpoints:
+  - `/api/import/analyze`
+  - `/api/import/clean`
+  - `/api/import/duplicates`
+  - `/api/import/execute`
+  - `/api/import/history`
+- Added shared import pipeline utilities in `src/lib/import/import-pipeline.ts` for mapping, validation, duplicate detection, and contact write normalization.
+- Upgraded Smart Import Wizard to run full-file import execution through the new endpoint flow (analyze -> clean -> duplicates -> execute), not preview-only rows.
+- Added import audit trail persistence with `ImportLog` in Prisma schema and `import_logs` table mapping.
+- Added import history API for campaign-scoped operational visibility and troubleshooting.
+
+### Quality Gates
+
+- `npm run db:generate`: pass.
+- `npm run typecheck`: pass.
+- `npm run build`: pass.
+
 ## [3.0.0] - April 4, 2026 — SECURITY RELEASE
 
 ### Comprehensive Third-Party Style Security Audit

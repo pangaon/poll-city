@@ -38,13 +38,22 @@ interface ImportResult {
   errors: string[];
 }
 
+interface ReviewSummary {
+  validRows: number;
+  invalidRows: number;
+  probableDuplicates: number;
+  newRecordsEstimate: number;
+}
+
 export default function SmartImportWizard({ campaignId }: Props) {
   const [step, setStep] = useState<Step>("upload");
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [mappings, setMappings] = useState<Record<string, ColumnMapping>>({});
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [preparingReview, setPreparingReview] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
 
@@ -56,11 +65,12 @@ export default function SmartImportWizard({ campaignId }: Props) {
       const form = new FormData();
       form.append("file", f);
       form.append("campaignId", campaignId);
-      const res = await fetch("/api/import?action=analyze", { method: "POST", body: form });
+      const res = await fetch("/api/import/analyze", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Failed to analyze file"); return; }
       setAnalysis(data.data);
       setMappings(data.data.suggestedMappings);
+      setReviewSummary(null);
       setStep("map");
     } catch { toast.error("Failed to read file"); }
     finally { setLoading(false); }
@@ -72,45 +82,70 @@ export default function SmartImportWizard({ campaignId }: Props) {
     if (f) handleFile(f);
   }, [campaignId]);
 
-  // Step 3: Run the actual import
+  async function prepareReview() {
+    if (!file) return;
+
+    const mappingConfig = Object.fromEntries(
+      Object.entries(mappings)
+        .filter(([, m]) => m.targetField)
+        .map(([src, m]) => [src, m.targetField!])
+    );
+
+    setPreparingReview(true);
+    try {
+      const cleanForm = new FormData();
+      cleanForm.append("file", file);
+      cleanForm.append("campaignId", campaignId);
+      cleanForm.append("mappings", JSON.stringify(mappingConfig));
+
+      const cleanRes = await fetch("/api/import/clean", { method: "POST", body: cleanForm });
+      const cleanData = await cleanRes.json();
+      if (!cleanRes.ok) {
+        toast.error(cleanData.error ?? "Failed to clean import rows");
+        return;
+      }
+
+      const dupForm = new FormData();
+      dupForm.append("file", file);
+      dupForm.append("campaignId", campaignId);
+      dupForm.append("mappings", JSON.stringify(mappingConfig));
+
+      const dupRes = await fetch("/api/import/duplicates", { method: "POST", body: dupForm });
+      const dupData = await dupRes.json();
+      if (!dupRes.ok) {
+        toast.error(dupData.error ?? "Failed duplicate check");
+        return;
+      }
+
+      setReviewSummary({
+        validRows: cleanData.data.validRows,
+        invalidRows: cleanData.data.invalidRows,
+        probableDuplicates: dupData.data.probableDuplicates,
+        newRecordsEstimate: dupData.data.newRecordsEstimate,
+      });
+      setStep("review");
+    } finally {
+      setPreparingReview(false);
+    }
+  }
+
+  // Step 4: Run the actual import
   async function runImport() {
-    if (!analysis) return;
+    if (!analysis || !file) return;
     setLoading(true);
     try {
-      // Build rows using the confirmed mappings
-      const rows = analysis.sampleRows.length > 0
-        ? [] // We'll re-parse on the server using the confirmed mappings
-        : [];
-
-      // Apply mappings to produce normalized rows from analysis
-      // The server will handle this — we just send the mapping config
       const mappingConfig = Object.fromEntries(
         Object.entries(mappings)
           .filter(([, m]) => m.targetField)
           .map(([src, m]) => [src, m.targetField!])
       );
 
-      // Re-analyze with confirmed mappings and import
       const form = new FormData();
-      form.append("file", file!);
+      form.append("file", file);
       form.append("campaignId", campaignId);
-      const analyzeRes = await fetch("/api/import?action=analyze", { method: "POST", body: form });
-      const analyzeData = await analyzeRes.json();
+      form.append("mappings", JSON.stringify(mappingConfig));
 
-      // Apply mapping to all rows
-      const allRows = analyzeData.data.sampleRows; // For demo, using sample rows
-      const mappedRows = allRows.map((row: Record<string, string>) => {
-        const mapped: Record<string, string> = {};
-        for (const [srcCol, targetField] of Object.entries(mappingConfig)) {
-          if (row[srcCol] !== undefined) mapped[targetField] = row[srcCol];
-        }
-        return mapped;
-      });
-
-      const importRes = await fetch("/api/import?action=import", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, rows: mappedRows, importSource: "smart_import" }),
-      });
+      const importRes = await fetch("/api/import/execute", { method: "POST", body: form });
       const importData = await importRes.json();
       if (!importRes.ok) { toast.error(importData.error ?? "Import failed"); return; }
       setImportResult(importData.data);
@@ -315,7 +350,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep("upload")}><ArrowLeft className="w-4 h-4" />Back</Button>
-            <Button onClick={() => setStep("review")} className="flex-1">
+            <Button onClick={prepareReview} loading={preparingReview} className="flex-1">
               Review Import ({analysis.totalRows.toLocaleString()} contacts) <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -330,10 +365,10 @@ export default function SmartImportWizard({ campaignId }: Props) {
               <h2 className="text-lg font-bold text-gray-900">Ready to import</h2>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Total contacts", value: analysis.totalRows.toLocaleString(), color: "text-blue-600" },
+                  { label: "Total contacts", value: (reviewSummary?.validRows ?? analysis.totalRows).toLocaleString(), color: "text-blue-600" },
                   { label: "Columns mapped", value: `${mappedCount} / ${totalCols}`, color: "text-emerald-600" },
-                  { label: "High confidence", value: `${highConfidence} cols`, color: "text-emerald-600" },
-                  { label: "Rows skipped", value: analysis.skippedRows, color: "text-gray-500" },
+                  { label: "Probable duplicates", value: reviewSummary?.probableDuplicates ?? 0, color: "text-amber-600" },
+                  { label: "Invalid rows", value: reviewSummary?.invalidRows ?? analysis.skippedRows, color: "text-gray-500" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="bg-gray-50 rounded-xl p-3">
                     <p className="text-xs text-gray-500">{label}</p>
@@ -345,8 +380,8 @@ export default function SmartImportWizard({ campaignId }: Props) {
                 <p className="font-semibold mb-1">What happens next:</p>
                 <ul className="space-y-0.5 text-blue-700">
                   <li>✓ New contacts are added to your campaign</li>
-                  <li>✓ Existing contacts are updated (blank fields filled in)</li>
-                  <li>✓ Exact duplicates are detected and skipped</li>
+                  <li>✓ Likely duplicates are updated to avoid double records</li>
+                  <li>✓ Invalid rows are skipped and logged in import history</li>
                 </ul>
               </div>
             </CardContent>
