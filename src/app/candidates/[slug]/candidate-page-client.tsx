@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button, Card, CardContent, CardHeader, Badge } from "@/components/ui";
+import TurnstileWidget from "@/components/security/turnstile-widget";
 import {
   MapPin, Calendar, Users, Share2, AlertCircle, CheckCircle,
   Globe, Phone, Mail, Twitter, Facebook, Instagram, Linkedin,
@@ -151,7 +152,12 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
   const [signForm, setSignForm] = useState({ address: "", name: "", email: "" });
   const [supportForm, setSupportForm] = useState({ name: "", email: "", householdCount: 1 });
   const [questionForm, setQuestionForm] = useState({ name: "", email: "", question: "" });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const captchaEnabled = Boolean(turnstileSiteKey);
 
   const cx = campaign.customization ?? {};
   const off = campaign.official;
@@ -173,12 +179,31 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
   const hasSocialLinks = off && (off.twitter || off.facebook || off.instagram || off.linkedIn || off.website);
   const hasContactInfo = off && (off.phone || off.address || off.email);
 
-  async function post(path: string, body: unknown, onSuccess: () => void) {
+  async function post(path: string, body: Record<string, unknown>, onSuccess: () => void) {
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Please complete captcha verification before submitting.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) { toast.success("Submitted!"); onSuccess(); }
-      else toast.error("Something went wrong. Please try again.");
+      const payload = captchaEnabled ? { ...body, captchaToken } : body;
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null) as { error?: string } | null;
+
+      if (res.ok) {
+        toast.success("Submitted!");
+        onSuccess();
+        if (captchaEnabled) {
+          setCaptchaResetSignal((state) => state + 1);
+        }
+      } else {
+        toast.error(data?.error || "Something went wrong. Please try again.");
+      }
     } catch { toast.error("Something went wrong."); }
     finally { setLoading(false); }
   }
@@ -610,6 +635,21 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
           {/* ── Sidebar ── */}
           <div className="space-y-6">
 
+            {captchaEnabled && (
+              <Card>
+                <CardHeader><h3 className="text-lg font-semibold">Anti-Abuse Verification</h3></CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-3">Complete verification once, then submit any form below.</p>
+                  <TurnstileWidget
+                    siteKey={turnstileSiteKey}
+                    onTokenChange={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                    action="public-intake"
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardContent className="p-6 text-center">
                 <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
@@ -631,7 +671,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
                   <input type="email" placeholder="Email" value={volunteerForm.email} onChange={(e) => setVolunteerForm({ ...volunteerForm, email: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
                   <input type="tel" placeholder="Phone (optional)" value={volunteerForm.phone} onChange={(e) => setVolunteerForm({ ...volunteerForm, phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
                   <textarea placeholder="Message (optional)" value={volunteerForm.message} onChange={(e) => setVolunteerForm({ ...volunteerForm, message: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" rows={3} />
-                  <Button type="submit" disabled={loading} className="w-full">{loading ? "Submitting…" : "Volunteer"}</Button>
+                  <Button type="submit" disabled={loading || (captchaEnabled && !captchaToken)} className="w-full">{loading ? "Submitting…" : "Volunteer"}</Button>
                 </form>
               </CardContent>
             </Card>
@@ -643,7 +683,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
                   <input type="text" placeholder="Your address" value={signForm.address} onChange={(e) => setSignForm({ ...signForm, address: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
                   <input type="text" placeholder="Your name" value={signForm.name} onChange={(e) => setSignForm({ ...signForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
                   <input type="email" placeholder="Email" value={signForm.email} onChange={(e) => setSignForm({ ...signForm, email: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
-                  <Button type="submit" disabled={loading} className="w-full">{loading ? "Submitting…" : "Request Sign"}</Button>
+                  <Button type="submit" disabled={loading || (captchaEnabled && !captchaToken)} className="w-full">{loading ? "Submitting…" : "Request Sign"}</Button>
                 </form>
               </CardContent>
             </Card>
@@ -657,7 +697,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
                   <select value={supportForm.householdCount} onChange={(e) => setSupportForm({ ...supportForm, householdCount: parseInt(e.target.value) })} className="w-full px-3 py-2 border rounded-lg text-sm">
                     {[1,2,3,4,5].map((n) => <option key={n} value={n}>{n} {n === 1 ? "person" : "people"}</option>)}
                   </select>
-                  <Button type="submit" disabled={loading} className="w-full">{loading ? "Submitting…" : "I Support"}</Button>
+                  <Button type="submit" disabled={loading || (captchaEnabled && !captchaToken)} className="w-full">{loading ? "Submitting…" : "I Support"}</Button>
                 </form>
               </CardContent>
             </Card>
@@ -669,7 +709,7 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
                   <input type="text" placeholder="Your name" value={questionForm.name} onChange={(e) => setQuestionForm({ ...questionForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
                   <input type="email" placeholder="Email" value={questionForm.email} onChange={(e) => setQuestionForm({ ...questionForm, email: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" required />
                   <textarea placeholder="Your question" value={questionForm.question} onChange={(e) => setQuestionForm({ ...questionForm, question: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" rows={3} required />
-                  <Button type="submit" disabled={loading} className="w-full">{loading ? "Submitting…" : "Submit Question"}</Button>
+                  <Button type="submit" disabled={loading || (captchaEnabled && !captchaToken)} className="w-full">{loading ? "Submitting…" : "Submit Question"}</Button>
                 </form>
               </CardContent>
             </Card>

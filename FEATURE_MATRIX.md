@@ -66,7 +66,7 @@ v1.8.0 additions included in this baseline:
 | Progressive Web App Install | Mobile PWA | ✅ Built & Verified | / (global) | /sw.js | Notification, PushSubscription | Partial | Medium | Manifest + service worker + install hooks active. |
 | User Profile Updates | User Management | ✅ Built & Verified | /settings | /api/users/[id] | User | Yes | Medium | Profile edit and role display available. |
 | Membership Roles/Permissions | User Management | ✅ Built & Verified | /admin (partial shell) | Cross-cutting | Membership, Role enum | Yes | High | Backend role checks implemented broadly. |
-| Election/Official Seeding Scripts | Data Ingestion | ✅ Built & Verified | — | — | Official, ElectionResult, GeoDistrict | Yes | High | Seeds and ingest scripts exist in prisma/seeds. |
+| Election/Official Seeding Scripts | Data Ingestion | ✅ Built & Verified | — | — | Official, ElectionResult, GeoDistrict | Yes | High | Nationwide ingest now pages all representatives (`/representatives?limit=200&offset=*`) and all boundary sets/boundaries across Canada, with federal GeoJSON collection persistence. |
 | Postal Code Geo Lookup Cache | Data Ingestion | ✅ Built & Verified | /lookup | /api/geo, /api/geo/municipalities, /api/geo/wards | GeoDistrict | Yes | Medium | Lookup and district cache flow operational. |
 | Public/Private DTO Boundary | API Coverage | ✅ Built & Verified | Mixed | /api/officials, /api/polls, /api/public/* | Official, Poll, Contact | Yes | High | DTO separation documented and reflected in route behavior. |
 | API Surface Breadth | API Coverage | ✅ Built & Verified | Mixed | 70+ endpoints under /api/* | Multiple | Yes | High | Broad functional coverage across campaign + social + print. |

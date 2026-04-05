@@ -28,13 +28,16 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(npx tsx:*)",
       "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representative-sets/?limit=5\")",
-      "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representatives/house-of-commons/?limit=2\")"
+      "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representatives/house-of-commons/?limit=2\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\campaigns\\[id]",
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\officials",
-      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\team"
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\team",
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\budget",
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\budget\\rules"
     ]
   }
 }

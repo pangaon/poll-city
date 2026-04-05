@@ -1,216 +1,475 @@
-/**
- * Ingest Ontario boundary / geo-district data from the Represent OpenNorth API.
- * Populates the GeoDistrict table with ward/riding → postal prefix mappings
- * using the Represent postcodes endpoint as a lookup layer.
- *
- * Strategy:
- *   - Fetch Ontario boundary sets from Represent
- *   - Pre-populate known Ontario postal prefixes via the postcodes endpoint
- *   - The /api/geo route will also call Represent live and cache results here
- *
- * Usage:  npx tsx prisma/seeds/ingest-boundaries.ts
- */
-
-import { PrismaClient, GovernmentLevel } from "@prisma/client";
+import { GovernmentLevel, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const BASE = "https://represent.opennorth.ca";
 
-// Sample of Ontario FSA (forward sortation area) postal prefixes to pre-seed.
-// Full Ontario FSA list: L, M, K, N, P prefixes.
-// We'll fetch the most populous ones covering Toronto, Ottawa, Hamilton, etc.
-const ONTARIO_POSTAL_PREFIXES = [
-  // Toronto (M)
-  "M1B","M1C","M1E","M1G","M1H","M1J","M1K","M1L","M1M","M1N","M1P","M1R",
-  "M1S","M1T","M1V","M1W","M1X","M2H","M2J","M2K","M2L","M2M","M2N","M2P",
-  "M2R","M3A","M3B","M3C","M3H","M3J","M3K","M3L","M3M","M3N","M4A","M4B",
-  "M4C","M4E","M4G","M4H","M4J","M4K","M4L","M4M","M4N","M4P","M4R","M4S",
-  "M4T","M4V","M4W","M4X","M4Y","M5A","M5B","M5C","M5E","M5G","M5H","M5J",
-  "M5K","M5L","M5M","M5N","M5P","M5R","M5S","M5T","M5V","M5W","M5X","M6A",
-  "M6B","M6C","M6E","M6G","M6H","M6J","M6K","M6L","M6M","M6N","M6P","M6R",
-  "M6S","M7A","M7Y","M8V","M8W","M8X","M8Y","M8Z","M9A","M9B","M9C","M9L",
-  "M9M","M9N","M9P","M9R","M9V","M9W",
-  // Ottawa (K)
-  "K1A","K1B","K1C","K1E","K1G","K1H","K1J","K1K","K1L","K1M","K1N","K1P",
-  "K1R","K1S","K1T","K1V","K1W","K1X","K1Y","K1Z","K2A","K2B","K2C","K2E",
-  "K2G","K2H","K2J","K2K","K2L","K2M","K2P","K2R","K2S","K2T","K2V","K2W",
-  // Hamilton/Niagara (L)
-  "L8E","L8G","L8H","L8J","L8K","L8L","L8M","L8N","L8P","L8R","L8S","L8T",
-  "L8V","L8W","L9A","L9B","L9C","L9G","L9H","L9K","L6P","L6R","L6S","L6T",
-  // London/Windsor (N)
-  "N5W","N5X","N5Y","N5Z","N6A","N6B","N6C","N6E","N6G","N6H","N6J","N6K",
-  "N8H","N8M","N8N","N8P","N8R","N8S","N8T","N8W","N8X","N8Y","N9A","N9B",
-  "N9C","N9E","N9G","N9H","N9J","N9K","N9V","N9W","N9Y",
-  // Northern Ontario (P)
-  "P3A","P3B","P3C","P3E","P3G","P3L","P3N","P3P","P3Y","P6A","P6B","P6C",
-];
+const REPRESENT_BASE = "https://represent.opennorth.ca";
+const BOUNDARY_SET_LIMIT = 200;
+const BOUNDARY_LIMIT = 500;
+const REQUEST_DELAY_MS = 300;
 
-interface BoundarySet {
-  name: string;
-  url: string;
-  related: {
-    boundaries_url: string;
-    boundaries_centroid_url?: string;
-  };
+const ELECTIONS_CANADA_INDEX_URL = "https://www.elections.ca/content.aspx?section=res&dir=rep/off/303_rocf&document=index&lang=e";
+
+interface RepresentMeta {
+  next: string | null;
+  previous: string | null;
+  limit: number;
+  offset: number;
+  total_count: number;
 }
 
-interface ApiList<T> {
-  count: number;
-  next: string | null;
+interface RepresentListResponse<T> {
+  meta: RepresentMeta;
   objects: T[];
 }
 
-interface PostcodeResult {
-  code: string;
-  representatives: Array<{
-    name: string;
-    elected_office: string;
-    district_name: string;
-    representative_set_name: string;
-    related?: {
-      boundary_url?: string;
-    };
-  }>;
-  boundaries_centroid?: Array<{
-    name: string;
-    set: string;
-    related: { boundary_set_url?: string };
-  }>;
+interface BoundarySet {
+  name: string;
+  slug: string;
+  domain?: string;
+  related?: {
+    boundaries_url?: string;
+  };
 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+interface Boundary {
+  name: string;
+  slug: string;
+  external_id?: string;
+  boundary_set_name?: string;
+  area_id?: string;
+  metadata?: Record<string, unknown>;
+  centroid?: [number, number] | { coordinates?: [number, number] } | null;
+  simple_shape?: unknown;
+}
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+interface GeoJsonFeature {
+  type: "Feature";
+  properties: Record<string, unknown>;
+  geometry: unknown;
+}
+
+interface GeoJsonFeatureCollection {
+  type: "FeatureCollection";
+  features: GeoJsonFeature[];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeWhitespace(value: string | undefined | null): string {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "")
+    .slice(0, 120);
+}
+
+function detectLevel(boundarySetName: string): GovernmentLevel {
+  const text = boundarySetName.toLowerCase();
+
+  if (text.includes("federal") || text.includes("house of commons") || text.includes("electoral district")) {
+    return "federal";
+  }
+
+  if (text.includes("provincial") || text.includes("assembly") || text.includes("legislature")) {
+    return "provincial";
+  }
+
+  return "municipal";
+}
+
+const PROVINCE_NAME_TO_CODE: Record<string, string> = {
+  alberta: "AB",
+  "british columbia": "BC",
+  manitoba: "MB",
+  "new brunswick": "NB",
+  "newfoundland and labrador": "NL",
+  "northwest territories": "NT",
+  "nova scotia": "NS",
+  nunavut: "NU",
+  ontario: "ON",
+  "prince edward island": "PE",
+  quebec: "QC",
+  saskatchewan: "SK",
+  yukon: "YT",
+};
+
+function detectProvince(boundarySetName: string): string {
+  const lower = boundarySetName.toLowerCase();
+
+  for (const [name, code] of Object.entries(PROVINCE_NAME_TO_CODE)) {
+    if (lower.includes(name)) {
+      return code;
+    }
+  }
+
+  const codeMatch = boundarySetName.match(/\b(AB|BC|MB|NB|NL|NT|NS|NU|ON|PE|QC|SK|YT)\b/i);
+  if (codeMatch?.[1]) {
+    return codeMatch[1].toUpperCase();
+  }
+
+  if (lower.includes("federal") || lower.includes("canada")) {
+    return "CA";
+  }
+
+  return "CA";
+}
+
+function extractCentroid(centroid: Boundary["centroid"]): { lat: number; lng: number } | null {
+  if (!centroid) return null;
+
+  if (Array.isArray(centroid) && centroid.length >= 2) {
+    const lng = Number(centroid[0]);
+    const lat = Number(centroid[1]);
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  if (typeof centroid === "object" && centroid !== null && Array.isArray(centroid.coordinates)) {
+    const lng = Number(centroid.coordinates[0]);
+    const lat = Number(centroid.coordinates[1]);
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}
+
+async function fetchRepresentJson<T>(url: string, attempts = 4): Promise<T> {
+  let lastError: unknown;
+
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Represent API request failed (${response.status}) for ${url}`);
+      }
+      return (await response.json()) as T;
+    } catch (error) {
+      lastError = error;
+      await sleep(600 * (i + 1));
+    }
+  }
+
+  throw lastError;
+}
+
+async function fetchAllBoundarySets(): Promise<BoundarySet[]> {
+  const all: BoundarySet[] = [];
+  let nextUrl: string | null = `${REPRESENT_BASE}/boundary-sets/?limit=${BOUNDARY_SET_LIMIT}`;
+
+  while (nextUrl) {
+    const page = await fetchRepresentJson<RepresentListResponse<BoundarySet>>(nextUrl);
+    all.push(...page.objects);
+    nextUrl = page.meta.next ? `${REPRESENT_BASE}${page.meta.next}` : null;
+    if (nextUrl) await sleep(REQUEST_DELAY_MS);
+  }
+
+  return all;
+}
+
+function buildBoundariesUrl(raw: string): string {
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+  return `${REPRESENT_BASE}${raw}`;
+}
+
+async function fetchAllBoundariesForSet(boundariesUrl: string): Promise<Boundary[]> {
+  const all: Boundary[] = [];
+  const delimiter = boundariesUrl.includes("?") ? "&" : "?";
+  let nextUrl: string | null = `${boundariesUrl}${delimiter}limit=${BOUNDARY_LIMIT}`;
+
+  while (nextUrl) {
+    const page = await fetchRepresentJson<RepresentListResponse<Boundary>>(nextUrl);
+    all.push(...page.objects);
+    nextUrl = page.meta.next ? `${REPRESENT_BASE}${page.meta.next}` : null;
+    if (nextUrl) await sleep(REQUEST_DELAY_MS);
+  }
+
+  return all;
+}
+
+async function upsertBoundary(boundary: Boundary, boundarySetName: string): Promise<"created" | "updated" | "skipped"> {
+  const name = normalizeWhitespace(boundary.name);
+  if (!name) return "skipped";
+
+  const level = detectLevel(boundarySetName);
+  const province = detectProvince(boundarySetName);
+  const slug = normalizeWhitespace(boundary.slug) || slugify(name);
+  const centroid = extractCentroid(boundary.centroid);
+  const externalId = normalizeWhitespace(boundary.external_id) || null;
+  const metadata = {
+    area_id: boundary.area_id ?? null,
+    external_id: boundary.external_id ?? null,
+    boundary_set_name: boundarySetName,
+  };
+
+  const postalPrefix = `BOUNDARY__${slug}`.slice(0, 140);
+
+  const existing = await prisma.geoDistrict.findUnique({
+    where: {
+      postalPrefix_level: {
+        postalPrefix,
+        level,
+      },
+    },
+    select: { id: true },
+  });
+
+  const payload = {
+    name,
+    slug,
+    level,
+    province,
+    districtType: boundarySetName,
+    externalId,
+    centroid: centroid as unknown as object | null,
+    metadata: metadata as unknown as object,
+    geoJson: (boundary.simple_shape ?? null) as unknown as object | null,
+  };
+
+  if (existing) {
+    await prisma.geoDistrict.update({
+      where: { id: existing.id },
+      data: payload,
+    });
+    return "updated";
+  }
+
+  await prisma.geoDistrict.create({
+    data: {
+      postalPrefix,
+      ...payload,
+    },
+  });
+  return "created";
+}
+
+function boundariesToGeoJsonCollection(boundaries: Boundary[], boundarySetName: string): GeoJsonFeatureCollection {
+  const features: GeoJsonFeature[] = [];
+
+  for (const boundary of boundaries) {
+    if (!boundary.simple_shape || typeof boundary.simple_shape !== "object") {
+      continue;
+    }
+
+    const shape = boundary.simple_shape as Record<string, unknown>;
+    const type = typeof shape.type === "string" ? shape.type : null;
+
+    if (!type || !Array.isArray(shape.coordinates)) {
+      continue;
+    }
+
+    features.push({
+      type: "Feature",
+      properties: {
+        name: boundary.name,
+        slug: boundary.slug,
+        external_id: boundary.external_id ?? null,
+        area_id: boundary.area_id ?? null,
+        boundary_set_name: boundarySetName,
+      },
+      geometry: {
+        type,
+        coordinates: shape.coordinates,
+      },
+    });
+  }
+
+  return {
+    type: "FeatureCollection",
+    features,
+  };
+}
+
+async function fetchElectionsCanadaPage(): Promise<string | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
-    return res.json() as Promise<T>;
+    const response = await fetch(ELECTIONS_CANADA_INDEX_URL, {
+      cache: "no-store",
+      headers: {
+        "user-agent": "Mozilla/5.0",
+        accept: "text/html,application/xhtml+xml",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.text();
   } catch {
     return null;
   }
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+function extractCandidateGeoJsonLinksFromHtml(html: string): string[] {
+  const matches = [...html.matchAll(/https?:\/\/[^\"'\s>]+/gi)].map((m) => m[0]);
+  return [...new Set(matches.filter((url) => /geojson|\.json/i.test(url)))];
 }
 
-function isOntario(name: string): boolean {
-  const lower = name.toLowerCase();
-  return (
-    lower.includes("ontario") ||
-    lower.includes("toronto") ||
-    lower.includes("ottawa") ||
-    lower.includes("hamilton") ||
-    lower.includes("-on-") ||
-    lower.startsWith("on-") ||
-    lower.endsWith("-on")
-  );
-}
-
-function detectLevel(setName: string): GovernmentLevel {
-  const lower = setName.toLowerCase();
-  if (lower.includes("federal") || lower.includes("electoral district") || lower.includes("riding")) return "federal";
-  if (lower.includes("provincial") || lower.includes("legislative")) return "provincial";
-  return "municipal";
-}
-
-// ─── core logic ──────────────────────────────────────────────────────────────
-
-async function processPostalPrefix(prefix: string): Promise<{ municipal: boolean; federal: boolean; provincial: boolean }> {
-  const data = await fetchJson<PostcodeResult>(`${BASE}/postcodes/${prefix}1A1/`);
-  if (!data) return { municipal: false, federal: false, provincial: false };
-
-  const results = { municipal: false, federal: false, provincial: false };
-
-  let ward: string | undefined;
-  let wardCode: string | undefined;
-  let riding: string | undefined;
-  let ridingCode: string | undefined;
-  let city: string | undefined;
-
-  for (const rep of data.representatives ?? []) {
-    const setName = rep.representative_set_name ?? "";
-    const level = detectLevel(setName);
-
-    if (level === "municipal" && !ward) {
-      ward = rep.district_name;
-      city = setName.replace(/city council/i, "").trim();
-    } else if (level === "federal" && !riding) {
-      riding = rep.district_name;
-      ridingCode = rep.related?.boundary_url?.split("/").filter(Boolean).pop();
+async function fetchFirstWorkingGeoJson(links: string[]): Promise<GeoJsonFeatureCollection | null> {
+  for (const link of links) {
+    try {
+      const response = await fetch(link, { cache: "no-store" });
+      if (!response.ok) continue;
+      const data = (await response.json()) as GeoJsonFeatureCollection;
+      if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
+        return data;
+      }
+    } catch {
+      // continue trying next link
     }
   }
 
-  // Also try boundaries_centroid for provincial
-  for (const b of data.boundaries_centroid ?? []) {
-    const level = detectLevel(b.set ?? "");
-    if (level === "provincial" && !riding) {
-      riding = b.name;
-    }
+  return null;
+}
+
+async function storeElectionsCanadaGeoJson(geoJson: GeoJsonFeatureCollection, sourceUrl: string) {
+  const level: GovernmentLevel = "federal";
+  const postalPrefix = "BOUNDARY__elections-canada-federal-collection";
+
+  const existing = await prisma.geoDistrict.findUnique({
+    where: {
+      postalPrefix_level: {
+        postalPrefix,
+        level,
+      },
+    },
+    select: { id: true },
+  });
+
+  const payload = {
+    name: "Federal Electoral Districts (Elections Canada)",
+    slug: "federal-electoral-districts-elections-canada",
+    districtType: "elections-canada-federal-electoral-districts",
+    province: "CA",
+    externalId: "elections-canada-federal-collection",
+    centroid: null,
+    metadata: {
+      source_page: ELECTIONS_CANADA_INDEX_URL,
+      source_geojson_url: sourceUrl,
+      feature_count: geoJson.features.length,
+    } as object,
+    geoJson: geoJson as unknown as object,
+  };
+
+  if (existing) {
+    await prisma.geoDistrict.update({
+      where: { id: existing.id },
+      data: payload,
+    });
+    return "updated" as const;
   }
 
-  // Upsert municipal record
-  if (ward || city) {
-    try {
-      await prisma.geoDistrict.upsert({
-        where: { postalPrefix_level: { postalPrefix: prefix, level: "municipal" } },
-        create: { postalPrefix: prefix, ward, wardCode, province: "ON", city, level: "municipal" },
-        update: { ward, wardCode, city },
-      });
-      results.municipal = true;
-    } catch { /* skip */ }
-  }
-
-  // Upsert federal record
-  if (riding) {
-    try {
-      await prisma.geoDistrict.upsert({
-        where: { postalPrefix_level: { postalPrefix: prefix, level: "federal" } },
-        create: { postalPrefix: prefix, riding, ridingCode, province: "ON", level: "federal" },
-        update: { riding, ridingCode },
-      });
-      results.federal = true;
-    } catch { /* skip */ }
-  }
-
-  return results;
+  await prisma.geoDistrict.create({
+    data: {
+      postalPrefix,
+      level,
+      ...payload,
+    },
+  });
+  return "created" as const;
 }
 
 async function main() {
-  console.log("🗺  Ontario Geo-District / Boundaries Ingestion");
-  console.log("══════════════════════════════════════════════");
+  console.log("Starting full Canada boundary ingestion...");
 
-  console.log(`\nSeeding ${ONTARIO_POSTAL_PREFIXES.length} Ontario postal prefixes via Represent API...`);
-  console.log("(Rate: 1 request/sec to respect API limits)\n");
+  const boundarySets = await fetchAllBoundarySets();
+  console.log(`Fetched ${boundarySets.length} boundary sets`);
 
-  let municipal = 0;
-  let federal = 0;
-  let failed = 0;
+  let setCounter = 0;
+  let boundaryFetched = 0;
+  let boundaryCreated = 0;
+  let boundaryUpdated = 0;
+  let boundarySkipped = 0;
 
-  for (let i = 0; i < ONTARIO_POSTAL_PREFIXES.length; i++) {
-    const prefix = ONTARIO_POSTAL_PREFIXES[i];
-    process.stdout.write(`  [${i + 1}/${ONTARIO_POSTAL_PREFIXES.length}] ${prefix}... `);
+  const federalBoundaryBuckets: Array<{ setName: string; boundaries: Boundary[] }> = [];
 
-    try {
-      const result = await processPostalPrefix(prefix);
-      if (result.municipal) municipal++;
-      if (result.federal) federal++;
-      console.log(`✓ (municipal: ${result.municipal}, federal: ${result.federal})`);
-    } catch (err) {
-      console.log(`✗ ${(err as Error).message}`);
-      failed++;
+  for (const boundarySet of boundarySets) {
+    setCounter += 1;
+
+    const setSlug = normalizeWhitespace(boundarySet.slug);
+    const setName = normalizeWhitespace(boundarySet.name) || setSlug;
+    const boundariesUrl = normalizeWhitespace(boundarySet.related?.boundaries_url);
+
+    if (!setSlug || !boundariesUrl) {
+      continue;
     }
 
-    await sleep(1000); // 1 req/s rate limit
+    const boundaries = await fetchAllBoundariesForSet(buildBoundariesUrl(boundariesUrl));
+    boundaryFetched += boundaries.length;
+
+    if (detectLevel(setName) === "federal") {
+      federalBoundaryBuckets.push({ setName, boundaries });
+    }
+
+    for (const boundary of boundaries) {
+      const result = await upsertBoundary(boundary, setName);
+      if (result === "created") boundaryCreated += 1;
+      if (result === "updated") boundaryUpdated += 1;
+      if (result === "skipped") boundarySkipped += 1;
+    }
+
+    console.log(`Processed boundary set ${setCounter}/${boundarySets.length}: ${setName} (${boundaries.length} boundaries)`);
+    await sleep(REQUEST_DELAY_MS);
   }
 
-  console.log(`\n✅ Done`);
-  console.log(`   Municipal records: ${municipal}`);
-  console.log(`   Federal records: ${federal}`);
-  console.log(`   Failed: ${failed}`);
-  console.log(`\n💡 The /api/geo route will cache additional lookups in GeoDistrict on demand.`);
+  const electionsCanadaHtml = await fetchElectionsCanadaPage();
+  let electionsCanadaStatus = "skipped";
+
+  if (electionsCanadaHtml) {
+    const links = extractCandidateGeoJsonLinksFromHtml(electionsCanadaHtml);
+    const electionsGeoJson = await fetchFirstWorkingGeoJson(links);
+
+    if (electionsGeoJson && links.length > 0) {
+      const storeResult = await storeElectionsCanadaGeoJson(electionsGeoJson, links[0]);
+      electionsCanadaStatus = `${storeResult} (${electionsGeoJson.features.length} features)`;
+    }
+  }
+
+  if (electionsCanadaStatus === "skipped" && federalBoundaryBuckets.length > 0) {
+    // Fallback: build federal GeoJSON collection from Represent boundaries when Elections Canada source is unavailable.
+    const flattened = federalBoundaryBuckets.flatMap((bucket) =>
+      bucket.boundaries.map((boundary) => ({ boundary, setName: bucket.setName }))
+    );
+
+    const fallbackCollection = boundariesToGeoJsonCollection(
+      flattened.map((row) => row.boundary),
+      flattened[0]?.setName ?? "federal-boundaries"
+    );
+
+    if (fallbackCollection.features.length > 0) {
+      const storeResult = await storeElectionsCanadaGeoJson(fallbackCollection, "represent-opennorth-fallback");
+      electionsCanadaStatus = `fallback-${storeResult} (${fallbackCollection.features.length} features)`;
+    }
+  }
+
+  const totalGeoDistricts = await prisma.geoDistrict.count();
+
+  console.log("--- Boundaries ingestion complete ---");
+  console.log(`Boundary sets processed: ${boundarySets.length}`);
+  console.log(`Boundaries fetched: ${boundaryFetched}`);
+  console.log(`Boundaries created: ${boundaryCreated}`);
+  console.log(`Boundaries updated: ${boundaryUpdated}`);
+  console.log(`Boundaries skipped: ${boundarySkipped}`);
+  console.log(`Elections Canada federal GeoJSON status: ${electionsCanadaStatus}`);
+  console.log(`GeoDistrict rows currently in DB: ${totalGeoDistricts}`);
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+  .catch((error) => {
+    console.error("Boundaries ingestion failed:", error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

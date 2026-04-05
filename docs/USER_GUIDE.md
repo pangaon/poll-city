@@ -1,5 +1,43 @@
 # Poll City User Guide
 
+## v4.0.3 National Data Ingestion Addendum — April 5, 2026
+
+### All-Canada Officials Seed (`npm run db:seed:officials`)
+
+1. Script pages through Represent API with `limit=200` and incremental offsets until `meta.next` is null.
+2. Every representative is mapped to Official fields (name, title, district, party, photo, email, website).
+3. Government level is inferred from elected office labels (MP, MPP/MLA/MNA/MHA, Mayor/Councillor/Reeve/Trustee).
+4. Province is inferred from office postal block first, then representative set naming.
+5. Progress logs print every 100 records and final created/updated totals are shown.
+
+### All-Canada Boundaries Seed (`npm run db:seed:boundaries`)
+
+1. Script loads all boundary sets from `GET /boundary-sets/?limit=200`.
+2. Script loads all boundaries for each set via `/boundaries/[slug]/?limit=500` with pagination.
+3. GeoDistrict records store name, slug, level, province, centroid, metadata, and GeoJSON shape.
+4. Federal district GeoJSON collection is persisted in GeoDistrict for map analytics workflows.
+
+## v4.0.2 CAPTCHA Journey Fix Addendum — April 5, 2026
+
+### Public Candidate Page Forms (`/candidates/[slug]`)
+
+1. A shared **Anti-Abuse Verification** card appears before public intake forms when Turnstile is enabled.
+2. Complete verification once, then submit Volunteer, Sign Request, Support, or Question forms.
+3. Form submit buttons remain disabled until verification succeeds.
+4. After a successful submit, verification resets and must be completed again for a new submission.
+
+### Official Profile Claim (`/claim/[slug]`)
+
+1. The claim form now includes required Turnstile verification when enabled.
+2. The **Send verification email** button remains disabled until CAPTCHA is completed.
+3. Claim requests include `captchaToken` so server-side verification succeeds in production.
+
+### Environment Requirements
+
+1. `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+2. `TURNSTILE_SECRET_KEY`
+3. If keys are configured in production, users must complete CAPTCHA before form submission.
+
 ## v4.0.1 CAPTCHA Protection Addendum — April 5, 2026
 
 ### Public Form Submission Security

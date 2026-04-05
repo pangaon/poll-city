@@ -1,5 +1,38 @@
 # Poll City Changelog
 
+## [4.0.3] - April 5, 2026 — NATIONAL OFFICIALS + BOUNDARIES INGEST
+
+### All-Canada Representative Ingestion
+- Rewrote `prisma/seeds/ingest-representatives.ts` to page through `GET /representatives?limit=200&offset=*` until completion.
+- Added full-field mapping for name, first/last name, title, district, party, photo, email, and website URL.
+- Added level detection for federal/provincial/municipal elected office patterns.
+- Added province detection from office postal blocks and representative set names.
+
+### All-Canada Boundary Ingestion
+- Rewrote `prisma/seeds/ingest-boundaries.ts` to ingest all boundary sets and all boundaries nationwide.
+- Added boundary metadata persistence in `GeoDistrict` including slug, centroid, and source metadata.
+- Added federal GeoJSON collection persistence for Elections Canada federal district coverage with Represent fallback.
+
+### Schema Additions
+- Extended `GeoDistrict` with additive fields:
+  - `slug`
+  - `centroid`
+  - `metadata`
+
+## [4.0.2] - April 5, 2026 — CAPTCHA JOURNEY FIXES
+
+### End-to-End Turnstile Submission Flow
+- Added reusable client widget: `src/components/security/turnstile-widget.tsx`.
+- Wired Turnstile token capture and reset handling into:
+  - `src/app/candidates/[slug]/candidate-page-client.tsx`
+  - `src/app/claim/[slug]/claim-client.tsx`
+- Public forms now send `captchaToken` with each request when Turnstile is enabled.
+- Claim request flow now sends `captchaToken` and blocks submit until verification is complete.
+- Submit buttons now show proper disabled state until CAPTCHA is solved in protected environments.
+
+### Outcome
+- Eliminates production submission failures caused by missing captcha tokens after server-side Turnstile enforcement.
+
 ## [4.0.1] - April 5, 2026 — CAPTCHA HARDENING
 
 ### Public Form CAPTCHA Enforcement

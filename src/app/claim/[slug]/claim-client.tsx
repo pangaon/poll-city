@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CheckCircle, User, MapPin, Shield, ArrowRight } from "lucide-react";
 import { Button, Card, CardContent, Input, FormField } from "@/components/ui";
+import TurnstileWidget from "@/components/security/turnstile-widget";
 import { toast } from "sonner";
 
 interface Official {
@@ -27,10 +27,14 @@ interface Props {
 }
 
 export default function ClaimClient({ campaign, official }: Props) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const captchaEnabled = Boolean(turnstileSiteKey);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,15 +42,27 @@ export default function ClaimClient({ campaign, official }: Props) {
       toast.error("Please enter your email address");
       return;
     }
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Please complete captcha verification before continuing");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/claim/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ officialId: official.id, email: email.trim(), campaignSlug: campaign.slug }),
+        body: JSON.stringify({
+          officialId: official.id,
+          email: email.trim(),
+          campaignSlug: campaign.slug,
+          captchaToken,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to send verification");
+      const data = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok) throw new Error(data?.error ?? "Failed to send verification");
+      if (captchaEnabled) {
+        setCaptchaResetSignal((state) => state + 1);
+      }
       setSent(true);
     } catch (err) {
       toast.error((err as Error).message);
@@ -150,7 +166,19 @@ export default function ClaimClient({ campaign, official }: Props) {
                 />
               </FormField>
 
-              <Button type="submit" loading={submitting} className="w-full">
+              {captchaEnabled && (
+                <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+                  <p className="text-xs text-gray-500 mb-2">Security verification is required before we send your claim email.</p>
+                  <TurnstileWidget
+                    siteKey={turnstileSiteKey}
+                    onTokenChange={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                    action="claim-request"
+                  />
+                </div>
+              )}
+
+              <Button type="submit" loading={submitting} disabled={captchaEnabled && !captchaToken} className="w-full">
                 <ArrowRight className="w-4 h-4" />
                 Send verification email
               </Button>

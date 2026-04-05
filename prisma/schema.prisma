@@ -330,6 +330,8 @@ model Campaign {
   events            Event[]
   volunteerExpenses    VolunteerExpense[]
   budgetItems          BudgetItem[]
+  budgetRules          BudgetRule[]
+  budgetTemplates      BudgetTemplate[]
   superSupporterTasks  SuperSupporterTask[]
   importLogs           ImportLog[]
   exportLogs           ExportLog[]
@@ -895,8 +897,11 @@ model GeoDistrict {
   level        GovernmentLevel
   // GIS boundary fields — added for choropleth heat maps
   name         String?         // human-readable district/municipality name
+  slug         String?         // canonical district slug
   districtType String?         // "municipal" | "provincial" | "federal"
   externalId   String?         // source system identifier
+  centroid     Json?           // { lat, lng } for map centering
+  metadata     Json?           // raw source metadata (boundary set, area id, etc.)
   geoJson      Json?           // GeoJSON geometry (Polygon or MultiPolygon)
   createdAt    DateTime        @default(now())
 
@@ -904,6 +909,7 @@ model GeoDistrict {
   @@index([postalPrefix])
   @@index([province, districtType])
   @@index([name])
+  @@index([slug])
   @@map("geo_districts")
 }
 
@@ -1819,6 +1825,16 @@ model BudgetItem {
   category       String
   amount         Float
   description    String?
+  // Enterprise additions (all optional for backward compatibility)
+  vendor         String?                       // who was paid / from whom allocation came
+  paymentMethod  String?                       // cash | cheque | credit | e-transfer | invoice
+  receiptUrl     String?                       // Vercel Blob URL to uploaded receipt file
+  receiptNumber  String?                       // vendor invoice / receipt number
+  status         BudgetItemStatus @default(approved) // pending | approved | paid | rejected | reconciled
+  approvedById   String?                       // user who approved this expense
+  paidAt         DateTime?                     // when the payment actually cleared
+  tags           String[]       @default([])   // free-form tags (e.g. "q4", "gotv-push")
+  sourceRuleId   String?                       // if created from a BudgetRule suggestion
   incurredAt     DateTime       @default(now())
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -1826,7 +1842,61 @@ model BudgetItem {
   campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@index([campaignId, category])
+  @@index([campaignId, status])
+  @@index([campaignId, incurredAt])
   @@map("budget_items")
+}
+
+enum BudgetItemStatus {
+  pending
+  approved
+  paid
+  rejected
+  reconciled
+}
+
+// BudgetRule — rules-driven budgeting config for a campaign.
+// Campaigns define rules like "Spend 35% on signs, 20% on digital ads".
+// The suggestions API uses these rules + total budget to propose allocations.
+model BudgetRule {
+  id              String   @id @default(cuid())
+  campaignId      String
+  category        String                          // e.g. "Signs", "Digital Ads", "Events"
+  percentOfTotal  Float?                          // e.g. 0.35 for 35%
+  fixedAmount     Float?                          // alternative to percent
+  priority        Int      @default(1)            // 1 = highest
+  warnAtPercent   Float    @default(0.85)         // warn when spend hits 85% of allocation
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, isActive])
+  @@map("budget_rules")
+}
+
+// BudgetTemplate — named preset budget distributions for campaigns to apply in one click.
+// System seeds defaults like "Municipal (Small)", "Municipal (Large City)", "Federal Riding".
+// Custom templates belong to one campaign; system templates have campaignId = null.
+model BudgetTemplate {
+  id          String   @id @default(cuid())
+  campaignId  String?                           // null = system-wide template
+  name        String
+  description String?
+  electionLevel String?                         // "federal" | "provincial" | "municipal"
+  totalAmount Float?                            // suggested total budget (optional)
+  items       Json                              // [{category, percentOfTotal, priority, notes}, ...]
+  isSystem    Boolean  @default(false)          // true = built-in preset
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([electionLevel])
+  @@map("budget_templates")
 }
 
 model TurfStop {
