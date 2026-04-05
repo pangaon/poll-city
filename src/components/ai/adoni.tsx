@@ -158,7 +158,7 @@ export default function AdoniButton() {
       )}
 
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-2xl">
+        <div className="fixed bottom-5 right-5 z-50 w-[360px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto rounded-2xl border border-blue-200 bg-white shadow-2xl">
           <div className="flex items-center justify-between bg-blue-700 px-4 py-3 text-white">
             <div>
               <p className="text-sm font-bold">Adoni AI Assistant</p>

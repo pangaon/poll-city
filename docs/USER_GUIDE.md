@@ -1,5 +1,14 @@
 # Poll City User Guide
 
+## v4.0.11 Scroll and Navigation Polish Addendum — April 5, 2026
+
+### Scrollbar and Panel Behavior
+
+1. Poll City now uses a thinner blue scrollbar style across supported browsers.
+2. High-density areas now scroll more reliably with explicit vertical overflow handling.
+3. This includes contact tables, analytics views, help article lists, and dashboard list widgets.
+4. Slide-over/panel experiences now keep content scrollable within bounded UI regions.
+
 ## v4.0.10 GOTV Upload Validation Hardening Addendum — April 5, 2026
 
 ### GOTV Upload Requirements

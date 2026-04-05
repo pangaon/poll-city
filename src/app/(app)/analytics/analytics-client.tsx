@@ -343,7 +343,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
       {loading && <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading live campaign metrics...</div>}
 
       {!loading && (
-        <>
+        <div className="max-h-[72vh] overflow-y-auto pr-1">
           {tab === "overview" && (
             <div className="grid gap-4 lg:grid-cols-4">
               {[
@@ -592,7 +592,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">

@@ -399,7 +399,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
               {data.recentInteractions.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">No interactions yet</p>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                   {data.recentInteractions.map((i) => (
                     <div key={i.id} className="px-6 py-3 flex items-start gap-3">
                       <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -430,7 +430,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
               {data.recentActivity.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">No activity yet</p>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                   {data.recentActivity.map((log) => (
                     <div key={log.id} className="px-6 py-3">
                       <p className="text-sm text-gray-800">{actionLabel(log.action, log.entityType, log.details)}</p>
@@ -781,7 +781,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
           {leaderboard.length === 0 ? (
             <p className="text-sm text-gray-500">No leaderboard data yet.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
               {leaderboard.map((row, idx) => (
                 <div key={row.name + idx} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
                   <div>
@@ -800,7 +800,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
           {signCityLeaderboard.length === 0 ? (
             <p className="mt-2 text-sm text-gray-500">No sign requests geocoded yet.</p>
           ) : (
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 max-h-72 overflow-y-auto space-y-2 pr-1">
               {signCityLeaderboard.map((entry) => (
                 <div key={entry.city}>
                   <div className="mb-1 flex items-center justify-between text-xs">

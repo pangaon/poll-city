@@ -1,5 +1,16 @@
 # Poll City Changelog
 
+## [4.0.11] - April 5, 2026 — UI SCROLLBARS + SCROLL CONTAINERS
+
+### Frontend UX Polish
+- Updated global scrollbar styling to thin blue thumb across Firefox and WebKit browsers.
+- Added explicit vertical scrolling for high-density UI containers:
+  - contacts table viewport
+  - dashboard list widgets (recent interactions, activity, leaderboard, sign map)
+  - analytics tab content pane
+  - help article list
+  - slide-over/panel containment for assistant UI
+
 ## [4.0.10] - April 5, 2026 — GOTV UPLOAD VALIDATION HARDENING
 
 ### Security and Data Hygiene

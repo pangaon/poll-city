@@ -165,7 +165,7 @@ export default function HelpCenterClient() {
           <p className="text-xs text-gray-400">Try different keywords or browse by category.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
+        <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 max-h-[65vh] overflow-y-auto">
           {displayedArticles.map((article) => {
             const cat = HELP_CATEGORIES.find((c) => c.id === article.category);
             return (

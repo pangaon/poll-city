@@ -545,7 +545,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
       {/* Table */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="max-h-[65vh] overflow-x-auto overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
