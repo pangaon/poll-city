@@ -279,6 +279,9 @@ model Campaign {
   electionType    ElectionType @default(municipal)
   jurisdiction    String?
   electionDate    DateTime?
+  // Election finance spending limits (from EC/provincial regulators)
+  spendingLimit   Float?
+  partyExpenseLimit Float?
   candidateName   String?
   candidateTitle  String?
   candidateBio    String?
@@ -1838,16 +1841,36 @@ model BudgetItem {
   paidAt         DateTime?                     // when the payment actually cleared
   tags           String[]       @default([])   // free-form tags (e.g. "q4", "gotv-push")
   sourceRuleId   String?                       // if created from a BudgetRule suggestion
+  postElection   Boolean        @default(false) // true if incurredAt > campaign election date
+  importNotes    String?                        // freeform notes preserved from imports
   incurredAt     DateTime       @default(now())
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  payments       BudgetPayment[]
 
   @@index([campaignId, category])
   @@index([campaignId, status])
   @@index([campaignId, incurredAt])
   @@map("budget_items")
+}
+
+// BudgetPayment — individual payment records linked to a parent BudgetItem.
+// Real campaign finance files often have a parent expense row with multiple payment details.
+model BudgetPayment {
+  id               String     @id @default(cuid())
+  budgetItemId     String
+  amount           Float
+  paymentReference String?    // e.g. "Cheque #2", "E-transfer 1234"
+  paidAt           DateTime?
+  notes            String?
+  createdAt        DateTime   @default(now())
+
+  budgetItem       BudgetItem @relation(fields: [budgetItemId], references: [id], onDelete: Cascade)
+
+  @@index([budgetItemId])
+  @@map("budget_payments")
 }
 
 enum BudgetItemStatus {
