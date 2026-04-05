@@ -28,12 +28,30 @@ export default async function ContactDetailPage({ params }: { params: { id: stri
     }),
   ]);
 
+  const activityLogs = await prisma.activityLog.findMany({
+    where: {
+      campaignId,
+      entityId: params.id,
+      entityType: "contact",
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      action: true,
+      details: true,
+      createdAt: true,
+      user: { select: { id: true, name: true } },
+    },
+  });
+
   return (
     <ContactDetailClient
       contact={contact}
       tags={tags}
       teamMembers={teamMembers.map(m => m.user)}
       customFields={customFields}
+      activityLogs={activityLogs}
       userRole={role}
       campaignId={campaignId}
     />

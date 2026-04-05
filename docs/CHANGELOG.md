@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.22] - April 5, 2026 — CONTACT DETAIL UNIFIED TIMELINE
+
+### Contact Detail + Timeline (`/contacts/[id]`)
+- Added unified timeline view that merges interactions, tasks, and contact activity logs.
+- Added timeline filters: All, Interactions, Tasks, Activity.
+- Added timeline search for notes/actions/operators.
+- Added recency ordering and bounded scrolling for high-activity contacts.
+
+### Data Integration
+- Contact detail page now loads campaign-scoped `ActivityLog` entries for the current contact.
+- Timeline automatically reflects newly logged interactions without leaving the page.
+
+### Outcome
+- Campaign operators can review complete contact history from one timeline surface instead of switching between separate cards/lists.
+
 ## [4.0.21] - April 5, 2026 — CRM MULTI-COLUMN SORTING
 
 ### Contacts CRM (`/contacts`)

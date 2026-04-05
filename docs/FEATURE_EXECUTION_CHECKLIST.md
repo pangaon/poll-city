@@ -21,7 +21,7 @@ Dependency planning requirement before implementation starts:
 - [x] 1. Campaign Dashboard Widgets  | status: Built & Verified (server-synced layout + local fallback)  | commit: pending  | report: Completed with cross-device persistence and regression/build pass
 - [x] 2. Campaign Switcher  | status: Built & Verified (session-consistent switch + redirect + validation)  | commit: pending  | report: Completed with immediate context update and improved switch reliability
 - [x] 3. CRM Contact Management  | status: Built & Verified (multi-column sorting + API sort whitelist + operator hints)  | commit: pending  | report: Completed with Shift+click multi-sort for large-list campaign triage
-- [ ] 4. Contact Detail + Timeline  | status: Pending  | commit: -  | report: -
+- [x] 4. Contact Detail + Timeline  | status: Built & Verified (unified timeline + filters + search + activity log integration)  | commit: pending  | report: Completed with single-stream contact history for operator review and faster follow-up decisions
 - [ ] 5. Custom Fields  | status: Pending  | commit: -  | report: -
 - [ ] 6. Turf Builder  | status: Pending  | commit: -  | report: -
 - [ ] 7. Walk App + GPS  | status: Pending  | commit: -  | report: -
@@ -69,3 +69,5 @@ Dependency planning requirement before implementation starts:
 - [ ] 49. Postal Code Geo Lookup Cache  | status: Pending  | commit: -  | report: -
 - [ ] 50. Public/Private DTO Boundary  | status: Pending  | commit: -  | report: -
 - [ ] 51. API Surface Breadth  | status: Pending  | commit: -  | report: -
+- [ ] 52. Candidate Webpage Newsletter Suite  | status: Pending  | commit: -  | report: Add signup capture, subscriber ingest pipeline, and bulk import support for campaign newsletter operations
+- [ ] 53. Elected Officials Newsletter Suite  | status: Pending  | commit: -  | report: Add official-profile newsletter signup, consent-aware ingest, and bulk import support for constituent communications

@@ -258,6 +258,7 @@ const PRODUCTS = [
       "Enterprise dashboard with drag-drop widget layouts and stock operational views (Canvass, GOTV, Finance, Election Day, Advance Vote)",
       "CRM column manager with drag reorder, visibility toggles, and per-campaign width persistence",
       "CRM multi-column sorting with Shift+click priority ordering for campaign triage",
+      "Unified contact timeline combining interactions, tasks, and activity logs with filtering and search",
       "Smart import fuzzy dedupe with nickname matching and contact reconciliation",
       "Drag-and-drop budget item ordering for finance workflows",
       "Communications command center for email, SMS, social, and campaign ads",

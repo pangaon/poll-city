@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit2, Phone, Mail, MapPin, Flag, MessageSquare, CheckSquare, Sparkles, Save, X } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, SupportLevelBadge, Badge, FormField, Input, Select, Textarea, Checkbox, Modal } from "@/components/ui";
@@ -20,7 +20,7 @@ interface Contact {
   issues: string[]; lastContactedAt: string | Date | null; followUpNeeded: boolean; followUpDate: string | Date | null;
   tags: { tag: { id: string; name: string; color: string } }[];
   interactions: { id: string; type: string; notes: string | null; supportLevel: string | null; createdAt: string | Date; user: { id: string; name: string | null } }[];
-  tasks: { id: string; title: string; status: string; priority: string; dueDate: string | Date | null; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
+  tasks: { id: string; title: string; status: string; priority: string; dueDate: string | Date | null; createdAt: string | Date; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
 }
 
 interface Props {
@@ -30,9 +30,40 @@ interface Props {
   teamMembers: { id: string; name: string | null; email: string | null }[];
   tags: { id: string; campaignId: string; createdAt: Date; name: string; color: string }[];
   customFields: unknown[];
+  activityLogs: { id: string; action: string; details: unknown; createdAt: string | Date; user: { id: string; name: string | null } }[];
 }
 
-export default function ContactDetailClient({ contact: initialContact, userRole, campaignId, teamMembers }: Props) {
+type TimelineKind = "interaction" | "task" | "activity";
+
+interface TimelineEntry {
+  id: string;
+  kind: TimelineKind;
+  title: string;
+  subtitle: string;
+  createdAt: Date;
+  badge?: string;
+}
+
+function toDate(value: string | Date | null | undefined): Date {
+  if (!value) return new Date(0);
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? new Date(0) : d;
+}
+
+function activityLabel(action: string, details: unknown): string {
+  const d = (details ?? {}) as Record<string, unknown>;
+  if (action === "logged_interaction") {
+    const type = typeof d.type === "string" ? d.type.replaceAll("_", " ") : "interaction";
+    return `Logged ${type}`;
+  }
+  if (action === "updated_support_level") {
+    return "Updated support level";
+  }
+  if (action === "created") return "Created contact";
+  return action.replaceAll("_", " ");
+}
+
+export default function ContactDetailClient({ contact: initialContact, userRole, campaignId, teamMembers, activityLogs }: Props) {
   const router = useRouter();
   const [contact, setContact] = useState(initialContact);
   const [editing, setEditing] = useState(false);
@@ -41,6 +72,8 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
   const [aiResult, setAiResult] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [timelineKind, setTimelineKind] = useState<"all" | TimelineKind>("all");
+  const [timelineQuery, setTimelineQuery] = useState("");
   const [editForm, setEditForm] = useState({
     notes: contact.notes ?? "",
     supportLevel: contact.supportLevel,
@@ -71,6 +104,45 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
 
   const addressLine = [contact.address1, contact.address2].filter(Boolean).join(", ");
   const cityLine = [contact.city, contact.province, contact.postalCode].filter(Boolean).join(", ");
+
+  const timelineEntries = useMemo(() => {
+    const interactions: TimelineEntry[] = contact.interactions.map((i) => ({
+      id: `interaction-${i.id}`,
+      kind: "interaction",
+      title: INTERACTION_TYPE_LABELS[i.type as InteractionType] ?? i.type,
+      subtitle: [i.notes, i.user.name ?? "Unknown"].filter(Boolean).join(" · "),
+      createdAt: toDate(i.createdAt),
+      badge: i.supportLevel ?? undefined,
+    }));
+
+    const tasks: TimelineEntry[] = contact.tasks.map((t) => ({
+      id: `task-${t.id}`,
+      kind: "task",
+      title: `Task: ${t.title}`,
+      subtitle: [t.assignedTo?.name ?? "Unassigned", `status: ${t.status}`].join(" · "),
+      createdAt: toDate(t.createdAt),
+      badge: t.priority,
+    }));
+
+    const activity: TimelineEntry[] = activityLogs.map((a) => ({
+      id: `activity-${a.id}`,
+      kind: "activity",
+      title: activityLabel(a.action, a.details),
+      subtitle: a.user.name ?? "Unknown",
+      createdAt: toDate(a.createdAt),
+    }));
+
+    return [...interactions, ...tasks, ...activity].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [contact.interactions, contact.tasks, activityLogs]);
+
+  const filteredTimeline = useMemo(() => {
+    const q = timelineQuery.trim().toLowerCase();
+    return timelineEntries.filter((item) => {
+      if (timelineKind !== "all" && item.kind !== timelineKind) return false;
+      if (!q) return true;
+      return item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q);
+    });
+  }, [timelineEntries, timelineKind, timelineQuery]);
 
   return (
     <div className="max-w-5xl space-y-5 animate-fade-in">
@@ -190,6 +262,61 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
               </CardContent>
             </Card>
           )}
+
+          {/* Unified Timeline */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h3 className="font-semibold text-sm text-gray-900">Timeline ({filteredTimeline.length})</h3>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {([
+                    ["all", "All"],
+                    ["interaction", "Interactions"],
+                    ["task", "Tasks"],
+                    ["activity", "Activity"],
+                  ] as const).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      size="sm"
+                      variant={timelineKind === value ? "default" : "outline"}
+                      onClick={() => setTimelineKind(value)}
+                      className="h-7 px-2"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <Input
+                value={timelineQuery}
+                onChange={(e) => setTimelineQuery(e.target.value)}
+                placeholder="Search timeline notes, actions, people..."
+              />
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredTimeline.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No timeline events match your filters</p>
+              ) : (
+                <div className="divide-y divide-gray-50 max-h-[420px] overflow-y-auto">
+                  {filteredTimeline.slice(0, 120).map((entry) => (
+                    <div key={entry.id} className="px-6 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                          <p className="text-xs text-gray-500 truncate">{entry.subtitle}</p>
+                          <p className="text-xs text-gray-400 mt-1">{formatDateTime(entry.createdAt)}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge variant="info">{entry.kind}</Badge>
+                          {entry.badge ? <Badge variant="default">{entry.badge}</Badge> : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Interactions */}
           <Card>

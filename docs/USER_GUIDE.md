@@ -1,5 +1,19 @@
 # Poll City User Guide
 
+## v4.0.22 Contact Timeline Addendum — April 5, 2026
+
+### Unified Timeline (`/contacts/[id]`)
+
+1. Open any contact profile.
+2. Use the **Timeline** card to view interactions, tasks, and activity in one chronological stream.
+3. Filter by timeline type:
+   - All
+   - Interactions
+   - Tasks
+   - Activity
+4. Use timeline search to find specific notes, actions, or operator names.
+5. Log a new interaction and it appears immediately in the timeline.
+
 ## v4.0.21 CRM Multi-Sort Addendum — April 5, 2026
 
 ### Multi-Column Sorting (`/contacts`)
