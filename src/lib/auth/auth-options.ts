@@ -91,22 +91,40 @@ export const authOptions: NextAuthOptions = {
 
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: newSession }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role: Role }).role;
         token.email = user.email;
         token.name = user.name;
         token.activeCampaignId = (user as { activeCampaignId?: string | null }).activeCampaignId ?? null;
+        const u = user as { requires2FA?: boolean; twoFactorVerified?: boolean };
+        token.requires2FA = u.requires2FA ?? false;
+        token.twoFactorVerified = u.twoFactorVerified ?? false;
+      }
+      // When the client calls session.update({ twoFactorVerified: true }) after
+      // the /2fa-verify step succeeds, mark the JWT as verified.
+      if (trigger === "update" && newSession && typeof newSession === "object") {
+        const s = newSession as { twoFactorVerified?: boolean; activeCampaignId?: string | null };
+        if (s.twoFactorVerified === true) token.twoFactorVerified = true;
+        if (typeof s.activeCampaignId === "string" || s.activeCampaignId === null) {
+          token.activeCampaignId = s.activeCampaignId ?? null;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        const user = session.user as typeof session.user & { activeCampaignId?: string | null };
+        const user = session.user as typeof session.user & {
+          activeCampaignId?: string | null;
+          requires2FA?: boolean;
+          twoFactorVerified?: boolean;
+        };
         user.id = token.id as string;
         user.role = token.role as Role;
         user.activeCampaignId = (token.activeCampaignId as string | null) ?? null;
+        user.requires2FA = Boolean(token.requires2FA);
+        user.twoFactorVerified = Boolean(token.twoFactorVerified);
       }
       return session;
     },
@@ -136,6 +154,7 @@ export const authOptions: NextAuthOptions = {
             activeCampaignId: true,
             failedLoginAttempts: true,
             lockedUntil: true,
+            twoFactorEnabled: true,
           },
         });
 
@@ -185,7 +204,11 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           activeCampaignId: user.activeCampaignId ?? null,
-        };
+          // Requires a second factor step before the session is trusted.
+          // The middleware / guarded pages must check this flag.
+          requires2FA: user.twoFactorEnabled,
+          twoFactorVerified: false,
+        } as typeof user & { requires2FA: boolean; twoFactorVerified: boolean };
       },
     }),
     ...oauthProviders,

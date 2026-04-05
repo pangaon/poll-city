@@ -72,6 +72,21 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 2FA step-up: if password is verified but second factor isn't, the only
+  // pages the user can reach are the verify page and the API it calls.
+  const requires2FA = Boolean(token.requires2FA);
+  const twoFactorVerified = Boolean(token.twoFactorVerified);
+  if (requires2FA && !twoFactorVerified) {
+    const isVerifyPage = path === "/2fa-verify";
+    const isVerifyApi = path.startsWith("/api/auth/2fa/verify") || path.startsWith("/api/auth/2fa/setup");
+    const isLogout = path.startsWith("/api/auth/signout") || path.startsWith("/api/auth/session");
+    if (!isVerifyPage && !isVerifyApi && !isLogout) {
+      const url = new URL("/2fa-verify", req.url);
+      url.searchParams.set("callbackUrl", req.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   return NextResponse.next();
 }
 

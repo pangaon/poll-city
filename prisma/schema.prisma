@@ -209,38 +209,55 @@ enum BudgetItemType {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  name             String?
-  passwordHash     String
-  role             Role      @default(VOLUNTEER)
-  avatarUrl        String?
-  phone            String?
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  passwordHash         String
+  role                 Role      @default(VOLUNTEER)
+  avatarUrl            String?
+  phone                String?
   // Multi-campaign: which campaign this user is currently viewing
   // Set on login and updated via /api/campaigns/switch
-  activeCampaignId String?
+  activeCampaignId     String?
   // Geo fields for Social users
-  postalCode       String?
-  address          String?
-  ward             String?
-  riding           String?
-  geoLat           Float?
-  geoLng           Float?
+  postalCode           String?
+  address              String?
+  ward                 String?
+  riding               String?
+  geoLat               Float?
+  geoLng               Float?
   // Social preferences
-  emailVerified    Boolean   @default(false)
-  pushEnabled      Boolean   @default(true)
-  notifyElections  Boolean   @default(true)
-  notifyPolls      Boolean   @default(true)
-  isActive         Boolean   @default(true)
-  lastLoginAt      DateTime?
+  emailVerified        Boolean   @default(false)
+  pushEnabled          Boolean   @default(true)
+  notifyElections      Boolean   @default(true)
+  notifyPolls          Boolean   @default(true)
+  isActive             Boolean   @default(true)
+  lastLoginAt          DateTime?
   // Password reset
   passwordResetToken   String?   @unique
   passwordResetExpiry  DateTime?
   // Account lockout
   failedLoginAttempts  Int       @default(0)
   lockedUntil          DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  // Two-factor authentication (TOTP)
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?
+  twoFactorBackupCodes String[]  @default([])
+  twoFactorVerifiedAt  DateTime?
+  // Email OTP
+  emailOtpCode         String?
+  emailOtpExpiry       DateTime?
+  emailOtpAttempts     Int       @default(0)
+  // SMS OTP
+  smsOtpCode           String?
+  smsOtpExpiry         DateTime?
+  smsOtpAttempts       Int       @default(0)
+  // WebAuthn (Face ID, Touch ID, Windows Hello)
+  webauthnCredentials  Json      @default("[]")
+  // Security preferences
+  preferredMfaMethod   String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Campaign side
   memberships          Membership[]
@@ -308,6 +325,10 @@ model Campaign {
   pageViews              Int          @default(0)
   votedDisplayMode       String       @default("strikethrough")
   onboardingComplete     Boolean      @default(false)
+  // Campaign-level security enforcement
+  require2FA             Boolean      @default(false)
+  allowedIpRanges        String[]     @default([])
+  sessionTimeoutHours    Int          @default(24)
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
@@ -2184,4 +2205,20 @@ model OfficialOutreach {
 
   @@index([officialId, sentAt])
   @@map("official_outreach")
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  ip        String?
+  userAgent String?
+  location  String?
+  success   Boolean
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@map("security_events")
 }
