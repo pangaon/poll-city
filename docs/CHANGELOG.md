@@ -1,5 +1,36 @@
 # Poll City Changelog
 
+## [4.0.6] - April 5, 2026 — SECURITY HARDENING + AUTONOMOUS OPS BASELINE
+
+### Critical Security Remediation
+- Fixed officials directory dedupe key logic to deduplicate by name + level + province.
+- Added password reset API flow:
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password`
+  - `GET /api/auth/verify-reset-token`
+- Added password policy validator (`src/lib/auth/password-policy.ts`).
+- Added account lockout protections to credentials auth (5-fail and 10-fail lock windows).
+- Enforced Turnstile fail-closed behavior in production when secret key is missing.
+- Hardened health endpoint to expose operational details only with `x-health-secret` and `HEALTH_CHECK_SECRET`.
+- Replaced interactions export fixed `take: 10000` with streamed batch export.
+
+### Data Safety and Ops
+- Ran officials dedupe cleanup successfully (`npm run db:dedupe`) with no destructive duplicates detected in current dataset.
+- Added `HEALTH_CHECK_SECRET` documentation in environment variables guide.
+
+### Shared Types Foundation
+- Added `packages/shared-types/index.ts` with core cross-platform types and API wrappers.
+- Added npm workspaces configuration for package-level sharing.
+
+### Autonomous Bot Operations
+- Added AI bot operating pack, deployment checklist, and runbook docs.
+- Added machine-readable bot role registry (`ops/ai-bots/bots.yaml`).
+- Added daily bot reporting template.
+- Added enterprise CI gate workflow and local gate scripts:
+  - security gate checks
+  - API contract checks
+  - daily ops command orchestration
+
 ## [4.0.5] - April 5, 2026 — ENTERPRISE IMPORT + CRM PERSISTENCE
 
 ### Server-Backed CRM Column Preferences

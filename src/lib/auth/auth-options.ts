@@ -134,6 +134,8 @@ export const authOptions: NextAuthOptions = {
             isActive: true,
             passwordHash: true,
             activeCampaignId: true,
+            failedLoginAttempts: true,
+            lockedUntil: true,
           },
         });
 
@@ -145,14 +147,36 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Your account has been deactivated");
         }
 
+        if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+          const minutesRemaining = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+          throw new Error(`Account locked. Try again in ${minutesRemaining} minute(s).`);
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isPasswordValid) {
+          const failedAttempts = user.failedLoginAttempts + 1;
+          let lockMs = 0;
+          if (failedAttempts >= 10) lockMs = 60 * 60 * 1000;
+          else if (failedAttempts >= 5) lockMs = 15 * 60 * 1000;
+
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: failedAttempts,
+              lockedUntil: lockMs > 0 ? new Date(Date.now() + lockMs) : null,
+            },
+          });
+
           throw new Error("Invalid email or password");
         }
 
         await prisma.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: new Date() },
+          data: {
+            lastLoginAt: new Date(),
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+          },
         });
 
         return {

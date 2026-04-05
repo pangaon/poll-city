@@ -2,6 +2,10 @@
   "name": "poll-city",
   "version": "1.3.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

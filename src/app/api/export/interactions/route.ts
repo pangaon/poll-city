@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
-import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
+import { exportFilename } from "@/lib/export/csv";
+
+function csvCell(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,51 +30,89 @@ export async function GET(req: NextRequest) {
       select: { slug: true },
     });
 
-    const interactions = await prisma.interaction.findMany({
-      where: { contact: { campaignId } },
-      include: {
-        contact: { select: { firstName: true, lastName: true, address1: true } },
-        user: { select: { name: true, email: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10000,
-    });
-
-    const rows = interactions.map((i) => ({
-      date: i.createdAt ? i.createdAt.toISOString() : "",
-      type: i.type ?? "",
-      contactName: i.contact
-        ? `${i.contact.firstName ?? ""} ${i.contact.lastName ?? ""}`.trim()
-        : "",
-      contactAddress: i.contact?.address1 ?? "",
-      canvasserName: i.user?.name ?? i.user?.email ?? "",
-      notes: i.notes ?? "",
-      supportSignal: i.supportLevel ?? "",
-    }));
-
-    const csv = rowsToCsv(rows, [
-      { key: "date", header: "date" },
-      { key: "type", header: "type" },
-      { key: "contactName", header: "contactName" },
-      { key: "contactAddress", header: "contactAddress" },
-      { key: "canvasserName", header: "canvasserName" },
-      { key: "notes", header: "notes" },
-      { key: "supportSignal", header: "supportSignal" },
-    ]);
-
     const filename = exportFilename(campaign?.slug ?? "campaign", "interactions");
 
-    await prisma.exportLog.create({
-      data: {
-        campaignId,
-        userId: session!.user.id,
-        exportType: "interactions",
-        format: "csv",
-        recordCount: rows.length,
+    let exportedRows = 0;
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(
+          encoder.encode("date,type,contactName,contactAddress,canvasserName,notes,supportSignal\n")
+        );
+
+        let cursorId: string | undefined;
+        let hasMore = true;
+
+        while (hasMore) {
+          const batch = await prisma.interaction.findMany({
+            where: { contact: { campaignId } },
+            include: {
+              contact: { select: { firstName: true, lastName: true, address1: true } },
+              user: { select: { name: true, email: true } },
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 500,
+            ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+          });
+
+          if (batch.length === 0) {
+            hasMore = false;
+            break;
+          }
+
+          const csvRows = batch
+            .map((row) => {
+              const contactName = row.contact
+                ? `${row.contact.firstName ?? ""} ${row.contact.lastName ?? ""}`.trim()
+                : "";
+
+              const values = [
+                row.createdAt ? row.createdAt.toISOString() : "",
+                row.type ?? "",
+                contactName,
+                row.contact?.address1 ?? "",
+                row.user?.name ?? row.user?.email ?? "",
+                row.notes ?? "",
+                row.supportLevel ?? "",
+              ];
+
+              return values.map((value) => csvCell(String(value))).join(",");
+            })
+            .join("\n");
+
+          controller.enqueue(encoder.encode(csvRows + "\n"));
+          exportedRows += batch.length;
+
+          if (batch.length < 500) {
+            hasMore = false;
+          } else {
+            cursorId = batch[batch.length - 1]?.id;
+          }
+        }
+
+        await prisma.exportLog.create({
+          data: {
+            campaignId,
+            userId: session!.user.id,
+            exportType: "interactions",
+            format: "csv",
+            recordCount: exportedRows,
+          },
+        });
+
+        controller.close();
       },
     });
 
-    return csvResponse(csv, filename);
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "no-store",
+      },
+    });
   } catch (err) {
     console.error("Interactions export failed:", err);
     return NextResponse.json({ error: "Export failed" }, { status: 500 });

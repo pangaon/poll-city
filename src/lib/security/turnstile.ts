@@ -20,7 +20,12 @@ export function isTurnstileEnabled(): boolean {
 export async function verifyTurnstileToken(req: NextRequest, token?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) {
-    return true;
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[Turnstile] Key not set — bypassing in development");
+      return true;
+    }
+    console.error("[Turnstile] TURNSTILE_SECRET_KEY not set in production — blocking");
+    return false;
   }
 
   if (!token || token.trim().length === 0) {

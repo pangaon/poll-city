@@ -241,6 +241,7 @@ const PRODUCTS = [
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
       "Nationwide representative and electoral-boundary ingestion across all Canadian jurisdictions",
       "CAPTCHA-protected public supporter, volunteer, sign request, and profile-claim forms",
+      "Security hardening release: password reset flow, account lockout controls, fail-closed anti-bot validation, and protected health diagnostics",
       "Validated campaign setup wizard with municipal province and ward guidance",
       "Resilient sign-in with dynamic Google and Apple OAuth availability checks",
       "Live location and riding detection status for social voter profiles",

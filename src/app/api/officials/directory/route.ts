@@ -62,20 +62,11 @@ export async function GET(req: NextRequest) {
     phone: string | null;
   };
 
-  const dedupedOfficials = await prisma.$queryRaw<OfficialRow[]>`
+  const filteredOfficials = await prisma.$queryRaw<OfficialRow[]>`
     WITH filtered AS (
       SELECT *
       FROM "officials"
       ${whereClause}
-    ),
-    deduped AS (
-      SELECT DISTINCT ON ("name", "district") *
-      FROM filtered
-      ORDER BY
-        "name" ASC,
-        "district" ASC,
-        ("photoUrl" IS NULL) ASC,
-        "updatedAt" DESC
     )
     SELECT
       "id",
@@ -97,36 +88,26 @@ export async function GET(req: NextRequest) {
       "externalId",
       "email",
       "phone"
-    FROM deduped
+    FROM filtered
     ORDER BY "isClaimed" DESC, "isActive" DESC, "name" ASC
-    OFFSET ${(page - 1) * pageSize}
-    LIMIT ${pageSize}
   `;
 
-  const totalRows = await prisma.$queryRaw<Array<{ total: bigint }>>`
-    WITH filtered AS (
-      SELECT *
-      FROM "officials"
-      ${whereClause}
-    ),
-    deduped AS (
-      SELECT DISTINCT ON ("name", "district") *
-      FROM filtered
-      ORDER BY
-        "name" ASC,
-        "district" ASC,
-        ("photoUrl" IS NULL) ASC,
-        "updatedAt" DESC
-    )
-    SELECT COUNT(*)::bigint AS total
-    FROM deduped
-  `;
+  const seen = new Set<string>();
+  const dedupedOfficials = filteredOfficials.filter((official) => {
+    const key = `${official.name.toLowerCase()}|${String(official.level).toLowerCase()}|${(
+      official.province ?? ""
+    ).toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  const total = Number(totalRows[0]?.total ?? 0);
+  const total = dedupedOfficials.length;
+  const paginatedOfficials = dedupedOfficials.slice((page - 1) * pageSize, page * pageSize);
 
-  const campaignRows = dedupedOfficials.length
+  const campaignRows = paginatedOfficials.length
     ? await prisma.campaign.findMany({
-        where: { officialId: { in: dedupedOfficials.map((o) => o.id) } },
+        where: { officialId: { in: paginatedOfficials.map((o) => o.id) } },
         select: { officialId: true, slug: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       })
@@ -148,7 +129,7 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const mapped = dedupedOfficials.map((o) => ({
+  const mapped = paginatedOfficials.map((o) => ({
     id: o.id,
     name: o.name,
     title: o.title,

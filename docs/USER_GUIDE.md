@@ -1,5 +1,46 @@
 # Poll City User Guide
 
+## v4.0.6 Security Hardening + Bot Ops Addendum — April 5, 2026
+
+### Password Recovery SOP
+
+1. Users can request reset links via `POST /api/auth/forgot-password`.
+2. Reset links expire in 1 hour and use unique one-time tokens.
+3. The API always returns success to prevent email enumeration.
+4. Reset attempts are rate-limited per email.
+
+### Password Reset and Account Lockout
+
+1. Password reset requires a valid token and policy-compliant password.
+2. Password rules: minimum 10 characters, uppercase, lowercase, number, and special character.
+3. Credentials login now locks accounts after repeated failures:
+   - 15 minutes after 5 failed attempts
+   - 1 hour after 10 failed attempts
+4. Successful login or successful reset clears lockout counters.
+
+### Health Endpoint Security
+
+1. Public `/api/health` now returns only basic liveness metadata.
+2. Internal diagnostics require `x-health-secret` header matching `HEALTH_CHECK_SECRET`.
+3. Do not expose `HEALTH_CHECK_SECRET` publicly.
+
+### Export Safety and Scale
+
+1. Interactions export now streams in batches instead of large in-memory fetches.
+2. This improves reliability for large campaigns and reduces memory pressure.
+
+### Anti-Bot Protection Fail-Safe
+
+1. In production, Turnstile now fails closed when secret keys are missing.
+2. Development environments can still bypass when keys are intentionally absent.
+
+### AI Bot Operations
+
+1. Bot operation pack: `docs/AI_BOT_OPERATING_PACK.md`.
+2. Deployment checklist: `docs/AI_BOT_DEPLOYMENT_CHECKLIST.md`.
+3. Daily runbook: `docs/AI_BOT_RUNBOOK.md`.
+4. Daily report template: `ops/ai-bots/templates/daily-report-template.md`.
+
 ## v4.0.5 Enterprise Import + CRM Persistence Addendum — April 5, 2026
 
 ### CRM Column Preferences (Server-Synced)

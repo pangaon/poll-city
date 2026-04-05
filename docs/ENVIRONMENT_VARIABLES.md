@@ -24,6 +24,7 @@ All environment variables used by Poll City. Required vars must be set or the ap
 | `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Bot protection on public forms (fails closed in production) |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Distributed rate limiting (upstash.com) |
 | `CRON_SECRET` | Vercel cron auth header — required for scheduled jobs |
+| `HEALTH_CHECK_SECRET` | Internal health diagnostics header (`x-health-secret`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth sign-in |
 | `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET` | Apple OAuth sign-in |
 
