@@ -26,6 +26,29 @@ function greetingByTime(): string {
   return "Good evening";
 }
 
+const DAD_JOKES: readonly string[] = [
+  "Why did the candidate cross the road? To canvass the other side.",
+  "I told my door-knocker a joke about elections — they didn't find it polling.",
+  "What do you call a lawn sign that sings? A jingle bell.",
+  "Why don't politicians play hide and seek? Good luck hiding when you've taken a clear position.",
+  "My campaign manager said I need more door knocks. I said, knock yourself out.",
+  "Why did the volunteer bring a ladder to the rally? They heard the stakes were high.",
+  "I asked Adoni for a joke. They said: polling data. I'm still waiting for the punchline.",
+  "What's a politician's favourite fish? The debate herring.",
+  "Why was the ballot box so calm? Because it had a lot of inner reflection.",
+  "I tried writing a canvass script in Morse code. It was too short on dashes.",
+  "Our GOTV plan is so good, even the non-voters RSVP'd.",
+  "Why did the budget spreadsheet go to therapy? Too many unbalanced feelings.",
+  "What do you call it when a candidate eats too much? A super-majority.",
+  "I keep telling my staff to think outside the box. They keep handing me door hangers.",
+  "Why don't elections work well in libraries? Too many quiet majorities.",
+  "My press release was so bad, even the printer refused to comment.",
+  "What do you call a calm city council? Silent majority. Literally.",
+  "I ran for office once. Then I walked the rest of the way.",
+  "Why did the GOTV list go to the gym? To work on its strike count.",
+  "My turf was so tough, the map app asked for a raise.",
+];
+
 export default function AdoniButton() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -34,6 +57,8 @@ export default function AdoniButton() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [suggestion, setSuggestion] = useState<string>("");
   const [contextLine, setContextLine] = useState<string>("");
+  const [waving, setWaving] = useState(false);
+  const [joke, setJoke] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -88,6 +113,26 @@ export default function AdoniButton() {
       scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
     }
   }, [messages, streaming]);
+
+  // Periodic wave + dad joke. First wave after 8s, then every 90s while closed.
+  useEffect(() => {
+    if (open) return;
+    const triggerWave = () => {
+      const randomJoke = DAD_JOKES[Math.floor(Math.random() * DAD_JOKES.length)];
+      setJoke(randomJoke);
+      setWaving(true);
+      // Wave for 2.5s
+      window.setTimeout(() => setWaving(false), 2500);
+      // Hide joke after 7s
+      window.setTimeout(() => setJoke(null), 7000);
+    };
+    const initial = window.setTimeout(triggerWave, 8000);
+    const interval = window.setInterval(triggerWave, 90_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [open]);
 
   const assistantIntro = useMemo(
     () => `${greetingByTime()}. I'm Adoni. I can help with strategy, targeting, and execution on this page.`,
@@ -155,26 +200,69 @@ export default function AdoniButton() {
   return (
     <>
       {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="fixed z-40 rounded-full overflow-hidden shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-transform ring-2 ring-white/40"
+        <div
+          className="fixed z-40"
           style={{
             bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
             right: "1.25rem",
-            height: "60px",
-            width: "60px",
           }}
-          aria-label="Ask Adoni"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/adoni-bubble.png"
-            alt="Ask Adoni"
-            className="h-full w-full object-cover"
-            style={{ borderRadius: "50%" }}
-          />
-        </button>
+          {/* Joke speech bubble */}
+          {joke && (
+            <div
+              className="absolute bottom-[72px] right-0 w-64 max-w-[calc(100vw-2.5rem)] bg-white border border-blue-200 rounded-2xl rounded-br-sm shadow-xl p-3 text-sm text-slate-800 animate-[adoni-pop_0.3s_ease-out]"
+              role="status"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setJoke(null);
+                }}
+                className="absolute top-1 right-1 text-slate-400 hover:text-slate-700 w-6 h-6 rounded-full flex items-center justify-center"
+                aria-label="Dismiss joke"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <p className="font-semibold text-blue-900 text-xs uppercase tracking-wide mb-1">
+                👋 Adoni
+              </p>
+              <p className="pr-4 leading-snug">{joke}</p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-full overflow-hidden shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-transform ring-2 ring-white/40 block"
+            style={{
+              height: "60px",
+              width: "60px",
+              transformOrigin: "bottom center",
+              animation: waving ? "adoni-wave 0.6s ease-in-out 3" : undefined,
+            }}
+            aria-label="Ask Adoni"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/adoni-bubble.png"
+              alt="Ask Adoni"
+              className="h-full w-full object-cover"
+              style={{ borderRadius: "50%" }}
+            />
+          </button>
+          <style jsx>{`
+            @keyframes adoni-wave {
+              0%, 100% { transform: rotate(0deg); }
+              25% { transform: rotate(-14deg); }
+              50% { transform: rotate(12deg); }
+              75% { transform: rotate(-8deg); }
+            }
+            @keyframes adoni-pop {
+              0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+              100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
+        </div>
       )}
 
       {open && (
