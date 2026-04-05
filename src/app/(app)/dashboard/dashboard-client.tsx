@@ -11,6 +11,7 @@ import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContaine
 import { StatCard, Card, CardHeader, CardContent, Badge } from "@/components/ui";
 import { formatRelative, fullName } from "@/lib/utils";
 import { INTERACTION_TYPE_LABELS } from "@/types";
+import { useMilestone } from "@/lib/hooks/useMilestone";
 
 /* ── Types ── */
 interface OfficialInfo {
@@ -332,6 +333,45 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   ];
 
   const gotvReadiness = Math.min(100, data.totalContacts > 0 ? Math.round((data.supporters / data.totalContacts) * 100) : 0);
+
+  // Milestone celebrations — Adoni animates when these thresholds are crossed.
+  // Each milestone only fires once ever per campaign (stored in localStorage).
+  useMilestone(
+    "contacts",
+    data.totalContacts,
+    [100, 250, 500, 1000, 2500, 5000] as const,
+    (v) => `${v.toLocaleString()} contacts in the database — that's a real campaign.`,
+    campaign.id,
+  );
+  useMilestone(
+    "supporters",
+    data.supporters,
+    [25, 50, 100, 250, 500, 1000] as const,
+    (v) => `${v} confirmed supporters. Keep stacking.`,
+    campaign.id,
+  );
+  useMilestone(
+    "volunteers",
+    volunteerCount,
+    [5, 10, 25, 50, 100] as const,
+    (v) => `${v} volunteers on board. This is how campaigns win.`,
+    campaign.id,
+  );
+  useMilestone(
+    "signs",
+    extraData.signs,
+    [10, 25, 50, 100, 250] as const,
+    (v) => `${v} signs up — your name is in the neighbourhood.`,
+    campaign.id,
+  );
+  useMilestone(
+    "interactions",
+    data.recentInteractions.length > 0 ? data.totalContacts : 0, // proxy for door count
+    [100, 500, 1000, 2500, 5000] as const,
+    (v) => `${v.toLocaleString()} doors knocked. Doors = votes. Keep going.`,
+    campaign.id,
+  );
+
   const ringStyle = {
     background: `conic-gradient(#2563eb ${(healthScore / 100) * 360}deg, #e5e7eb 0deg)`,
   };

@@ -1,5 +1,16 @@
 # Poll City Changelog
 
+## [4.0.18] - April 5, 2026 — DRAG-AND-DROP LIST IMPORT UX
+
+### Import/Export Usability
+- Added true drag-and-drop file upload support to `/import-export` for both voter list and phone list files.
+- Added active drop-zone visual feedback so operators can see when a file will be accepted.
+- Kept click-to-upload behavior as fallback for accessibility and device compatibility.
+- Added file-extension validation for dropped files (`.csv`, `.tsv`, `.txt`, `.xls`, `.xlsx`) with clear operator errors.
+
+### Outcome
+- Operators can now import lists using the workflow they expect (drop files directly into the app), reducing friction in campaign onboarding and daily list operations.
+
 ## [4.0.17] - April 5, 2026 — FULL-FINISH EXECUTION STANDARD + DASHBOARD SERVER SYNC
 
 ### Delivery Standard Hardening

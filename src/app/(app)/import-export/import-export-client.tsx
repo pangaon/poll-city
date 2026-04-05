@@ -149,6 +149,8 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [matchingPhoneList, setMatchingPhoneList] = useState(false);
   const [importing, setImporting] = useState(false);
   const [bulkExporting, setBulkExporting] = useState(false);
+  const [dragMainActive, setDragMainActive] = useState(false);
+  const [dragPhoneActive, setDragPhoneActive] = useState(false);
 
   const [result, setResult] = useState<ImportResult | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicatePreview | null>(null);
@@ -252,6 +254,30 @@ export default function ImportExportClient({ campaignId }: Props) {
   async function handlePhoneFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhoneFile(file);
+    await analyzeFile(file, true);
+  }
+
+  function isAcceptedImportFile(filename: string) {
+    return /\.(csv|tsv|txt|xls|xlsx)$/i.test(filename);
+  }
+
+  async function handleMainFileDrop(file: File | null) {
+    if (!file) return;
+    if (!isAcceptedImportFile(file.name)) {
+      toast.error("Unsupported file type. Use .csv, .tsv, .txt, .xls, or .xlsx");
+      return;
+    }
+    setSelectedFile(file);
+    await analyzeFile(file, false);
+  }
+
+  async function handlePhoneFileDrop(file: File | null) {
+    if (!file) return;
+    if (!isAcceptedImportFile(file.name)) {
+      toast.error("Unsupported file type. Use .csv, .tsv, .txt, .xls, or .xlsx");
+      return;
+    }
     setPhoneFile(file);
     await analyzeFile(file, true);
   }
@@ -556,10 +582,35 @@ export default function ImportExportClient({ campaignId }: Props) {
             </Button>
           </div>
 
-          <label className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+          <label
+            className={`flex flex-col items-center gap-3 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+              dragMainActive
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/30"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragMainActive(true);
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              setDragMainActive(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+              setDragMainActive(false);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              setDragMainActive(false);
+              const file = e.dataTransfer.files?.[0] ?? null;
+              await handleMainFileDrop(file);
+            }}
+          >
             {analyzing ? <Loader2 className="w-8 h-8 text-blue-500 animate-spin" /> : <Upload className="w-8 h-8 text-gray-400" />}
             <div className="text-center">
-              <p className="text-sm font-medium text-gray-700">Choose voter list file</p>
+              <p className="text-sm font-medium text-gray-700">Choose or drop voter list file</p>
               <p className="text-xs text-gray-400 mt-0.5">Supports .csv, .tsv, .txt, .xls, .xlsx</p>
             </div>
             <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xls,.xlsx" className="hidden" onChange={handleMainFileSelect} />
@@ -631,10 +682,35 @@ export default function ImportExportClient({ campaignId }: Props) {
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">Upload a second file (phone list) and run fuzzy matching with optional AI support for grey-zone records.</p>
 
-          <label className="flex flex-col items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors">
+          <label
+            className={`flex flex-col items-center gap-3 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+              dragPhoneActive
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-blue-400 hover:bg-blue-50/30"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragPhoneActive(true);
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              setDragPhoneActive(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+              setDragPhoneActive(false);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              setDragPhoneActive(false);
+              const file = e.dataTransfer.files?.[0] ?? null;
+              await handlePhoneFileDrop(file);
+            }}
+          >
             {analyzingPhone ? <Loader2 className="w-7 h-7 text-blue-500 animate-spin" /> : <Upload className="w-7 h-7 text-gray-400" />}
             <div className="text-center">
-              <p className="text-sm font-medium text-gray-700">Choose phone list file</p>
+              <p className="text-sm font-medium text-gray-700">Choose or drop phone list file</p>
             </div>
             <input ref={phoneFileRef} type="file" accept=".csv,.tsv,.txt,.xls,.xlsx" className="hidden" onChange={handlePhoneFileSelect} />
           </label>

@@ -1,5 +1,16 @@
 # Poll City User Guide
 
+## v4.0.18 Drag-and-Drop Import Addendum — April 5, 2026
+
+### Drag-and-Drop Upload (`/import-export`)
+
+1. Open Import / Export.
+2. Drag a voter list file directly into the voter upload drop zone.
+3. Drag a phone list file directly into the phone upload drop zone when running list matching.
+4. Supported file types are `.csv`, `.tsv`, `.txt`, `.xls`, and `.xlsx`.
+5. If a file type is unsupported, Poll City shows a clear validation message.
+6. Click-to-upload remains available if you prefer not to drag and drop.
+
 ## v4.0.17 Dashboard Layout Sync Addendum — April 5, 2026
 
 ### Cross-Device Dashboard Widget Layout Persistence (`/dashboard`)

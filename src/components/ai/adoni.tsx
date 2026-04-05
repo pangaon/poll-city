@@ -96,7 +96,7 @@ const PAGE_TIPS: Record<string, string[]> = {
   ],
 };
 
-type MessageKind = "joke" | "encouragement" | "tip";
+type MessageKind = "joke" | "encouragement" | "tip" | "celebration";
 interface AdoniMessage { kind: MessageKind; text: string; }
 
 function pickOne<T>(arr: readonly T[]): T {
@@ -131,8 +131,50 @@ export default function AdoniButton() {
   const [suggestion, setSuggestion] = useState<string>("");
   const [contextLine, setContextLine] = useState<string>("");
   const [waving, setWaving] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
   const [message, setMessage] = useState<AdoniMessage | null>(null);
+  const [muted, setMuted] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  // Load mute preference on mount
+  useEffect(() => {
+    try {
+      setMuted(localStorage.getItem("adoni:muted") === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function toggleMuted() {
+    setMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("adoni:muted", next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      if (next) setMessage(null);
+      return next;
+    });
+  }
+
+  // Milestone celebration — fired when any page dispatches a window event.
+  // Example: window.dispatchEvent(new CustomEvent("pollcity:milestone", {
+  //   detail: { metric: "signs", value: 50, label: "50 signs installed" }
+  // }))
+  useEffect(() => {
+    function onMilestone(ev: Event) {
+      if (muted || open) return;
+      const detail = (ev as CustomEvent).detail as { label?: string; value?: number; metric?: string } | undefined;
+      if (!detail?.label) return;
+      setMessage({ kind: "celebration" as MessageKind, text: detail.label });
+      setCelebrating(true);
+      window.setTimeout(() => setCelebrating(false), 2400);
+      window.setTimeout(() => setMessage(null), 8000);
+    }
+    window.addEventListener("pollcity:milestone", onMilestone as EventListener);
+    return () => window.removeEventListener("pollcity:milestone", onMilestone as EventListener);
+  }, [muted, open]);
 
   useEffect(() => {
     try {
@@ -191,7 +233,7 @@ export default function AdoniButton() {
   // 2-3 minutes while the chat is closed. Picks a joke, encouragement, or a
   // page-specific tip based on the current route + time of day.
   useEffect(() => {
-    if (open) return;
+    if (open || muted) return;
     const triggerWave = () => {
       setMessage(pickMessage(pathname));
       setWaving(true);
@@ -211,7 +253,7 @@ export default function AdoniButton() {
       window.clearTimeout(initial);
       window.clearTimeout(interval);
     };
-  }, [open, pathname]);
+  }, [open, pathname, muted]);
 
   const assistantIntro = useMemo(
     () => `${greetingByTime()}. I'm Adoni. I can help with strategy, targeting, and execution on this page.`,
@@ -304,13 +346,20 @@ export default function AdoniButton() {
                 <X className="w-3.5 h-3.5" />
               </button>
               <p className="font-semibold text-xs uppercase tracking-wide mb-1 flex items-center gap-1.5" style={{
-                color: message.kind === "tip" ? "#0f766e" : message.kind === "encouragement" ? "#7c3aed" : "#1e40af",
+                color:
+                  message.kind === "celebration" ? "#b45309" :
+                  message.kind === "tip" ? "#0f766e" :
+                  message.kind === "encouragement" ? "#7c3aed" : "#1e40af",
               }}>
                 <span>
-                  {message.kind === "joke" ? "👋" : message.kind === "encouragement" ? "💪" : "💡"}
+                  {message.kind === "celebration" ? "🎉"
+                    : message.kind === "joke" ? "👋"
+                    : message.kind === "encouragement" ? "💪" : "💡"}
                 </span>
                 <span>
-                  {message.kind === "joke" ? "Adoni" : message.kind === "encouragement" ? "Adoni cheering you on" : "Adoni tip"}
+                  {message.kind === "celebration" ? "Milestone unlocked!"
+                    : message.kind === "joke" ? "Adoni"
+                    : message.kind === "encouragement" ? "Adoni cheering you on" : "Adoni tip"}
                 </span>
               </p>
               <p className="pr-4 leading-snug">{message.text}</p>
@@ -324,7 +373,12 @@ export default function AdoniButton() {
               height: "60px",
               width: "60px",
               transformOrigin: "bottom center",
-              animation: waving ? "adoni-wave 0.6s ease-in-out 3" : undefined,
+              animation: celebrating
+                ? "adoni-celebrate 0.6s cubic-bezier(.34,1.56,.64,1) 4"
+                : waving
+                  ? "adoni-wave 0.6s ease-in-out 3"
+                  : undefined,
+              boxShadow: celebrating ? "0 0 0 0 rgba(245, 166, 35, 0.7)" : undefined,
             }}
             aria-label="Ask Adoni"
           >
@@ -343,6 +397,12 @@ export default function AdoniButton() {
               50% { transform: rotate(12deg); }
               75% { transform: rotate(-8deg); }
             }
+            @keyframes adoni-celebrate {
+              0% { transform: scale(1) rotate(0deg); }
+              30% { transform: scale(1.35) rotate(-12deg); box-shadow: 0 0 0 8px rgba(245,166,35,0.35); }
+              60% { transform: scale(0.95) rotate(10deg); box-shadow: 0 0 0 16px rgba(245,166,35,0); }
+              100% { transform: scale(1) rotate(0deg); box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+            }
             @keyframes adoni-pop {
               0% { opacity: 0; transform: translateY(8px) scale(0.96); }
               100% { opacity: 1; transform: translateY(0) scale(1); }
@@ -358,14 +418,26 @@ export default function AdoniButton() {
               <p className="text-sm font-bold">Adoni AI Assistant</p>
               <p className="text-[11px] text-blue-100">{contextLine || "Campaign context loading..."}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-md p-1 hover:bg-blue-800"
-              aria-label="Close Adoni"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleMuted}
+                className="rounded-md px-2 py-1 hover:bg-blue-800 text-[11px] font-semibold flex items-center gap-1"
+                aria-label={muted ? "Turn Adoni's popups on" : "Turn Adoni's popups off"}
+                title={muted ? "Adoni is quiet. Click to turn popups back on." : "Click to silence Adoni's popups"}
+              >
+                <span aria-hidden>{muted ? "🔕" : "🔔"}</span>
+                <span>{muted ? "Quiet" : "Vibes on"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-md p-1 hover:bg-blue-800"
+                aria-label="Close Adoni"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="border-b border-slate-200 bg-blue-50 px-4 py-3 text-sm text-slate-700">

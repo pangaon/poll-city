@@ -239,6 +239,7 @@ const PRODUCTS = [
       "Volunteer onboarding links, group leadership, and shift check-ins",
       "Sign tracking with map view",
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
+      "Drag-and-drop list uploads for voter and phone files with click-to-upload fallback",
       "Enterprise quick list operations: upload CSV/XLSX, auto-map fields, run dedupe import, and export campaign ops packs in one screen",
       "Enterprise fuzzy list reconciliation: voter-list to phone-list matching with strict/balanced/aggressive modes and AI assist for ambiguous records",
       "Batch apply matched rows with select-all controls and confidence-threshold automation (e.g. auto-apply all >= 80%)",

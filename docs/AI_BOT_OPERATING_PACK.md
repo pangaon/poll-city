@@ -95,3 +95,13 @@ Run a coordinated AI workforce that behaves like a 16-role enterprise team and s
 1. Daily bot report (completed, in-progress, blockers, risk).
 2. Weekly enterprise readiness report.
 3. Release report with artifact links (build, tests, security output).
+
+## 9) Cross-Developer Communication Channel
+
+Use repository artifacts as the shared communication bus:
+
+1. docs/PROGRESS_LOG.md is the canonical handoff timeline.
+2. docs/FEATURE_EXECUTION_CHECKLIST.md is the canonical feature status tracker.
+3. docs/DEVELOPER_HANDOFF_PROTOCOL.md defines start, in-progress, and completion handoff steps.
+4. docs/COORDINATION_THREAD.md is the canonical async Q/A and decision log for overlapping work.
+5. Every contributor appends updates; no silent state changes.
