@@ -25,6 +25,11 @@
 - Jurisdiction now auto-normalizes to include ward/municipality/province context when not manually entered.
 - Party/organization value now persists to `candidateTitle` on create to avoid data loss from the form.
 
+### OAuth Login Verification Completion
+- Added `GET /api/auth/providers-status` for server-side OAuth configuration introspection.
+- Updated `/login` to dynamically enable/disable Google and Apple OAuth buttons based on real provider configuration.
+- Added explicit fallback guidance when OAuth providers are unavailable, preventing broken sign-in buttons in unconfigured environments.
+
 
 ## [4.0.0] - April 5, 2026 — ENTERPRISE RELEASE
 

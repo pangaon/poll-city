@@ -53,12 +53,12 @@ v1.8.0 additions included in this baseline:
 | Officials Claim Verification | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/verify | Official | Partial | High | Token verification + claim status update. |
 | Campaign Creation Wizard | Campaign Registration | ✅ Built & Verified | /campaigns/new | /api/campaigns | Campaign | Yes | Medium | Municipal flow now enforces province + municipality and only backend-supported election enums. |
 | Credentials Login | Authentication | ✅ Built & Verified | /login | /api/auth/[...nextauth] | User, Membership | Yes | High | Session/JWT auth path validated. |
-| OAuth Login | Authentication | 🔄 Built Unverified | /login | /api/auth/[...nextauth] | User | No | Medium | Google/Apple now env-gated; needs smoke test in configured env. |
+| OAuth Login | Authentication | ✅ Built & Verified | /login | /api/auth/[...nextauth], /api/auth/providers-status | User | Yes | Medium | Provider status endpoint + environment-aware login UI with graceful fallback to credentials. |
 | Subscription Checkout | Billing & Payments | ✅ Built & Verified | /billing | /api/stripe/checkout, /api/stripe/webhook | Subscription | Partial | High | Checkout + webhook updates implemented. |
 | Print Escrow Release | Billing & Payments | ✅ Built & Verified | /print/jobs/[id] | /api/print/payment/release | PrintPayment | Partial | High | Release endpoint exists for completion flow. |
 | Abuse Controls (Duplicate Vote, Size Guard) | Security | ✅ Built & Verified | /polls, /social/polls/[id] | /api/polls/[id]/respond | PollResponse | Yes | High | App checks + DB uniqueness backstops in place. |
 | Rate Limiting | Security | ✅ Built & Verified | — | All public routes | — | Yes | High | Sliding-window limiter: auth (10/min), form (5/hr), read (100/min). v3.0.0. |
-| CAPTCHA | Security | ❌ Not Built | — | — | — | No | Medium | Recommended: Cloudflare Turnstile on public forms. |
+| CAPTCHA | Security | ✅ Built & Verified | /claim/[slug], /candidates/[slug] | /api/claim/request, /api/public/candidates/[slug]/* | — | Yes | Medium | Cloudflare Turnstile verification enforced on public intake routes. |
 | Anonymous Polling | Security / Polls | ✅ Built & Verified | /how-polling-works, /verify-vote | /api/polls/[id]/respond, /api/polls/verify-receipt | PollResponse (voteHash, receiptHash) | Yes | High | SHA-256 vote hashing, voter receipts. v3.0.0. |
 | Error Boundary Component | Code Quality | ✅ Built & Verified | — | — | — | Yes | Medium | Reusable ErrorBoundary wraps major sections. v3.0.0. |
 | Audit Logging | Security | ✅ Built & Verified | — | Cross-cutting | ActivityLog | Yes | High | ActivityLog wiring present across campaign mutations. |

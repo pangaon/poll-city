@@ -241,6 +241,7 @@ const PRODUCTS = [
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
       "CAPTCHA-protected public supporter, volunteer, and sign request forms",
       "Validated campaign setup wizard with municipal province and ward guidance",
+      "Resilient sign-in with dynamic Google and Apple OAuth availability checks",
       "Donation tracking and pledge management",
       "Budget tracker with allocation versus actual spend",
       "Volunteer expenses and reimbursement workflow",

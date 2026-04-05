@@ -20,6 +20,13 @@
 4. Jurisdiction auto-fills from ward/municipality/province but can still be edited manually.
 5. Party or organization entered in the wizard is saved on campaign create.
 
+### OAuth Login Availability SOP (`/login`)
+
+1. Google and Apple sign-in buttons now reflect real environment configuration.
+2. If a provider is not configured, its button is disabled and clearly labelled unavailable.
+3. If no OAuth providers are configured, the login page shows an explicit notice to use email/password.
+4. This prevents failed OAuth redirects in staging or partially configured deployments.
+
 
 ## v4.0.0 Enterprise Release SOP Addendum — April 5, 2026
 
