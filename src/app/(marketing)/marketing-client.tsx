@@ -242,6 +242,7 @@ const PRODUCTS = [
       "CAPTCHA-protected public supporter, volunteer, and sign request forms",
       "Validated campaign setup wizard with municipal province and ward guidance",
       "Resilient sign-in with dynamic Google and Apple OAuth availability checks",
+      "Live location and riding detection status for social voter profiles",
       "Donation tracking and pledge management",
       "Budget tracker with allocation versus actual spend",
       "Volunteer expenses and reimbursement workflow",

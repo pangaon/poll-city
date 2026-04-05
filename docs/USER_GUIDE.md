@@ -27,6 +27,13 @@
 3. If no OAuth providers are configured, the login page shows an explicit notice to use email/password.
 4. This prevents failed OAuth redirects in staging or partially configured deployments.
 
+### Social Profile Location Detection SOP (`/social/profile`)
+
+1. Open Profile in Poll City Social.
+2. The Location & riding card now displays live profile detection status.
+3. If status is `Detected`, your postal code/ward/riding data is available for civic context features.
+4. If status is `Needs update`, complete your profile location details to improve representative matching.
+
 
 ## v4.0.0 Enterprise Release SOP Addendum — April 5, 2026
 

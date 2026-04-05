@@ -30,6 +30,11 @@
 - Updated `/login` to dynamically enable/disable Google and Apple OAuth buttons based on real provider configuration.
 - Added explicit fallback guidance when OAuth providers are unavailable, preventing broken sign-in buttons in unconfigured environments.
 
+### Placeholder Elimination — Social Profile
+- Replaced the `Coming soon` location/riding stub on `/social/profile` with live user location data.
+- Added `GET /api/social/profile` endpoint to return authenticated user postal code, ward, riding, and address fields.
+- Social profile now shows real detection status (`Detected` / `Needs update`) based on actual data instead of placeholder text.
+
 
 ## [4.0.0] - April 5, 2026 — ENTERPRISE RELEASE
 

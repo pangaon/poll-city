@@ -173,6 +173,59 @@ function NotificationSubscriptionsSection() {
   );
 }
 
+function LocationDetectionSection() {
+  const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState<{
+    postalCode: string | null;
+    ward: string | null;
+    riding: string | null;
+    address: string | null;
+  }>({
+    postalCode: null,
+    ward: null,
+    riding: null,
+    address: null,
+  });
+
+  useEffect(() => {
+    fetch("/api/social/profile", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { data: null }))
+      .then((json) => {
+        if (json.data) {
+          setLocation(json.data);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const hasLocation = Boolean(location.postalCode || location.ward || location.riding || location.address);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <MapPin className="w-4 h-4 text-gray-400" />
+        <span className="text-sm text-gray-700 flex-1">Location & riding detection</span>
+        <span
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            loading
+              ? "bg-gray-100 text-gray-500"
+              : hasLocation
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {loading ? "Loading" : hasLocation ? "Detected" : "Needs update"}
+        </span>
+      </div>
+      <div className="px-4 py-3 text-xs text-gray-500 space-y-1.5">
+        <p><span className="text-gray-400">Postal code:</span> {location.postalCode ?? "Not set"}</p>
+        <p><span className="text-gray-400">Ward:</span> {location.ward ?? "Not set"}</p>
+        <p><span className="text-gray-400">Riding:</span> {location.riding ?? "Not set"}</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Consent section ─────────────────────────────────────────────────────────
 
 function ConsentSection() {
@@ -464,14 +517,7 @@ export default function SocialProfile() {
       {/* Push notification opt-ins */}
       <NotificationSubscriptionsSection />
 
-      {/* Settings stubs */}
-      <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <MapPin className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-600 flex-1">Location & riding detection</span>
-          <span className="text-xs text-gray-400">Coming soon</span>
-        </div>
-      </div>
+      <LocationDetectionSection />
 
       <button
         onClick={() => signOut({ callbackUrl: "/social" })}
