@@ -37,8 +37,18 @@ export default function AdoniButton() {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setOpen(true), 900);
-    return () => clearTimeout(timer);
+    try {
+      const hasAutoOpened = sessionStorage.getItem("adoni:auto-opened") === "1";
+      if (hasAutoOpened) return;
+      const timer = setTimeout(() => {
+        setOpen(true);
+        sessionStorage.setItem("adoni:auto-opened", "1");
+      }, 900);
+      return () => clearTimeout(timer);
+    } catch {
+      const timer = setTimeout(() => setOpen(true), 900);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   useEffect(() => {
