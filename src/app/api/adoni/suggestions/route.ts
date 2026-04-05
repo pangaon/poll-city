@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { enforceLimit } from "@/lib/rate-limit-redis";
 
 function suggestionForPage(page: string): string[] {
   if (page.includes("contacts")) {
@@ -34,6 +35,9 @@ function suggestionForPage(page: string): string[] {
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+
+  const limited = await enforceLimit(req, "adoni", session?.user?.id);
+  if (limited) return limited;
 
   const page = req.nextUrl.searchParams.get("page") ?? "unknown";
   const userRow = await prisma.user.findUnique({

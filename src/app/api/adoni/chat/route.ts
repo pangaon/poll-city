@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { enforceLimit } from "@/lib/rate-limit-redis";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -98,6 +99,9 @@ async function completeWithAnthropic(
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+
+  const limited = await enforceLimit(req, "adoni", session?.user?.id);
+  if (limited) return limited;
 
   let body: { page?: string; messages?: ChatMessage[] };
   try {

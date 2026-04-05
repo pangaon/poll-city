@@ -2,25 +2,13 @@ import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { sendEmail } from "@/lib/email";
-
-const WINDOW_MS = 60 * 60 * 1000;
-const MAX_PER_WINDOW = 3;
-const emailRateStore = new Map<string, number[]>();
-
-function hitEmailRateLimit(email: string): boolean {
-  const now = Date.now();
-  const timestamps = (emailRateStore.get(email) ?? []).filter((ts) => now - ts < WINDOW_MS);
-  if (timestamps.length >= MAX_PER_WINDOW) {
-    emailRateStore.set(email, timestamps);
-    return true;
-  }
-  timestamps.push(now);
-  emailRateStore.set(email, timestamps);
-  return false;
-}
+import { enforceLimit, checkLimit } from "@/lib/rate-limit-redis";
 
 export async function POST(req: NextRequest) {
   try {
+    const ipLimited = await enforceLimit(req, "forgotPassword");
+    if (ipLimited) return NextResponse.json({ success: true }, { status: 200 });
+
     const body = await req.json().catch(() => null);
     const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
 
@@ -28,7 +16,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    if (hitEmailRateLimit(email)) {
+    const emailOutcome = await checkLimit("forgotPassword", `email:${email}`);
+    if (!emailOutcome.success) {
       return NextResponse.json({ success: true });
     }
 
