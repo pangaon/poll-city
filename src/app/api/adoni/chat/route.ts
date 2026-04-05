@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { enforceLimit } from "@/lib/rate-limit-redis";
+import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -13,35 +14,6 @@ function streamText(text: string): ReadableStream<Uint8Array> {
       controller.close();
     },
   });
-}
-
-function buildSystemPrompt(params: {
-  page: string;
-  campaignName: string;
-  daysToElection: number | null;
-  contactCount: number;
-  supporterCount: number;
-  volunteerCount: number;
-  userName: string;
-}): string {
-  const electionLine =
-    params.daysToElection === null
-      ? "Election date is not set for this campaign."
-      : `${params.daysToElection} day(s) until election.`;
-
-  return [
-    "You are Adoni, Poll City's senior campaign strategy assistant.",
-    "Be concise, practical, and action-first. Use bullet points when possible.",
-    "Never expose secrets, credentials, or internal security details.",
-    "Context:",
-    `- User: ${params.userName}`,
-    `- Page: ${params.page}`,
-    `- Campaign: ${params.campaignName}`,
-    `- ${electionLine}`,
-    `- Contacts: ${params.contactCount}`,
-    `- Supporters: ${params.supporterCount}`,
-    `- Volunteers: ${params.volunteerCount}`,
-  ].join("\n");
 }
 
 function streamTextChunks(text: string): ReadableStream<Uint8Array> {
@@ -123,26 +95,35 @@ export async function POST(req: NextRequest) {
   });
   const activeCampaignId = userRow?.activeCampaignId ?? null;
 
-  const [campaign, contactCount, supporterCount, volunteerCount] = await Promise.all([
-    activeCampaignId
+  const cid = activeCampaignId;
+  const [campaign, contactCount, supporterCount, undecidedCount, volunteerCount, doorsKnocked, signsDeployed, donationsCount, donationsTotal] = await Promise.all([
+    cid
       ? prisma.campaign.findUnique({
-          where: { id: activeCampaignId },
-          select: { id: true, name: true, electionDate: true },
+          where: { id: cid },
+          select: { id: true, name: true, electionDate: true, electionType: true, jurisdiction: true },
         })
       : Promise.resolve(null),
-    activeCampaignId
-      ? prisma.contact.count({ where: { campaignId: activeCampaignId } })
-      : Promise.resolve(0),
-    activeCampaignId
+    cid ? prisma.contact.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid
       ? prisma.contact.count({
-          where: {
-            campaignId: activeCampaignId,
-            supportLevel: { in: ["strong_support", "leaning_support"] },
-          },
+          where: { campaignId: cid, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } },
         })
       : Promise.resolve(0),
-    activeCampaignId
-      ? prisma.volunteerProfile.count({ where: { campaignId: activeCampaignId } })
+    cid
+      ? prisma.contact.count({
+          where: { campaignId: cid, supportLevel: "undecided" as never },
+        })
+      : Promise.resolve(0),
+    cid ? prisma.volunteerProfile.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid
+      ? prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never } })
+      : Promise.resolve(0),
+    cid
+      ? prisma.sign.count({ where: { campaignId: cid } })
+      : Promise.resolve(0),
+    cid ? prisma.donation.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid
+      ? prisma.donation.aggregate({ where: { campaignId: cid }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0))
       : Promise.resolve(0),
   ]);
 
@@ -150,13 +131,21 @@ export async function POST(req: NextRequest) {
     ? Math.ceil((campaign.electionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const systemPrompt = buildSystemPrompt({
+  const systemPrompt = buildAdoniSystemPrompt({
     page,
     campaignName: campaign?.name ?? "No active campaign",
     daysToElection,
     contactCount,
     supporterCount,
+    undecidedCount,
     volunteerCount,
+    doorsKnocked,
+    signsDeployed,
+    donationsCount,
+    donationsTotal: donationsTotal as number,
+    electionType: campaign?.electionType ?? null,
+    jurisdiction: campaign?.jurisdiction ?? null,
+    province: null,
     userName: session?.user?.name ?? session?.user?.email ?? "Team Member",
   });
 

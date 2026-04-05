@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Plus, Eye, EyeOff, Trash2, GripVertical, Settings } from "lucide-react";
+import { Plus, Eye, EyeOff, Trash2, GripVertical, Settings, ArrowUp, ArrowDown } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, PageHeader, Modal, FormField, Input, Select, Checkbox } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -43,6 +43,7 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [newField, setNewField] = useState({ key: "", label: "", fieldType: "text", category: "custom", options: "", showOnCard: true, showOnList: false, isRequired: false });
   const [saving, setSaving] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -72,18 +73,78 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
   }
 
   async function toggleVisible(field: CampaignField) {
-    await fetch(`/api/campaign-fields?id=${field.id}`, {
+    const res = await fetch(`/api/campaign-fields?id=${field.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isVisible: !field.isVisible }),
     });
+    if (!res.ok) {
+      toast.error("Failed to update field visibility");
+      return;
+    }
+    load();
+  }
+
+  async function togglePlacement(field: CampaignField, key: "showOnCard" | "showOnList") {
+    const res = await fetch(`/api/campaign-fields?id=${field.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: !field[key] }),
+    });
+    if (!res.ok) {
+      toast.error("Failed to update field placement");
+      return;
+    }
     load();
   }
 
   async function deleteField(id: string) {
     if (!confirm("Delete this field? Data stored in this field will remain on contacts but won't be displayed.")) return;
-    await fetch(`/api/campaign-fields?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/campaign-fields?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Failed to delete field");
+      return;
+    }
     toast.success("Field deleted");
     load();
+  }
+
+  async function reorderField(fieldId: string, direction: "up" | "down") {
+    const sorted = [...fields].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+    const index = sorted.findIndex((f) => f.id === fieldId);
+    if (index === -1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const swapped = [...sorted];
+    [swapped[index], swapped[targetIndex]] = [swapped[targetIndex], swapped[index]];
+    const withOrder = swapped.map((f, i) => ({ ...f, sortOrder: i + 1 }));
+    const map = new Map(withOrder.map((f) => [f.id, f]));
+    setFields((prev) => prev.map((f) => map.get(f.id) ?? f));
+
+    setReordering(true);
+    try {
+      const updates = [withOrder[index], withOrder[targetIndex]];
+      const result = await Promise.all(
+        updates.map((f) =>
+          fetch(`/api/campaign-fields?id=${f.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sortOrder: f.sortOrder }),
+          })
+        )
+      );
+
+      if (result.some((r) => !r.ok)) {
+        toast.error("Failed to save field order");
+        load();
+        return;
+      }
+
+      toast.success("Field order updated");
+    } finally {
+      setReordering(false);
+    }
   }
 
   // Auto-generate key from label
@@ -144,15 +205,38 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
                       </div>
                       <p className="text-xs text-gray-400 font-mono mt-0.5">{field.key}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className={`text-xs ${field.showOnCard ? "text-emerald-600" : "text-gray-400"}`}>
+                        <button
+                          onClick={() => togglePlacement(field, "showOnCard")}
+                          className={`text-xs ${field.showOnCard ? "text-emerald-600" : "text-gray-400"} hover:underline`}
+                        >
                           {field.showOnCard ? "✓ On card" : "Not on card"}
-                        </span>
-                        <span className={`text-xs ${field.showOnList ? "text-emerald-600" : "text-gray-400"}`}>
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() => togglePlacement(field, "showOnList")}
+                          className={`text-xs ${field.showOnList ? "text-emerald-600" : "text-gray-400"} hover:underline`}
+                        >
                           {field.showOnList ? "✓ In table" : "Not in table"}
-                        </span>
+                        </button>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => reorderField(field.id, "up")}
+                        disabled={reordering}
+                        title="Move up"
+                        className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center transition-colors"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => reorderField(field.id, "down")}
+                        disabled={reordering}
+                        title="Move down"
+                        className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center transition-colors"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={() => toggleVisible(field)} title={field.isVisible ? "Hide field" : "Show field"}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${field.isVisible ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}>
                         {field.isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}

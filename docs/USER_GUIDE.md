@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v4.0.23 Custom Fields Addendum — April 5, 2026
+
+### Field Ordering and Placement (`/settings/fields`)
+
+1. Open Settings -> Fields.
+2. Use the up/down arrows beside a field to reorder it.
+3. Toggle **On card** to include/exclude a field from canvassing cards.
+4. Toggle **In table** to include/exclude a field from contacts table views.
+5. Visibility can still be toggled separately with the eye icon.
+
 ## v4.0.22 Contact Timeline Addendum — April 5, 2026
 
 ### Unified Timeline (`/contacts/[id]`)

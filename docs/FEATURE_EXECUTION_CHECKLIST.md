@@ -22,7 +22,7 @@ Dependency planning requirement before implementation starts:
 - [x] 2. Campaign Switcher  | status: Built & Verified (session-consistent switch + redirect + validation)  | commit: pending  | report: Completed with immediate context update and improved switch reliability
 - [x] 3. CRM Contact Management  | status: Built & Verified (multi-column sorting + API sort whitelist + operator hints)  | commit: pending  | report: Completed with Shift+click multi-sort for large-list campaign triage
 - [x] 4. Contact Detail + Timeline  | status: Built & Verified (unified timeline + filters + search + activity log integration)  | commit: pending  | report: Completed with single-stream contact history for operator review and faster follow-up decisions
-- [ ] 5. Custom Fields  | status: Pending  | commit: -  | report: -
+- [x] 5. Custom Fields  | status: Built & Verified (persistent ordering + card/table placement toggles + action hardening)  | commit: pending  | report: Completed with practical dynamic-field configuration controls for campaign workflows
 - [ ] 6. Turf Builder  | status: Pending  | commit: -  | report: -
 - [ ] 7. Walk App + GPS  | status: Pending  | commit: -  | report: -
 - [x] 8. GOTV Priority + Upload  | status: Built & Verified (tabbed GOTV engine + tiers API + election-day command metrics)  | commit: pending  | report: Completed with campaign-scoped scoring, strike-off progress, and live command-center pacing

@@ -1,5 +1,18 @@
 # Poll City Changelog
 
+## [4.0.23] - April 5, 2026 — CUSTOM FIELD ORDERING + PLACEMENT CONTROLS
+
+### Custom Fields (`/settings/fields`)
+- Added persistent custom-field ordering controls (move up/move down).
+- Added server-backed `sortOrder` updates during reorder actions.
+- Added inline placement toggles for custom fields:
+  - show on canvassing card
+  - show in contacts table
+- Hardened visibility and delete actions with explicit API failure feedback.
+
+### Outcome
+- Campaigns can now configure dynamic fields with practical ordering and placement control that immediately affects field operations and contact workflows.
+
 ## [4.0.22] - April 5, 2026 — CONTACT DETAIL UNIFIED TIMELINE
 
 ### Contact Detail + Timeline (`/contacts/[id]`)

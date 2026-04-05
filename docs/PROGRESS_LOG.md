@@ -15,6 +15,28 @@ Purpose: shared cross-developer status, handoffs, blockers, and dependency readi
 ## 2026-04-05  |  Contributor: GitHub Copilot
 
 ### Completed
+- Completed Feature 5 (Custom Fields) with ordering and placement controls.
+- Added persistent sort-order updates for custom fields in settings.
+- Added inline toggles for "show on card" and "show in table" custom-field placement.
+- Hardened visibility/delete API action feedback.
+
+### Changed Files
+- src/app/(app)/settings/fields/fields-client.tsx
+- docs/CHANGELOG.md
+- docs/USER_GUIDE.md
+- src/app/(marketing)/marketing-client.tsx
+- docs/FEATURE_EXECUTION_CHECKLIST.md
+- docs/PROGRESS_LOG.md
+
+### Validation
+- Passed: `npm run docs:check:master`, `npx tsc --noEmit`, `npm run verify:regression`, `npm run build`.
+
+### Dependency Readiness
+- Ready now: no additional environment keys required for custom field configuration behavior.
+
+## 2026-04-05  |  Contributor: GitHub Copilot
+
+### Completed
 - Completed Feature 4 (Contact Detail + Timeline) with unified timeline experience.
 - Added merged timeline stream in contact detail combining interactions, tasks, and activity logs.
 - Added timeline filters and search for high-activity contact history review.

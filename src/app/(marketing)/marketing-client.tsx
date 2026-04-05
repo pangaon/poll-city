@@ -274,7 +274,7 @@ const PRODUCTS = [
           "AI campaign assistant for strategy and targeting",
           "Adoni AI copilot in-app with proactive page-aware suggestions and live chat support",
       "Import and export voter files with field mapping",
-      "Custom per-campaign fields",
+      "Custom per-campaign fields with ordering and card/table placement controls",
       "Role-based access: Admin, Manager, Canvasser, Finance",
       "Campaign website QR code — print on flyers, yard signs, and door hangers",
       "One-click copy, share to Twitter, download QR PNG from Page Builder",
