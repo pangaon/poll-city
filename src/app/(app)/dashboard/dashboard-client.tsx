@@ -84,6 +84,16 @@ const PRESETS: Record<string, WidgetId[]> = {
 
 const LS_KEY = "poll-city-dashboard-layout";
 const MODE_KEY = "poll-city-dashboard-mode";
+const DASHBOARD_TABLE_KEY = "dashboard_widgets";
+
+function isWidgetId(value: string): value is WidgetId {
+  return ALL_WIDGETS.some((w) => w.id === value);
+}
+
+function parseWidgetIds(value: unknown): WidgetId[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is WidgetId => typeof entry === "string" && isWidgetId(entry));
+}
 
 function loadLayout(campaignId: string, userId: string): { order: WidgetId[]; hidden: WidgetId[]; preset: string } {
   try {
@@ -162,6 +172,52 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     setHidden(saved.hidden);
     setActivePreset(saved.preset ?? "Overview");
   }, [campaign.id, user.id]);
+
+  // Load server-backed layout so widget order/hide state follows user across devices
+  useEffect(() => {
+    async function loadServerDashboardPreferences() {
+      try {
+        const res = await fetch(`/api/contacts/column-preferences?campaignId=${campaign.id}&tableKey=${DASHBOARD_TABLE_KEY}`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        const pref = payload?.data;
+        if (!pref) return;
+
+        const serverOrder = parseWidgetIds(pref.order);
+        const serverHidden = parseWidgetIds(pref.hidden);
+
+        if (serverOrder.length > 0) setOrder(serverOrder);
+        if (serverHidden.length >= 0) setHidden(serverHidden);
+      } catch {
+        // Keep local fallback behavior
+      }
+    }
+
+    loadServerDashboardPreferences();
+  }, [campaign.id, user.id]);
+
+  // Best-effort server sync for dashboard layout persistence
+  useEffect(() => {
+    const id = setTimeout(async () => {
+      try {
+        await fetch("/api/contacts/column-preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId: campaign.id,
+            tableKey: DASHBOARD_TABLE_KEY,
+            order,
+            hidden,
+            widths: {},
+          }),
+        });
+      } catch {
+        // Local storage remains fallback source of truth when network sync fails
+      }
+    }, 350);
+
+    return () => clearTimeout(id);
+  }, [campaign.id, order, hidden]);
 
   // Fetch extra widget data
   useEffect(() => {

@@ -26,28 +26,101 @@ function greetingByTime(): string {
   return "Good evening";
 }
 
+// Dad jokes — kept for levity
 const DAD_JOKES: readonly string[] = [
   "Why did the candidate cross the road? To canvass the other side.",
-  "I told my door-knocker a joke about elections — they didn't find it polling.",
   "What do you call a lawn sign that sings? A jingle bell.",
-  "Why don't politicians play hide and seek? Good luck hiding when you've taken a clear position.",
-  "My campaign manager said I need more door knocks. I said, knock yourself out.",
+  "My campaign manager said I need more door knocks. I said — knock yourself out.",
   "Why did the volunteer bring a ladder to the rally? They heard the stakes were high.",
-  "I asked Adoni for a joke. They said: polling data. I'm still waiting for the punchline.",
   "What's a politician's favourite fish? The debate herring.",
-  "Why was the ballot box so calm? Because it had a lot of inner reflection.",
-  "I tried writing a canvass script in Morse code. It was too short on dashes.",
   "Our GOTV plan is so good, even the non-voters RSVP'd.",
   "Why did the budget spreadsheet go to therapy? Too many unbalanced feelings.",
   "What do you call it when a candidate eats too much? A super-majority.",
-  "I keep telling my staff to think outside the box. They keep handing me door hangers.",
-  "Why don't elections work well in libraries? Too many quiet majorities.",
-  "My press release was so bad, even the printer refused to comment.",
-  "What do you call a calm city council? Silent majority. Literally.",
-  "I ran for office once. Then I walked the rest of the way.",
-  "Why did the GOTV list go to the gym? To work on its strike count.",
   "My turf was so tough, the map app asked for a raise.",
+  "I ran for office once. Then I walked the rest of the way.",
 ];
+
+// Encouragement — campaigns are long and hard
+const ENCOURAGEMENT: readonly string[] = [
+  "Campaigns are marathons, not sprints. You're doing the work most people won't.",
+  "Every door you knock, every call you make — it compounds. Keep going.",
+  "Your future constituents are counting on you showing up today. And you are.",
+  "Democracy runs on volunteers like you. Thank you.",
+  "Hard week? Rest is strategy too. Take the break you need.",
+  "Small wins stack. Ten doors today is one hundred by end of week.",
+  "The candidates who win are the ones who kept going when it got boring.",
+  "You can't pour from an empty cup. Eat something real, drink water, then get back at it.",
+  "Nobody remembers the campaigns that quit. They remember the ones that showed up.",
+  "Progress over perfection. Ship the flyer. Send the email. Knock the door.",
+];
+
+// Page-aware tips — only fire on the matching route
+const PAGE_TIPS: Record<string, string[]> = {
+  "/contacts": [
+    "Tip — add the GOTV Score column to prioritise who to call first.",
+    "Tag your top-tier supporters. Future you will thank past you.",
+  ],
+  "/canvassing": [
+    "Batch your canvass shifts by street side — faster loops, happier volunteers.",
+    "Hydration break. Your canvassers need water more than pep talks.",
+  ],
+  "/canvassing/walk": [
+    "Odd/even sides of the street = half the crossings = twice the doors.",
+    "Log every not-home. Future revisits are golden.",
+  ],
+  "/gotv": [
+    "GOTV math: 1 supporter contacted 3 times > 3 supporters contacted once.",
+    "The calls that feel redundant are the ones that move turnout.",
+  ],
+  "/budget": [
+    "Track expenses weekly, not at the deadline. Your CFO will love you.",
+    "Leaving budget on the table is leaving votes on the table.",
+  ],
+  "/donations": [
+    "Ask once a week. Ask specifically. Ask confidently.",
+    "People give to campaigns that ask. That's it. That's the whole thing.",
+  ],
+  "/volunteers": [
+    "A thank-you text this week keeps volunteers coming back next week.",
+    "Match skills to tasks — nobody quits a shift they're good at.",
+  ],
+  "/dashboard": [
+    "Pick the single highest-leverage thing today. Do that before anything else.",
+    "Your health score isn't your worth — it's your roadmap. Use it.",
+  ],
+  "/settings/brand": [
+    "One tweak at a time. Pick a colour, save, come back tomorrow.",
+  ],
+  "/print/templates": [
+    "Pro tip: order signs in batches of 25. Runs cheaper than 10 at a time.",
+  ],
+};
+
+type MessageKind = "joke" | "encouragement" | "tip";
+interface AdoniMessage { kind: MessageKind; text: string; }
+
+function pickOne<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Smart selection:
+//  • 40% chance of a page-aware tip if the current route matches
+//  • 35% encouragement (weighted higher in morning + late evening)
+//  • 25% joke
+// This is page-awareness via the URL only — no tracking beyond that.
+function pickMessage(pathname: string): AdoniMessage {
+  const tips = Object.entries(PAGE_TIPS).find(([path]) =>
+    path === pathname || pathname.startsWith(path + "/"),
+  )?.[1];
+  const roll = Math.random();
+  if (tips && roll < 0.4) return { kind: "tip", text: pickOne(tips) };
+  const hour = new Date().getHours();
+  const encouragementWeight = hour < 9 || hour >= 20 ? 0.45 : 0.3;
+  if (roll < 0.4 + encouragementWeight) {
+    return { kind: "encouragement", text: pickOne(ENCOURAGEMENT) };
+  }
+  return { kind: "joke", text: pickOne(DAD_JOKES) };
+}
 
 export default function AdoniButton() {
   const pathname = usePathname();
@@ -58,7 +131,7 @@ export default function AdoniButton() {
   const [suggestion, setSuggestion] = useState<string>("");
   const [contextLine, setContextLine] = useState<string>("");
   const [waving, setWaving] = useState(false);
-  const [joke, setJoke] = useState<string | null>(null);
+  const [message, setMessage] = useState<AdoniMessage | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -114,25 +187,31 @@ export default function AdoniButton() {
     }
   }, [messages, streaming]);
 
-  // Periodic wave + dad joke. First wave after 8s, then every 90s while closed.
+  // Periodic wave + context-aware message. First wave after 12s, then every
+  // 2-3 minutes while the chat is closed. Picks a joke, encouragement, or a
+  // page-specific tip based on the current route + time of day.
   useEffect(() => {
     if (open) return;
     const triggerWave = () => {
-      const randomJoke = DAD_JOKES[Math.floor(Math.random() * DAD_JOKES.length)];
-      setJoke(randomJoke);
+      setMessage(pickMessage(pathname));
       setWaving(true);
-      // Wave for 2.5s
       window.setTimeout(() => setWaving(false), 2500);
-      // Hide joke after 7s
-      window.setTimeout(() => setJoke(null), 7000);
+      window.setTimeout(() => setMessage(null), 9000);
     };
-    const initial = window.setTimeout(triggerWave, 8000);
-    const interval = window.setInterval(triggerWave, 90_000);
+    const initial = window.setTimeout(triggerWave, 12_000);
+    // Randomise interval slightly so it doesn't feel robotic
+    const jitter = () => 120_000 + Math.floor(Math.random() * 60_000);
+    let interval: number;
+    const tick = () => {
+      triggerWave();
+      interval = window.setTimeout(tick, jitter());
+    };
+    interval = window.setTimeout(tick, jitter());
     return () => {
       window.clearTimeout(initial);
-      window.clearInterval(interval);
+      window.clearTimeout(interval);
     };
-  }, [open]);
+  }, [open, pathname]);
 
   const assistantIntro = useMemo(
     () => `${greetingByTime()}. I'm Adoni. I can help with strategy, targeting, and execution on this page.`,
@@ -207,8 +286,8 @@ export default function AdoniButton() {
             right: "1.25rem",
           }}
         >
-          {/* Joke speech bubble */}
-          {joke && (
+          {/* Adoni speech bubble — joke, encouragement, or page-aware tip */}
+          {message && (
             <div
               className="absolute bottom-[72px] right-0 w-64 max-w-[calc(100vw-2.5rem)] bg-white border border-blue-200 rounded-2xl rounded-br-sm shadow-xl p-3 text-sm text-slate-800 animate-[adoni-pop_0.3s_ease-out]"
               role="status"
@@ -217,17 +296,24 @@ export default function AdoniButton() {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setJoke(null);
+                  setMessage(null);
                 }}
                 className="absolute top-1 right-1 text-slate-400 hover:text-slate-700 w-6 h-6 rounded-full flex items-center justify-center"
-                aria-label="Dismiss joke"
+                aria-label="Dismiss"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
-              <p className="font-semibold text-blue-900 text-xs uppercase tracking-wide mb-1">
-                👋 Adoni
+              <p className="font-semibold text-xs uppercase tracking-wide mb-1 flex items-center gap-1.5" style={{
+                color: message.kind === "tip" ? "#0f766e" : message.kind === "encouragement" ? "#7c3aed" : "#1e40af",
+              }}>
+                <span>
+                  {message.kind === "joke" ? "👋" : message.kind === "encouragement" ? "💪" : "💡"}
+                </span>
+                <span>
+                  {message.kind === "joke" ? "Adoni" : message.kind === "encouragement" ? "Adoni cheering you on" : "Adoni tip"}
+                </span>
               </p>
-              <p className="pr-4 leading-snug">{joke}</p>
+              <p className="pr-4 leading-snug">{message.text}</p>
             </div>
           )}
           <button

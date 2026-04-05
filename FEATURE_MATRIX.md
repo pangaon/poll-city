@@ -6,8 +6,10 @@ Source inputs reviewed:
 - docs/architecture/ABUSE_AND_RISK_CONTROLS.md
 - docs/architecture/AUDIT_AND_LOGGING_SPEC.md
 - docs/architecture/API_AND_INTEGRATION_CONTRACTS.md
+- RESEARCH_BRIEF.md
+- SECURITY_BLUEPRINT.md
 
-Note: RESEARCH_BRIEF.md and SECURITY_BLUEPRINT.md were not found in this repository by those exact filenames.
+Verification note: all master references above are present in this repository.
 
 v1.8.0 additions included in this baseline:
 - Volunteer onboarding flow (`/volunteer/onboard/[token]`, `/api/volunteer/onboard/[token]`)

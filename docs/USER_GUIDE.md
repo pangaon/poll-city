@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v4.0.17 Dashboard Layout Sync Addendum — April 5, 2026
+
+### Cross-Device Dashboard Widget Layout Persistence (`/dashboard`)
+
+1. Customize your dashboard widget order and visibility as usual.
+2. Poll City now saves your widget layout to your campaign/user server profile.
+3. Open Poll City on another browser or device and your dashboard layout will load automatically.
+4. If server sync is temporarily unavailable, local browser storage continues to preserve your latest layout.
+5. Once network/server is available, layout sync resumes automatically.
+
 ## v4.0.16 Batch Apply Matching Addendum — April 5, 2026
 
 ### Confidence-Based Batch Apply (`/import-export`)

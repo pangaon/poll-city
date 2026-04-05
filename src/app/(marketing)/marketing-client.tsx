@@ -319,7 +319,7 @@ const PRODUCTS = [
       "Canvasser leaderboard and city-level sign deployment intelligence",
       "Show/hide widgets with one click",
       "Four preset layouts: Field View, Finance View, GOTV View, Overview",
-      "Persistent layout saves per user via localStorage",
+      "Persistent layout saves per user with server sync and local fallback",
       "Mobile-responsive single-column layout",
       "Real-time data refresh on every widget",
       "Last updated timestamp on each widget",

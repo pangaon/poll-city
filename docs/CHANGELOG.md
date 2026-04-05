@@ -1,5 +1,26 @@
 # Poll City Changelog
 
+## [4.0.17] - April 5, 2026 — FULL-FINISH EXECUTION STANDARD + DASHBOARD SERVER SYNC
+
+### Delivery Standard Hardening
+- Added feature completion standard document: `docs/FEATURE_COMPLETION_STANDARD.md`.
+- Expanded `docs/FEATURE_EXECUTION_CHECKLIST.md` with mandatory completion gates:
+  - end-to-end flow verification (UI -> API -> DB -> read surfaces)
+  - security and campaign-scope checks
+  - audit logging verification
+  - dependency readiness reporting
+- Added master doc consistency check command to regression chain:
+  - `npm run docs:check:master`
+  - `npm run verify:regression` now executes doc consistency before other gates.
+
+### Dashboard Widgets (Feature 1) Improvement
+- Upgraded dashboard widget layout persistence from local-only to server-synced.
+- Dashboard now loads/saves widget order + hidden state through `GET/PUT /api/contacts/column-preferences` with `tableKey=dashboard_widgets`.
+- Local storage remains fallback for offline/network-failure resilience.
+
+### Outcome
+- Feature execution is now governed by an explicit completion contract, and dashboard customization now follows users across devices while preserving robust fallback behavior.
+
 ## [4.0.16] - April 5, 2026 — BATCH APPLY MATCHES BY CONFIDENCE
 
 ### Enterprise Phone/Voter Matching Ops

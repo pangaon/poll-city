@@ -3,7 +3,22 @@
 Date: 2026-04-05
 Mode: One feature at a time (implement -> verify -> commit -> push -> report)
 
-- [ ] 1. Campaign Dashboard Widgets  | status: Pending  | commit: -  | report: -
+Completion standard: see docs/FEATURE_COMPLETION_STANDARD.md.
+
+Required for every item before marking complete:
+- End-to-end user journey works (UI -> API -> DB -> read surfaces).
+- Security and campaign-scope controls verified.
+- Audit logging verified for writes.
+- docs/CHANGELOG.md, docs/USER_GUIDE.md, and src/app/(marketing)/marketing-client.tsx updated when applicable.
+- FEATURE_MATRIX.md reflects final status.
+- npm run docs:check:master, npm run verify:regression, and npm run build all pass.
+
+Dependency planning requirement before implementation starts:
+- Identify external dependencies and missing keys/config.
+- Identify cross-feature data impacts (dashboard, exports, analytics, dynamic fields).
+- Report "ready now" versus "ready once dependency connected" in feature completion report.
+
+- [x] 1. Campaign Dashboard Widgets  | status: Built & Verified (server-synced layout + local fallback)  | commit: pending  | report: Completed with cross-device persistence and regression/build pass
 - [ ] 2. Campaign Switcher  | status: Pending  | commit: -  | report: -
 - [ ] 3. CRM Contact Management  | status: Pending  | commit: -  | report: -
 - [ ] 4. Contact Detail + Timeline  | status: Pending  | commit: -  | report: -
