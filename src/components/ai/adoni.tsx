@@ -168,7 +168,12 @@ export default function AdoniButton() {
           aria-label="Ask Adoni"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/adoni-logo.svg" alt="Ask Adoni" className="h-full w-full" />
+          <img
+            src="/images/adoni-bubble.png"
+            alt="Ask Adoni"
+            className="h-full w-full object-cover"
+            style={{ borderRadius: "50%" }}
+          />
         </button>
       )}
 
