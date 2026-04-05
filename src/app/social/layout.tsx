@@ -1,12 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import Link from "next/link";
 import "../globals.css";
 import { AuthProvider } from "@/providers/auth-provider";
 import { Toaster } from "sonner";
 import SocialNav from "@/components/social/social-nav";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: { default: "Poll City Social", template: "%s | Poll City Social" },
@@ -25,7 +22,7 @@ export const viewport: Viewport = {
 export default function SocialLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-gray-50`}>
+      <body className="font-sans antialiased bg-gray-50">
         <AuthProvider>
           <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-white shadow-sm">
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
