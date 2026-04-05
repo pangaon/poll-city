@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="adoni-bg" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E3A8A"/>
+      <stop offset="0.55" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="adoni-ring" x1="0" y1="0" x2="0" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <!-- Round plate -->
+  <circle cx="60" cy="60" r="58" fill="url(#adoni-bg)"/>
+  <!-- Subtle top ring highlight -->
+  <circle cx="60" cy="60" r="56" fill="none" stroke="url(#adoni-ring)" stroke-width="2"/>
+  <!-- Speech-bubble tail (bottom-right, so it reads as an assistant bubble) -->
+  <path d="M90 96 L106 110 L94 88 Z" fill="url(#adoni-bg)"/>
+  <!-- Monogram "A" -->
+  <path
+    d="M44 82 L58 38 Q60 33 62 38 L76 82 M50 68 L70 68"
+    stroke="#FFFFFF"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <!-- Signal dot -->
+  <circle cx="60" cy="28" r="4.5" fill="#F5A623"/>
+</svg>

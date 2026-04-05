@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, Send, Sparkles, X } from "lucide-react";
+import { Send, Sparkles, X } from "lucide-react";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -158,10 +158,17 @@ export default function AdoniButton() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full bg-blue-700 text-white shadow-xl hover:bg-blue-800"
-          aria-label="Open Adoni"
+          className="fixed z-40 rounded-full overflow-hidden shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-transform ring-2 ring-white/40"
+          style={{
+            bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
+            right: "1.25rem",
+            height: "60px",
+            width: "60px",
+          }}
+          aria-label="Ask Adoni"
         >
-          <Bot className="mx-auto h-6 w-6" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/adoni-logo.svg" alt="Ask Adoni" className="h-full w-full" />
         </button>
       )}
 

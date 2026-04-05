@@ -1,5 +1,34 @@
 # Poll City User Guide
 
+## v4.0.15 Enterprise List Matching Addendum — April 5, 2026
+
+### Intuitive Column Mapping (`/import-export`)
+
+1. Upload your voter list file.
+2. Review each detected source column.
+3. Use the **Target Field** selector beside each column to map or skip.
+4. Confirm at least one name field (`First Name` or `Last Name`) is mapped before import.
+
+### Duplicate Intelligence Preview
+
+1. After mapping, click **Preview Duplicates**.
+2. Review:
+   - probable duplicate count
+   - estimated net-new contacts
+   - duplicate sample pairs (incoming vs existing)
+3. Adjust mappings if duplicate quality looks wrong, then run import.
+
+### Voter List to Phone List Matching
+
+1. Upload your voter list (main file) and your phone list (secondary file).
+2. Map columns for both files.
+3. Select matching mode:
+   - **Strict**: lowest false positives
+   - **Balanced**: recommended default
+   - **Aggressive**: highest merge coverage
+4. Choose whether to enable AI assist for ambiguous matches.
+5. Click **Run Voter-to-Phone Matching** and review summary + samples before operational use.
+
 ## v4.0.14 Enterprise Quick List Operations Addendum — April 5, 2026
 
 ### Quick Import (`/import-export`)

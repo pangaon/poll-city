@@ -1,5 +1,24 @@
 # Poll City Changelog
 
+## [4.0.15] - April 5, 2026 — ENTERPRISE LIST MATCHING + DUPLICATE INTELLIGENCE
+
+### Import/Export Intelligence
+- Upgraded `/import-export` with editable, intuitive column mapping controls per source column.
+- Added duplicate-intelligence preview before import execution:
+  - probable duplicate counts
+  - net-new record estimate
+  - duplicate sample pairs for operator review
+- Added enterprise voter-list to phone-list reconciliation workflow in the main Import/Export page.
+
+### Fuzzy Matching and AI Assist
+- Added new file-based matching endpoint: `POST /api/import/match-files`.
+- Supports dual-file matching with configurable strict/balanced/aggressive modes.
+- Supports optional AI assist for ambiguous grey-zone matches.
+- Matching output now surfaces auto-merge/review/unmatched summary and sample pairs.
+
+### Outcome
+- Campaign teams can now ingest messy multi-format lists, preview duplicate risk, and reconcile phone/voter data from one operational surface.
+
 ## [4.0.14] - April 5, 2026 — ENTERPRISE QUICK LIST IMPORT/EXPORT
 
 ### Import/Export Operations
