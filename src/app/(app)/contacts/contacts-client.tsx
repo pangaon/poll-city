@@ -45,6 +45,9 @@ type ColumnKey =
   | "captain" | "signPlaced" | "superSupporter" | "partyMember" | "language"
   | "interactions" | "volunteer" | "dnc";
 
+type SortDirection = "asc" | "desc";
+type SortSpec = { key: ColumnKey; direction: SortDirection };
+
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   name: "Name",
   contact: "Contact",
@@ -121,6 +124,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(DEFAULT_COLUMN_WIDTHS);
   const [resizing, setResizing] = useState<{ key: ColumnKey; startX: number; startWidth: number } | null>(null);
   const [draggingColumn, setDraggingColumn] = useState<ColumnKey | null>(null);
+  const [sorts, setSorts] = useState<SortSpec[]>([{ key: "name", direction: "asc" }]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -146,6 +150,54 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   }, [campaignId]);
 
   const columnStorageKey = `poll-city-crm-columns-${campaignId}`;
+  const sortableColumns: ColumnKey[] = [
+    "name", "phone", "email", "support", "ward", "lastContact", "city", "postalCode", "riding",
+    "gotvStatus", "gotvScore", "followUpDate", "interactions", "volunteer", "dnc",
+  ];
+
+  function encodeSorts(input: SortSpec[]) {
+    return input.map((s) => `${s.key}:${s.direction}`).join(",");
+  }
+
+  function cycleDirection(current: SortDirection | null): SortDirection | null {
+    if (current === null) return "asc";
+    if (current === "asc") return "desc";
+    return null;
+  }
+
+  function sortIndicator(key: ColumnKey) {
+    const idx = sorts.findIndex((s) => s.key === key);
+    if (idx === -1) return null;
+    const active = sorts[idx];
+    const arrow = active.direction === "asc" ? "^" : "v";
+    return `${arrow}${sorts.length > 1 ? ` ${idx + 1}` : ""}`;
+  }
+
+  function handleHeaderSortClick(key: ColumnKey, isShift: boolean) {
+    if (!sortableColumns.includes(key)) return;
+
+    const existing = sorts.find((s) => s.key === key);
+    const nextDirection = cycleDirection(existing?.direction ?? null);
+
+    if (isShift) {
+      setSorts((prev) => {
+        const without = prev.filter((s) => s.key !== key);
+        if (!nextDirection) return without.length > 0 ? without : [{ key: "name", direction: "asc" }];
+        return [...without, { key, direction: nextDirection }];
+      });
+      setPage(1);
+      return;
+    }
+
+    if (!nextDirection) {
+      setSorts([{ key: "name", direction: "asc" }]);
+      setPage(1);
+      return;
+    }
+
+    setSorts([{ key, direction: nextDirection }]);
+    setPage(1);
+  }
 
   useEffect(() => {
     try {
@@ -304,6 +356,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ campaignId, page: String(page), pageSize: String(pageSize) });
+      params.set("sort", encodeSorts(sorts));
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
       if (followUp) params.set("followUpNeeded", "true");
@@ -317,7 +370,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       setTotal(data.total ?? 0);
     } catch { toast.error("Failed to load contacts"); }
     finally { setLoading(false); }
-  }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards]);
+  }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards, sorts]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
 
@@ -530,6 +583,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             <Button variant="outline" size="sm" onClick={() => setShowPresetsMenu(!showPresetsMenu)}>
               <Bookmark className="w-3.5 h-3.5" /> Presets
             </Button>
+            <span className="text-xs text-gray-500">Tip: Shift+click headers for multi-sort</span>
             {showPresetsMenu && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowPresetsMenu(false)} />
@@ -675,9 +729,14 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                     className="text-left px-4 py-3 font-medium text-gray-600 relative select-none"
                     style={{ width: columnWidths[key], minWidth: columnWidths[key] }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div
+                      className={`flex items-center gap-2 ${sortableColumns.includes(key) ? "cursor-pointer" : ""}`}
+                      onClick={(e) => handleHeaderSortClick(key, e.shiftKey)}
+                      title={sortableColumns.includes(key) ? "Click to sort. Shift+click to add secondary sort." : undefined}
+                    >
                       <GripVertical className="w-3 h-3 text-gray-300" />
                       <span>{COLUMN_LABELS[key]}</span>
+                      {sortIndicator(key) && <span className="text-[10px] font-semibold text-blue-600">{sortIndicator(key)}</span>}
                     </div>
                     <div
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize"

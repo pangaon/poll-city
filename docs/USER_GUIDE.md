@@ -1,5 +1,18 @@
 # Poll City User Guide
 
+## v4.0.21 CRM Multi-Sort Addendum — April 5, 2026
+
+### Multi-Column Sorting (`/contacts`)
+
+1. Click any sortable table header to sort by that column.
+2. Click the same header again to switch ascending/descending.
+3. Click a third time to clear that column and return to default sorting.
+4. Hold `Shift` and click another header to add a secondary sort.
+5. Continue `Shift` + click to add additional sort levels.
+6. Active sort columns display direction and priority order in the header.
+
+Example: sort by `Support`, then `Shift` + click `Ward`, then `Shift` + click `Last Contact` for a campaign-ops triage view.
+
 ## v4.0.20 Campaign Switcher Addendum — April 5, 2026
 
 ### Switching Campaign Context (`/campaigns`)

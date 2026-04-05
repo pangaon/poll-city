@@ -6,6 +6,44 @@ import { parsePagination, paginate, slugify } from "@/lib/utils";
 import { getContactIdsByCustomFilters, type CustomFieldFilter } from "@/lib/db/custom-fields";
 import { SupportLevel } from "@prisma/client";
 
+const SORT_FIELD_MAP: Record<string, string[]> = {
+  name: ["lastName", "firstName"],
+  phone: ["phone"],
+  email: ["email"],
+  support: ["supportLevel"],
+  ward: ["ward"],
+  lastContact: ["lastContactedAt"],
+  city: ["city"],
+  postalCode: ["postalCode"],
+  riding: ["riding"],
+  gotvStatus: ["gotvStatus"],
+  followUpDate: ["followUpDate"],
+  volunteer: ["volunteerInterest"],
+  dnc: ["doNotContact"],
+  interactions: ["lastContactedAt"],
+  gotvScore: ["lastContactedAt"],
+};
+
+function parseSortOrder(raw: string | null): Array<Record<string, "asc" | "desc">> {
+  if (!raw) return [{ lastName: "asc" }, { firstName: "asc" }];
+
+  const orders: Array<Record<string, "asc" | "desc">> = [];
+  const segments = raw.split(",").map((s) => s.trim()).filter(Boolean);
+
+  for (const seg of segments) {
+    const [fieldRaw, dirRaw] = seg.split(":");
+    const field = fieldRaw?.trim();
+    const direction: "asc" | "desc" = dirRaw?.trim().toLowerCase() === "desc" ? "desc" : "asc";
+    if (!field || !SORT_FIELD_MAP[field]) continue;
+
+    for (const prismaField of SORT_FIELD_MAP[field]) {
+      orders.push({ [prismaField]: direction });
+    }
+  }
+
+  return orders.length > 0 ? orders : [{ lastName: "asc" }, { firstName: "asc" }];
+}
+
 /**
  * GET /api/contacts
  * List contacts for a campaign with pagination, search, and filters
@@ -33,6 +71,7 @@ export async function GET(req: NextRequest) {
   const doNotContact = sp.get("doNotContact") === "true" ? true : sp.get("doNotContact") === "false" ? false : undefined;
   const tagIds = sp.get("tags")?.split(",").filter(Boolean);
   const wards = sp.get("wards")?.split(",").filter(Boolean);
+  const orderBy = parseSortOrder(sp.get("sort"));
   // Custom field filters: ?customFilter=fieldKey:operator:value (can be repeated)
   const customFilterParams = sp.getAll("customFilter");
   const customFilters: CustomFieldFilter[] = customFilterParams
@@ -83,7 +122,7 @@ export async function GET(req: NextRequest) {
   const [contacts, total] = await Promise.all([
     prisma.contact.findMany({
       where: finalWhere,
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      orderBy,
       skip,
       take: pageSize,
       include: {

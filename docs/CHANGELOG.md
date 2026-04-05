@@ -1,5 +1,20 @@
 # Poll City Changelog
 
+## [4.0.21] - April 5, 2026 — CRM MULTI-COLUMN SORTING
+
+### Contacts CRM (`/contacts`)
+- Added sortable contact table headers for campaign operators.
+- Added Shift+click multi-column sorting support for secondary and tertiary sort priority.
+- Added visible sort indicators on active sorted columns with priority order.
+- Added API-backed sort execution for contact listing requests through `GET /api/contacts?sort=...`.
+
+### API Behavior
+- Added safe whitelist mapping for sortable fields to prevent invalid/untrusted sort keys.
+- Added deterministic fallback sort (`lastName`, `firstName`) when no valid sort keys are provided.
+
+### Outcome
+- Campaign teams can now run practical, high-volume list operations faster (for example by support, ward, recency, and phone/email order) without manual exports.
+
 ## [4.0.20] - April 5, 2026 — CAMPAIGN SWITCHER UX + SESSION CONSISTENCY
 
 ### Campaign Switcher Improvements
