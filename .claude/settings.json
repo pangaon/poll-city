@@ -29,7 +29,12 @@
       "Bash(npx tsx:*)",
       "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representative-sets/?limit=5\")",
       "Bash(curl -s -m 15 \"https://represent.opennorth.ca/representatives/house-of-commons/?limit=2\")",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(find /c/Users/14168/Documents/Projects/poll-city/src/app/api -name \"route.ts\" -exec grep -l \"apiAuth\\\\|rateLimit\" {} \\\\;)",
+      "Bash(grep -r '$queryRaw\\\\|$executeRaw' /c/Users/14168/Documents/Projects/poll-city/src '--include=*.ts' '--include=*.tsx')",
+      "Bash(grep -l \"export async function\" /c/Users/14168/Documents/Projects/poll-city/src/app/api/*/route.ts)",
+      "Bash(grep -l \"apiAuth\" /c/Users/14168/Documents/Projects/poll-city/src/app/api/*/route.ts)",
+      "Bash(find /c/Users/14168/Documents/Projects/poll-city/src/app/api -name route.ts -exec sh -c 'file=\"$1\"; if ! grep -q \"apiAuth\\\\|rateLimit\" \"$file\" 2>/dev/null; then basename $\\(dirname \"$file\"\\); fi' _ '{}' ';')"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",

@@ -1,5 +1,66 @@
 # Poll City Changelog
 
+## [4.0.5] - April 5, 2026 — ENTERPRISE IMPORT + CRM PERSISTENCE
+
+### Server-Backed CRM Column Preferences
+- Added authenticated campaign-scoped column preferences API:
+  - `GET/PUT /api/contacts/column-preferences`
+- Contacts CRM now syncs column order, hidden columns, and column widths to server storage with local fallback.
+
+### Enterprise Import Templates
+- Added authenticated import template APIs:
+  - `GET/POST /api/import/templates`
+  - `DELETE /api/import/templates/[id]`
+- Added built-in templates for Contacts, Volunteers, and Campaign Documents.
+- Added campaign custom template save/delete support for repeatable import workflows.
+
+### Volunteer and Document Import Execution
+- Added authenticated volunteer import execution route:
+  - `POST /api/import/volunteers/execute`
+- Added authenticated campaign document import execution route:
+  - `POST /api/import/documents/execute`
+- Both flows enforce campaign membership checks and write import log outcomes.
+
+### Smart Import Wizard Upgrade
+- Fixed top-level render corruption in wizard client file.
+- Added target entity selection (contacts, volunteers, documents, custom fields placeholder).
+- Added template apply/save/delete controls in column mapping step.
+- Added target-aware execution routing to the correct backend import endpoint.
+
+### Mapper Expansion
+- Expanded AI/rule-based target field registry to include volunteer and document-oriented mappings.
+
+## [4.0.4] - April 5, 2026 — ENTERPRISE UX OPTIMIZATION
+
+### Dashboard Operations Upgrade
+- Upgraded dashboard layout persistence to be campaign-scoped and user-scoped.
+- Added industry stock views:
+  - Overview
+  - Canvass Mode
+  - GOTV Mode
+  - Finance Mode
+  - Election Day Ops
+  - Advance Vote Snapshot
+- Added quick stock-view switcher and active view indicator for war-room workflows.
+
+### CRM Column Management Upgrade
+- Added column manager in Contacts for enterprise CRM workflows:
+  - Drag-to-reorder columns
+  - Show/hide per column
+  - Resizable column widths
+  - Campaign-scoped local persistence of layout settings
+
+### Smart Import Dedupe Upgrade
+- Added fuzzy duplicate detection improvements in import pipeline:
+  - nickname normalization (e.g. Bob -> Robert)
+  - light Levenshtein-based typo tolerance for names
+  - stronger reconciliation with postal/phone/email signals
+- Updated Smart Import UX copy to surface enterprise dedupe behavior.
+
+### Budget Workflow Upgrade
+- Added drag-and-drop ordering in Budget Items tab for prioritization and planning.
+- Added reset-order control for quick recovery to default ordering.
+
 ## [4.0.3] - April 5, 2026 — NATIONAL OFFICIALS + BOUNDARIES INGEST
 
 ### All-Canada Representative Ingestion

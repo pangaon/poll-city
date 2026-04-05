@@ -5,6 +5,18 @@ import AppleProvider from "next-auth/providers/apple";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
+import { validateEnv } from "@/lib/env-check";
+
+// Run at module load — throws in production if NEXTAUTH_SECRET is missing.
+validateEnv();
+
+const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+if (!nextAuthSecret && process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+  throw new Error(
+    "NEXTAUTH_SECRET environment variable is not set. " +
+      "Generate one with: openssl rand -base64 32",
+  );
+}
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
@@ -31,7 +43,7 @@ const oauthProviders = [
 ];
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET ?? "dev-secret",
+  secret: nextAuthSecret ?? "__unset__",
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,

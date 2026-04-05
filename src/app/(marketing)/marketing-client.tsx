@@ -207,7 +207,7 @@ const FAQS = [
   },
   {
     q: "Can I import my existing voter list?",
-    a: "Yes. Pro and above plans support CSV import of your existing contact lists with automatic field mapping and duplicate detection.",
+    a: "Yes. Pro and above plans support enterprise smart import with template-based mapping, duplicate detection, and target-specific intake for contacts, volunteers, and campaign document registries.",
   },
   {
     q: "What is Poll City Print?",
@@ -250,6 +250,10 @@ const PRODUCTS = [
       "Canvassing script builder and lookup quick actions",
       "Household-level soft-supporter updates from lookup in one tap",
       "Campaign operations hub: media, coalitions, events, and opponent intelligence",
+      "Enterprise dashboard with drag-drop widget layouts and stock operational views (Canvass, GOTV, Finance, Election Day, Advance Vote)",
+      "CRM column manager with drag reorder, visibility toggles, and per-campaign width persistence",
+      "Smart import fuzzy dedupe with nickname matching and contact reconciliation",
+      "Drag-and-drop budget item ordering for finance workflows",
       "Communications command center for email, SMS, social, and campaign ads",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",

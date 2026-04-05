@@ -21,7 +21,7 @@ v1.8.0 additions included in this baseline:
 |---|---|---|---|---|---|---|---|---|
 | Campaign Dashboard Widgets | Campaign Operations | ✅ Built & Verified | /dashboard | /api/campaigns/current | Campaign, Membership | Yes | High | Preset layouts + widget persistence implemented. |
 | Campaign Switcher | Campaign Operations | ✅ Built & Verified | /campaigns | /api/campaigns/switch | User, Campaign, Membership | Yes | High | Active campaign context switching works. |
-| CRM Contact Management | Contacts & CRM | ✅ Built & Verified | /contacts | /api/contacts | Contact, Tag, ContactTag | Yes | High | Search, filtering, tagging, pagination. |
+| CRM Contact Management | Contacts & CRM | ✅ Built & Verified | /contacts | /api/contacts, /api/contacts/column-preferences | Contact, Tag, ContactTag, CrmColumnPreference | Yes | High | Search/filtering/tagging/pagination plus server-synced column preferences (order/visibility/widths). |
 | Contact Detail + Timeline | Contacts & CRM | ✅ Built & Verified | /contacts/[id] | /api/contacts/[id], /api/interactions | Contact, Interaction | Yes | High | Campaign-scoped access checks in place. |
 | Custom Fields | Contacts & CRM | ✅ Built & Verified | /settings/fields | /api/campaign-fields, /api/custom-field-values | CampaignField, CustomFieldValue | Yes | Medium | Per-campaign custom schema. |
 | Turf Builder | Canvassing & Field | ✅ Built & Verified | /canvassing/turf-builder | /api/turf, /api/turf/preview | Turf, TurfStop | Partial | High | Route optimization and stop preview exist. |
@@ -45,7 +45,7 @@ v1.8.0 additions included in this baseline:
 | Officials Directory Search | Officials Directory | ✅ Built & Verified | /officials | /api/officials/directory, /api/officials | Official | Yes | High | Postal/search + filters + pagination. |
 | Officials Claim Link Request | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/request | Official | Yes | High | Resend email provider wired (v3.0.0). |
 | In-App Help Center | Support | ✅ Built & Verified | /help | — | — | Yes | Medium | 16 articles across 13 categories with search (v4.0.0). |
-| Specialized CSV Exports | Import/Export | ✅ Built & Verified | /import-export | /api/export/* (7 endpoints) | ExportLog | Yes | High | GOTV, walk list, signs, donations, volunteers, interactions (v4.0.0). |
+| Specialized CSV Exports | Import/Export | ✅ Built & Verified | /import-export | /api/export/* (7 endpoints), /api/import/templates, /api/import/volunteers/execute, /api/import/documents/execute | ExportLog, CampaignImportTemplate, CampaignDocument | Yes | High | Added enterprise import templates and target-specific volunteer/document execution with audit logs (v4.0.5). |
 | Team Management | Team | ✅ Built & Verified | /settings/team | /api/team, /api/team/invite | Membership | Yes | High | Role change, invite, remove (v4.0.0). |
 | Feature Flags / Tier Gating | Billing | ✅ Built & Verified | — | src/lib/feature-flags.ts | — | Yes | High | 21 features × 5 plans with FeatureGate component (v4.0.0). |
 | Contact Slide-Over Panel | CRM | ✅ Built & Verified | /contacts | /api/contacts/[id] | Contact | Yes | High | Inline edit, support level, notes, activity (v4.0.0). |

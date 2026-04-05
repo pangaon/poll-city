@@ -1,5 +1,59 @@
 # Poll City User Guide
 
+## v4.0.5 Enterprise Import + CRM Persistence Addendum — April 5, 2026
+
+### CRM Column Preferences (Server-Synced)
+
+1. Open Contacts and configure columns (order, visibility, widths) from **Columns**.
+2. Changes are saved automatically with campaign + user scope.
+3. Preferences now sync to secure API storage and remain available across devices.
+4. If network sync is unavailable, local browser persistence remains active until sync resumes.
+
+### Smart Import Templates
+
+1. Open Import / Export -> Smart Import.
+2. Upload a file and go to the **Map Columns** step.
+3. Choose a target: Contacts, Volunteers, or Documents.
+4. Apply a built-in template or choose a campaign template.
+5. Click **Save as Template** to store your current mappings for future imports.
+6. Select a campaign template and click **Delete Template** to remove it.
+
+### Volunteer and Document Imports
+
+1. In Smart Import mapping step, set **Target** to Volunteers or Documents.
+2. Map required fields (for example name/email for volunteers, title/url for documents).
+3. Continue to review and run import.
+4. Import execution is logged and campaign access is enforced by membership checks.
+
+## v4.0.4 Enterprise UX Optimization Addendum — April 5, 2026
+
+### Dashboard Stock Views and Drag Layout
+
+1. Open Dashboard and use the **Industry Standard Views** switcher.
+2. Select one of: Overview, Canvass Mode, GOTV Mode, Finance Mode, Election Day Ops, Advance Vote Snapshot.
+3. Enable **Customise** to drag and reorder widgets.
+4. Widget visibility and order save automatically per campaign.
+
+### CRM Column Manager
+
+1. Open Contacts and click **Columns**.
+2. Drag column rows to reorder table fields.
+3. Use checkboxes to show/hide fields.
+4. Resize table columns by dragging the header edge.
+5. Layout settings persist per campaign in browser storage.
+
+### Smart Import Enterprise Dedupe
+
+1. Smart Import now applies fuzzy dedupe logic while checking probable duplicates.
+2. Name variants and light spelling differences are reconciled with postal/phone/email context.
+3. Use duplicate review before final import execution to reduce contact fragmentation.
+
+### Budget Item Drag Ordering
+
+1. Open Budget -> Items.
+2. Drag rows to reorder planning priority visually.
+3. Use **Reset order** to restore default item ordering.
+
 ## v4.0.3 National Data Ingestion Addendum — April 5, 2026
 
 ### All-Canada Officials Seed (`npm run db:seed:officials`)

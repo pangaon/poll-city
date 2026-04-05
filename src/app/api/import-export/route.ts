@@ -14,6 +14,43 @@ import {
 const VALID_SUPPORT_LEVELS = Object.values(SupportLevel);
 const MAX_IMPORT_ROWS = 5000;
 
+function normalizeHeaderKey(key: string): string {
+  const cleaned = key.replace(/^\uFEFF/, "").trim().toLowerCase();
+  const compact = cleaned.replace(/[^a-z0-9]/g, "");
+  const aliases: Record<string, string> = {
+    firstname: "firstName",
+    lastname: "lastName",
+    email: "email",
+    phone: "phone",
+    address: "address1",
+    address1: "address1",
+    address2: "address2",
+    city: "city",
+    province: "province",
+    postalcode: "postalCode",
+    postcode: "postalCode",
+    ward: "ward",
+    riding: "riding",
+    supportlevel: "supportLevel",
+    issues: "issues",
+    signrequested: "signRequested",
+    volunteerinterest: "volunteerInterest",
+    donotcontact: "doNotContact",
+    notes: "notes",
+    tags: "tags",
+    lastcontactedat: "lastContactedAt",
+  };
+  return aliases[compact] ?? key.trim();
+}
+
+function normalizeImportRow(row: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(row)) {
+    normalized[normalizeHeaderKey(key)] = value;
+  }
+  return normalized;
+}
+
 function parseBoolean(value?: string | null): boolean {
   const normalized = value?.trim().toLowerCase();
   return normalized === "yes" || normalized === "true" || normalized === "1" || normalized === "y";
@@ -156,7 +193,7 @@ export async function POST(req: NextRequest) {
   const results = { imported: 0, skipped: 0, errors: [] as string[] };
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+    const row = normalizeImportRow(rows[i]);
     const firstName = row.firstName?.trim();
     const lastName = row.lastName?.trim();
 

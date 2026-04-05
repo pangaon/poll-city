@@ -74,6 +74,14 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: "gotvStatus", label: "GOTV Status", category: "campaign", examples: ["gotv", "gotv_status", "voted", "vote_status"] },
   { key: "firstChoice", label: "First Choice", category: "campaign", examples: ["first_choice", "firstchoice", "choice1", "candidate_1", "preferred_candidate"] },
   { key: "secondChoice", label: "Second Choice", category: "campaign", examples: ["second_choice", "secondchoice", "choice2", "candidate_2"] },
+  { key: "roles", label: "Volunteer Roles", category: "campaign", examples: ["roles", "role", "volunteer_role", "volunteer_roles", "assignment"] },
+  { key: "skills", label: "Volunteer Skills", category: "campaign", examples: ["skills", "skill", "competencies", "abilities", "volunteer_skills"] },
+  { key: "availability", label: "Availability", category: "campaign", examples: ["availability", "available", "schedule", "shift", "timeslot"] },
+  { key: "preferredRegion", label: "Preferred Region", category: "campaign", examples: ["preferred_region", "region", "preferred_area", "service_area"] },
+  { key: "sourceUrl", label: "Source URL", category: "other", examples: ["source_url", "url", "link", "document_url", "file_url"] },
+  { key: "mimeType", label: "MIME Type", category: "other", examples: ["mime_type", "mimetype", "content_type", "file_type"] },
+  { key: "ownerId", label: "Owner", category: "other", examples: ["owner", "owner_id", "assignee", "assigned_to"] },
+  { key: "custom", label: "Custom Field", category: "other", examples: ["custom", "custom_field", "dynamic_field", "attribute"] },
 ];
 
 // ─── Column Mapping Result ────────────────────────────────────────────────────

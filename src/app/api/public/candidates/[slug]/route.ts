@@ -18,6 +18,27 @@ export async function GET(
       logoUrl: true,
       primaryColor: true,
       isPublic: true,
+      official: {
+        select: {
+          id: true,
+          isClaimed: true,
+          name: true,
+          title: true,
+          level: true,
+          photoUrl: true,
+          website: true,
+          twitter: true,
+          facebook: true,
+          instagram: true,
+          linkedIn: true,
+          phone: true,
+          address: true,
+          email: true,
+          partyName: true,
+          party: true,
+        },
+      },
+      customization: true,
       polls: {
         where: { isActive: true, visibility: "public" },
         select: {
@@ -36,10 +57,51 @@ export async function GET(
   });
 
   if (!campaign) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const official = await prisma.official.findFirst({
+      where: { externalId: params.slug },
+      select: {
+        id: true,
+        isClaimed: true,
+        name: true,
+        title: true,
+        level: true,
+        photoUrl: true,
+        website: true,
+        twitter: true,
+        facebook: true,
+        instagram: true,
+        linkedIn: true,
+        phone: true,
+        address: true,
+        email: true,
+        district: true,
+        partyName: true,
+        party: true,
+      },
+    });
+
+    if (!official) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      id: official.id,
+      slug: params.slug,
+      candidateName: official.name,
+      candidateTitle: official.title,
+      candidateBio: null,
+      jurisdiction: official.district,
+      electionType: String(official.level),
+      logoUrl: official.photoUrl,
+      primaryColor: "#1E3A8A",
+      supporterCount: 0,
+      official,
+      customization: null,
+      polls: [],
+    });
   }
 
-  if (!campaign.isPublic) {
+  if (!campaign.isPublic && !campaign.official) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -72,6 +134,8 @@ export async function GET(
     logoUrl: campaign.logoUrl,
     primaryColor: campaign.primaryColor,
     supporterCount: campaign._count.contacts,
+    official: campaign.official,
+    customization: campaign.customization,
     polls,
   });
 }

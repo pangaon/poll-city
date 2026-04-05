@@ -12,6 +12,37 @@ interface ImportResult { imported: number; skipped: number; errors: string[]; }
 const CSV_HEADERS = ["firstName", "lastName", "email", "phone", "address1", "address2", "city", "province", "postalCode", "ward", "riding", "supportLevel", "issues", "signRequested", "volunteerInterest", "doNotContact", "notes"];
 const SUPPORT_LEVEL_VALUES = ["strong_support", "leaning_support", "undecided", "leaning_opposition", "strong_opposition", "unknown"];
 
+function normalizeCsvHeader(header: string): string {
+  const cleaned = header.replace(/^\uFEFF/, "").trim().toLowerCase();
+  const compact = cleaned.replace(/[^a-z0-9]/g, "");
+
+  const aliases: Record<string, string> = {
+    firstname: "firstName",
+    lastname: "lastName",
+    email: "email",
+    phone: "phone",
+    address: "address1",
+    address1: "address1",
+    address2: "address2",
+    city: "city",
+    province: "province",
+    postalcode: "postalCode",
+    postcode: "postalCode",
+    ward: "ward",
+    riding: "riding",
+    supportlevel: "supportLevel",
+    issues: "issues",
+    signrequested: "signRequested",
+    volunteerinterest: "volunteerInterest",
+    donotcontact: "doNotContact",
+    notes: "notes",
+    tags: "tags",
+    lastcontactedat: "lastContactedAt",
+  };
+
+  return aliases[compact] ?? header.trim();
+}
+
 export default function ImportExportClient({ campaignId }: Props) {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -23,7 +54,9 @@ export default function ImportExportClient({ campaignId }: Props) {
 
   function parseFile(file: File) {
     Papa.parse<Record<string, string>>(file, {
-      header: true, skipEmptyLines: true,
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: normalizeCsvHeader,
       complete: (results) => {
         if (results.data.length === 0) {
           toast.error("CSV file has no data rows. Check that it has a header row and at least one data row.");
@@ -79,7 +112,9 @@ export default function ImportExportClient({ campaignId }: Props) {
     if (!file) return;
     setImporting(true);
     Papa.parse<Record<string, string>>(file, {
-      header: true, skipEmptyLines: true,
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: normalizeCsvHeader,
       complete: async (results) => {
         try {
           const res = await fetch("/api/import-export", {

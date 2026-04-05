@@ -392,16 +392,40 @@ function ItemsTab({
   onEdit: (item: BudgetItem) => void;
   onDelete: (id: string) => void;
 }) {
+  const [orderedIds, setOrderedIds] = useState<string[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nextIds = items.map((item) => item.id);
+    setOrderedIds((prev) => {
+      const kept = prev.filter((id) => nextIds.includes(id));
+      const appended = nextIds.filter((id) => !kept.includes(id));
+      return [...kept, ...appended];
+    });
+  }, [items]);
+
+  const displayItems = orderedIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is BudgetItem => Boolean(item));
+
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
         <p className="text-sm text-gray-500">{items.length} item{items.length !== 1 ? "s" : ""}</p>
-        <button
-          onClick={onAdd}
-          className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg"
-        >
-          <Plus className="w-4 h-4" /> Add item
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setOrderedIds(items.map((item) => item.id))}
+            className="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold px-3 py-1.5 rounded-lg"
+          >
+            Reset order
+          </button>
+          <button
+            onClick={onAdd}
+            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg"
+          >
+            <Plus className="w-4 h-4" /> Add item
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -424,8 +448,25 @@ function ItemsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+              {displayItems.map((item) => (
+                <tr
+                  key={item.id}
+                  draggable
+                  onDragStart={() => setDraggingId(item.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (!draggingId || draggingId === item.id) return;
+                    const from = orderedIds.indexOf(draggingId);
+                    const to = orderedIds.indexOf(item.id);
+                    if (from < 0 || to < 0) return;
+                    const next = [...orderedIds];
+                    const [moved] = next.splice(from, 1);
+                    next.splice(to, 0, moved);
+                    setOrderedIds(next);
+                    setDraggingId(null);
+                  }}
+                  className="hover:bg-gray-50 cursor-move"
+                >
                   <td className="px-3 py-2 text-gray-600 text-xs whitespace-nowrap">
                     {new Date(item.incurredAt).toLocaleDateString("en-CA")}
                   </td>

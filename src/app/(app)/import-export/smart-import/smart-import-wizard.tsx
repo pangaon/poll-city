@@ -8,9 +8,9 @@
  * Designed for non-technical campaign volunteers.
  * The hard work happens invisibly in the engine.
  */
-import { useState, useRef, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Upload, ChevronRight, Check, AlertTriangle, RefreshCw, ArrowLeft, X, Sparkles } from "lucide-react";
-import { Button, Card, CardHeader, CardContent, Select, Badge } from "@/components/ui";
+import { Button, Card, CardHeader, CardContent, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ColumnMapping } from "@/lib/import/column-mapper";
@@ -45,6 +45,17 @@ interface ReviewSummary {
   newRecordsEstimate: number;
 }
 
+type TargetEntity = "contacts" | "volunteers" | "documents" | "custom_fields";
+
+interface ImportTemplate {
+  id: string;
+  name: string;
+  targetEntity: TargetEntity;
+  mappings: Record<string, string>;
+  options?: Record<string, unknown> | null;
+  isDefault?: boolean;
+}
+
 export default function SmartImportWizard({ campaignId }: Props) {
   const [step, setStep] = useState<Step>("upload");
   const [loading, setLoading] = useState(false);
@@ -56,6 +67,130 @@ export default function SmartImportWizard({ campaignId }: Props) {
   const [preparingReview, setPreparingReview] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [targetEntity, setTargetEntity] = useState<TargetEntity>("contacts");
+  const [builtinTemplates, setBuiltinTemplates] = useState<ImportTemplate[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<ImportTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  const categoryOrder: Array<(typeof TARGET_FIELDS)[number]["category"]> = [
+    "name",
+    "address",
+    "contact",
+    "electoral",
+    "campaign",
+    "other",
+  ];
+  const categories = useMemo(() => {
+    const known = categoryOrder.filter((cat) => TARGET_FIELDS.some((f) => f.category === cat));
+    const extras = Array.from(new Set(TARGET_FIELDS.map((f) => f.category))).filter((cat) => !known.includes(cat));
+    return [...known, ...extras];
+  }, []);
+
+  async function loadTemplates() {
+    try {
+      const res = await fetch(`/api/import/templates?campaignId=${campaignId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setBuiltinTemplates(data?.data?.builtin ?? []);
+      setCustomTemplates(data?.data?.custom ?? []);
+    } catch {
+      // non-blocking
+    }
+  }
+
+  useEffect(() => {
+    loadTemplates();
+  }, [campaignId]);
+
+  const allTemplates = useMemo(() => [...builtinTemplates, ...customTemplates], [builtinTemplates, customTemplates]);
+
+  function normalizeKey(value: string) {
+    return value.toLowerCase().replace(/[\s\-\.]/g, "_").replace(/[^a-z0-9_]/g, "");
+  }
+
+  function applyTemplate(template: ImportTemplate) {
+    if (!analysis) return;
+
+    const byNormalizedHeader = new Map<string, string>();
+    for (const header of analysis.rawHeaders) {
+      byNormalizedHeader.set(normalizeKey(header), header);
+    }
+
+    const next = { ...mappings };
+    for (const [source, target] of Object.entries(template.mappings ?? {})) {
+      const direct = analysis.rawHeaders.find((h) => h === source);
+      const normalized = byNormalizedHeader.get(normalizeKey(source));
+      const header = direct ?? normalized;
+      if (!header || !target) continue;
+      next[header] = {
+        ...next[header],
+        sourceColumn: header,
+        targetField: target,
+        confidence: 100,
+        method: "manual",
+        alternatives: next[header]?.alternatives ?? [],
+      };
+    }
+
+    setMappings(next);
+    setTargetEntity(template.targetEntity);
+    setSelectedTemplateId(template.id);
+    toast.success(`Applied template: ${template.name}`);
+  }
+
+  async function saveCurrentTemplate() {
+    if (!analysis) return;
+
+    const name = window.prompt("Template name");
+    if (!name?.trim()) return;
+
+    const mappingConfig = Object.fromEntries(
+      Object.entries(mappings)
+        .filter(([, m]) => m.targetField)
+        .map(([src, m]) => [src, m.targetField!])
+    );
+
+    try {
+      const res = await fetch("/api/import/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          name: name.trim(),
+          targetEntity,
+          mappings: mappingConfig,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to save template");
+        return;
+      }
+      toast.success("Template saved");
+      await loadTemplates();
+    } catch {
+      toast.error("Failed to save template");
+    }
+  }
+
+  async function deleteSelectedTemplate() {
+    const template = customTemplates.find((t) => t.id === selectedTemplateId);
+    if (!template) return;
+
+    try {
+      const res = await fetch(`/api/import/templates/${template.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to delete template");
+        return;
+      }
+      setSelectedTemplateId("");
+      toast.success("Template deleted");
+      await loadTemplates();
+    } catch {
+      toast.error("Failed to delete template");
+    }
+  }
 
   // Step 1: Upload and analyze
   async function handleFile(f: File) {
@@ -145,7 +280,20 @@ export default function SmartImportWizard({ campaignId }: Props) {
       form.append("campaignId", campaignId);
       form.append("mappings", JSON.stringify(mappingConfig));
 
-      const importRes = await fetch("/api/import/execute", { method: "POST", body: form });
+      const endpointByEntity: Record<TargetEntity, string | null> = {
+        contacts: "/api/import/execute",
+        volunteers: "/api/import/volunteers/execute",
+        documents: "/api/import/documents/execute",
+        custom_fields: null,
+      };
+      const endpoint = endpointByEntity[targetEntity];
+
+      if (!endpoint) {
+        toast.error("Custom field imports are not enabled yet in this flow.");
+        return;
+      }
+
+      const importRes = await fetch(endpoint, { method: "POST", body: form });
       const importData = await importRes.json();
       if (!importRes.ok) { toast.error(importData.error ?? "Import failed"); return; }
       setImportResult(importData.data);
@@ -254,6 +402,58 @@ export default function SmartImportWizard({ campaignId }: Props) {
                   ))}
                 </div>
               )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                <div className="text-[11px] text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-2 py-1">
+                  Enterprise dedupe active: fuzzy name matching + nickname normalization + phone/email reconciliation.
+                </div>
+                <Select
+                  value={targetEntity}
+                  onChange={(e) => setTargetEntity(e.target.value as TargetEntity)}
+                  className="text-xs"
+                >
+                  <option value="contacts">Target: Contacts</option>
+                  <option value="volunteers">Target: Volunteers</option>
+                  <option value="documents">Target: Documents</option>
+                  <option value="custom_fields">Target: Custom Fields</option>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Select
+                  value={selectedTemplateId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedTemplateId(id);
+                    if (!id) return;
+                    const template = allTemplates.find((t) => t.id === id);
+                    if (template) applyTemplate(template);
+                  }}
+                  className="text-xs min-w-[230px]"
+                >
+                  <option value="">Apply template…</option>
+                  {builtinTemplates.length > 0 && (
+                    <optgroup label="Built-in">
+                      {builtinTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>{template.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {customTemplates.length > 0 && (
+                    <optgroup label="Campaign">
+                      {customTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>{template.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </Select>
+                <Button variant="outline" onClick={saveCurrentTemplate}>Save as Template</Button>
+                <Button
+                  variant="outline"
+                  onClick={deleteSelectedTemplate}
+                  disabled={!customTemplates.some((t) => t.id === selectedTemplateId)}
+                >
+                  <X className="w-4 h-4" />Delete Template
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -292,7 +492,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
                         className="text-xs"
                       >
                         <option value="">— Skip this column —</option>
-                        {["name", "address", "contact", "electoral", "campaign"].map(cat => (
+                        {categories.map(cat => (
                           <optgroup key={cat} label={cat.charAt(0).toUpperCase() + cat.slice(1)}>
                             {TARGET_FIELDS.filter(f => f.category === cat).map(f => (
                               <option key={f.key} value={f.key}>{f.label}</option>
@@ -365,7 +565,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
               <h2 className="text-lg font-bold text-gray-900">Ready to import</h2>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Total contacts", value: (reviewSummary?.validRows ?? analysis.totalRows).toLocaleString(), color: "text-blue-600" },
+                  { label: "Total rows", value: (reviewSummary?.validRows ?? analysis.totalRows).toLocaleString(), color: "text-blue-600" },
                   { label: "Columns mapped", value: `${mappedCount} / ${totalCols}`, color: "text-emerald-600" },
                   { label: "Probable duplicates", value: reviewSummary?.probableDuplicates ?? 0, color: "text-amber-600" },
                   { label: "Invalid rows", value: reviewSummary?.invalidRows ?? analysis.skippedRows, color: "text-gray-500" },
@@ -379,7 +579,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
               <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
                 <p className="font-semibold mb-1">What happens next:</p>
                 <ul className="space-y-0.5 text-blue-700">
-                  <li>✓ New contacts are added to your campaign</li>
+                  <li>✓ New records are created in the selected target</li>
                   <li>✓ Likely duplicates are updated to avoid double records</li>
                   <li>✓ Invalid rows are skipped and logged in import history</li>
                 </ul>
@@ -390,7 +590,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep("map")}><ArrowLeft className="w-4 h-4" />Back</Button>
             <Button onClick={runImport} loading={loading} className="flex-1">
-              Import {analysis.totalRows.toLocaleString()} Contacts
+              Import {analysis.totalRows.toLocaleString()} Rows
             </Button>
           </div>
         </div>

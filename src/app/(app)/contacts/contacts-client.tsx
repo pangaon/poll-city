@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2 } from "lucide-react";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal } from "lucide-react";
 import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
@@ -31,6 +31,27 @@ interface Props {
 
 const pageSize = 25;
 
+type ColumnKey = "name" | "contact" | "support" | "ward" | "tags" | "lastContact" | "flags";
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  name: "Name",
+  contact: "Contact",
+  support: "Support",
+  ward: "Ward",
+  tags: "Tags",
+  lastContact: "Last Contact",
+  flags: "Flags",
+};
+const DEFAULT_COLUMN_ORDER: ColumnKey[] = ["name", "contact", "support", "ward", "tags", "lastContact", "flags"];
+const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
+  name: 220,
+  contact: 230,
+  support: 170,
+  ward: 130,
+  tags: 220,
+  lastContact: 150,
+  flags: 150,
+};
+
 export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -39,6 +60,12 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const [columnOrder, setColumnOrder] = useState<ColumnKey[]>(DEFAULT_COLUMN_ORDER);
+  const [hiddenColumns, setHiddenColumns] = useState<ColumnKey[]>([]);
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(DEFAULT_COLUMN_WIDTHS);
+  const [resizing, setResizing] = useState<{ key: ColumnKey; startX: number; startWidth: number } | null>(null);
+  const [draggingColumn, setDraggingColumn] = useState<ColumnKey | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -62,6 +89,106 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       .then((d) => setPresets(d.data ?? { builtin: [], saved: [] }))
       .catch(() => { /* ignore */ });
   }, [campaignId]);
+
+  const columnStorageKey = `poll-city-crm-columns-${campaignId}`;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(columnStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        order?: ColumnKey[];
+        hidden?: ColumnKey[];
+        widths?: Record<ColumnKey, number>;
+      };
+      if (parsed.order?.length) setColumnOrder(parsed.order);
+      if (parsed.hidden) setHiddenColumns(parsed.hidden);
+      if (parsed.widths) setColumnWidths((prev) => ({ ...prev, ...parsed.widths }));
+    } catch {
+      // ignore bad local storage data
+    }
+  }, [columnStorageKey]);
+
+  useEffect(() => {
+    async function loadServerPreferences() {
+      try {
+        const res = await fetch(`/api/contacts/column-preferences?campaignId=${campaignId}&tableKey=contacts`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        const pref = payload?.data;
+        if (!pref) return;
+
+        const serverOrder = Array.isArray(pref.order) ? pref.order as ColumnKey[] : null;
+        const serverHidden = Array.isArray(pref.hidden) ? pref.hidden as ColumnKey[] : null;
+        const serverWidths = (pref.widths && typeof pref.widths === "object") ? pref.widths as Record<ColumnKey, number> : null;
+
+        if (serverOrder?.length) setColumnOrder(serverOrder);
+        if (serverHidden) setHiddenColumns(serverHidden);
+        if (serverWidths) setColumnWidths((prev) => ({ ...prev, ...serverWidths }));
+      } catch {
+        // keep local fallback
+      }
+    }
+
+    loadServerPreferences();
+  }, [campaignId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        columnStorageKey,
+        JSON.stringify({ order: columnOrder, hidden: hiddenColumns, widths: columnWidths })
+      );
+    } catch {
+      // ignore storage write failures
+    }
+  }, [columnOrder, hiddenColumns, columnWidths, columnStorageKey]);
+
+  useEffect(() => {
+    const id = setTimeout(async () => {
+      try {
+        await fetch("/api/contacts/column-preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            tableKey: "contacts",
+            order: columnOrder,
+            hidden: hiddenColumns,
+            widths: columnWidths,
+          }),
+        });
+      } catch {
+        // server sync is best-effort; local state remains source of truth
+      }
+    }, 350);
+
+    return () => clearTimeout(id);
+  }, [campaignId, columnOrder, hiddenColumns, columnWidths]);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const activeResize = resizing;
+
+    function onMove(event: MouseEvent) {
+      const delta = event.clientX - activeResize.startX;
+      setColumnWidths((prev) => ({
+        ...prev,
+        [activeResize.key]: Math.max(90, activeResize.startWidth + delta),
+      }));
+    }
+
+    function onUp() {
+      setResizing(null);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [resizing]);
 
   function applyPreset(preset: FilterPreset) {
     const f = preset.filters as {
@@ -244,6 +371,60 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
           <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="w-3.5 h-3.5" />More Filters{(followUp || volunteerOnly || signOnly || wards.length > 0) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
           </Button>
+          <div className="relative">
+            <Button variant="outline" size="sm" onClick={() => setShowColumnManager((v) => !v)}>
+              <SlidersHorizontal className="w-3.5 h-3.5" />Columns
+            </Button>
+            {showColumnManager && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowColumnManager(false)} />
+                <div className="absolute right-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-40 p-3">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Reorder and toggle CRM columns</p>
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {columnOrder.map((key) => {
+                      const hidden = hiddenColumns.includes(key);
+                      return (
+                        <div
+                          key={key}
+                          draggable
+                          onDragStart={() => setDraggingColumn(key)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            if (!draggingColumn || draggingColumn === key) return;
+                            const from = columnOrder.indexOf(draggingColumn);
+                            const to = columnOrder.indexOf(key);
+                            if (from < 0 || to < 0) return;
+                            const next = [...columnOrder];
+                            const [moved] = next.splice(from, 1);
+                            next.splice(to, 0, moved);
+                            setColumnOrder(next);
+                            setDraggingColumn(null);
+                          }}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-2 py-1.5"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-800 truncate">{COLUMN_LABELS[key]}</span>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={!hidden}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setHiddenColumns((prev) => prev.filter((x) => x !== key));
+                              } else {
+                                setHiddenColumns((prev) => [...prev, key]);
+                              }
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           {/* Presets */}
           <div className="relative">
             <Button variant="outline" size="sm" onClick={() => setShowPresetsMenu(!showPresetsMenu)}>
@@ -374,13 +555,39 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Contact</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Support</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Ward</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Tags</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Last Contact</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden xl:table-cell">Flags</th>
+                {columnOrder.filter((k) => !hiddenColumns.includes(k)).map((key) => (
+                  <th
+                    key={key}
+                    draggable
+                    onDragStart={() => setDraggingColumn(key)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      if (!draggingColumn || draggingColumn === key) return;
+                      const from = columnOrder.indexOf(draggingColumn);
+                      const to = columnOrder.indexOf(key);
+                      if (from < 0 || to < 0) return;
+                      const next = [...columnOrder];
+                      const [moved] = next.splice(from, 1);
+                      next.splice(to, 0, moved);
+                      setColumnOrder(next);
+                      setDraggingColumn(null);
+                    }}
+                    className="text-left px-4 py-3 font-medium text-gray-600 relative select-none"
+                    style={{ width: columnWidths[key], minWidth: columnWidths[key] }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="w-3 h-3 text-gray-300" />
+                      <span>{COLUMN_LABELS[key]}</span>
+                    </div>
+                    <div
+                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setResizing({ key, startX: e.clientX, startWidth: columnWidths[key] ?? 120 });
+                      }}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -388,13 +595,13 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
                     <td className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: columnOrder.filter((k) => !hiddenColumns.includes(k)).length }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                     ))}
                   </tr>
                 ))
               ) : contacts.length === 0 ? (
-                <tr><td colSpan={8} className="py-16 text-center text-gray-400 text-sm">No contacts found</td></tr>
+                <tr><td colSpan={columnOrder.filter((k) => !hiddenColumns.includes(k)).length + 1} className="py-16 text-center text-gray-400 text-sm">No contacts found</td></tr>
               ) : contacts.map((c) => (
                 <tr
                   key={c.id}
@@ -407,56 +614,62 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{fullName(c.firstName, c.lastName)}</div>
-                    {c._count.interactions > 0 && <div className="text-xs text-gray-400">{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</div>}
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <div className="space-y-0.5">
-                      {c.phone && <div className="flex items-center gap-1 text-gray-600"><Phone className="w-3 h-3" />{formatPhone(c.phone)}</div>}
-                      {c.email && <div className="flex items-center gap-1 text-gray-500 text-xs truncate max-w-[160px]"><Mail className="w-3 h-3" />{c.email}</div>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Select
-                      value={c.supportLevel}
-                      onChange={async (e) => {
-                        try {
-                          await fetch(`/api/contacts/${c.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ supportLevel: e.target.value }),
-                          });
-                          loadContacts();
-                        } catch {
-                          toast.error("Failed to update support level");
-                        }
-                      }}
-                      className="w-32"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>{l}</option>
-                      ))}
-                    </Select>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{c.ward ?? "—"}</td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <div className="flex gap-1 flex-wrap">
-                      {c.tags.slice(0, 2).map(({ tag }) => (
-                        <span key={tag.id} className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: tag.color }}>{tag.name}</span>
-                      ))}
-                      {c.tags.length > 2 && <span className="text-xs text-gray-400">+{c.tags.length - 2}</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{formatDate(c.lastContactedAt)}</td>
-                  <td className="px-4 py-3 hidden xl:table-cell">
-                    <div className="flex gap-1">
-                      {c.followUpNeeded && <span className="w-2 h-2 bg-amber-500 rounded-full" title="Follow-up needed" />}
-                      {c.volunteerInterest && <span className="w-2 h-2 bg-blue-500 rounded-full" title="Volunteer interest" />}
-                      {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full" title="Sign requested" />}
-                    </div>
-                  </td>
+                  {columnOrder.filter((k) => !hiddenColumns.includes(k)).map((key) => (
+                    <td key={key} className="px-4 py-3" style={{ width: columnWidths[key], minWidth: columnWidths[key] }}>
+                      {key === "name" && (
+                        <>
+                          <div className="font-medium text-gray-900">{fullName(c.firstName, c.lastName)}</div>
+                          {c._count.interactions > 0 && <div className="text-xs text-gray-400">{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</div>}
+                        </>
+                      )}
+                      {key === "contact" && (
+                        <div className="space-y-0.5">
+                          {c.phone && <div className="flex items-center gap-1 text-gray-600"><Phone className="w-3 h-3" />{formatPhone(c.phone)}</div>}
+                          {c.email && <div className="flex items-center gap-1 text-gray-500 text-xs truncate max-w-[160px]"><Mail className="w-3 h-3" />{c.email}</div>}
+                        </div>
+                      )}
+                      {key === "support" && (
+                        <Select
+                          value={c.supportLevel}
+                          onChange={async (e) => {
+                            try {
+                              await fetch(`/api/contacts/${c.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ supportLevel: e.target.value }),
+                              });
+                              loadContacts();
+                            } catch {
+                              toast.error("Failed to update support level");
+                            }
+                          }}
+                          className="w-32"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </Select>
+                      )}
+                      {key === "ward" && <span className="text-gray-500">{c.ward ?? "—"}</span>}
+                      {key === "tags" && (
+                        <div className="flex gap-1 flex-wrap">
+                          {c.tags.slice(0, 2).map(({ tag }) => (
+                            <span key={tag.id} className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: tag.color }}>{tag.name}</span>
+                          ))}
+                          {c.tags.length > 2 && <span className="text-xs text-gray-400">+{c.tags.length - 2}</span>}
+                        </div>
+                      )}
+                      {key === "lastContact" && <span className="text-gray-500">{formatDate(c.lastContactedAt)}</span>}
+                      {key === "flags" && (
+                        <div className="flex gap-1">
+                          {c.followUpNeeded && <span className="w-2 h-2 bg-amber-500 rounded-full" title="Follow-up needed" />}
+                          {c.volunteerInterest && <span className="w-2 h-2 bg-blue-500 rounded-full" title="Volunteer interest" />}
+                          {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full" title="Sign requested" />}
+                        </div>
+                      )}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

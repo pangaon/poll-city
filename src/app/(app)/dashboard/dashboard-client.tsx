@@ -78,24 +78,29 @@ const PRESETS: Record<string, WidgetId[]> = {
   "Canvass Mode": ["doors","contacts","supporters","followups","call-progress","recent-interactions","activity-log"],
   "GOTV Mode": ["gotv","supporters","undecided","doors","support-rate","call-progress","recent-interactions"],
   "Finance Mode": ["donations","contacts","signs","tasks","activity-log"],
+  "Election Day Ops": ["gotv","call-progress","doors","supporters","followups","tasks","activity-log"],
+  "Advance Vote Snapshot": ["gotv","support-rate","supporters","undecided","doors","recent-interactions","activity-log"],
 };
 
 const LS_KEY = "poll-city-dashboard-layout";
+const MODE_KEY = "poll-city-dashboard-mode";
 
-function loadLayout(userId: string): { order: WidgetId[]; hidden: WidgetId[] } {
+function loadLayout(campaignId: string, userId: string): { order: WidgetId[]; hidden: WidgetId[]; preset: string } {
   try {
-    const raw = localStorage.getItem(`${LS_KEY}-${userId}`);
+    const raw = localStorage.getItem(`${LS_KEY}-${campaignId}-${userId}`);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
   return {
     order: PRESETS.Overview,
     hidden: [],
+    preset: "Overview",
   };
 }
 
-function saveLayout(userId: string, order: WidgetId[], hidden: WidgetId[]) {
+function saveLayout(campaignId: string, userId: string, order: WidgetId[], hidden: WidgetId[], preset: string) {
   try {
-    localStorage.setItem(`${LS_KEY}-${userId}`, JSON.stringify({ order, hidden }));
+    localStorage.setItem(`${LS_KEY}-${campaignId}-${userId}`, JSON.stringify({ order, hidden, preset }));
+    localStorage.setItem(`${MODE_KEY}-${campaignId}-${userId}`, preset);
   } catch { /* ignore */ }
 }
 
@@ -152,10 +157,11 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
 
   // Load layout from localStorage
   useEffect(() => {
-    const saved = loadLayout(user.id);
+    const saved = loadLayout(campaign.id, user.id);
     setOrder(saved.order);
     setHidden(saved.hidden);
-  }, [user.id]);
+    setActivePreset(saved.preset ?? "Overview");
+  }, [campaign.id, user.id]);
 
   // Fetch extra widget data
   useEffect(() => {
@@ -291,13 +297,13 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     setOrder(ids);
     setHidden([]);
     setActivePreset(name);
-    saveLayout(user.id, ids, []);
+    saveLayout(campaign.id, user.id, ids, [], name);
   }
 
   function toggleWidget(id: WidgetId) {
     const newHidden = hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id];
     setHidden(newHidden);
-    saveLayout(user.id, order, newHidden);
+    saveLayout(campaign.id, user.id, order, newHidden, activePreset);
   }
 
   function onDragStart(id: WidgetId) {
@@ -317,7 +323,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   }
 
   function onDrop() {
-    saveLayout(user.id, order, hidden);
+    saveLayout(campaign.id, user.id, order, hidden, activePreset);
     dragId.current = null;
   }
 
@@ -576,6 +582,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
             Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{campaign.name}</p>
+          <p className="text-xs text-gray-400 mt-1">Active stock view: {activePreset}</p>
         </div>
         <div className="flex items-center gap-2">
           {official && (
@@ -597,6 +604,32 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
             <Settings className="w-4 h-4" />
             {customising ? "Done" : "Customise"}
           </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Industry Standard Views</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            "Overview",
+            "Canvass Mode",
+            "GOTV Mode",
+            "Finance Mode",
+            "Election Day Ops",
+            "Advance Vote Snapshot",
+          ].map((name) => (
+            <button
+              key={name}
+              onClick={() => applyPreset(name)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                activePreset === name
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {name}
+            </button>
+          ))}
         </div>
       </div>
 

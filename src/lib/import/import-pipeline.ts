@@ -17,6 +17,28 @@ export interface ParseAndMapResult {
 }
 
 const VALID_SUPPORT_LEVELS = new Set(Object.values(SupportLevel));
+const NICKNAME_MAP: Record<string, string> = {
+  bob: "robert",
+  rob: "robert",
+  bobby: "robert",
+  bill: "william",
+  billy: "william",
+  will: "william",
+  liz: "elizabeth",
+  beth: "elizabeth",
+  mike: "michael",
+  mick: "michael",
+  jim: "james",
+  jimmy: "james",
+  kate: "katherine",
+  katie: "katherine",
+  chris: "christopher",
+  alex: "alexander",
+  andy: "andrew",
+  drew: "andrew",
+  steve: "steven",
+  steven: "stephen",
+};
 
 function normalizeString(value: string | undefined): string {
   return value?.trim() ?? "";
@@ -28,6 +50,36 @@ function normalizePhone(value: string | undefined): string {
 
 function normalizeEmail(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeName(value: string | undefined): string {
+  const cleaned = normalizeString(value).toLowerCase();
+  return NICKNAME_MAP[cleaned] ?? cleaned;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= b.length; j++) {
+      const temp = row[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      row[j] = Math.min(
+        row[j] + 1,
+        prev + 1,
+        row[j - 1] + cost
+      );
+      prev = temp;
+    }
+    row[0] = i;
+  }
+
+  return row[b.length];
 }
 
 export async function parseAndMapImportFile(file: File, mappings: MappingConfig): Promise<ParseAndMapResult> {
@@ -128,14 +180,14 @@ export function toContactWriteData(row: Record<string, string>) {
 
 export function isLikelyDuplicate(row: Record<string, string>, existing: Pick<Contact, "firstName" | "lastName" | "postalCode" | "phone" | "email" | "externalId">): boolean {
   const rowExternalId = normalizeString(row.externalId);
-  const rowFirst = normalizeString(row.firstName).toLowerCase();
-  const rowLast = normalizeString(row.lastName).toLowerCase();
+  const rowFirst = normalizeName(row.firstName);
+  const rowLast = normalizeName(row.lastName);
   const rowPostal = normalizeString(row.postalCode).replace(/\s/g, "").toUpperCase();
   const rowPhone = normalizePhone(row.phone);
   const rowEmail = normalizeEmail(row.email);
 
-  const existingFirst = (existing.firstName ?? "").trim().toLowerCase();
-  const existingLast = (existing.lastName ?? "").trim().toLowerCase();
+  const existingFirst = normalizeName(existing.firstName ?? "");
+  const existingLast = normalizeName(existing.lastName ?? "");
   const existingPostal = (existing.postalCode ?? "").replace(/\s/g, "").toUpperCase();
   const existingPhone = normalizePhone(existing.phone ?? "");
   const existingEmail = normalizeEmail(existing.email ?? "");
@@ -151,6 +203,19 @@ export function isLikelyDuplicate(row: Record<string, string>, existing: Pick<Co
   }
   if (rowFirst && rowLast && rowFirst === existingFirst && rowLast === existingLast) {
     return !rowPostal || !existingPostal || rowPostal === existingPostal;
+  }
+
+  const firstDistance = rowFirst && existingFirst ? levenshteinDistance(rowFirst, existingFirst) : 99;
+  const lastDistance = rowLast && existingLast ? levenshteinDistance(rowLast, existingLast) : 99;
+  const looksLikeFuzzyNameMatch = firstDistance <= 1 && lastDistance <= 1;
+
+  if (looksLikeFuzzyNameMatch) {
+    const hasLocationMatch = !rowPostal || !existingPostal || rowPostal === existingPostal;
+    const hasContactMatch = Boolean(
+      (rowEmail && existingEmail && rowEmail === existingEmail)
+      || (rowPhone && existingPhone && rowPhone === existingPhone)
+    );
+    return hasLocationMatch || hasContactMatch;
   }
 
   return false;
