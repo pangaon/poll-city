@@ -464,6 +464,8 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
   teamMembers: TeamMember[];
   onCreated: () => void;
 }) {
+  const MAX_TURF_STOPS = 500;
+  const RECOMMENDED_MAX_STOPS = 180;
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("");
   const [ward, setWard] = useState("");
@@ -508,6 +510,10 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
   async function saveAndOptimize() {
     if (!name.trim()) { toast.error("Please enter a turf name"); return; }
     if (!previewContacts.length) { toast.error("No contacts match your filters"); return; }
+    if (previewContacts.length > MAX_TURF_STOPS) {
+      toast.error(`Turf too large (${previewContacts.length} stops). Reduce filters to ${MAX_TURF_STOPS} stops or fewer.`);
+      return;
+    }
     setSaving(true);
     try {
       // 1. Create turf
@@ -687,6 +693,20 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
             </div>
           ) : (
             <>
+              {previewContacts.length > RECOMMENDED_MAX_STOPS && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold">Large turf warning</p>
+                      <p className="text-xs mt-0.5">
+                        This turf has {previewContacts.length} stops. Recommended max is {RECOMMENDED_MAX_STOPS} for a manageable shift.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Contact stats */}
               <div className="grid grid-cols-3 gap-3">
                 {[

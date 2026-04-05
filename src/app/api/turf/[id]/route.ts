@@ -68,6 +68,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
+  const statusChanged = body.status !== undefined && body.status !== turf.status;
+  const assignedUserChanged = body.assignedUserId !== undefined && body.assignedUserId !== turf.assignedUserId;
+  const assignedGroupChanged = body.assignedGroupId !== undefined && body.assignedGroupId !== turf.assignedGroupId;
+
   const updated = await prisma.turf.update({
     where: { id: params.id },
     data: {
@@ -82,6 +86,42 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       assignedGroup: { select: { id: true, name: true, targetWard: true } },
     },
   });
+
+  if (statusChanged) {
+    await prisma.activityLog.create({
+      data: {
+        campaignId: turf.campaignId,
+        userId: session!.user.id,
+        action: "updated_turf_status",
+        entityType: "turf",
+        entityId: turf.id,
+        details: {
+          from: turf.status,
+          to: body.status,
+          name: updated.name,
+        },
+      },
+    });
+  }
+
+  if (assignedUserChanged || assignedGroupChanged) {
+    await prisma.activityLog.create({
+      data: {
+        campaignId: turf.campaignId,
+        userId: session!.user.id,
+        action: "updated_turf_assignment",
+        entityType: "turf",
+        entityId: turf.id,
+        details: {
+          assignedUserIdFrom: turf.assignedUserId,
+          assignedUserIdTo: body.assignedUserId,
+          assignedGroupIdFrom: turf.assignedGroupId,
+          assignedGroupIdTo: body.assignedGroupId,
+          name: updated.name,
+        },
+      },
+    });
+  }
 
   return NextResponse.json({ data: updated });
 }

@@ -233,7 +233,7 @@ const PRODUCTS = [
       "Contact CRM with household grouping and tagging",
       "Mobile canvassing app with offline sync and background sync",
       "Smart walk list builder with route optimisation",
-      "Turf cutting by ward, poll number, odd/even streets",
+      "Turf cutting by ward, poll number, odd/even streets with campaign-scoped leaderboard and assignment audit trail",
       "GOTV engine with supporter scoring and prioritisation",
       "Volunteer management with scheduling and tracking",
       "Volunteer onboarding links, group leadership, and shift check-ins",

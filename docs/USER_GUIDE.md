@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v4.0.24 Turf Builder Addendum — April 5, 2026
+
+### Turf Guardrails and Accountability (`/canvassing/turf-builder`)
+
+1. Build your turf filters in Create Turf and review the contact preview count before creating routes.
+2. If preview size exceeds the recommended threshold, Poll City shows a large-turf warning so managers can split work into manageable shifts.
+3. Turf creation is capped at 500 stops per turf to avoid impractical route generation.
+4. Turf assignment and status changes are now logged for campaign audit history.
+5. Leaderboard scoring uses campaign-scoped interaction data to prevent cross-campaign bleed.
+
 ## v4.0.23 Custom Fields Addendum — April 5, 2026
 
 ### Field Ordering and Placement (`/settings/fields`)

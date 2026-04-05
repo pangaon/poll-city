@@ -3,8 +3,13 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
+import { ADONI_TOOLS, executeAction, type ActionContext } from "@/lib/adoni/actions";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
+type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; tool_use_id: string; content: string };
 
 function streamText(text: string): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
@@ -30,42 +35,78 @@ function streamTextChunks(text: string): ReadableStream<Uint8Array> {
   });
 }
 
+// Agentic loop: send messages → if Anthropic returns tool_use, execute tools,
+// feed results back, and let Anthropic summarise. Max 5 tool rounds.
 async function completeWithAnthropic(
   apiKey: string,
   systemPrompt: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  actionCtx: ActionContext | null,
 ): Promise<string> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    }),
-  });
+  const MAX_ROUNDS = 5;
+  // Build wire-format messages (Anthropic expects content blocks for tool results)
+  const wireMessages: Array<{ role: string; content: string | ContentBlock[] }> = messages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
 
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(`Anthropic API error: ${response.status} ${details}`);
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: wireMessages,
+        ...(actionCtx ? { tools: ADONI_TOOLS } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      throw new Error(`Anthropic API error: ${response.status} ${details}`);
+    }
+
+    const data = (await response.json()) as {
+      content?: Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
+      stop_reason?: string;
+    };
+
+    const blocks = data.content ?? [];
+
+    // If no tool_use blocks, extract text and return
+    const toolCalls = blocks.filter((b) => b.type === "tool_use");
+    if (toolCalls.length === 0 || !actionCtx) {
+      const text = blocks
+        .filter((b) => b.type === "text")
+        .map((b) => b.text ?? "")
+        .join("")
+        .trim();
+      return text || "I could not generate a response. Please try again.";
+    }
+
+    // Execute each tool call against the real database
+    wireMessages.push({ role: "assistant", content: blocks as ContentBlock[] });
+
+    const toolResults: ContentBlock[] = [];
+    for (const call of toolCalls) {
+      if (!call.id || !call.name) continue;
+      const result = await executeAction(call.name, call.input ?? {}, actionCtx);
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: call.id,
+        content: result.message,
+      });
+    }
+    wireMessages.push({ role: "user", content: toolResults });
   }
 
-  const data = (await response.json()) as {
-    content?: Array<{ type?: string; text?: string }>;
-  };
-
-  const fullText = (data.content ?? [])
-    .filter((block) => block.type === "text")
-    .map((block) => block.text ?? "")
-    .join("")
-    .trim();
-
-  return fullText || "I could not generate a response. Please try again.";
+  return "I ran into a loop trying to complete your request. Could you try rephrasing?";
 }
 
 export async function POST(req: NextRequest) {
@@ -158,7 +199,10 @@ export async function POST(req: NextRequest) {
       assistantText =
         "Adoni is ready, but ANTHROPIC_API_KEY is not configured yet. Add it in Vercel environment variables to enable live strategy responses.";
     } else {
-      assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, systemPrompt, messages);
+      const actionCtx: ActionContext | null = activeCampaignId
+        ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member" }
+        : null;
+      assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, systemPrompt, messages, actionCtx);
     }
 
     const adoniConversation = (prisma as unknown as {

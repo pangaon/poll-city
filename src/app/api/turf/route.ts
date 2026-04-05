@@ -91,5 +91,21 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "created_turf",
+      entityType: "turf",
+      entityId: turf.id,
+      details: {
+        name,
+        totalStops: validIds.length,
+        ward: body.ward ?? null,
+        pollNumber: body.pollNumber ?? null,
+      },
+    },
+  });
+
   return NextResponse.json({ data: turf }, { status: 201 });
 }

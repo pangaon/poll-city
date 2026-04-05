@@ -1,5 +1,21 @@
 # Poll City Changelog
 
+## [4.0.24] - April 5, 2026 — TURF BUILDER ENTERPRISE HARDENING
+
+### Turf APIs (`/api/turf/*`)
+- Fixed canvasser leaderboard campaign scoping by requiring `campaignId` in interaction aggregations.
+- Added turf lifecycle audit events:
+  - `created_turf` on turf creation
+  - `updated_turf_status` on status transitions
+  - `updated_turf_assignment` on assignment changes
+
+### Turf Builder UX (`/canvassing/turf-builder`)
+- Added a hard stop cap at 500 contacts per turf to prevent oversized route creation.
+- Added a large-turf warning banner when preview exceeds the recommended operational size.
+
+### Outcome
+- Turf operations now have stronger campaign isolation, auditable assignment/status history, and safer shift sizing defaults for field teams.
+
 ## [4.0.23] - April 5, 2026 — CUSTOM FIELD ORDERING + PLACEMENT CONTROLS
 
 ### Custom Fields (`/settings/fields`)

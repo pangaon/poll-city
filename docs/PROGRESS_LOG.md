@@ -15,6 +15,32 @@ Purpose: shared cross-developer status, handoffs, blockers, and dependency readi
 ## 2026-04-05  |  Contributor: GitHub Copilot
 
 ### Completed
+- Completed Feature 6 (Turf Builder) hardening for enterprise campaign safety.
+- Fixed leaderboard aggregation to enforce campaign-scoped interaction counts.
+- Added turf lifecycle audit logging for creation, assignment changes, and status transitions.
+- Added large-turf warning and hard cap for maximum stops per turf in create flow.
+
+### Changed Files
+- src/app/api/turf/leaderboard/route.ts
+- src/app/api/turf/route.ts
+- src/app/api/turf/[id]/route.ts
+- src/app/(app)/canvassing/turf-builder/turf-builder-client.tsx
+- docs/CHANGELOG.md
+- docs/USER_GUIDE.md
+- src/app/(marketing)/marketing-client.tsx
+- docs/FEATURE_EXECUTION_CHECKLIST.md
+- docs/PROGRESS_LOG.md
+- FEATURE_MATRIX.md
+
+### Validation
+- Pending full gate run before commit/push in this cycle.
+
+### Dependency Readiness
+- Ready now: no additional environment keys required for turf hardening behavior.
+
+## 2026-04-05  |  Contributor: GitHub Copilot
+
+### Completed
 - Completed Feature 5 (Custom Fields) with ordering and placement controls.
 - Added persistent sort-order updates for custom fields in settings.
 - Added inline toggles for "show on card" and "show in table" custom-field placement.

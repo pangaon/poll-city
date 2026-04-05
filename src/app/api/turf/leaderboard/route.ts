@@ -25,8 +25,12 @@ export async function GET(req: NextRequest) {
   // Door knocks per canvasser (filter by team member IDs for this campaign)
   const doorKnocks = await prisma.interaction.groupBy({
     by: ["userId"],
-    where: { userId: { in: memberUserIds }, type: "door_knock" },
-    _count: { _all: true },
+    where: {
+      userId: { in: memberUserIds },
+      type: "door_knock",
+      contact: { campaignId },
+    },
+    _count: { id: true },
   });
 
   // Turf stats per canvasser
@@ -45,15 +49,16 @@ export async function GET(req: NextRequest) {
     by: ["userId"],
     where: {
       userId: { in: memberUserIds },
+      contact: { campaignId },
       supportLevel: { not: null },
     },
-    _count: { _all: true },
+    _count: { id: true },
   });
 
   const leaderboard = members.map((m) => {
     const userId = m.user.id;
-    const doorKnockCount = doorKnocks.find((d) => d.userId === userId)?._count._all ?? 0;
-    const supportCount = supportUpdates.find((s) => s.userId === userId)?._count._all ?? 0;
+    const doorKnockCount = doorKnocks.find((d) => d.userId === userId)?._count.id ?? 0;
+    const supportCount = supportUpdates.find((s) => s.userId === userId)?._count.id ?? 0;
     const userTurfs = turfs.filter((t) => t.assignedUserId === userId);
     const completedTurfs = userTurfs.filter((t) => t.status === "completed").length;
     const totalTurfs = userTurfs.length;
