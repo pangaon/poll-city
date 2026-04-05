@@ -1,5 +1,25 @@
 # Poll City User Guide
 
+## v4.0.10 GOTV Upload Validation Hardening Addendum — April 5, 2026
+
+### GOTV Upload Requirements
+
+1. GOTV upload accepts CSV, TSV, TXT, XLS, and XLSX files only.
+2. Maximum upload size remains 5MB.
+3. Files must include either:
+   - `voter_id` style identifier column, or
+   - a valid name and address identity shape usable for matching.
+4. Oversized row-volume files are rejected with a clear limit error.
+5. Uploaded values are sanitized server-side before matching and persistence.
+
+## v4.0.9 GOTV Endpoint Compatibility Addendum — April 5, 2026
+
+### GOTV Upload API Compatibility
+
+1. Poll City supports both `POST /api/gotv/upload` and `POST /api/gotv/upload-voted`.
+2. `upload-voted` is maintained as a compatibility alias for legacy integrations.
+3. New integrations should prefer `POST /api/gotv/upload` as the canonical endpoint.
+
 ## v4.0.7 Adoni Assistant Addendum — April 5, 2026
 
 ### Adoni In-App Assistant (`/app` pages)

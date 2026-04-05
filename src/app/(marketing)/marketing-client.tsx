@@ -257,6 +257,8 @@ const PRODUCTS = [
       "Drag-and-drop budget item ordering for finance workflows",
       "Communications command center for email, SMS, social, and campaign ads",
       "Reliability-tuned AI assistant with per-user rate limiting, safer auth recovery controls, and smoother in-app assistant behavior",
+      "Backwards-compatible GOTV upload API support (`/api/gotv/upload` and `/api/gotv/upload-voted`) for legacy integration continuity",
+      "Hardened GOTV ingestion guards: expected-column validation, input sanitization, file-size limits, and row-volume protection",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",
           "AI campaign assistant for strategy and targeting",

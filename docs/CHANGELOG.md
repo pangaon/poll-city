@@ -1,5 +1,21 @@
 # Poll City Changelog
 
+## [4.0.10] - April 5, 2026 — GOTV UPLOAD VALIDATION HARDENING
+
+### Security and Data Hygiene
+- Hardened `POST /api/gotv/upload` with stricter file and payload protections.
+- Added supported file-type validation and direct file size checks.
+- Added required column-shape validation (`voter_id` or valid name/address identity combinations).
+- Added row-count guardrail (`MAX_ROWS`) to block oversized ingestion payloads.
+- Added server-side input sanitization (control-character stripping, whitespace normalization, max-length bounds) before matching and persistence.
+- Added invalid-row shape filtering and explicit empty-valid-row rejection responses.
+
+## [4.0.9] - April 5, 2026 — GOTV UPLOAD ENDPOINT COMPATIBILITY
+
+### API Compatibility
+- Added `POST /api/gotv/upload-voted` as a backwards-compatible alias to the canonical `POST /api/gotv/upload` handler.
+- Preserves existing integrations that still use legacy endpoint naming while keeping current implementation unchanged.
+
 ## [4.0.8] - April 5, 2026 — INTEGRATION LOGIC + UX RELIABILITY PASS
 
 ### Endpoint and Journey Reliability
