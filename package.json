@@ -17,6 +17,7 @@
     "db:seed:all": "npm run db:seed:election-results && npm run db:seed:officials && npm run db:seed:boundaries",
     "db:update-2025": "tsx prisma/seeds/update-officials-2025.ts",
     "db:dedup:election-results": "tsx prisma/seeds/dedup-election-results.ts",
+    "db:dedupe": "ts-node prisma/seeds/deduplicate-officials.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "test": "jest --passWithNoTests",
@@ -28,6 +29,9 @@
     "seed": "npm run db:seed"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.6.0",
     "@prisma/client": "^5.15.0",
     "@stripe/stripe-js": "^9.0.1",

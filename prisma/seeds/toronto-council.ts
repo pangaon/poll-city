@@ -127,9 +127,26 @@ async function main() {
         `lookup ${name}`
       );
 
-      if (existing) {
+      const existingByIdentity = existing
+        ? null
+        : await withRetry(
+            () =>
+              prisma.official.findFirst({
+                where: {
+                  name,
+                  district,
+                  level: GovernmentLevel.municipal,
+                },
+                select: { id: true },
+              }),
+            `lookup by identity ${name}`
+          );
+
+      const targetId = existing?.id ?? existingByIdentity?.id ?? null;
+
+      if (targetId) {
         await prisma.official.update({
-          where: { id: existing.id },
+          where: { id: targetId },
           data: {
             name,
             firstName: o.firstName,
@@ -150,6 +167,7 @@ async function main() {
         console.log(`🔄 Updated: ${name} — ${district}`);
         updated++;
       } else {
+        // Unique constraint hint: enforce (name, level, district) in code before insertion.
         await prisma.official.create({
           data: {
             name,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Search, Globe, Twitter, Facebook, Instagram, Linkedin,
   ShieldCheck, AlertCircle, ChevronLeft, ChevronRight,
-  Mail, Filter, X, SlidersHorizontal,
+  Mail, Filter, X, SlidersHorizontal, MapPin, LocateFixed,
 } from "lucide-react";
 const BRAND_COLOUR = "#1E3A8A";
 
@@ -39,6 +39,16 @@ interface FilterOptions {
   roles: string[];
 }
 
+interface GeoLookupResponse {
+  federalRiding: string | null;
+  provincialRiding: string | null;
+  municipalWard: string | null;
+  municipality: string | null;
+  province: string | null;
+  representatives: Official[];
+  message: string | null;
+}
+
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 const LEVEL_LABELS: Record<string, string> = {
   federal: "Federal MP",
@@ -58,6 +68,25 @@ const STATS = [
   { value: "444", label: "Municipalities" },
   { value: "2025", label: "Data Updated" },
 ];
+
+function getPartyColour(partyName: string | null, fallbackParty: string | null): string {
+  const party = (partyName ?? fallbackParty ?? "").toLowerCase();
+  if (party.includes("liberal")) return "#D71920";
+  if (party.includes("conservative")) return "#1A4782";
+  if (party.includes("ndp")) return "#F58220";
+  if (party.includes("green")) return "#2E7D32";
+  if (party.includes("bloc")) return "#00AEEF";
+  return "#334155";
+}
+
+function getRepresentativeLabel(official: Official): string {
+  const title = (official.title ?? "").toLowerCase();
+  if (official.level === "federal") return "MP";
+  if (official.level === "provincial") return "MPP";
+  if (title.includes("mayor")) return "Mayor";
+  if (title.includes("councillor")) return "Councillor";
+  return "Representative";
+}
 
 /* ─── Official Card ──────────────────────────────────────────────────────── */
 function OfficialCard({ official }: { official: Official }) {
@@ -252,6 +281,12 @@ export default function OfficialsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [locationInput, setLocationInput] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [yourRepresentatives, setYourRepresentatives] = useState<Official[]>([]);
+  const [hasLocationSearch, setHasLocationSearch] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -303,6 +338,53 @@ export default function OfficialsClient() {
     setLevel("");
     setProvince("");
     setPage(1);
+  }
+
+  async function findMyOfficials(rawInput?: string) {
+    const query = (rawInput ?? locationInput).trim();
+    if (!query) {
+      setHasLocationSearch(false);
+      setLocationError(null);
+      setLocationMessage(null);
+      setYourRepresentatives([]);
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+    setLocationMessage(null);
+    setHasLocationSearch(true);
+
+    try {
+      const normalizedPostal = query.replace(/\s+/g, "").toUpperCase();
+      const isPostal = /^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(normalizedPostal);
+      const params = new URLSearchParams();
+      if (isPostal) {
+        params.set("postalCode", query);
+      } else {
+        params.set("address", query);
+      }
+
+      const res = await fetch(`/api/geo?${params.toString()}`);
+      const payload = (await res.json()) as GeoLookupResponse;
+
+      if (!res.ok) {
+        setLocationError(payload.message || "Unable to find officials for that location.");
+        setYourRepresentatives([]);
+        return;
+      }
+
+      setYourRepresentatives(payload.representatives ?? []);
+      setLocationMessage(payload.message ?? null);
+      if (!payload.representatives?.length && payload.message) {
+        setLocationError(payload.message);
+      }
+    } catch {
+      setLocationError("Unable to lookup representatives right now. Please try again in a moment.");
+      setYourRepresentatives([]);
+    } finally {
+      setLocationLoading(false);
+    }
   }
 
   const hasFilters = search || level || province;
@@ -371,6 +453,131 @@ export default function OfficialsClient() {
 
       {/* ── Body ── */}
       <div className="max-w-7xl mx-auto px-4 py-8" ref={topRef}>
+        <section className="mb-8 rounded-3xl border border-blue-200 bg-gradient-to-r from-blue-50 via-sky-50 to-cyan-50 p-5 sm:p-7 shadow-sm">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">Find officials for your address or postal code</h2>
+              <p className="text-sm text-slate-600 mt-1">Enter postal code (e.g. M4C 1B2) or your address...</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200 bg-white text-blue-700">
+              <LocateFixed className="w-3.5 h-3.5" /> Location Lookup
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+              <input
+                type="search"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void findMyOfficials();
+                  }
+                }}
+                placeholder="Enter postal code (e.g. M4C 1B2) or your address..."
+                className="w-full rounded-xl border border-blue-200 bg-white pl-11 pr-4 py-3.5 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                aria-label="Find officials for your address or postal code"
+              />
+            </div>
+            <button
+              onClick={() => void findMyOfficials()}
+              disabled={locationLoading}
+              className="rounded-xl px-6 py-3.5 text-white font-semibold shadow-sm hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: BRAND_COLOUR }}
+            >
+              {locationLoading ? "Finding..." : "Find My Officials"}
+            </button>
+          </div>
+
+          {!hasLocationSearch && (
+            <div className="mt-6 rounded-2xl border border-dashed border-blue-300 bg-white/70 p-6 text-center">
+              <MapPin className="w-11 h-11 text-blue-500 mx-auto mb-3" />
+              <p className="text-lg font-bold text-slate-800">Your Officials</p>
+              <p className="text-sm text-slate-600 mt-1">Enter your postal code above to find your MP, MPP, Mayor and Ward Councillor</p>
+              <button
+                onClick={() => {
+                  const sample = "M4C 1B2";
+                  setLocationInput(sample);
+                  void findMyOfficials(sample);
+                }}
+                className="mt-4 inline-flex items-center rounded-full border border-blue-300 bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-200"
+              >
+                Try M4C 1B2
+              </button>
+            </div>
+          )}
+
+          {hasLocationSearch && (
+            <div className="mt-6 space-y-4">
+              <h3 className="text-lg font-extrabold text-slate-900">Your Representatives</h3>
+
+              {locationError && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {locationError}
+                </div>
+              )}
+
+              {!locationError && yourRepresentatives.length === 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-600">
+                  No matching representatives were found for this location yet.
+                </div>
+              )}
+
+              {yourRepresentatives.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {yourRepresentatives.map((official) => {
+                    const label = getRepresentativeLabel(official);
+                    const colour = getPartyColour(official.partyName, official.party);
+                    return (
+                      <div key={`rep-${official.id}`} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                        <div className="px-4 py-2.5 text-white text-sm font-bold" style={{ backgroundColor: colour }}>
+                          This is your {label}
+                        </div>
+                        <div className="p-4 flex gap-4 items-start">
+                          <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                            {official.photoUrl ? (
+                              <Image
+                                src={official.photoUrl}
+                                alt={official.name}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                                unoptimized={official.photoUrl.startsWith("http")}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full grid place-items-center text-slate-500 font-bold">
+                                {official.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-slate-900 leading-tight">{official.name}</p>
+                            <p className="text-sm text-slate-700 mt-0.5">{official.title || LEVEL_LABELS[official.level] || official.level}</p>
+                            <p className="text-sm text-slate-500 mt-0.5">{official.district}</p>
+                            {(official.partyName || official.party) && (
+                              <span className="inline-block mt-2 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                {official.partyName || official.party}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {locationMessage && !locationError && (
+                <p className="text-xs text-slate-500">{locationMessage}</p>
+              )}
+            </div>
+          )}
+        </section>
+
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <p className="text-gray-700 font-medium">

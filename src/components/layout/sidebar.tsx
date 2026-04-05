@@ -94,8 +94,16 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="px-4 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400">Poll City v1.2.0</p>
+      <div className="px-4 py-3 border-t border-gray-100 space-y-2">
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>Search</span>
+          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">⌘K</kbd>
+        </div>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span>Shortcuts</span>
+          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">?</kbd>
+        </div>
+        <p className="text-xs text-gray-300 pt-1">Poll City v5.1.0</p>
       </div>
     </div>
   );

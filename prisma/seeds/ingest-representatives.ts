@@ -221,6 +221,11 @@ async function ingestRepresentative(rep: Representative): Promise<"created" | "u
         {
           name,
           district,
+          level,
+        },
+        {
+          name,
+          district,
           title,
           level,
         },
@@ -237,6 +242,7 @@ async function ingestRepresentative(rep: Representative): Promise<"created" | "u
     return "updated";
   }
 
+  // Unique constraint hint: enforce (name, level, district) check before insertion.
   await prisma.official.create({
     data: {
       ...payload,

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+
+const VALID_LEVELS = new Set(["federal", "provincial", "municipal"]);
 
 export async function GET(req: NextRequest) {
   const limited = rateLimit(req, "read");
@@ -15,55 +18,126 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
   const pageSize = 24;
 
-  const where: Record<string, unknown> = {};
-
+  const conditions: Prisma.Sql[] = [];
   if (search) {
-    where.OR = [
-      { name: { contains: search, mode: "insensitive" } },
-      { title: { contains: search, mode: "insensitive" } },
-      { district: { contains: search, mode: "insensitive" } },
-    ];
+    const term = `%${search}%`;
+    conditions.push(
+      Prisma.sql`(
+        "name" ILIKE ${term}
+        OR "title" ILIKE ${term}
+        OR "district" ILIKE ${term}
+      )`
+    );
   }
-  if (province) where.province = province;
-  if (level) where.level = level;
-  if (role) where.title = { contains: role, mode: "insensitive" };
-  if (municipality) where.district = { contains: municipality, mode: "insensitive" };
+  if (province) conditions.push(Prisma.sql`"province" = ${province}`);
+  if (level && VALID_LEVELS.has(level)) {
+    conditions.push(Prisma.sql`"level" = CAST(${level} AS "GovernmentLevel")`);
+  }
+  if (role) conditions.push(Prisma.sql`"title" ILIKE ${`%${role}%`}`);
+  if (municipality) conditions.push(Prisma.sql`"district" ILIKE ${`%${municipality}%`}`);
 
-  const [officials, total] = await Promise.all([
-    prisma.official.findMany({
-      where,
-      orderBy: [{ isClaimed: "desc" }, { isActive: "desc" }, { name: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        name: true,
-        title: true,
-        level: true,
-        district: true,
-        province: true,
-        isClaimed: true,
-        isActive: true,
-        partyName: true,
-        party: true,
-        photoUrl: true,
-        twitter: true,
-        facebook: true,
-        instagram: true,
-        linkedIn: true,
-        website: true,
-        externalId: true,
-        email: true,
-        phone: true,
-        campaigns: {
-          select: { slug: true },
-          take: 1,
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    }),
-    prisma.official.count({ where }),
-  ]);
+  const whereClause = conditions.length
+    ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
+    : Prisma.empty;
+
+  type OfficialRow = {
+    id: string;
+    name: string;
+    title: string | null;
+    level: string;
+    district: string;
+    province: string | null;
+    isClaimed: boolean;
+    isActive: boolean;
+    partyName: string | null;
+    party: string | null;
+    photoUrl: string | null;
+    twitter: string | null;
+    facebook: string | null;
+    instagram: string | null;
+    linkedIn: string | null;
+    website: string | null;
+    externalId: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+
+  const dedupedOfficials = await prisma.$queryRaw<OfficialRow[]>`
+    WITH filtered AS (
+      SELECT *
+      FROM "officials"
+      ${whereClause}
+    ),
+    deduped AS (
+      SELECT DISTINCT ON ("name", "district") *
+      FROM filtered
+      ORDER BY
+        "name" ASC,
+        "district" ASC,
+        ("photoUrl" IS NULL) ASC,
+        "updatedAt" DESC
+    )
+    SELECT
+      "id",
+      "name",
+      "title",
+      "level"::text as "level",
+      "district",
+      "province",
+      "isClaimed",
+      "isActive",
+      "partyName",
+      "party",
+      "photoUrl",
+      "twitter",
+      "facebook",
+      "instagram",
+      "linkedIn",
+      "website",
+      "externalId",
+      "email",
+      "phone"
+    FROM deduped
+    ORDER BY "isClaimed" DESC, "isActive" DESC, "name" ASC
+    OFFSET ${(page - 1) * pageSize}
+    LIMIT ${pageSize}
+  `;
+
+  const totalRows = await prisma.$queryRaw<Array<{ total: bigint }>>`
+    WITH filtered AS (
+      SELECT *
+      FROM "officials"
+      ${whereClause}
+    ),
+    deduped AS (
+      SELECT DISTINCT ON ("name", "district") *
+      FROM filtered
+      ORDER BY
+        "name" ASC,
+        "district" ASC,
+        ("photoUrl" IS NULL) ASC,
+        "updatedAt" DESC
+    )
+    SELECT COUNT(*)::bigint AS total
+    FROM deduped
+  `;
+
+  const total = Number(totalRows[0]?.total ?? 0);
+
+  const campaignRows = dedupedOfficials.length
+    ? await prisma.campaign.findMany({
+        where: { officialId: { in: dedupedOfficials.map((o) => o.id) } },
+        select: { officialId: true, slug: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+
+  const campaignByOfficial = new Map<string, string>();
+  for (const row of campaignRows) {
+    if (row.officialId && !campaignByOfficial.has(row.officialId)) {
+      campaignByOfficial.set(row.officialId, row.slug);
+    }
+  }
 
   const [provinceRows] = await Promise.all([
     prisma.official.findMany({
@@ -74,7 +148,7 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const mapped = officials.map((o) => ({
+  const mapped = dedupedOfficials.map((o) => ({
     id: o.id,
     name: o.name,
     title: o.title,
@@ -94,7 +168,7 @@ export async function GET(req: NextRequest) {
     email: o.email,
     phone: o.phone,
     externalId: o.externalId,
-    campaignSlug: o.campaigns[0]?.slug ?? null,
+    campaignSlug: campaignByOfficial.get(o.id) ?? null,
   }));
 
   return NextResponse.json(

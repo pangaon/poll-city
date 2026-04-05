@@ -247,6 +247,7 @@ async function main() {
       const existing = await prisma.official.findFirst({
         where: {
           name: fullName,
+          level,
           district,
         },
         select: { id: true },
@@ -282,6 +283,7 @@ async function main() {
         isActive:      true,
       };
 
+      // Unique constraint hint: enforce (name, level, district) in code before insertion.
       const official = await prisma.official.create({ data: officialData });
 
       // Generate slug for linked campaign

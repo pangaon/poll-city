@@ -75,9 +75,9 @@ const ALL_WIDGETS: WidgetDef[] = [
 
 const PRESETS: Record<string, WidgetId[]> = {
   Overview:  ["contacts","supporters","undecided","opposition","followups","tasks","support-rate","recent-interactions","activity-log"],
-  "Field View": ["contacts","supporters","doors","followups","tasks","gotv","support-rate","recent-interactions"],
-  "Finance View": ["contacts","donations","signs","tasks","activity-log"],
-  "GOTV View": ["contacts","supporters","undecided","doors","gotv","support-rate","recent-interactions"],
+  "Canvass Mode": ["doors","contacts","supporters","followups","call-progress","recent-interactions","activity-log"],
+  "GOTV Mode": ["gotv","supporters","undecided","doors","support-rate","call-progress","recent-interactions"],
+  "Finance Mode": ["donations","contacts","signs","tasks","activity-log"],
 };
 
 const LS_KEY = "poll-city-dashboard-layout";
@@ -808,7 +808,16 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
           {/* Presets */}
           <div>
-            <p className="text-xs font-semibold text-gray-700 mb-2">Layout Presets</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-700">Layout Presets / Modes</p>
+              <button
+                onClick={() => applyPreset("Overview")}
+                className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                title="Reset to default overview"
+              >
+                Reset layout
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {Object.keys(PRESETS).map((name) => (
                 <button

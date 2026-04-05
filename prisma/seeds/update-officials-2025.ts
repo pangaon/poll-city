@@ -82,48 +82,51 @@ async function upsertOfficial(
     const district = rep.district_name?.trim();
     if (!name || !district) return false;
 
-    await prisma.official.upsert({
+    const existing = await prisma.official.findFirst({
       where: {
-        // Match by name + district — unique enough for upsert
-        id: (
-          await prisma.official.findFirst({
-            where: {
-              name: { equals: name, mode: "insensitive" },
-              district: { contains: district.split(" ")[0], mode: "insensitive" },
-              level,
-            },
-            select: { id: true },
-          })
-        )?.id ?? "__new__",
-      },
-      update: {
-        isActive: true,
-        partyName: rep.party_name ?? null,
-        party: rep.party_name ?? null,
-        photoUrl: rep.photo_url ?? undefined,
-        email: rep.email ?? undefined,
-        phone: rep.phone ?? undefined,
-        website: rep.url ?? undefined,
-        firstName: rep.first_name ?? undefined,
-        lastName: rep.last_name ?? undefined,
-      },
-      create: {
-        name,
-        title: rep.elected_office?.trim() ?? (level === "provincial" ? "MPP" : "MP"),
+        name: { equals: name, mode: "insensitive" },
+        district: { equals: district, mode: "insensitive" },
         level,
-        district,
-        partyName: rep.party_name ?? null,
-        party: rep.party_name ?? null,
-        photoUrl: rep.photo_url ?? null,
-        email: rep.email ?? null,
-        phone: rep.phone ?? null,
-        website: rep.url ?? null,
-        firstName: rep.first_name ?? null,
-        lastName: rep.last_name ?? null,
-        isActive: true,
-        externalSource: "represent_opennorth",
       },
+      select: { id: true },
     });
+
+    if (existing) {
+      await prisma.official.update({
+        where: { id: existing.id },
+        data: {
+          isActive: true,
+          partyName: rep.party_name ?? null,
+          party: rep.party_name ?? null,
+          photoUrl: rep.photo_url ?? undefined,
+          email: rep.email ?? undefined,
+          phone: rep.phone ?? undefined,
+          website: rep.url ?? undefined,
+          firstName: rep.first_name ?? undefined,
+          lastName: rep.last_name ?? undefined,
+        },
+      });
+    } else {
+      // Unique constraint hint: enforce (name, level, district) in code before insertion.
+      await prisma.official.create({
+        data: {
+          name,
+          title: rep.elected_office?.trim() ?? (level === "provincial" ? "MPP" : "MP"),
+          level,
+          district,
+          partyName: rep.party_name ?? null,
+          party: rep.party_name ?? null,
+          photoUrl: rep.photo_url ?? null,
+          email: rep.email ?? null,
+          phone: rep.phone ?? null,
+          website: rep.url ?? null,
+          firstName: rep.first_name ?? null,
+          lastName: rep.last_name ?? null,
+          isActive: true,
+          externalSource: "represent_opennorth",
+        },
+      });
+    }
     return true;
   } catch (err) {
     console.error(`    ✗ Error upserting ${rep.name}:`, (err as Error).message);
