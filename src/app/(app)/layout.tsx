@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { AppShellClient } from "@/components/app-shell-client";
 import AdoniButton from "@/components/ai/adoni";
+import MobileNav from "@/components/layout/mobile-nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <main className="flex-1 overflow-y-auto">
             <div className="p-6">{children}</div>
           </main>
+          <MobileNav />
         </div>
         <AdoniButton />
       </div>

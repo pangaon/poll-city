@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Shield, Users, Map, Upload,
-  Settings, Menu, X, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
+  Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
   Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock
 } from "lucide-react";
@@ -108,7 +108,6 @@ function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -149,7 +148,6 @@ export default function Sidebar() {
 
   function openAdoni() {
     window.dispatchEvent(new CustomEvent("pollcity:open-adoni"));
-    setMobileOpen(false);
   }
 
   const SidebarContent = () => (
@@ -201,7 +199,6 @@ export default function Sidebar() {
                       <Link
                         key={href}
                         href={href}
-                        onClick={() => setMobileOpen(false)}
                         className={cn(
                           "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all",
                           active
@@ -250,24 +247,6 @@ export default function Sidebar() {
       <aside className="hidden md:flex w-60 flex-shrink-0 bg-white border-r border-gray-200 flex-col">
         <SidebarContent />
       </aside>
-
-      {/* Mobile toggle */}
-      <button
-        className="md:hidden fixed top-3 left-3 z-50 w-9 h-9 bg-white border border-gray-200 rounded-lg flex items-center justify-center shadow-sm"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-      </button>
-
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <>
-          <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMobileOpen(false)} />
-          <aside className="md:hidden fixed left-0 top-0 bottom-0 w-64 bg-white z-50 flex flex-col shadow-xl">
-            <SidebarContent />
-          </aside>
-        </>
-      )}
     </>
   );
 }

@@ -261,6 +261,7 @@ const PRODUCTS = [
       "Hardened GOTV ingestion guards: expected-column validation, input sanitization, file-size limits, and row-volume protection",
       "Polished high-density UX with thin cross-browser scrollbars and smoother in-panel/table scrolling behavior",
       "Reorganized operations sidebar with collapsible campaign sections and one-click Ask Adoni assistant access",
+      "Mobile-first bottom navigation with safe-area support and a slide-up quick-actions menu",
       "Task management with team assignments",
       "Push notifications to opted-in voters on election day",
           "AI campaign assistant for strategy and targeting",

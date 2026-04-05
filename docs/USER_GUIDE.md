@@ -1,5 +1,14 @@
 # Poll City User Guide
 
+## v4.0.13 Mobile Navigation Addendum — April 5, 2026
+
+### Bottom Navigation (Mobile)
+
+1. On mobile screens, Poll City now uses a fixed bottom navigation bar.
+2. Primary tabs are Dashboard, Contacts, Canvass, Notifications, and More.
+3. The navigation respects iPhone safe-area insets.
+4. Tap `More` to open a slide-up sheet with grouped campaign links.
+
 ## v4.0.12 Sidebar Navigation Rebuild Addendum — April 5, 2026
 
 ### New Sectioned Sidebar

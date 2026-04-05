@@ -1,5 +1,18 @@
 # Poll City Changelog
 
+## [4.0.13] - April 5, 2026 — MOBILE BOTTOM NAVIGATION
+
+### Mobile Navigation
+- Added new mobile bottom nav component with 5 touch-first tabs:
+  - Dashboard
+  - Contacts
+  - Canvass
+  - Notifications
+  - More
+- Added safe-area support (`env(safe-area-inset-bottom)`) for iOS devices.
+- Added slide-up `More` menu sheet with grouped quick links.
+- Integrated mobile nav into authenticated app layout and removed the old sidebar mobile toggle path.
+
 ## [4.0.12] - April 5, 2026 — SIDEBAR INFORMATION ARCHITECTURE REBUILD
 
 ### Sidebar UX
