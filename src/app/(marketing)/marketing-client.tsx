@@ -240,6 +240,7 @@ const PRODUCTS = [
       "Sign tracking with map view",
       "Enterprise smart import with AI mapping, cleaning, duplicate detection, and import history",
       "CAPTCHA-protected public supporter, volunteer, and sign request forms",
+      "Validated campaign setup wizard with municipal province and ward guidance",
       "Donation tracking and pledge management",
       "Budget tracker with allocation versus actual spend",
       "Volunteer expenses and reimbursement workflow",

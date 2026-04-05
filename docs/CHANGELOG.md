@@ -18,6 +18,13 @@
 ### Quality Gates
 - `npm run build`: pass.
 
+### Campaign Creation Wizard Completion
+- Fixed `/campaigns/new` election type mismatch causing backend validation failures.
+- Wizard now only offers backend-supported election enum values (`municipal`, `provincial`, `federal`, `by_election`, `other`).
+- Municipal campaigns now enforce province + municipality before submission.
+- Jurisdiction now auto-normalizes to include ward/municipality/province context when not manually entered.
+- Party/organization value now persists to `candidateTitle` on create to avoid data loss from the form.
+
 
 ## [4.0.0] - April 5, 2026 — ENTERPRISE RELEASE
 

@@ -12,6 +12,14 @@
    - `TURNSTILE_SECRET_KEY`
 5. If keys are missing, API submissions are rejected with a clear captcha-missing message.
 
+### Campaign Setup Wizard SOP (`/campaigns/new`)
+
+1. Select one of the supported election types: Municipal, Provincial, Federal, By-Election, or Other.
+2. For Municipal campaigns, Province and Municipality are now mandatory and validated before create.
+3. If wards are available for your municipality, choose a ward for district-specific races.
+4. Jurisdiction auto-fills from ward/municipality/province but can still be edited manually.
+5. Party or organization entered in the wizard is saved on campaign create.
+
 
 ## v4.0.0 Enterprise Release SOP Addendum — April 5, 2026
 

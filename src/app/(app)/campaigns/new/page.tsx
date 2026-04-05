@@ -17,10 +17,7 @@ const ELECTION_TYPES = [
   { value: "provincial", label: "Provincial" },
   { value: "federal", label: "Federal" },
   { value: "by_election", label: "By-Election" },
-  { value: "nomination", label: "Nomination Race" },
-  { value: "leadership", label: "Leadership Race" },
-  { value: "union", label: "Union Vote" },
-  { value: "referendum", label: "Referendum" },
+  { value: "other", label: "Other" },
 ];
 
 const PROVINCES = [
@@ -183,6 +180,19 @@ export default function NewCampaignPage() {
       toast.error("Campaign name and election type are required");
       return;
     }
+    if (isMunicipal && (!selectedProvince || !selectedMunicipality)) {
+      toast.error("Province and municipality are required for municipal campaigns");
+      return;
+    }
+
+    const jurisdiction =
+      form.jurisdiction
+      || (selectedWard
+        ? `${selectedWard}, ${selectedMunicipality}, ${selectedProvince}`
+        : selectedMunicipality
+          ? `${selectedMunicipality}, ${selectedProvince}`
+          : "");
+
     setSaving(true);
     try {
       const res = await fetch("/api/campaigns", {
@@ -190,6 +200,8 @@ export default function NewCampaignPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          jurisdiction,
+          candidateTitle: form.partyName || undefined,
           electionDate: form.electionDate || undefined,
           officialId: officialId ?? (matchedOfficial && !officialDismissed ? matchedOfficial.id : undefined),
         }),

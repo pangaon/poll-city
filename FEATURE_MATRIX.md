@@ -51,7 +51,7 @@ v1.8.0 additions included in this baseline:
 | Contact Slide-Over Panel | CRM | ✅ Built & Verified | /contacts | /api/contacts/[id] | Contact | Yes | High | Inline edit, support level, notes, activity (v4.0.0). |
 | Error System | UX | ✅ Built & Verified | — | src/lib/errors.ts | — | Yes | Medium | 25+ error codes with recovery actions (v4.0.0). |
 | Officials Claim Verification | Claim Flow | ✅ Built & Verified | /claim/[slug] | /api/claim/verify | Official | Partial | High | Token verification + claim status update. |
-| Campaign Creation Wizard | Campaign Registration | ⚠️ Partially Built | /campaigns/new | /api/campaigns | Campaign | Yes | Medium | Province/ward UX still limited. |
+| Campaign Creation Wizard | Campaign Registration | ✅ Built & Verified | /campaigns/new | /api/campaigns | Campaign | Yes | Medium | Municipal flow now enforces province + municipality and only backend-supported election enums. |
 | Credentials Login | Authentication | ✅ Built & Verified | /login | /api/auth/[...nextauth] | User, Membership | Yes | High | Session/JWT auth path validated. |
 | OAuth Login | Authentication | 🔄 Built Unverified | /login | /api/auth/[...nextauth] | User | No | Medium | Google/Apple now env-gated; needs smoke test in configured env. |
 | Subscription Checkout | Billing & Payments | ✅ Built & Verified | /billing | /api/stripe/checkout, /api/stripe/webhook | Subscription | Partial | High | Checkout + webhook updates implemented. |
