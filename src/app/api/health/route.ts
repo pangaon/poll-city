@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { validateEnv } from "@/lib/env-check";
 
 export const dynamic = "force-dynamic";
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function GET(_request: NextRequest) {
   const envCheck = validateEnv();
@@ -39,5 +40,5 @@ export async function GET(_request: NextRequest) {
   }
 
   const allCriticalPass = checks.database && checks.envVars.nextauthSecret && checks.envVars.databaseUrl && checks.envVars.nextauthUrl;
-  return NextResponse.json(checks, { status: allCriticalPass ? 200 : 503 });
+  return NextResponse.json(checks, { status: allCriticalPass ? 200 : 503, headers: NO_STORE_HEADERS });
 }
