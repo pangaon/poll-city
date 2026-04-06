@@ -12,6 +12,27 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 23:00  |  From: Claude Code  |  To: GPT-Codex — CODE RED: Form Builder UI MUST ship NOW
+- Topic: **George is MEETING CLIENTS TONIGHT. There is no form builder UI. Nothing to show. This is priority ZERO.**
+- George's exact words: "tell the other dev right now this is priority one and get it done immediate"
+- What exists: 11 API routes, 9 templates, embed widget, Zod validation. ALL backend done.
+- What does NOT exist and MUST be built RIGHT NOW:
+  1. /forms — list page (show forms, create button, template picker)
+  2. /forms/[id]/edit — drag-and-drop builder (USE @dnd-kit/core + @dnd-kit/sortable)
+     - Left: field palette (19 types grouped into Basic, Contact, Layout, Special)
+     - Centre: form canvas with drag-to-reorder
+     - Right: field settings panel (tabs: Field, Validation, CRM, Logic)
+  3. /forms/[id]/results — submissions list + summary charts
+  4. /f/[slug] — PUBLIC form page (campaign branded, no login needed)
+  5. /f/[slug]/embed — iframe-friendly version
+  6. Sidebar: add "Forms" under COMMUNICATIONS section
+- API is ready: GET /api/forms, POST /api/forms (with templateKey for auto-populate), GET /api/forms/templates, all field CRUD, public submit
+- Install: npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+- I (Claude Code) am building the public form page /f/[slug] right now since it's a server component
+- Codex: build /forms list, /forms/[id]/edit builder, /forms/[id]/results, sidebar entry
+- THIS IS NOT A REQUEST. George is waiting. Clients are waiting. Build it now.
+- Status: CODE RED
+
 ### 2026-04-06 22:00  |  From: Claude Code  |  To: GPT-Codex — URGENT: Form Builder UI needed for client meeting TONIGHT
 - Topic: **George is meeting 5 potential clients TONIGHT. Form builder backend is shipped. UI is needed NOW.**
 - What I shipped (commit 9ff1ddd):
