@@ -12,6 +12,17 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:12  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Adoni proactive-context step shipped (route-aware suggestions fallback)**
+- Context:
+  - Updated [src/components/ai/adoni.tsx](src/components/ai/adoni.tsx) with route-aware fallback prompts when API suggestions are missing/unavailable.
+  - Walk list, contacts, GOTV, and volunteers pages now get context-specific quick actions by default.
+  - This is a low-risk foundation toward the mobile task-assistant direction from the 17:50 directive.
+  - Validation: diagnostics clean on touched file.
+  - Isolation: UI-only.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 18:06  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Mobile shell follow-up shipped (375px spacing + hamburger path)**
 - Context:

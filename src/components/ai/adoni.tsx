@@ -116,8 +116,25 @@ function roleBadgeClass(level: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
+function contextualFallbackSuggestions(path: string): string[] {
+  if (path.includes("/canvassing/walk") || path === "/canvass" || path.startsWith("/canvass/")) {
+    return ["Best next 5 doors", "Quick persuasion script", "Log revisit priorities", "Volunteer handoff notes"];
+  }
+  if (path.startsWith("/contacts")) {
+    return ["Build follow-up list", "Top undecided contacts", "Tag high-priority voters", "Draft call script"];
+  }
+  if (path.startsWith("/gotv")) {
+    return ["GOTV status", "P1 no-response list", "Rides needed today", "Election day checklist"];
+  }
+  if (path.startsWith("/volunteers")) {
+    return ["Volunteer roster", "Fill unassigned shifts", "Who is over-capacity", "Tonight's action plan"];
+  }
+  return ["Daily brief", "Volunteer roster", "GOTV status", "Build a call list"];
+}
+
 export default function AdoniButton() {
   const pathname = usePathname();
+  const fallbackSuggestions = useMemo(() => contextualFallbackSuggestions(pathname), [pathname]);
   const [mode, setMode] = useState<AdoniMode>("bubble");
   const [prompt, setPrompt] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -197,12 +214,7 @@ export default function AdoniButton() {
         setSuggestions(
           data.suggestions?.length
             ? data.suggestions.slice(0, 4)
-            : [
-                "Daily brief",
-                "Volunteer roster",
-                "GOTV status",
-                "Build a call list",
-              ],
+            : fallbackSuggestions,
         );
         setCampaignName(data.context.campaignName || "Poll City Campaign");
         const dte =
@@ -213,14 +225,14 @@ export default function AdoniButton() {
       })
       .catch(() => {
         if (!mounted) return;
-        setSuggestions(["Daily brief", "Volunteer roster", "GOTV status", "Build a call list"]);
+        setSuggestions(fallbackSuggestions);
         setContextLine("Context unavailable");
       });
 
     return () => {
       mounted = false;
     };
-  }, [pathname]);
+  }, [pathname, fallbackSuggestions]);
 
   useEffect(() => {
     if (scrollerRef.current) {
@@ -541,7 +553,7 @@ export default function AdoniButton() {
 
               <div className="border-t border-slate-200 px-3 pt-2 pb-3 bg-white">
                 <div className="mb-2 flex gap-2 overflow-x-auto">
-                  {(suggestions.length ? suggestions : ["Daily brief", "Volunteer roster", "GOTV status", "Build a call list"]).map((item) => (
+                  {(suggestions.length ? suggestions : fallbackSuggestions).map((item) => (
                     <button
                       key={item}
                       type="button"
@@ -624,7 +636,7 @@ export default function AdoniButton() {
 
                   <div className="border-t border-slate-200 px-4 pt-3 pb-4 bg-white">
                     <div className="mb-3 flex flex-wrap gap-2">
-                      {(suggestions.length ? suggestions : ["Daily brief", "Volunteer roster", "GOTV status", "Build a call list"]).map((item) => (
+                      {(suggestions.length ? suggestions : fallbackSuggestions).map((item) => (
                         <button
                           key={item}
                           type="button"
