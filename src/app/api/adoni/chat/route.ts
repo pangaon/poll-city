@@ -6,6 +6,7 @@ import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
 import { ADONI_TOOLS, executeAction, checkSuspiciousActivity, type ActionContext } from "@/lib/adoni/actions";
 import { loadMemory, updateMemory } from "@/lib/adoni/memory";
 import { detectPromptInjection, logSecurityThreat } from "@/lib/security/monitor";
+import { resolvePermissions } from "@/lib/permissions/engine";
 
 type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
 type ContentBlock =
@@ -139,6 +140,10 @@ export async function POST(req: NextRequest) {
   const activeCampaignId = userRow?.activeCampaignId ?? null;
 
   const cid = activeCampaignId;
+
+  // Resolve enterprise permissions early (used in system prompt + action context)
+  const resolved = cid ? await resolvePermissions(session!.user.id, cid) : null;
+
   const [campaign, contactCount, supporterCount, undecidedCount, volunteerCount, doorsKnocked, signsDeployed, donationsCount, donationsTotal] = await Promise.all([
     cid
       ? prisma.campaign.findUnique({
@@ -190,6 +195,9 @@ export async function POST(req: NextRequest) {
     jurisdiction: campaign?.jurisdiction ?? null,
     province: null,
     userName: session?.user?.name ?? session?.user?.email ?? "Team Member",
+    permissions: resolved?.permissions,
+    trustLevel: resolved?.trustLevel,
+    roleName: resolved?.roleName,
   });
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -261,7 +269,7 @@ export async function POST(req: NextRequest) {
         await checkSuspiciousActivity(session!.user.id, activeCampaignId, userRole, plainMessages);
       }
       const actionCtx: ActionContext | null = activeCampaignId
-        ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member", userRole, autoExecuteEnabled }
+        ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member", userRole, permissions: resolved?.permissions ?? [], trustLevel: resolved?.trustLevel ?? 2, autoExecuteEnabled }
         : null;
       assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, fullSystemPrompt, messages, actionCtx);
 

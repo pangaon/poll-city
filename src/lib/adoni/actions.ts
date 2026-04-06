@@ -13,13 +13,17 @@
 
 import prisma from "@/lib/db/prisma";
 import type { InteractionType, TaskStatus, TaskPriority } from "@prisma/client";
+import { hasPermission as checkPerm } from "@/lib/permissions/engine";
+import type { Permission } from "@/lib/permissions/types";
 
 export interface ActionContext {
   userId: string;
   campaignId: string;
   userName: string;
-  userRole: string; // SUPER_ADMIN | ADMIN | CAMPAIGN_MANAGER | CANVASSER | VOLUNTEER | VIEWER
-  autoExecuteEnabled: boolean; // campaign-level toggle
+  userRole: string;
+  permissions: Permission[]; // enterprise permissions from CampaignRole
+  trustLevel: number; // 1-5 trust level
+  autoExecuteEnabled: boolean;
 }
 
 export interface ActionResult {
@@ -234,44 +238,31 @@ export const ADONI_TOOLS = [
   },
 ];
 
-// ─── Role-gated permissions ─────────────────────────────────────────────────
+// ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
 
-type PermLevel = "read" | "write" | "admin";
-
-const TOOL_PERMISSIONS: Record<string, PermLevel> = {
-  get_campaign_stats: "read",
-  search_contacts: "read",
-  count_contacts_in_area: "read",
-  get_gotv_summary: "read",
-  get_volunteer_roster: "read",
-  get_daily_brief: "read",
-  build_smart_list: "read",
-  create_task: "write",
-  send_team_alert: "write",
-  update_contact_support: "write",
-  schedule_canvass: "write",
-  log_interaction: "write",
-  create_reminder: "write",
-  draft_email: "write",
-  draft_social_post: "write",
+/** Maps each Adoni tool to the permission required to use it */
+const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
+  get_campaign_stats: "analytics:read",
+  search_contacts: "contacts:read",
+  count_contacts_in_area: "contacts:read",
+  get_gotv_summary: "gotv:read",
+  get_volunteer_roster: "volunteers:read",
+  get_daily_brief: "analytics:read",
+  build_smart_list: "contacts:read",
+  create_task: "tasks:write",
+  send_team_alert: "notifications:write",
+  update_contact_support: "contacts:write",
+  schedule_canvass: "canvassing:manage",
+  log_interaction: "canvassing:write",
+  create_reminder: "adoni:write_tools",
+  draft_email: "email:write",
+  draft_social_post: "social:write",
 };
 
-const ROLE_LEVEL: Record<string, PermLevel> = {
-  SUPER_ADMIN: "admin",
-  ADMIN: "admin",
-  CAMPAIGN_MANAGER: "write",
-  CANVASSER: "write",
-  FIELD_LEAD: "write",
-  VOLUNTEER: "read",
-  VIEWER: "read",
-  FINANCE: "read",
-};
-
-const LEVEL_ORDER: Record<PermLevel, number> = { read: 0, write: 1, admin: 2 };
-
-function hasPermission(role: string, required: PermLevel): boolean {
-  const userLevel = ROLE_LEVEL[role] ?? "read";
-  return LEVEL_ORDER[userLevel] >= LEVEL_ORDER[required];
+function toolAllowed(ctx: ActionContext, toolName: string): boolean {
+  const required = TOOL_REQUIRED_PERMISSION[toolName];
+  if (!required) return checkPerm(ctx.permissions, "adoni:write_tools");
+  return checkPerm(ctx.permissions, required);
 }
 
 const FUNNY_DENIALS: readonly string[] = [
@@ -296,18 +287,19 @@ export async function executeAction(
   input: Record<string, unknown>,
   ctx: ActionContext,
 ): Promise<ActionResult> {
-  // Auto-execute gate: if the campaign has disabled auto-execute, block all writes
-  const required = TOOL_PERMISSIONS[toolName] ?? "write";
-  if (required !== "read" && !ctx.autoExecuteEnabled) {
+  // Permission check (enterprise RBAC)
+  if (!toolAllowed(ctx, toolName)) {
+    return denyWithHumour();
+  }
+
+  // Auto-execute gate: read tools always allowed, write tools need toggle
+  const requiredPerm = TOOL_REQUIRED_PERMISSION[toolName] ?? "adoni:write_tools";
+  const isReadTool = requiredPerm.endsWith(":read");
+  if (!isReadTool && !ctx.autoExecuteEnabled && !checkPerm(ctx.permissions, "adoni:auto_execute")) {
     return {
       success: false,
       message: `Auto-execute is turned off for this campaign. I can tell you what I'd do, but I can't do it until an admin enables "Adoni Auto-Execute" in campaign settings. Here's what I would have done: ${toolName}(${JSON.stringify(input)}).`,
     };
-  }
-
-  // Role check
-  if (!hasPermission(ctx.userRole, required)) {
-    return denyWithHumour();
   }
 
   try {

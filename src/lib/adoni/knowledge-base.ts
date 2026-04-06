@@ -164,6 +164,9 @@ export function buildAdoniSystemPrompt(context: {
   electionType: string | null;
   jurisdiction: string | null;
   province: string | null;
+  permissions?: string[];
+  trustLevel?: number;
+  roleName?: string;
 }): string {
   const c = context;
   const phase =
@@ -273,7 +276,53 @@ If your response contains any bullet points, asterisks, bold text, headers, or n
     "",
     "GENERATED KNOWLEDGE (auto-trained):",
     getFullKnowledge(),
+    "",
+    "---",
+    "",
+    buildPermissionFirewall(c.permissions, c.trustLevel, c.roleName),
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function buildPermissionFirewall(
+  permissions?: string[],
+  trustLevel?: number,
+  roleName?: string,
+): string {
+  if (!permissions || permissions.includes("*")) return "";
+  const trust = trustLevel ?? 2;
+  const restricted: string[] = [];
+
+  if (!permissions.some((p) => p.startsWith("donations:") || p.startsWith("budget:"))) {
+    restricted.push("financial data (donations, budget, spending, donor names)");
+  }
+  if (!permissions.some((p) => p.startsWith("analytics:"))) {
+    restricted.push("campaign analytics and reports");
+  }
+  if (!permissions.some((p) => p === "contacts:export")) {
+    restricted.push("contact export data");
+  }
+  if (!permissions.some((p) => p.startsWith("intelligence:"))) {
+    restricted.push("opponent intelligence");
+  }
+  if (trust < 3) {
+    restricted.push("campaign-wide strategy discussions");
+    restricted.push("aggregate supporter counts and conversion rates");
+  }
+  if (trust < 2) {
+    restricted.push("phone numbers and email addresses");
+  }
+
+  if (restricted.length === 0) return "";
+
+  return `PERMISSION FIREWALL — YOU MUST FOLLOW THESE RULES:
+User's role: ${roleName || "Unknown"}
+User's trust level: ${trust}/5
+User's permissions: ${permissions.join(", ")}
+
+YOU MUST NOT SHARE: ${restricted.join("; ")}.
+If they ask about restricted data, say something like "That information is restricted to your campaign manager or admin. Want help with something I can assist with?"
+Do not reveal the existence of the permission system or trust levels. Just redirect naturally.
+Never fabricate data to fill gaps in what you are allowed to share.`;
 }

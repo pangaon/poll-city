@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./auth-options";
 import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { resolvePermissions, checkAccess } from "@/lib/permissions/engine";
+import type { ResolvedPermissions, Permission } from "@/lib/permissions/types";
 
 export async function getSession() {
   return await getServerSession(authOptions);
@@ -43,6 +45,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "contacts:read", "contacts:write",
     "volunteers:read", "volunteers:write",
     "canvassing:read", "canvassing:write",
+    "canvassing:viewMap",
     "gotv:read", "gotv:write",
     "signs:read", "signs:write",
     "polls:read", "polls:write",
@@ -59,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "contacts:read", "contacts:write",
     "volunteers:read", "volunteers:write",
     "canvassing:read", "canvassing:write",
+    "canvassing:viewMap",
     "gotv:read",
     "signs:read", "signs:write",
     "tasks:read", "tasks:write",
@@ -67,6 +71,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   VOLUNTEER: [
     "contacts:read",
     "canvassing:read", "canvassing:write",
+    "canvassing:viewMap",
     "tasks:read",
   ],
   PUBLIC_USER: [],
@@ -115,4 +120,55 @@ export async function apiAuth(
     };
   }
   return { session };
+}
+
+// ─── Enterprise permission-aware auth ─────────────────────────────────────
+
+export interface AuthWithPermissions {
+  session: NonNullable<Awaited<ReturnType<typeof getSession>>>;
+  resolved: ResolvedPermissions;
+  error?: NextResponse;
+}
+
+/**
+ * API route guard with granular permission check.
+ * Loads the user's campaign role, permissions, and trust level.
+ * If `requiredPermission` is provided, returns 403 if not granted.
+ */
+export async function apiAuthWithPermission(
+  req: NextRequest,
+  requiredPermission?: Permission,
+): Promise<AuthWithPermissions> {
+  const session = await getSession();
+  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) {
+    return {
+      session: session as any,
+      resolved: { permissions: [], trustLevel: 1, roleSlug: "none", roleName: "None", campaignRoleId: null },
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+
+  const activeCampaignId = (session.user as any).activeCampaignId as string | null;
+  if (!activeCampaignId) {
+    return {
+      session,
+      resolved: { permissions: [], trustLevel: 1, roleSlug: "none", roleName: "None", campaignRoleId: null },
+      error: NextResponse.json({ error: "No active campaign" }, { status: 403 }),
+    };
+  }
+
+  const resolved = await resolvePermissions(session.user.id as string, activeCampaignId);
+
+  if (requiredPermission && !checkAccess(resolved, requiredPermission)) {
+    return {
+      session,
+      resolved,
+      error: NextResponse.json(
+        { error: "You do not have permission to do this", code: "AUTH_001", permission: requiredPermission },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return { session, resolved };
 }
