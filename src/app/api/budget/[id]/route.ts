@@ -71,6 +71,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(body.paidAt !== undefined && { paidAt: body.paidAt ? new Date(body.paidAt) : null }),
       },
     });
+    await prisma.activityLog.create({
+      data: {
+        campaignId: result.item!.campaignId,
+        userId: session!.user.id,
+        action: "budget_item_updated",
+        entityType: "BudgetItem",
+        entityId: updated.id,
+        details: { ...body },
+      },
+    });
+
     return NextResponse.json({ data: updated });
   } catch (e) {
     console.error("[budget/patch]", e);
@@ -90,6 +101,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   try {
     await prisma.budgetItem.delete({ where: { id: params.id } });
+
+    await prisma.activityLog.create({
+      data: {
+        campaignId: result.item!.campaignId,
+        userId: session!.user.id,
+        action: "budget_item_deleted",
+        entityType: "BudgetItem",
+        entityId: params.id,
+        details: { category: result.item!.category, amount: result.item!.amount, itemType: result.item!.itemType },
+      },
+    });
+
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     console.error("[budget/delete]", e);

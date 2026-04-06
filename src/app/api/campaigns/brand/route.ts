@@ -94,5 +94,16 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "brand_updated",
+      entityType: "Campaign",
+      entityId: campaignId,
+      details: patch as object,
+    },
+  });
+
   return NextResponse.json({ brand: updated });
 }

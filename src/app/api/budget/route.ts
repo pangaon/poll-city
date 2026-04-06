@@ -121,6 +121,17 @@ export async function POST(req: NextRequest) {
         paidAt: body.paidAt ? new Date(body.paidAt) : null,
       },
     });
+    await prisma.activityLog.create({
+      data: {
+        campaignId: body.campaignId,
+        userId: session!.user.id,
+        action: "budget_item_created",
+        entityType: "BudgetItem",
+        entityId: created.id,
+        details: { amount: body.amount, category: body.category, itemType: body.itemType, status: body.status },
+      },
+    });
+
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (e) {
     console.error("[budget/create]", e);

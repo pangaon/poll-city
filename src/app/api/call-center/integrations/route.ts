@@ -62,6 +62,17 @@ export async function POST(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca";
   const { webhookSecret: _webhookSecret, apiKey: _apiKey, ...safeIntegration } = integration;
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: (session.user as any).id,
+      action: "call_center_integration_created",
+      entityType: "CallCenterIntegration",
+      entityId: integration.id,
+      details: { provider, name },
+    },
+  });
+
   return NextResponse.json(
     {
       integration: safeIntegration,

@@ -70,5 +70,16 @@ export async function PATCH(req: NextRequest) {
     select: { require2FA: true, allowedIpRanges: true, sessionTimeoutHours: true },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "security_policy_updated",
+      entityType: "Campaign",
+      entityId: campaignId,
+      details: patch as object,
+    },
+  });
+
   return NextResponse.json({ policy: updated });
 }

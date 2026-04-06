@@ -49,5 +49,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId: body.campaignId,
+      userId: session!.user.id,
+      action: "coalition_created",
+      entityType: "Coalition",
+      entityId: created.id,
+      details: { organizationName: body.organizationName, memberCount: body.memberCount, isPublic: body.isPublic },
+    },
+  });
+
   return NextResponse.json({ data: created }, { status: 201 });
 }

@@ -66,5 +66,16 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId: campaignId!,
+      userId: session!.user.id,
+      action: "campaign_updated",
+      entityType: "Campaign",
+      entityId: campaignId!,
+      details: body,
+    },
+  });
+
   return NextResponse.json(campaign);
 }

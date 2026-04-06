@@ -47,6 +47,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(body.isActive !== undefined && { isActive: body.isActive }),
       },
     });
+    await prisma.activityLog.create({
+      data: {
+        campaignId: rule.campaignId,
+        userId: session!.user.id,
+        action: "budget_rule_updated",
+        entityType: "BudgetRule",
+        entityId: updated.id,
+        details: { ...body },
+      },
+    });
+
     return NextResponse.json({ data: updated });
   } catch (e) {
     console.error("[budget/rules/patch]", e);
@@ -68,6 +79,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   try {
     await prisma.budgetRule.delete({ where: { id: params.id } });
+
+    await prisma.activityLog.create({
+      data: {
+        campaignId: rule.campaignId,
+        userId: session!.user.id,
+        action: "budget_rule_deleted",
+        entityType: "BudgetRule",
+        entityId: params.id,
+        details: { category: rule.category },
+      },
+    });
+
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     console.error("[budget/rules/delete]", e);

@@ -63,6 +63,17 @@ export async function POST(req: NextRequest) {
         isActive: body.isActive,
       },
     });
+    await prisma.activityLog.create({
+      data: {
+        campaignId: body.campaignId,
+        userId: session!.user.id,
+        action: "budget_rule_created",
+        entityType: "BudgetRule",
+        entityId: created.id,
+        details: { category: body.category, percentOfTotal: body.percentOfTotal, fixedAmount: body.fixedAmount, priority: body.priority },
+      },
+    });
+
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (e) {
     console.error("[budget/rules/create]", e);
