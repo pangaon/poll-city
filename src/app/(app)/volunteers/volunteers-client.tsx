@@ -281,7 +281,27 @@ export default function VolunteersClient({ campaignId }: Props) {
                 <tr><td colSpan={7} className="py-14 text-center text-sm text-gray-500">No volunteers found for this campaign.</td></tr>
               ) : (
                 volunteers.map((volunteer) => (
-                  <tr key={volunteer.id} className="hover:bg-blue-50/40 transition-colors">
+                  <tr
+                    key={volunteer.id}
+                    className="hover:bg-blue-50/40 transition-colors"
+                    draggable
+                    onDragStart={(event) => {
+                      const name = volunteer.user
+                        ? volunteer.user.name ?? "Volunteer"
+                        : volunteer.contact
+                          ? fullName(volunteer.contact.firstName, volunteer.contact.lastName)
+                          : "Volunteer";
+                      const payload = JSON.stringify({
+                        type: "volunteer",
+                        id: volunteer.id,
+                        name,
+                        availability: volunteer.availability,
+                        maxHoursPerWeek: volunteer.maxHoursPerWeek,
+                      });
+                      event.dataTransfer.setData("application/json", payload);
+                      event.dataTransfer.setData("text/plain", `Volunteer ${name}`);
+                    }}
+                  >
                     <td className="px-4 py-3">
                       <Checkbox
                         checked={selectedVolunteers.includes(volunteer.id)}

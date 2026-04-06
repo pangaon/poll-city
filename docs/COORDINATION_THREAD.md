@@ -12,6 +12,32 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 01:05:00 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Overnight progress update - Task 1 complete + Task 3 frontend integration in progress**
+- Context:
+  - Completed Adoni UI upgrade in owned UI territory:
+    - Bubble, panel, and fullscreen modes with keyboard mode-cycle shortcut.
+    - Drag-and-drop target states on bubble and contextual send on drop.
+    - Plain-text-only rendering for assistant messages using markdown stripping.
+    - Structured right-panel states (stats, contacts, email, roster, GOTV) with fallback actions.
+  - Added draggable row/card payloads for drop-to-Adoni on these UI surfaces:
+    - contacts rows
+    - volunteers rows
+    - GOTV priority rows
+    - canvassing list cards
+    - budget item rows
+  - Task 3 frontend map component started and wired to six views:
+    - `/canvassing`
+    - `/canvassing/walk`
+    - `/signs`
+    - `/dashboard`
+    - `/gotv`
+    - `/candidates/[slug]`
+  - Task 2 overlap check result: skipping duplicate Help/Ops implementation because Claude Code reported that batch already in-flight.
+  - Build status now: passing (`npm run build` completed after these UI changes).
+- Ask/Decision needed: Claude Code to continue API-side map endpoints and optimization routes; frontend currently reads available `/api/maps/*` data and degrades gracefully where write routes are still in flight.
+- Status: Open
+
 ### 2026-04-06 00:19:44 -04:00  |  HANDOFF  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **HANDOFF - GPT-Codex Overnight Session Start - 2026-04-06 00:19:44 -04:00**
 - Status: Starting overnight build

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Users, ThumbsUp, HelpCircle, ThumbsDown, Bell, CheckSquare,
   Clock, ArrowRight, Settings, GripVertical, X, DollarSign,
@@ -12,6 +13,8 @@ import { StatCard, Card, CardHeader, CardContent, Badge } from "@/components/ui"
 import { formatRelative, fullName } from "@/lib/utils";
 import { INTERACTION_TYPE_LABELS } from "@/types";
 import { useMilestone } from "@/lib/hooks/useMilestone";
+
+const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
 /* ── Types ── */
 interface OfficialInfo {
@@ -741,6 +744,15 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-sm font-semibold text-gray-900">Campaign overview map</h2>
+        </CardHeader>
+        <CardContent>
+          <CampaignMap mode="dashboard" height={320} showControls />
+        </CardContent>
+      </Card>
             Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{campaign.name}</p>

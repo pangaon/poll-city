@@ -808,6 +808,18 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                 <tr
                   key={c.id}
                   className="hover:bg-blue-50/40 transition-colors"
+                  draggable
+                  onDragStart={(event) => {
+                    const payload = JSON.stringify({
+                      type: "contact",
+                      id: c.id,
+                      name: fullName(c.firstName, c.lastName),
+                      phone: c.phone,
+                      supportLevel: c.supportLevel,
+                    });
+                    event.dataTransfer.setData("application/json", payload);
+                    event.dataTransfer.setData("text/plain", `Contact ${fullName(c.firstName, c.lastName)} (${c.supportLevel})`);
+                  }}
                 >
                   <td className="px-4 py-3">
                     <Checkbox

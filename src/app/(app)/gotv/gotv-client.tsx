@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Loader2 } from "lucide-react";
 import { tierColor } from "@/lib/gotv/score";
+import dynamic from "next/dynamic";
+
+const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
 interface Props {
   campaignId: string;
@@ -64,6 +67,11 @@ export default function GotvClient({ campaignId }: Props) {
           Score, prioritise, and strike off. This is the engine that turns supporters into votes.
         </p>
       </header>
+
+      <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3">
+        <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter density map</p>
+        <CampaignMap mode="gotv" height={320} showControls />
+      </div>
 
       {/* Tabs — horizontal scroll on mobile */}
       <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-2 -mx-4 px-4 md:mx-0 md:px-0 mb-4">
@@ -163,7 +171,23 @@ function PriorityListTab({ campaignId }: { campaignId: string }) {
         </div>
         <ul className="divide-y divide-slate-100">
           {data.contacts.map((c) => (
-            <li key={c.id} className="flex items-center gap-3 p-3 md:p-4 hover:bg-slate-50">
+            <li
+              key={c.id}
+              className="flex items-center gap-3 p-3 md:p-4 hover:bg-slate-50"
+              draggable
+              onDragStart={(event) => {
+                const payload = JSON.stringify({
+                  type: "gotv-priority",
+                  id: c.id,
+                  name: `${c.firstName} ${c.lastName}`,
+                  tier: c.tier,
+                  voted: c.voted,
+                  score: c.gotvScore,
+                });
+                event.dataTransfer.setData("application/json", payload);
+                event.dataTransfer.setData("text/plain", `GOTV contact ${c.firstName} ${c.lastName} P${c.tier}`);
+              }}
+            >
               <div className="w-1 h-10 rounded-full" style={{ background: tierColor(c.tier) }} />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-900 truncate">{c.firstName} {c.lastName}</p>

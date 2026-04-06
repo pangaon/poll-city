@@ -8,6 +8,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createCanvassListSchema, CreateCanvassListInput } from "@/lib/validators";
 import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
+import dynamic from "next/dynamic";
+
+const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
 interface CanvassList {
   id: string; name: string; description: string | null; status: string; createdAt: string;
@@ -64,6 +67,25 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         actions={<Button size="sm" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" />New List</Button>}
       />
 
+      <Card>
+        <CardHeader>
+          <h2 className="text-sm font-semibold text-gray-900">Campaign Map</h2>
+          <p className="text-xs text-gray-500">Draw turfs, review volunteer coverage, and estimate effort live.</p>
+        </CardHeader>
+        <CardContent>
+          <CampaignMap
+            mode="canvassing"
+            height={460}
+            showControls
+            showCalculator
+            onTurfDraw={(coordinates, stats) => {
+              const summary = `Draft turf with ${coordinates.length} points, ${stats.doors} doors, ${stats.estimatedHours} hours estimated`;
+              window.dispatchEvent(new CustomEvent("pollcity:open-adoni", { detail: { prefill: summary } }));
+            }}
+          />
+        </CardContent>
+      </Card>
+
       {/* Push Notification Settings */}
       <Card>
         <CardContent className="p-5">
@@ -109,7 +131,22 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {lists.map((list) => (
-            <Card key={list.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={list.id}
+              className="hover:shadow-md transition-shadow"
+              draggable
+              onDragStart={(event) => {
+                const payload = JSON.stringify({
+                  type: "canvass-list",
+                  id: list.id,
+                  name: list.name,
+                  status: list.status,
+                  assigned: list.assignments.length,
+                });
+                event.dataTransfer.setData("application/json", payload);
+                event.dataTransfer.setData("text/plain", `Canvass list ${list.name}`);
+              }}
+            >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">

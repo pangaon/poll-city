@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Button, Card, CardContent, CardHeader, Badge } from "@/components/ui";
 import TurnstileWidget from "@/components/security/turnstile-widget";
 import {
@@ -10,6 +11,8 @@ import {
   ShieldCheck, Building2, ExternalLink, Trophy, Star, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
 /* ─── Customization types ────────────────────────────────────────────────── */
 
@@ -404,6 +407,17 @@ export default function CandidatePageClient({ campaign, polls, electionHistory }
                 </CardContent>
               </Card>
             )}
+
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-600" /> Ward Map
+                </h2>
+              </CardHeader>
+              <CardContent>
+                <CampaignMap mode="public" height={360} showControls={false} />
+              </CardContent>
+            </Card>
 
             {/* Election history */}
             {electionHistory.length > 0 && (

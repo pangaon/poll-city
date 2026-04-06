@@ -4,6 +4,9 @@ import { MapPin, Search, Filter, ChevronLeft, ChevronRight, Camera, Check, Rotat
 import { Badge, Button, Card, CardContent, CardHeader, Checkbox, FormField, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
 import { toast } from "sonner";
 import { formatRelative } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
 interface SignRow {
   id: string;
@@ -167,26 +170,11 @@ export default function SignsClient({ campaignId }: Props) {
               <MapPin className="w-4 h-4 text-blue-600" />
               <div>
                 <p className="text-sm font-semibold text-gray-900">Sign locations</p>
-                <p className="text-xs text-gray-500">Rendered as a simple dashboard view.</p>
+                <p className="text-xs text-gray-500">Interactive sign marker map.</p>
               </div>
             </div>
-            <div className="space-y-3 p-6">
-              {signs.length === 0 ? (
-                <p className="text-sm text-gray-500">No sign requests to preview.</p>
-              ) : (
-                signs.slice(0, 6).map((sign) => (
-                  <div key={sign.id} className="rounded-2xl border border-gray-200 p-4 bg-white shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-gray-900">{sign.address1}</p>
-                        <p className="text-xs text-gray-500">{sign.city ?? ""} {sign.postalCode ?? ""}</p>
-                      </div>
-                      <Badge variant={sign.status === "installed" ? "success" : sign.status === "removed" ? "danger" : "default"}>{sign.status}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm text-gray-500">{sign.assignedTeam ?? "No team assigned"}</p>
-                  </div>
-                ))
-              )}
+            <div className="p-4">
+              <CampaignMap mode="signs" height={420} showControls />
             </div>
           </div>
           <div>

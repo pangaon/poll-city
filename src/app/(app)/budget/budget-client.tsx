@@ -452,7 +452,20 @@ function ItemsTab({
                 <tr
                   key={item.id}
                   draggable
-                  onDragStart={() => setDraggingId(item.id)}
+                  onDragStart={(event) => {
+                    setDraggingId(item.id);
+                    const payload = JSON.stringify({
+                      type: "budget-item",
+                      id: item.id,
+                      itemType: item.itemType,
+                      category: item.category,
+                      vendor: item.vendor,
+                      amount: item.amount,
+                      status: item.status,
+                    });
+                    event.dataTransfer.setData("application/json", payload);
+                    event.dataTransfer.setData("text/plain", `Budget ${item.itemType} ${item.category} ${item.amount}`);
+                  }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => {
                     if (!draggingId || draggingId === item.id) return;
