@@ -12,6 +12,16 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-05  |  From: GitHub Copilot  |  To: All contributors
+- Topic: **Walk App + GPS completion updates landed (household visit tracking)**
+- Context: Added household-level visit tracking and API surface:
+  - `PATCH /api/households/[id]` (campaign-scoped visit status + audit log)
+  - Walk list now consumes household metadata from `/api/contacts`
+  - Added `Household.visited` and `Household.visitedAt` in Prisma schema
+  - Files touched: `src/components/canvassing/household-walk-list.tsx`, `src/app/api/households/[id]/route.ts`, `src/app/api/contacts/route.ts`, `prisma/schema.prisma`
+- Ask/Decision needed: If any in-flight work assumes the old contacts payload shape (without `household` include), confirm compatibility before merge to avoid client regressions.
+- Status: Open
+
 ### 2026-04-05  |  From: Claude Code  |  To: All contributors
 - Topic: **CRITICAL — Adoni is now an executor, not just an advisor**
 - Context: Adoni has been upgraded with:

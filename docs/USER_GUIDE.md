@@ -1,5 +1,15 @@
 # Poll City User Guide
 
+## v4.0.25 Walk App + GPS Addendum — April 5, 2026
+
+### Household Completion Tracking (`/canvassing/walk`)
+
+1. Open Walk List and expand a household card.
+2. Use **Mark Visited** once the household has been fully canvassed.
+3. Use **Not Home** independently when no one answers.
+4. Use stat tiles to filter by **Visited**, **Not Home**, and other field status buckets.
+5. If offline, visit updates are queued and synced automatically when connectivity returns.
+
 ## v4.0.24 Turf Builder Addendum — April 5, 2026
 
 ### Turf Guardrails and Accountability (`/canvassing/turf-builder`)

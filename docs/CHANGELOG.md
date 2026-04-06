@@ -1,5 +1,21 @@
 # Poll City Changelog
 
+## [4.0.25] - April 5, 2026 — WALK APP HOUSEHOLD VISIT TRACKING
+
+### Walk App + GPS (`/canvassing/walk`)
+- Added household-level visit tracking controls in the walk list (`Mark Visited` / `Clear Visited`).
+- Added visited metrics to the mobile walk-list stat tiles for in-shift progress visibility.
+- Added offline queue support for household visit status updates to preserve field edits without connectivity.
+
+### APIs and Data
+- Added `PATCH /api/households/[id]` for campaign-scoped household visit status updates.
+- Added activity logging for household visit state changes (`updated_household_visit_status`).
+- Added `Household.visited` and `Household.visitedAt` fields in Prisma schema.
+- Added household visit metadata to contacts list payload for walk-list grouping.
+
+### Outcome
+- Field teams can now track address-level completion in real time with audit visibility and offline resilience.
+
 ## [4.0.24] - April 5, 2026 — TURF BUILDER ENTERPRISE HARDENING
 
 ### Turf APIs (`/api/turf/*`)

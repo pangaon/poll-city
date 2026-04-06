@@ -231,7 +231,7 @@ const PRODUCTS = [
     features: [
       "Campaign website with custom domain like votegeorge.ca",
       "Contact CRM with household grouping and tagging",
-      "Mobile canvassing app with offline sync and background sync",
+      "Mobile canvassing app with offline sync, background sync, and household-level visited tracking",
       "Smart walk list builder with route optimisation",
       "Turf cutting by ward, poll number, odd/even streets with campaign-scoped leaderboard and assignment audit trail",
       "GOTV engine with supporter scoring and prioritisation",

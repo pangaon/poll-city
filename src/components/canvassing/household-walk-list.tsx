@@ -65,11 +65,13 @@ interface Person {
 
 interface Household {
   key: string;
+  householdId: string | null;
   lastName: string;
   address: string;
   city: string;
   streetNumber: string;
   notHome: boolean;
+  visited: boolean;
   people: Person[];
 }
 
@@ -91,6 +93,7 @@ function groupContacts(contacts: (Person & {
   city: string | null;
   notHome: boolean;
   householdId: string | null;
+  household: { id: string; visited: boolean; visitedAt: string | null } | null;
 })[], oddEven: OddEven, activeFilter: string | null): Household[] {
   const grouped: Record<string, Household> = {};
   for (const c of contacts) {
@@ -99,16 +102,19 @@ function groupContacts(contacts: (Person & {
     if (!grouped[key]) {
       grouped[key] = {
         key,
+        householdId: c.householdId ?? c.household?.id ?? null,
         lastName: c.lastName,
         address: c.address1 ?? "Unknown address",
         city: c.city ?? "",
         streetNumber: num,
         notHome: c.notHome,
+        visited: Boolean(c.household?.visited),
         people: [],
       };
     }
     grouped[key].people.push(c);
     if (c.lastName < grouped[key].lastName) grouped[key].lastName = c.lastName;
+    if (c.household?.visited) grouped[key].visited = true;
   }
 
   let hh = Object.values(grouped);
@@ -124,6 +130,7 @@ function groupContacts(contacts: (Person & {
   else if (activeFilter === "undecided") hh = hh.filter(h => h.people.some(p => p.supportLevel === "undecided"));
   else if (activeFilter === "opposition") hh = hh.filter(h => h.people.some(p => ["leaning_opposition","strong_opposition"].includes(p.supportLevel)));
   else if (activeFilter === "notHome") hh = hh.filter(h => h.notHome);
+  else if (activeFilter === "visited") hh = hh.filter(h => h.visited);
   else if (activeFilter === "followUp") hh = hh.filter(h => h.people.some(p => p.followUpNeeded));
 
   hh.sort((a, b) => parseInt(a.streetNumber || "99999") - parseInt(b.streetNumber || "99999"));
@@ -220,6 +227,7 @@ export default function HouseholdWalkList({ campaignId }: Props) {
     undecided: households.filter(h => h.people.some(p => p.supportLevel === "undecided")).length,
     opposition: households.filter(h => h.people.some(p => ["leaning_opposition","strong_opposition"].includes(p.supportLevel))).length,
     notHome: households.filter(h => h.notHome).length,
+    visited: households.filter(h => h.visited).length,
     followUp: households.filter(h => h.people.some(p => p.followUpNeeded)).length,
   };
 
@@ -259,6 +267,43 @@ export default function HouseholdWalkList({ campaignId }: Props) {
     if (!isOnline) toast("📶 Will sync when back online");
   }
 
+  async function toggleVisited(hh: Household) {
+    if (!hh.householdId) {
+      toast.error("This address has no linked household record");
+      return;
+    }
+
+    const next = !hh.visited;
+    const isOnline = navigator.onLine;
+
+    setHouseholds(prev => prev.map(h =>
+      h.key === hh.key ? { ...h, visited: next } : h
+    ));
+
+    try {
+      if (isOnline) {
+        const res = await fetch(`/api/households/${hh.householdId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visited: next }),
+        });
+        if (!res.ok) throw new Error("Server error");
+      } else {
+        throw new Error("offline");
+      }
+    } catch {
+      await queueViaServiceWorker({
+        url: `/api/households/${hh.householdId}`,
+        method: "PATCH",
+        body: { visited: next },
+        label: `${next ? "Visited" : "Unvisited"}: ${hh.address}`,
+      });
+    }
+
+    toast(next ? "✅ Marked Visited" : "↩ Cleared Visited");
+    if (!isOnline) toast("📶 Will sync when back online");
+  }
+
   function toggleExpand(key: string) {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -273,6 +318,7 @@ export default function HouseholdWalkList({ campaignId }: Props) {
     { k: "undecided",  l: "Undecided", bg: "bg-amber-500" },
     { k: "opposition", l: "No",        bg: "bg-red-600" },
     { k: "notHome",    l: "Not Home",  bg: "bg-gray-500" },
+    { k: "visited",    l: "Visited",   bg: "bg-teal-600" },
     { k: "followUp",   l: "Follow-up", bg: "bg-purple-600" },
   ];
 
@@ -372,6 +418,7 @@ export default function HouseholdWalkList({ campaignId }: Props) {
             isExpanded={expanded.has(hh.key)}
             onToggle={() => toggleExpand(hh.key)}
             onToggleNotHome={() => toggleNotHome(hh)}
+            onToggleVisited={() => toggleVisited(hh)}
             onPersonUpdate={load}
           />
         ))}
@@ -382,11 +429,12 @@ export default function HouseholdWalkList({ campaignId }: Props) {
 
 // ── Household row ─────────────────────────────────────────────────────────────
 
-function HouseholdRow({ household: hh, isExpanded, onToggle, onToggleNotHome, onPersonUpdate }: {
+function HouseholdRow({ household: hh, isExpanded, onToggle, onToggleNotHome, onToggleVisited, onPersonUpdate }: {
   household: Household;
   isExpanded: boolean;
   onToggle: () => void;
   onToggleNotHome: () => void;
+  onToggleVisited: () => void;
   onPersonUpdate: () => void;
 }) {
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(hh.address + " " + hh.city)}`;
@@ -426,6 +474,12 @@ function HouseholdRow({ household: hh, isExpanded, onToggle, onToggleNotHome, on
             className={cn("flex-1 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all",
               hh.notHome ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}>
             {hh.notHome ? "✓ Home" : "Not Home"}
+          </button>
+          <button onClick={onToggleVisited}
+            className={cn("flex-1 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all",
+              hh.visited ? "bg-teal-600 text-white" : "bg-gray-200 text-gray-700")}
+            disabled={!hh.householdId}>
+            {hh.visited ? "✓ Visited" : "Mark Visited"}
           </button>
           <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm active:scale-95 transition-all">

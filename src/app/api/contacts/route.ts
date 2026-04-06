@@ -126,6 +126,7 @@ export async function GET(req: NextRequest) {
       skip,
       take: pageSize,
       include: {
+        household: { select: { id: true, visited: true, visitedAt: true } },
         tags: { include: { tag: true } },
         _count: { select: { interactions: true } },
       },
