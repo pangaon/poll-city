@@ -56,21 +56,30 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
 
   const load = useCallback(async () => {
     if (!contactId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/contacts/${contactId}`);
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed to load contact");
+      }
       const data = await res.json();
       const c = data.data ?? data;
       setContact(c);
       setNotes(c.notes ?? "");
-    } catch {
-      toast.error("Failed to load contact");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load contact";
+      setContact(null);
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -78,7 +87,11 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
 
   useEffect(() => {
     if (contactId) load();
-    else setContact(null);
+    else {
+      setContact(null);
+      setLoadError(null);
+      setSaveError(null);
+    }
   }, [contactId, load]);
 
   // Close on Escape key
@@ -94,21 +107,27 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
   async function updateField(updates: Partial<ContactDetail>) {
     if (!contact) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed to save changes");
+      }
       const updated = { ...contact, ...updates };
       setContact(updated);
       if (updates.supportLevel && onUpdate) {
         onUpdate({ id: contact.id, supportLevel: updates.supportLevel });
       }
       toast.success("Saved");
-    } catch {
-      toast.error("Failed to save");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save changes";
+      setSaveError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -157,12 +176,40 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
           </button>
         </div>
 
-        {loading || !contact ? (
+        {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
           </div>
+        ) : !contact ? (
+          <div className="px-5 py-8">
+            <div className="border border-red-200 bg-red-50 rounded-xl p-4">
+              <p className="text-sm font-semibold text-red-900">Unable to load contact</p>
+              <p className="text-xs text-red-700 mt-1">{loadError ?? "The contact could not be loaded."}</p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { void load(); }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-300 text-red-800 hover:bg-red-100"
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="p-5 space-y-5">
+            {saveError && (
+              <div className="border border-amber-200 bg-amber-50 rounded-lg p-3">
+                <p className="text-xs font-semibold text-amber-900">Save failed</p>
+                <p className="text-xs text-amber-800 mt-0.5">{saveError}</p>
+              </div>
+            )}
+
             {/* Name + Support Level */}
             <div>
               <h3 className="text-2xl font-bold text-gray-900">

@@ -12,6 +12,36 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 17:40  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Contact Slide-Over reliability hardening shipped (phase 2 of Feature #30)**
+- Context:
+  - Updated [src/components/contacts/contact-slideover.tsx](src/components/contacts/contact-slideover.tsx):
+    - Added explicit load-error state with persistent message and Retry action.
+    - Removed spinner-only failure path when detail fetch fails.
+    - Added save-error surfacing for failed PATCH updates with server message passthrough.
+  - Validation: diagnostics clean on touched file.
+  - Isolation: no API route edits; UI lane only.
+- Decision:
+  - Keep Feature #30 as pending until full journey gate is run (open panel -> edit fields/notes -> reload -> mobile check).
+- Ask/Decision needed: None.
+- Status: Open
+
+### 2026-04-06 17:32  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Decision: keep two-lane safety model; finish Contact Slide-Over next**
+- Decision:
+  - Continue strict lane isolation during active churn.
+  - Codex lane will only touch Contact Management UI files until Feature #30 is complete.
+  - Next execution target is [src/components/contacts/contact-slideover.tsx](src/components/contacts/contact-slideover.tsx) for explicit load-error + retry UX and save-failure surfacing.
+- Safety controls reaffirmed:
+  - Scoped commits only.
+  - Diagnostics check required before push.
+  - No edits to API-core files currently under Claude lane.
+- Context:
+  - Contacts list hardening already shipped in [src/app/(app)/contacts/contacts-client.tsx](src/app/(app)/contacts/contacts-client.tsx).
+  - Local verification baseline is clean (`npm run verify:regression` passed, `npm run db:seed` passed).
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 17:18  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Contacts UI completion-gate hardening (loading/error/empty + bulk/export reliability)**
 - Context:
