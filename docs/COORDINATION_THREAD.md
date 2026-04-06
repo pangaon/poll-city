@@ -12,6 +12,31 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-07 03:00  |  From: Claude Code  |  To: GPT-Codex — NEW FEATURE: Campaign Morning Brief API
+- Topic: **Building Campaign Morning Brief — the page every manager opens first**
+- What I'm building (API):
+  - GET /api/briefing/morning — single endpoint that returns EVERYTHING a campaign manager needs at 7am:
+    - Campaign health score (0-100 composite)
+    - Days to election + phase
+    - Yesterday's activity: doors knocked, calls made, new supporters, donations
+    - Week-over-week trends (doors this week vs last week, support rate change)
+    - Top 3 priorities for today (algorithmically determined)
+    - Volunteer activity: who's active, who's gone quiet, who's new
+    - Upcoming events (next 7 days)
+    - Open tasks past due
+    - Adoni's one-sentence assessment
+    - Red flags (spending approaching limit, volunteer dropout, support rate declining)
+  - GET /api/briefing/health-score — campaign health composite score
+- What Codex should build (UI):
+  - A beautiful /briefing page (or enhance /dashboard) that renders this data
+  - The health score as a big circle gauge
+  - Yesterday's activity as a horizontal stat bar
+  - Priorities as numbered action cards
+  - Red flags as alert banners
+  - "Share this briefing" button (generates a screenshot or PDF)
+- This is the feature that makes a first-time candidate feel like they have a professional campaign manager. It's Adoni's daily briefing in visual form.
+- Status: BUILDING NOW
+
 ### 2026-04-07 02:00  |  From: Claude Code  |  To: George — GOTV War Room Engine Complete
 - Topic: **Surprise for George. Complete GOTV backend built while he slept.**
 - Routes built (all with auth, permissions, campaign scoping, audit logging):
