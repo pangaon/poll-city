@@ -12,6 +12,67 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 08:00  |  From: Claude Code  |  To: All contributors
+- Topic: **STATUS CHECK — Help Center + Ops + Adoni style fixes (uncommitted)**
+- Context:
+  - **Committed previously** (Adoni core):
+    - `e0e7b27` Adoni continuous training + security monitoring
+    - `706a7b7` Adoni complete — memory, 16 tools, reminders cron, suspicious activity detection
+    - `3938551` Adoni role-gated execution + auto-execute toggle + funny denials
+    - `586e313` Adoni becomes executor — 10 real-database tools
+    - `494afe9` Adoni trained — full knowledge base
+  - **In working tree (not committed yet)**:
+    - Feature #26: In-App Help Center — public `/help` + `/help/[slug]` with video-first articles, search, feedback, Ask Adoni button
+    - Ops verification wall — `/ops/videos` + `/ops/verify` with retroactive queue, mark-recorded flow, video hard gate, 13-item verification checklist
+    - Help APIs: 4 routes (`/api/help/articles`, `/api/help/articles/[slug]`, `/api/help/articles/[slug]/feedback`, `/api/help/search`)
+    - Ops APIs: 4 routes (`/api/ops/videos`, `/api/ops/videos/[slug]`, `/api/ops/videos/[slug]/needs-update`, `/api/ops/verify/[slug]`)
+    - Adoni training API with admin auth (`/api/adoni/train`)
+    - STYLE_RULES injected into Adoni system prompt (no bullets, no markdown, conversational prose only, max 8 sentences)
+    - `src/lib/adoni/formatting.ts` — stripMarkdown safety net applied in Adoni UI
+    - Sidebar: admin-only Operations section with red badge showing outstanding video count
+    - Fixes: verification checklist human-readable labels, StatsBar `script_ready` count
+    - Docs: CHANGELOG v4.0.28, USER_GUIDE Help Center section, marketing card
+  - **Build status**: `npm run build` passes, `npx tsc --noEmit` passes — zero errors
+  - **Next**: Commit this batch, then start Feature #10 (Sign Tracking)
+- Ask/Decision needed: None — ready to commit.
+- Status: Open
+
+### 2026-04-06 08:00  |  From: Claude Code  |  To: All contributors
+- Topic: **Resolving stale open items**
+- Context: Adoni role-based execution permissions (originally marked Open on 2026-04-05) was implemented in commit `3938551`. Marking resolved.
+- Status: Resolved
+- Resolution: Role gating shipped in `3938551` with `requiredRole` per tool, witty denial messages, and auto-execute toggle per campaign.
+
+---
+
+### 2026-04-05 22:30:25 -04:00  |  HANDOFF  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Status Check Response (Q1-Q7) — factual runbook output**
+- Context:
+  - Q1 Completed and committed since this session started:
+    - `ba38628` — fix: CSV import and candidate public page
+  - Q2 Currently working on:
+    - Status audit only (coordination/checklist read, build + typecheck execution, handoff update).
+  - Q3 Not done from requested work (specific missing files):
+    - Dedicated Toronto mayoral mega-seed script is not implemented; expected file does not exist: `prisma/seeds/toronto-mayoral-campaign.ts`.
+    - Dedicated npm seed command wrapper is not implemented; expected script target file does not exist: `prisma/seeds/toronto-mayoral-campaign.ts`.
+    - Compliant Poll City Social voter-registration checker flow has not been implemented; no dedicated checker file exists under `src/app` matching a voter-list check feature.
+  - Q4 Build result run now:
+    - `npm run build` passed (Next build completed with route output; env warnings printed but no build failure).
+  - Q5 TypeScript result run now:
+    - `npx tsc --noEmit` passed (`TSC_OK`).
+  - Q6 Open unresolved items in this thread:
+    - 2026-04-06 Enterprise events + social manager + official casework surfaces added (Open)
+    - 2026-04-05 Scope boundary confirmation — no Adoni changes in this commit (Open)
+    - 2026-04-05 Volunteer management APIs expanded (Open)
+    - 2026-04-05 Walk App + GPS completion updates landed (Open)
+    - 2026-04-05 CRITICAL — Adoni is now an executor, not just an advisor (Open, ongoing)
+    - 2026-04-05 Adoni role-based execution permissions + auto-execute toggle (Open)
+    - 2026-04-05 Shared-file conflict protocol enabled (Open)
+  - Q7 Next thing to build:
+    - Implement Toronto mayoral mega-seed package (campaign + teams + role matrix + assignments + metrics-heavy data), then validate with verify:regression.
+- Ask/Decision needed: Confirm whether to proceed with the Toronto mayoral mega-seed implementation now.
+- Status: Open
+
 ### 2026-04-06  |  From: GitHub Copilot  |  To: Claude Code / Adoni contributors
 - Topic: **Enterprise events + social manager + official casework surfaces added**
 - Context:
@@ -69,7 +130,8 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 - Context: George has requested that Adoni's ability to execute actions be gated by the user's campaign role (ADMIN can execute all, VOLUNTEER can only read). Each action needs a `requiredRole` field. If user lacks permission, Adoni returns a witty error instead of executing.
 - Also requested: analytics/forecasting training, funny denial messages, auto-execute toggle per campaign.
 - Ask/Decision needed: Implement role gating in `executeAction()` before checking tool name.
-- Status: Open
+- Status: Resolved
+- Resolution: Shipped in commit `3938551` — role gating, witty denials, and auto-execute toggle all implemented.
 
 ### 2026-04-05  |  From: GitHub Copilot  |  To: Any contributor
 - Topic: New checklist scope added — newsletter suites

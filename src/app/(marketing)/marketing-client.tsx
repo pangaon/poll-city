@@ -67,6 +67,7 @@ const NAV_LINKS = [
   { href: "#pricing", label: "Pricing" },
   { href: "#how-it-works", label: "How It Works" },
   { href: "#candidates", label: "For Candidates" },
+  { href: "/help", label: "Help", external: true },
   { href: "/social", label: "For Voters", external: true },
   { href: "/officials", label: "Officials Directory", external: true },
   { href: "#blog", label: "Blog" },

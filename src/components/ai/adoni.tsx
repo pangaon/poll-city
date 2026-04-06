@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Send, Sparkles, X } from "lucide-react";
+import { stripMarkdown } from "@/lib/adoni/formatting";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -192,7 +193,11 @@ export default function AdoniButton() {
   }, []);
 
   useEffect(() => {
-    function onOpenRequest() {
+    function onOpenRequest(ev: Event) {
+      const detail = (ev as CustomEvent).detail as { prefill?: string } | undefined;
+      if (detail?.prefill) {
+        setPrompt(detail.prefill);
+      }
       setOpen(true);
     }
     window.addEventListener("pollcity:open-adoni", onOpenRequest as EventListener);
@@ -465,7 +470,7 @@ export default function AdoniButton() {
                     : "mr-8 bg-slate-100 text-slate-800"
                 }`}
               >
-                {m.content || (m.role === "assistant" && streaming ? "Thinking..." : "")}
+                {m.role === "assistant" ? (stripMarkdown(m.content) || (streaming ? "Thinking..." : "")) : m.content}
               </div>
             ))}
           </div>

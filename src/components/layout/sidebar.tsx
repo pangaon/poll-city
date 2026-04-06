@@ -9,9 +9,10 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock, Palette
+  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock, Palette, CheckCircle2
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
+import { useSession } from "next-auth/react";
 
 type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
 type NavSection = { id: string; label: string; icon: ComponentType<{ className?: string }>; items: NavItem[] };
@@ -109,7 +110,50 @@ function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [opsOutstanding, setOpsOutstanding] = useState<number>(0);
+
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let mounted = true;
+
+    fetch("/api/ops/videos")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!mounted) return;
+        const noVideo = Number(data?.stats?.no_video || 0);
+        const needsUpdate = Number(data?.stats?.needs_update || 0);
+        setOpsOutstanding(noVideo + needsUpdate);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setOpsOutstanding(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAdmin]);
+
+  const sidebarSections = useMemo(() => {
+    if (!isAdmin) return SIDEBAR_SECTIONS;
+    return [
+      ...SIDEBAR_SECTIONS,
+      {
+        id: "operations",
+        label: "Operations",
+        icon: Shield,
+        items: [
+          { href: "/ops/videos", icon: CalendarDays, label: "Videos & Docs" },
+          { href: "/ops/verify", icon: CheckCircle2, label: "Verify Features" },
+          { href: "/settings/security", icon: Lock, label: "Security" },
+        ],
+      },
+    ];
+  }, [isAdmin]);
 
   useEffect(() => {
     try {
@@ -124,7 +168,7 @@ export default function Sidebar() {
 
   const sectionStates = useMemo(() => {
     const next = { ...collapsedSections };
-    for (const section of SIDEBAR_SECTIONS) {
+    for (const section of sidebarSections) {
       if (sectionHasActivePath(pathname, section.items)) {
         next[section.id] = false;
       }
@@ -133,7 +177,7 @@ export default function Sidebar() {
       }
     }
     return next;
-  }, [collapsedSections, pathname]);
+  }, [collapsedSections, pathname, sidebarSections]);
 
   function toggleSection(id: string) {
     setCollapsedSections((prev) => {
@@ -168,7 +212,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto">
-        {SIDEBAR_SECTIONS.map((section) => {
+        {sidebarSections.map((section) => {
           const isCollapsed = sectionStates[section.id] ?? false;
           const isActiveSection = sectionHasActivePath(pathname, section.items);
           const SectionIcon = section.icon;
@@ -208,7 +252,14 @@ export default function Sidebar() {
                         )}
                       >
                         <Icon className="w-4 h-4 flex-shrink-0" />
-                        {label}
+                        <span className="flex items-center gap-2">
+                          {label}
+                          {href === "/ops/videos" && opsOutstanding > 0 && (
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+                              {opsOutstanding}
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     );
                   })}

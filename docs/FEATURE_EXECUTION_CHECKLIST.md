@@ -43,7 +43,7 @@ Dependency planning requirement before implementation starts:
 - [ ] 23. Public Candidate Engagement  | status: Pending  | commit: -  | report: -
 - [ ] 24. Officials Directory Search  | status: Pending  | commit: -  | report: -
 - [ ] 25. Officials Claim Link Request  | status: Pending  | commit: -  | report: -
-- [ ] 26. In-App Help Center  | status: Pending  | commit: -  | report: -
+- [x] 26. In-App Help Center  | status: Built & Verified (public /help center + /help/[slug] video-first articles + ops /ops/videos and /ops/verify verification wall)  | commit: pending  | report: Completed with retroactive queue, mark-recorded flow, video hard gate, and Adoni training trigger
 - [ ] 27. Specialized CSV Exports  | status: Pending  | commit: -  | report: -
 - [ ] 28. Team Management  | status: Pending  | commit: -  | report: -
 - [ ] 29. Feature Flags / Tier Gating  | status: Pending  | commit: -  | report: -

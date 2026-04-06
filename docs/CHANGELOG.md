@@ -1,5 +1,35 @@
 # Poll City Changelog
 
+## [4.0.28] - April 5, 2026 — VIDEO DOCUMENTATION SYSTEM + VERIFICATION WALL
+
+### Public Help Center (`/help`, `/help/[slug]`)
+- Rebuilt help as a public, mobile-first Help Center route with category grid, featured guides, and article listings.
+- Added real-time help search with keyboard navigation and debounce.
+- Added article detail layout with video-first placement, markdown content rendering, feedback widget, related articles, and Ask Adoni action.
+- Added multi-host video player support for Loom, YouTube, Vimeo, and direct video sources.
+
+### Internal Operations (`/ops/videos`, `/ops/verify`)
+- Added Videos & Docs operations page with status stats, retroactive queue, script viewer, and mark-recorded modal.
+- Added Needs Update flow that clears verification media and returns features to the retroactive queue.
+- Added feature verification wall with non-bypassable video requirement before completion state.
+- Added admin-only Operations sidebar section with outstanding red badge count.
+
+### API Contracts
+- Added help APIs:
+  - `GET /api/help/articles`
+  - `GET /api/help/articles/[slug]`
+  - `POST /api/help/articles/[slug]/feedback`
+  - `GET /api/help/search?q=`
+- Added ops APIs:
+  - `GET /api/ops/videos`
+  - `PATCH /api/ops/videos/[slug]`
+  - `POST /api/ops/videos/[slug]/needs-update`
+  - `GET/PATCH /api/ops/verify/[slug]`
+- Added Adoni training trigger endpoint: `POST /api/adoni/train`.
+
+### Outcome
+- Feature verification now enforces video proof as a hard gate, with retroactive operational visibility and article/video governance from one workflow.
+
 ## [4.0.27] - April 4, 2026 — ENTERPRISE EVENTS + SOCIAL MANAGER + CONSTITUENT CASEWORK
 
 ### Calendar + Events Suite (`/events`, `/api/events/*`)

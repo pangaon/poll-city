@@ -1,5 +1,31 @@
 # Poll City User Guide
 
+## v4.0.28 Video Documentation + Verification Wall Addendum — April 5, 2026
+
+### Public Help Center (`/help`)
+
+1. Open Help from the public navigation or directly at `/help`.
+2. Use the large search field to find guides quickly by feature name.
+3. Use arrow keys and Enter in search results for keyboard navigation.
+4. Open any article to watch the video first, then read the full written guide.
+5. Submit article feedback with thumbs up/down at the end of each article.
+6. Use **Ask Adoni about this** to open Adoni with the article context prefilled.
+
+### Video Operations (`/ops/videos`)
+
+1. Admin/Super Admin users can open Operations -> Videos & Docs.
+2. Review status counts for verified, missing video, needs update, and not built.
+3. Use **View Script** to open the full-screen recording script viewer.
+4. Use **Mark Recorded** and complete all required confirmations to verify a feature.
+5. Use **Needs Update** whenever feature behavior changes; this resets verification and returns the feature to retroactive queue.
+
+### Verification Wall (`/ops/verify`)
+
+1. Open Operations -> Verify Features.
+2. Select a feature and complete the verification checklist.
+3. The complete action is blocked until `buildPasses`, `helpArticlePublished`, `videoRecorded`, and `adoniTrained` are true.
+4. When complete conditions are met, marking complete triggers Adoni training and advances workflow readiness.
+
 ## v4.0.27 Enterprise Events + Social + Constituent Services Addendum — April 4, 2026
 
 ### Event Lifecycle Operations (`/events`)
