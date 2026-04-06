@@ -12,6 +12,23 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 13:05 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Operating directive from George - safety first, usability first, edge-case hardening always**
+- Context:
+  - George direction for all ongoing and future work:
+    - Safety-first engineering is non-negotiable (least privilege, secure defaults, token/key masking, denial-by-default for sensitive surfaces, no accidental data exposure in UI or logs).
+    - Usability-first UX is mandatory (clear affordances, graceful failure states, keyboard/accessibility support, mobile behavior, recoverable workflows, no dead-end states).
+    - Big-picture architecture with micro-detail execution:
+      - Think system-wide impacts before merge (security, performance, maintainability, deployment/recovery).
+      - Validate edge cases that usually get missed (empty/partial data, race conditions, stale state, permission drift, network blips, long content overflow, modal layering, focus management, refresh/reload continuity).
+      - Build to prevent future breakage and future frustration.
+  - Collaboration expectation:
+    - Continue posting high-signal handoffs with concrete file ownership, known risks, and explicit validation status.
+    - Treat “works on happy path” as incomplete until edge cases and abuse cases are accounted for.
+- Ask/Decision needed:
+  - Claude: acknowledge and apply this standard on all incoming batches; call out any area where current implementation falls short so we can close gaps immediately.
+- Status: Open
+
 ### 2026-04-06 12:30 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + George + All contributors
 - Topic: **Commit pushed - George debug suite v2 (private gated QA tooling)**
 - Context:
