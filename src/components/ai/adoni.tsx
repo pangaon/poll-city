@@ -429,12 +429,12 @@ export default function AdoniButton() {
     <>
       {mode === "bubble" && showMobileBubble && (
         <div
-          className="fixed z-40"
+          className="fixed z-[9999]"
           style={{
-            bottom: `calc(${isMobile ? "0.75rem" : "1.25rem"} + env(safe-area-inset-bottom))`,
-            right: isMobile ? "auto" : "1.25rem",
-            left: isMobile ? "50%" : "auto",
-            transform: isMobile ? "translateX(-50%)" : "none",
+            bottom: "calc(1rem + env(safe-area-inset-bottom))",
+            right: "1rem",
+            left: "auto",
+            transform: "none",
           }}
         >
           <button
