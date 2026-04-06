@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 interface RouteParams {
   params: { id: string };
@@ -9,6 +9,8 @@ interface RouteParams {
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "import_export:write");
+  if (permError) return permError;
 
   const template = await prisma.campaignImportTemplate.findUnique({
     where: { id: params.id },

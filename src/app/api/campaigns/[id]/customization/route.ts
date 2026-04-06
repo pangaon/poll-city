@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
-/** GET /api/campaigns/[id]/customization — public, no auth required */
+/** GET /api/campaigns/[id]/customization */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:read");
+  if (permError) return permError;
+
   const campaign = await prisma.campaign.findUnique({
     where: { id: params.id },
     select: {
@@ -26,9 +32,14 @@ export async function GET(
 
 /** POST /api/campaigns/[id]/customization/view — increment page view */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:write");
+  if (permError) return permError;
+
   try {
     await prisma.campaign.update({
       where: { id: params.id },

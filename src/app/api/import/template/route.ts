@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { rowsToCsv, csvResponse } from "@/lib/export/csv";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "import_export:read");
+  if (permError) return permError;
+
   const rows = [
     {
       firstName: "John",

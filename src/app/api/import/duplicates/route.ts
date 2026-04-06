@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { parseAndMapImportFile, isLikelyDuplicate, type MappingConfig } from "@/lib/import/import-pipeline";
 
 const MAX_FILE_SIZE = 10_000_000;
@@ -8,6 +8,8 @@ const MAX_FILE_SIZE = 10_000_000;
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "contacts:import");
+  if (permError) return permError;
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_FILE_SIZE) {

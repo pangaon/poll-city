@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { z } from "zod";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "contacts:read");
+  if (permError) return permError;
+
   const questions = await prisma.publicQuestion.findMany({
     where: { officialId: params.id, isPublic: true },
     orderBy: [{ upvotes: "desc" }, { createdAt: "desc" }],
