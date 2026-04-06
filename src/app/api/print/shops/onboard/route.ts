@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -8,8 +8,10 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export async function POST(req: NextRequest) {
-  const { error } = await apiAuth(req);
+  const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "signs:write");
+  if (permError) return permError;
 
   if (!stripe) {
     return NextResponse.json({ error: "Stripe is not configured" }, { status: 500 });

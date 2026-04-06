@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { ensureCampaignMapAccess } from "@/lib/maps/auth";
 import { parseBbox, buildGeoJsonFeatureCollection } from "@/lib/maps/geo";
 import { fetchContactGeoPoints } from "@/lib/maps/data";
@@ -7,6 +7,8 @@ import { fetchContactGeoPoints } from "@/lib/maps/data";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "contacts:read");
+  if (permError) return permError;
 
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");

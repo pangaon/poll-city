@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "volunteers:manage");
+  if (permError) return permError;
 
   const body = await req.json().catch(() => null) as { title?: string; message?: string } | null;
   if (!body?.title?.trim() || !body.message?.trim()) {

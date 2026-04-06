@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 function parseTimeToMinutes(value: string): number | null {
   const text = value.trim();
@@ -37,6 +37,8 @@ function shiftDurationHours(startTime: string, endTime: string): number {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "volunteers:write");
+  if (permError) return permError;
 
   const body = await req.json().catch(() => null) as { checkInCode?: string; signupId?: string } | null;
   if (!body?.checkInCode || !body.signupId) {

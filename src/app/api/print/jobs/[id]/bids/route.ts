@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 export async function GET(
   req: NextRequest,
@@ -8,6 +8,8 @@ export async function GET(
 ) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "signs:read");
+  if (permError) return permError;
 
   const job = await prisma.printJob.findUnique({ where: { id: params.id } });
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -33,6 +35,8 @@ export async function POST(
   // Print shops submit bids — no campaign auth needed, but require session
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "signs:write");
+  if (permError) return permError;
 
   const job = await prisma.printJob.findUnique({ where: { id: params.id } });
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });

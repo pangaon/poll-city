@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 async function ensureMembership(userId: string, campaignId: string) {
   return prisma.membership.findUnique({
@@ -11,6 +11,8 @@ async function ensureMembership(userId: string, campaignId: string) {
 export async function POST(req: NextRequest, { params }: { params: { eventId: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "events:write");
+  if (permError) return permError;
 
   const source = await prisma.event.findUnique({
     where: { id: params.eventId },
