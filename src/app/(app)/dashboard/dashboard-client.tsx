@@ -835,7 +835,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       </Card>
 
       {showTvPanel && (
-        <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowTvPanel(false)}>
+        <div className="fixed inset-0 z-[1200] bg-black/30" onClick={() => setShowTvPanel(false)}>
           <div
             className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 p-5 overflow-y-auto"
             onClick={(event) => event.stopPropagation()}

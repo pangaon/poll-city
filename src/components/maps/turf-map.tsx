@@ -161,6 +161,16 @@ export default function TurfMap({
   }, []);
 
   return (
-    <div ref={mapRef} style={{ height, width: "100%", borderRadius: "12px", overflow: "hidden" }} />
+    <div
+      ref={mapRef}
+      style={{
+        height,
+        width: "100%",
+        borderRadius: "12px",
+        overflow: "hidden",
+        position: "relative",
+        zIndex: 0,
+      }}
+    />
   );
 }
