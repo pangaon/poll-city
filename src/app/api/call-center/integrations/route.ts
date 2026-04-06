@@ -35,7 +35,10 @@ export async function GET(req: NextRequest) {
     webhookSecretMasked: maskSecret(i.webhookSecret),
   }));
 
-  return NextResponse.json({ integrations: withUrls });
+  return NextResponse.json(
+    { integrations: withUrls },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 /** POST — Create a new call center integration */
@@ -56,9 +59,12 @@ export async function POST(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca";
   const { webhookSecret: _webhookSecret, apiKey: _apiKey, ...safeIntegration } = integration;
 
-  return NextResponse.json({
-    integration: safeIntegration,
-    webhookUrl: `${baseUrl}/api/call-center/webhook/${integration.webhookSecret}`,
-    webhookUrlOneTime: true,
-  }, { status: 201 });
+  return NextResponse.json(
+    {
+      integration: safeIntegration,
+      webhookUrl: `${baseUrl}/api/call-center/webhook/${integration.webhookSecret}`,
+      webhookUrlOneTime: true,
+    },
+    { status: 201, headers: { "Cache-Control": "no-store" } }
+  );
 }

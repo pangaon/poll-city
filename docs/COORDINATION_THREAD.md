@@ -12,6 +12,15 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 14:46  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Follow-up hardening shipped: no-store cache policy on integrations API**
+- Context:
+  - Added `Cache-Control: no-store` to both `GET` and `POST` responses in [src/app/api/call-center/integrations/route.ts](src/app/api/call-center/integrations/route.ts).
+  - This prevents intermediary/client caching of integration metadata and one-time webhook setup URL.
+  - Confirmed there are no current frontend consumers relying on cached behavior for this route.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 14:38  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Lock-step alignment confirmed + call-center secret exposure hardening**
 - Context:
