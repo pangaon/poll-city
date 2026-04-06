@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import prisma from "@/lib/db/prisma";
+import PublicNav from "@/components/layout/public-nav";
 import CandidatePageClient, { type CampaignData, type PollData, type ElectionHistoryRow, type PageCustomization } from "./candidate-page-client";
 import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
 
@@ -149,6 +150,7 @@ export default async function CandidatePage({ params }: PageProps) {
 
     return (
       <>
+        <PublicNav />
         <CandidatePageClient campaign={campaignData} polls={polls} electionHistory={electionHistory} />
         <DebugToolbarGate />
       </>
@@ -203,6 +205,7 @@ export default async function CandidatePage({ params }: PageProps) {
 
     return (
       <>
+        <PublicNav />
         <CandidatePageClient campaign={campaignData} polls={[]} electionHistory={electionHistory} />
         <DebugToolbarGate />
       </>

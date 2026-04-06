@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PublicNav from "@/components/layout/public-nav";
 import OfficialsClient from "./officials-client";
 
 export const metadata: Metadata = {
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default function OfficialsPage() {
-  return <OfficialsClient />;
+  return (
+    <>
+      <PublicNav />
+      <OfficialsClient />
+    </>
+  );
 }

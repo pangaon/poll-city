@@ -3,10 +3,13 @@ import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { CheckCircle } from "lucide-react";
+import PublicNav from "@/components/layout/public-nav";
 import CampaignCostCalculator from "@/components/calculator/campaign-cost-calculator";
 
 export default function PricingPage() {
   return (
+    <>
+    <PublicNav />
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-20">
       <div className="container mx-auto px-4">
         {/* Header */}
@@ -104,5 +107,6 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
