@@ -2257,6 +2257,7 @@ model Constituent {
 
 model ConstituentCaseFile {
   id                String       @id @default(cuid())
+  caseNumber        String?      @unique // auto-generated: WD12-2026-0001
   officialId        String
   constituentId     String
   campaignId        String?

@@ -86,11 +86,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       ? (body.status as CaseStatus)
       : CaseStatus.open;
 
+  // Auto-generate case number: WD-2026-0001
+  const year = new Date().getFullYear();
+  const prefix = `WD-${year}`;
+  const lastCase = await prisma.constituentCaseFile.findFirst({
+    where: { caseNumber: { startsWith: prefix } },
+    orderBy: { caseNumber: "desc" },
+    select: { caseNumber: true },
+  });
+  const seq = lastCase?.caseNumber
+    ? parseInt(lastCase.caseNumber.split("-").pop() ?? "0", 10) + 1
+    : 1;
+  const caseNumber = `${prefix}-${String(seq).padStart(4, "0")}`;
+
   const created = await prisma.constituentCaseFile.create({
     data: {
       officialId: params.id,
       campaignId: access.campaignId,
       constituentId: body.constituentId,
+      caseNumber,
       title: body.title.trim(),
       description: body.description?.trim() || null,
       category: body.category?.trim() || null,
