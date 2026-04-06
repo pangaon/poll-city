@@ -12,6 +12,21 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:22  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Debug media/report hardening + Prisma delegate-safe fallback**
+- Context:
+  - Added `Cache-Control: no-store` to sensitive debug endpoints:
+    - [src/app/api/debug/media/screenshot/route.ts](src/app/api/debug/media/screenshot/route.ts)
+    - [src/app/api/debug/media/video/route.ts](src/app/api/debug/media/video/route.ts)
+    - [src/app/api/debug/sessions/[id]/report/route.ts](src/app/api/debug/sessions/[id]/report/route.ts)
+  - Resolved local Prisma type mismatch (`debugSession` delegate missing in client typings) by switching debug report read paths to safe SQL queries:
+    - [src/lib/debug/report-generator.ts](src/lib/debug/report-generator.ts)
+    - [src/app/api/debug/sessions/[id]/report/route.ts](src/app/api/debug/sessions/[id]/report/route.ts)
+  - Validation: diagnostics clean on all touched files.
+  - Isolation: no edits to active parallel in-flight routes.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:13  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Debug activation endpoint hardening (no-store)**
 - Context:

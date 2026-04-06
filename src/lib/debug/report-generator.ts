@@ -30,18 +30,33 @@ function formatNote(note: DebugNoteLike, index: number): string {
 }
 
 export async function generateDebugReport(sessionId: string): Promise<string> {
-  const session = await prisma.debugSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      notes: {
-        orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-      },
-    },
-  });
+  const sessions = await prisma.$queryRaw<Array<{ id: string; title: string | null }>>`
+    SELECT "id", "title"
+    FROM "DebugSession"
+    WHERE "id" = ${sessionId}
+    LIMIT 1
+  `;
+
+  const session = sessions[0];
 
   if (!session) throw new Error("Session not found");
 
-  const notes = session.notes as DebugNoteLike[];
+  const notes = await prisma.$queryRaw<DebugNoteLike[]>`
+    SELECT
+      "type",
+      "resolved",
+      "pagePath",
+      "url",
+      "elementSelector",
+      "elementText",
+      "priority",
+      "text",
+      "screenshotUrl",
+      "videoUrl"
+    FROM "DebugNote"
+    WHERE "sessionId" = ${sessionId}
+    ORDER BY "priority" ASC, "createdAt" ASC
+  `;
 
   const byType = {
     broken: notes.filter((note: DebugNoteLike) => note.type === "broken" && !note.resolved),
