@@ -1,6 +1,7 @@
 import { getPublishedArticles, getCategoryCatalog } from "@/lib/help-center/store";
 import { HelpSearchBar } from "@/components/help/search-bar";
 import { ArticleCard } from "@/components/help/article-card";
+import PublicNav from "@/components/layout/public-nav";
 
 export const metadata = {
   title: "Help Center — Poll City",
@@ -24,6 +25,8 @@ export default async function HelpPage() {
   const featured = articles.slice(0, 3);
 
   return (
+    <>
+    <PublicNav />
     <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 pb-24 md:pb-10 space-y-8">
       <header className="space-y-3">
         <h1 className="text-3xl font-bold text-slate-900">Help Center</h1>
@@ -71,5 +74,6 @@ export default async function HelpPage() {
         })}
       </section>
     </div>
+    </>
   );
 }

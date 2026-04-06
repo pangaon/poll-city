@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText, FileSpreadsheet, Download } from "lucide-react";
+import PublicNav from "@/components/layout/public-nav";
 
 export const metadata = {
   title: "Resource Library — Poll City",
@@ -37,6 +38,8 @@ const CATEGORIES = Array.from(new Set(TEMPLATES.map((t) => t.category)));
 
 export default function ResourceLibraryPage() {
   return (
+    <>
+    <PublicNav />
     <main className="min-h-screen bg-slate-50">
       <section
         className="px-4 py-16 text-white"
@@ -97,5 +100,6 @@ export default function ResourceLibraryPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }
