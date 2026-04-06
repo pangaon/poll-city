@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { parseAnyFile, parseExcelFile, detectFileType } from "@/lib/import/file-parser";
 import { mapColumns } from "@/lib/import/column-mapper";
@@ -16,6 +16,8 @@ const VALID_SUPPORT_LEVELS = Object.values(SupportLevel);
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "contacts:import");
+  if (permError) return permError;
 
   // File size guard: reject requests over 10MB before parsing
   const contentLength = Number(req.headers.get("content-length") ?? "0");

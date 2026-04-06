@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { parseAndMapImportFile, type MappingConfig } from "@/lib/import/import-pipeline";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
@@ -12,6 +12,8 @@ import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "contacts:import");
+  if (permError) return permError;
 
   const limited = await enforceLimit(req, "import", session!.user.id);
   if (limited) return limited;
