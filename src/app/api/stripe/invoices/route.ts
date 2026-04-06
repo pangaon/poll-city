@@ -8,10 +8,11 @@ const stripe = process.env.STRIPE_SECRET_KEY
       apiVersion: "2024-06-20",
     })
   : null;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function GET(request: NextRequest) {
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe is not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   const { session, error } = await apiAuth(request);
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!subscription?.stripeCustomerId) {
-    return NextResponse.json({ invoices: [] });
+    return NextResponse.json({ invoices: [] }, { headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -45,9 +46,9 @@ export async function GET(request: NextRequest) {
         invoicePdf: invoice.invoice_pdf,
         created: invoice.created,
       })),
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error("Stripe invoice fetch error", err);
-    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

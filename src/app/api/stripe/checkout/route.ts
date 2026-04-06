@@ -6,17 +6,18 @@ import prisma from "@/lib/db/prisma";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
 }) : null;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function POST(request: NextRequest) {
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe is not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID;
   const proPriceId = process.env.STRIPE_PRO_PRICE_ID;
   const nextAuthUrl = process.env.NEXTAUTH_URL;
   if (!starterPriceId || !proPriceId || !nextAuthUrl) {
-    return NextResponse.json({ error: "Stripe checkout is not fully configured" }, { status: 500 });
+    return NextResponse.json({ error: "Stripe checkout is not fully configured" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   const { session, error } = await apiAuth(request);
@@ -26,12 +27,12 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const plan = typeof body === "object" && body !== null && "plan" in body ? (body as any).plan : null;
   if (plan !== "starter" && plan !== "pro") {
-    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid plan" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const userId = session!.user.id;
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingSub?.status === "active") {
-    return NextResponse.json({ error: "Already have an active subscription" }, { status: 400 });
+    return NextResponse.json({ error: "Already have an active subscription" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   let customer;
@@ -80,9 +81,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ url: checkoutSession.url });
+    return NextResponse.json({ url: checkoutSession.url }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("Stripe checkout error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

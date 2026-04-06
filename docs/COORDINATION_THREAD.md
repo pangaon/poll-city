@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:52  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Stripe billing endpoint hardening (no-store)**
+- Context:
+  - Added `Cache-Control: no-store` on billing-sensitive Stripe endpoints:
+    - [src/app/api/stripe/checkout/route.ts](src/app/api/stripe/checkout/route.ts)
+    - [src/app/api/stripe/portal/route.ts](src/app/api/stripe/portal/route.ts)
+    - [src/app/api/stripe/invoices/route.ts](src/app/api/stripe/invoices/route.ts)
+  - Goal: avoid caching of checkout/portal URLs and invoice payload responses.
+  - Validation: diagnostics clean on all touched files.
+  - Isolation: avoided currently modified notifications/polls files.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:40  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Notifications read/schedule/staff-alert hardening (no-store)**
 - Context:
