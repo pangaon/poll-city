@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { validatePassword } from "@/lib/auth/password-policy";
+import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Password validation failed", details: policy.errors }, { status: 400 });
     }
 
-    const users = await prisma.$queryRaw<Array<{ id: string; passwordResetExpiry: Date | null }>>`
-      SELECT "id", "passwordResetExpiry"
+    const users = await prisma.$queryRaw<Array<{ id: string; email: string; name: string | null; passwordResetExpiry: Date | null }>>`
+      SELECT "id", "email", "name", "passwordResetExpiry"
       FROM "users"
       WHERE "passwordResetToken" = ${token}
       LIMIT 1
@@ -39,9 +40,26 @@ export async function POST(req: NextRequest) {
         "passwordResetToken" = NULL,
         "passwordResetExpiry" = NULL,
         "failedLoginAttempts" = 0,
-        "lockedUntil" = NULL
+        "lockedUntil" = NULL,
+        "sessionVersion" = "sessionVersion" + 1
       WHERE "id" = ${user.id}
     `;
+
+    if (process.env.RESEND_API_KEY) {
+      await sendEmail({
+        to: user.email,
+        subject: "Your Poll City password was changed",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1e3a8a;">Password changed successfully</h2>
+            <p>Hi ${user.name ?? "there"},</p>
+            <p>Your Poll City password was changed successfully.</p>
+            <p>If you did not perform this change, please contact support immediately.</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">— Poll City Team</p>
+          </div>
+        `,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

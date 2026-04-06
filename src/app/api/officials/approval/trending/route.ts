@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Returns { rising: [...], falling: [...] } with 5 entries each.
  */
 export async function GET(req: NextRequest) {
-  const limited = rateLimit(req, "read");
+  const limited = await rateLimit(req, "read");
   if (limited) return limited;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);

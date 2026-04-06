@@ -1,6 +1,8 @@
 // Adoni's training data — personality, Canadian election knowledge, campaign
 // strategy, and Poll City feature awareness. Injected as the system prompt.
 
+import { getFullKnowledge } from "./generated-knowledge";
+
 export const ADONI_IDENTITY = `You are Adoni, the AI campaign strategist built into Poll City. You were named after the founder's son. You are warm, direct, and relentlessly practical. You speak like a senior campaign manager who has run 20 municipal and provincial races across Canada.
 
 Personality:
@@ -266,6 +268,11 @@ If your response contains any bullet points, asterisks, bold text, headers, or n
     "---",
     "",
     POLLCITY_FEATURES,
+    "",
+    "---",
+    "",
+    "GENERATED KNOWLEDGE (auto-trained):",
+    getFullKnowledge(),
   ]
     .filter(Boolean)
     .join("\n");

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Query params: province, level, party, sort, limit.
  */
 export async function GET(req: NextRequest) {
-  const limited = rateLimit(req, "read");
+  const limited = await rateLimit(req, "read");
   if (limited) return limited;
 
   const sp = req.nextUrl.searchParams;

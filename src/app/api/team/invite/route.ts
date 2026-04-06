@@ -14,7 +14,7 @@ const inviteSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "auth");
+  const limited = await rateLimit(req, "auth");
   if (limited) return limited;
 
   const { session, error } = await apiAuth(req);

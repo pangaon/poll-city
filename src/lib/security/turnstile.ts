@@ -17,19 +17,52 @@ export function isTurnstileEnabled(): boolean {
   return Boolean(process.env.TURNSTILE_SECRET_KEY);
 }
 
-export async function verifyTurnstileToken(req: NextRequest, token?: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[Turnstile] Key not set — bypassing in development");
+let warnedSiteKey = false;
+
+export async function verifyTurnstile(token: string): Promise<boolean> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+
+  if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.NODE_ENV === "development" && !warnedSiteKey) {
+    warnedSiteKey = true;
+    console.warn("[Turnstile] NEXT_PUBLIC_TURNSTILE_SITE_KEY not set — widget will not render correctly");
+  }
+
+  // Fail closed in production unless explicitly running local development.
+  if (!secretKey) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[Turnstile] TURNSTILE_SECRET_KEY not set — skipping in development");
       return true;
     }
-    console.error("[Turnstile] TURNSTILE_SECRET_KEY not set in production — blocking");
+    console.error("[Turnstile] TURNSTILE_SECRET_KEY not set — blocking request for security");
     return false;
   }
 
+  if (!token) return false;
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: secretKey, response: token }),
+      cache: "no-store",
+    });
+
+    const data = (await response.json()) as TurnstileResponse;
+    return data.success === true;
+  } catch (error) {
+    console.error("[Turnstile] Verification failed:", error);
+    return false;
+  }
+}
+
+export async function verifyTurnstileToken(req: NextRequest, token?: string): Promise<boolean> {
   if (!token || token.trim().length === 0) {
     return false;
+  }
+
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    return verifyTurnstile(token);
   }
 
   const body = new URLSearchParams({

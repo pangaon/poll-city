@@ -5,7 +5,7 @@ import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnsti
 import { EventRsvpStatus } from "@prisma/client";
 
 export async function POST(req: NextRequest, { params }: { params: { eventId: string } }) {
-  const rateLimitResponse = rateLimit(req, "form");
+  const rateLimitResponse = await rateLimit(req, "form");
   if (rateLimitResponse) return rateLimitResponse;
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");

@@ -20,6 +20,13 @@
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 
+export function checkFileSafety(buffer: Buffer, maxSizeMB: number = 50): void {
+  const sizeInMB = buffer.length / (1024 * 1024);
+  if (sizeInMB > maxSizeMB) {
+    throw new Error(`File too large: ${sizeInMB.toFixed(1)}MB. Maximum is ${maxSizeMB}MB.`);
+  }
+}
+
 export interface ParsedBudgetItem {
   category: string;
   description: string;
@@ -153,6 +160,8 @@ function isPaymentDetailRow(row: unknown[], parentDescription: string | null): b
 // ─── Main parser ─────────────────────────────────────────────────────────────
 
 export function parseBudgetXlsx(buffer: Buffer, electionDate?: Date): ParsedBudget {
+  checkFileSafety(buffer, 50);
+
   const warnings: string[] = [];
   const items: ParsedBudgetItem[] = [];
   const categoryBreakdown: Record<string, { count: number; total: number }> = {};

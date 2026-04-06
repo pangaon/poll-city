@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
 const VALID_LEVELS = new Set(["federal", "provincial", "municipal"]);
 
 export async function GET(req: NextRequest) {
-  const limited = rateLimit(req, "read");
+  const limited = await rateLimit(req, "read");
   if (limited) return limited;
 
   const { searchParams } = req.nextUrl;
@@ -15,99 +14,69 @@ export async function GET(req: NextRequest) {
   const level = searchParams.get("level") ?? "";
   const role = searchParams.get("role") ?? "";
   const municipality = searchParams.get("municipality") ?? "";
-  const page = Math.max(1, Number(searchParams.get("page") ?? "1"));
-  const pageSize = 24;
+  const cursor = searchParams.get("cursor") ?? undefined;
+  const pageSize = Math.max(1, Math.min(100, Number(searchParams.get("pageSize") ?? "24")));
 
-  const conditions: Prisma.Sql[] = [];
-  if (search) {
-    const term = `%${search}%`;
-    conditions.push(
-      Prisma.sql`(
-        "name" ILIKE ${term}
-        OR "title" ILIKE ${term}
-        OR "district" ILIKE ${term}
-      )`
-    );
-  }
-  if (province) conditions.push(Prisma.sql`"province" = ${province}`);
-  if (level && VALID_LEVELS.has(level)) {
-    conditions.push(Prisma.sql`"level" = CAST(${level} AS "GovernmentLevel")`);
-  }
-  if (role) conditions.push(Prisma.sql`"title" ILIKE ${`%${role}%`}`);
-  if (municipality) conditions.push(Prisma.sql`"district" ILIKE ${`%${municipality}%`}`);
-
-  const whereClause = conditions.length
-    ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
-    : Prisma.empty;
-
-  type OfficialRow = {
-    id: string;
-    name: string;
-    title: string | null;
-    level: string;
-    district: string;
-    province: string | null;
-    isClaimed: boolean;
-    isActive: boolean;
-    partyName: string | null;
-    party: string | null;
-    photoUrl: string | null;
-    twitter: string | null;
-    facebook: string | null;
-    instagram: string | null;
-    linkedIn: string | null;
-    website: string | null;
-    externalId: string | null;
-    email: string | null;
-    phone: string | null;
+  const where = {
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { title: { contains: search, mode: "insensitive" as const } },
+            { district: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(province ? { province } : {}),
+    ...(level && VALID_LEVELS.has(level) ? { level: level as "federal" | "provincial" | "municipal" } : {}),
+    ...(role ? { title: { contains: role, mode: "insensitive" as const } } : {}),
+    ...(municipality ? { district: { contains: municipality, mode: "insensitive" as const } } : {}),
   };
 
-  const filteredOfficials = await prisma.$queryRaw<OfficialRow[]>`
-    WITH filtered AS (
-      SELECT *
-      FROM "officials"
-      ${whereClause}
-    )
-    SELECT
-      "id",
-      "name",
-      "title",
-      "level"::text as "level",
-      "district",
-      "province",
-      "isClaimed",
-      "isActive",
-      "partyName",
-      "party",
-      "photoUrl",
-      "twitter",
-      "facebook",
-      "instagram",
-      "linkedIn",
-      "website",
-      "externalId",
-      "email",
-      "phone"
-    FROM filtered
-    ORDER BY "isClaimed" DESC, "isActive" DESC, "name" ASC
-  `;
+  const [officialsBatch, total, provinceRows] = await Promise.all([
+    prisma.official.findMany({
+      where,
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        name: true,
+        title: true,
+        level: true,
+        district: true,
+        province: true,
+        isClaimed: true,
+        isActive: true,
+        partyName: true,
+        party: true,
+        photoUrl: true,
+        twitter: true,
+        facebook: true,
+        instagram: true,
+        linkedIn: true,
+        website: true,
+        externalId: true,
+        email: true,
+        phone: true,
+      },
+    }),
+    prisma.official.count({ where }),
+    prisma.official.findMany({
+      where: { province: { not: null } },
+      select: { province: true },
+      distinct: ["province"],
+      orderBy: { province: "asc" },
+    }),
+  ]);
 
-  const seen = new Set<string>();
-  const dedupedOfficials = filteredOfficials.filter((official) => {
-    const key = `${official.name.toLowerCase()}|${String(official.level).toLowerCase()}|${(
-      official.province ?? ""
-    ).toLowerCase()}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const hasMore = officialsBatch.length > pageSize;
+  const officials = hasMore ? officialsBatch.slice(0, pageSize) : officialsBatch;
+  const nextCursor = hasMore ? officials[officials.length - 1]?.id ?? null : null;
 
-  const total = dedupedOfficials.length;
-  const paginatedOfficials = dedupedOfficials.slice((page - 1) * pageSize, page * pageSize);
-
-  const campaignRows = paginatedOfficials.length
+  const campaignRows = officials.length
     ? await prisma.campaign.findMany({
-        where: { officialId: { in: paginatedOfficials.map((o) => o.id) } },
+        where: { officialId: { in: officials.map((o) => o.id) } },
         select: { officialId: true, slug: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       })
@@ -120,35 +89,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [provinceRows] = await Promise.all([
-    prisma.official.findMany({
-      where: { province: { not: null } },
-      select: { province: true },
-      distinct: ["province"],
-      orderBy: { province: "asc" },
-    }),
-  ]);
-
-  const mapped = paginatedOfficials.map((o) => ({
-    id: o.id,
-    name: o.name,
-    title: o.title,
+  const mapped = officials.map((o) => ({
+    ...o,
     level: String(o.level),
-    district: o.district,
-    province: o.province,
-    isClaimed: o.isClaimed,
-    isActive: o.isActive,
-    partyName: o.partyName,
-    party: o.party,
-    photoUrl: o.photoUrl,
-    twitter: o.twitter,
-    facebook: o.facebook,
-    instagram: o.instagram,
-    linkedIn: o.linkedIn,
-    website: o.website,
-    email: o.email,
-    phone: o.phone,
-    externalId: o.externalId,
     campaignSlug: campaignByOfficial.get(o.id) ?? null,
   }));
 
@@ -156,9 +99,9 @@ export async function GET(req: NextRequest) {
     {
       officials: mapped,
       total,
-      page,
       pageSize,
-      pages: Math.ceil(total / pageSize),
+      hasMore,
+      nextCursor,
       filterOptions: {
         provinces: provinceRows.map((p) => p.province).filter((v): v is string => Boolean(v)),
         levels: ["federal", "provincial", "municipal"],

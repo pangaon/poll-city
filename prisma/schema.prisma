@@ -325,6 +325,8 @@ model User {
   // Account lockout
   failedLoginAttempts  Int       @default(0)
   lockedUntil          DateTime?
+  // Session invalidation nonce (increment to revoke active JWT sessions)
+  sessionVersion       Int       @default(0)
   // Two-factor authentication (TOTP)
   twoFactorEnabled     Boolean   @default(false)
   twoFactorSecret      String?

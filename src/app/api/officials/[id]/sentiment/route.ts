@@ -17,7 +17,7 @@ const schema = z.object({
  * Rate-limited to prevent vote-stuffing (form tier: 5/hour/IP).
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const limited = rateLimit(req, "form");
+  const limited = await rateLimit(req, "form");
   if (limited) return limited;
 
   const raw = await req.json().catch(() => null);

@@ -109,7 +109,7 @@ export async function POST(
     return NextResponse.json({ error: "Request body too large" }, { status: 413 });
   }
 
-  const limited = rateLimit(req, "form");
+  const limited = await rateLimit(req, "form");
   if (limited) return limited;
 
   let body: Record<string, unknown>;

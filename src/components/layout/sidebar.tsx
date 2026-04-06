@@ -149,7 +149,7 @@ export default function Sidebar() {
         items: [
           { href: "/ops/videos", icon: CalendarDays, label: "Videos & Docs" },
           { href: "/ops/verify", icon: CheckCircle2, label: "Verify Features" },
-          { href: "/settings/security", icon: Lock, label: "Security" },
+          { href: "/ops/security", icon: Shield, label: "Security Monitor" },
         ],
       },
     ];

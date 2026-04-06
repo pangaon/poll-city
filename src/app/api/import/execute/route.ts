@@ -7,16 +7,21 @@ import {
   toContactWriteData,
   type MappingConfig,
 } from "@/lib/import/import-pipeline";
+import { enforceLimit } from "@/lib/rate-limit-redis";
+import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
 
-const MAX_FILE_SIZE = 10_000_000;
+const MAX_FILE_SIZE = MAX_UPLOAD_BYTES;
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
+  const limited = await enforceLimit(req, "import", session!.user.id);
+  if (limited) return limited;
+
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 413 });
+    return NextResponse.json({ error: "File too large. Maximum size is 50MB." }, { status: 413 });
   }
 
   let formData: FormData;

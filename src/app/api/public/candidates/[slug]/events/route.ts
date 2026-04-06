@@ -3,7 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const campaign = await prisma.campaign.findUnique({ where: { slug: params.slug }, select: { id: true, isPublic: true } });

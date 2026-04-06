@@ -1,4 +1,10 @@
 export type SupportLevel =
+  | "SUPPORTER"
+  | "LEANING_SUPPORTER"
+  | "UNDECIDED"
+  | "LEANING_AGAINST"
+  | "AGAINST"
+  | "UNKNOWN"
   | "strong_support"
   | "leaning_support"
   | "undecided"
@@ -6,9 +12,13 @@ export type SupportLevel =
   | "strong_opposition"
   | "unknown";
 
-export type VotedDisplayMode = "strikethrough" | "tag" | "hidden";
+export type VotedDisplayMode = "invisible" | "strikethrough" | "dimmed" | "hidden-count" | "tag" | "hidden";
 
 export type CampaignRole =
+  | "MANAGER"
+  | "CANVASSER"
+  | "FINANCE"
+  | "VIEWER"
   | "SUPER_ADMIN"
   | "ADMIN"
   | "CAMPAIGN_MANAGER"
@@ -18,40 +28,46 @@ export type CampaignRole =
 
 export interface ContactSummary {
   id: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   phone: string | null;
-  email: string | null;
-  address1: string | null;
+  address: string | null;
   supportLevel: SupportLevel;
+  gotvScore: number;
   voted: boolean;
+  votedAt: string | null;
+  tags: string[];
+  lastContactedAt: string | null;
 }
 
 export interface WalkListEntry {
-  contactId: string;
-  address: string;
-  stopOrder: number;
-  notes: string | null;
+  contact: ContactSummary;
+  distance?: number;
+  streetSide: "odd" | "even" | "unknown";
+  householdMembers: ContactSummary[];
 }
 
 export interface InteractionCreate {
   contactId: string;
-  type: "door_knock" | "phone_call" | "text" | "email" | "event" | "note" | "follow_up" | "field_encounter";
-  notes?: string;
+  type: "door_knock" | "phone_call" | "text" | "email" | "field_encounter" | "event" | "note";
   supportLevel?: SupportLevel;
-  followUpDate?: string;
+  notes?: string;
+  latitude?: number;
+  longitude?: number;
+  offline?: boolean;
 }
 
 export interface ApiResponse<T> {
-  data: T;
+  data?: T;
+  error?: string;
+  message?: string;
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  pages: number;
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total?: number;
 }
 
 // ─── Additions: civic + geo + cursor pagination ──────────────────────────────

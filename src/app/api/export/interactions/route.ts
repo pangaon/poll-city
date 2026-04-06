@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { exportFilename } from "@/lib/export/csv";
+import { sanitizeCellValue } from "@/lib/security/xlsx-safety";
 
 function csvCell(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
+  const safe = sanitizeCellValue(value);
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 export async function GET(req: NextRequest) {

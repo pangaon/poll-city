@@ -3,6 +3,27 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import prisma from "@/lib/db/prisma";
 
+// ─── Inline injection detection (Edge-compatible — no Node imports) ─────────
+
+const SQL_PATTERNS = [
+  /(\bSELECT\b.*\bFROM\b|\bINSERT\b.*\bINTO\b|\bUPDATE\b.*\bSET\b|\bDELETE\b.*\bFROM\b|\bDROP\b\s+\bTABLE\b|\bUNION\b.*\bSELECT\b)/i,
+  /(1\s*=\s*1|'\s*OR\s*'|"\s*OR\s*"|;\s*--)/i,
+];
+const XSS_PATTERNS = [/<script\b/i, /javascript\s*:/i, /\bon\w+\s*=/i, /<iframe\b/i, /<object\b/i];
+
+function detectInjectionInMiddleware(input: string): boolean {
+  return [...SQL_PATTERNS, ...XSS_PATTERNS].some((p) => p.test(input));
+}
+
+const BLOCKED_AGENTS = ["sqlmap", "nikto", "nmap", "masscan", "dirbuster", "gobuster", "wfuzz", "hydra"];
+
+function isBlockedAgent(ua: string): boolean {
+  const lower = ua.toLowerCase();
+  return BLOCKED_AGENTS.some((a) => lower.includes(a));
+}
+
+// ─── Public paths ───────────────────────────────────────────────────────────
+
 const PUBLIC_PATHS = [
   "/login",
   "/api/auth",
@@ -36,6 +57,24 @@ function isPublicPath(path: string) {
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const hostname = req.headers.get("host") || "";
+
+  // ─── Security: block known attack tools ───────────────────────────────────
+  const userAgent = req.headers.get("user-agent") || "";
+  if (isBlockedAgent(userAgent)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // ─── Security: check query params for injection on API routes ─────────────
+  if (path.startsWith("/api/")) {
+    const params = Object.fromEntries(req.nextUrl.searchParams);
+    const paramValues = Object.values(params);
+    for (let i = 0; i < paramValues.length; i++) {
+      if (detectInjectionInMiddleware(paramValues[i])) {
+        console.error(`[Security] Injection attempt in query param on ${path}:`, paramValues[i].slice(0, 80));
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+    }
+  }
 
   if (process.env.NEXT_PUBLIC_ROOT_DOMAIN && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
     const campaign = await prisma.campaign.findUnique({

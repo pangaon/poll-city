@@ -71,3 +71,4 @@ Dependency planning requirement before implementation starts:
 - [ ] 51. API Surface Breadth  | status: Pending  | commit: -  | report: -
 - [ ] 52. Candidate Webpage Newsletter Suite  | status: Pending  | commit: -  | report: Add signup capture, subscriber ingest pipeline, and bulk import support for campaign newsletter operations
 - [ ] 53. Elected Officials Newsletter Suite  | status: Pending  | commit: -  | report: Add official-profile newsletter signup, consent-aware ingest, and bulk import support for constituent communications
+- [ ] 54. Toronto Mayoral Seed Reliability  | status: Parked (downtime follow-up)  | commit: -  | report: Investigate intermittent Prisma P1001 connectivity during npm run db:seed:toronto-mayor and add retry/backoff + verification output

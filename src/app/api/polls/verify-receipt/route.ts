@@ -4,7 +4,7 @@ import { createHash } from "crypto";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
-  const limited = rateLimit(req, "read");
+  const limited = await rateLimit(req, "read");
   if (limited) return limited;
 
   const code = req.nextUrl.searchParams.get("code")?.trim().toUpperCase();

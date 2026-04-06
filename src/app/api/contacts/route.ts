@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { createContactSchema } from "@/lib/validators";
-import { parsePagination, paginate, slugify } from "@/lib/utils";
+import { parsePagination, slugify } from "@/lib/utils";
 import { getContactIdsByCustomFilters, type CustomFieldFilter } from "@/lib/db/custom-fields";
 import { SupportLevel } from "@prisma/client";
 
@@ -62,7 +62,8 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { page, pageSize, skip } = parsePagination(sp);
+  const { page, pageSize } = parsePagination(sp);
+  const cursor = sp.get("cursor")?.trim() || undefined;
   const search = sp.get("search")?.trim();
   const supportLevels = sp.get("supportLevels")?.split(",").filter(Boolean) as SupportLevel[] | undefined;
   const followUpNeeded = sp.get("followUpNeeded") === "true" ? true : undefined;
@@ -71,7 +72,6 @@ export async function GET(req: NextRequest) {
   const doNotContact = sp.get("doNotContact") === "true" ? true : sp.get("doNotContact") === "false" ? false : undefined;
   const tagIds = sp.get("tags")?.split(",").filter(Boolean);
   const wards = sp.get("wards")?.split(",").filter(Boolean);
-  const orderBy = parseSortOrder(sp.get("sort"));
   // Custom field filters: ?customFilter=fieldKey:operator:value (can be repeated)
   const customFilterParams = sp.getAll("customFilter");
   const customFilters: CustomFieldFilter[] = customFilterParams
@@ -119,12 +119,14 @@ export async function GET(req: NextRequest) {
     ...(customFieldContactIds !== null && { id: { in: customFieldContactIds } }),
   };
 
-  const [contacts, total] = await Promise.all([
+  const stableOrderBy = [{ lastName: "asc" as const }, { firstName: "asc" as const }, { id: "asc" as const }];
+
+  const [contactsBatch, total] = await Promise.all([
     prisma.contact.findMany({
       where: finalWhere,
-      orderBy,
-      skip,
-      take: pageSize,
+      orderBy: stableOrderBy,
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         household: { select: { id: true, visited: true, visitedAt: true } },
         tags: { include: { tag: true } },
@@ -134,7 +136,19 @@ export async function GET(req: NextRequest) {
     prisma.contact.count({ where: finalWhere }),
   ]);
 
-  return NextResponse.json(paginate(contacts, total, page, pageSize));
+  const hasMore = contactsBatch.length > pageSize;
+  const contacts = hasMore ? contactsBatch.slice(0, pageSize) : contactsBatch;
+  const nextCursor = hasMore ? contacts[contacts.length - 1]?.id ?? null : null;
+
+  return NextResponse.json({
+    data: contacts,
+    total,
+    page,
+    pageSize,
+    pages: Math.ceil(total / pageSize),
+    hasMore,
+    nextCursor,
+  });
 }
 
 /**

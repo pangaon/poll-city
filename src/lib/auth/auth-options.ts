@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 import { validateEnv } from "@/lib/env-check";
+import { checkLimit } from "@/lib/rate-limit-redis";
 
 // Run at module load — throws in production if NEXTAUTH_SECRET is missing.
 validateEnv();
@@ -43,7 +44,7 @@ const oauthProviders = [
 ];
 
 export const authOptions: NextAuthOptions = {
-  secret: nextAuthSecret ?? "__unset__",
+  secret: nextAuthSecret,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
@@ -98,9 +99,19 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.activeCampaignId = (user as { activeCampaignId?: string | null }).activeCampaignId ?? null;
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0;
         const u = user as { requires2FA?: boolean; twoFactorVerified?: boolean };
         token.requires2FA = u.requires2FA ?? false;
         token.twoFactorVerified = u.twoFactorVerified ?? false;
+      }
+      if (token.id && typeof token.sessionVersion === "number") {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { isActive: true, sessionVersion: true },
+        });
+        if (!dbUser || !dbUser.isActive || dbUser.sessionVersion !== token.sessionVersion) {
+          token.invalidSession = true;
+        }
       }
       // When the client calls session.update({ twoFactorVerified: true }) after
       // the /2fa-verify step succeeds, mark the JWT as verified.
@@ -119,12 +130,14 @@ export const authOptions: NextAuthOptions = {
           activeCampaignId?: string | null;
           requires2FA?: boolean;
           twoFactorVerified?: boolean;
+          invalidSession?: boolean;
         };
         user.id = token.id as string;
         user.role = token.role as Role;
         user.activeCampaignId = (token.activeCampaignId as string | null) ?? null;
         user.requires2FA = Boolean(token.requires2FA);
         user.twoFactorVerified = Boolean(token.twoFactorVerified);
+        user.invalidSession = Boolean(token.invalidSession);
       }
       return session;
     },
@@ -136,9 +149,17 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required");
+        }
+
+        const ip = req?.headers?.["x-forwarded-for"]?.toString().split(",")[0]?.trim() ??
+          req?.headers?.["x-real-ip"]?.toString() ??
+          "unknown";
+        const loginLimit = await checkLimit("login", ip);
+        if (!loginLimit.success) {
+          throw new Error("Too many login attempts. Please try again later.");
         }
 
         const email = credentials.email.toLowerCase().trim();
@@ -154,6 +175,7 @@ export const authOptions: NextAuthOptions = {
             activeCampaignId: true,
             failedLoginAttempts: true,
             lockedUntil: true,
+            sessionVersion: true,
             twoFactorEnabled: true,
           },
         });
@@ -204,6 +226,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           activeCampaignId: user.activeCampaignId ?? null,
+          sessionVersion: user.sessionVersion,
           // Requires a second factor step before the session is trusted.
           // The middleware / guarded pages must check this flag.
           requires2FA: user.twoFactorEnabled,

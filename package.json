@@ -29,6 +29,7 @@
     "db:seed:print-templates": "tsx prisma/seeds/print-templates.ts",
     "db:seed:voters": "tsx prisma/seeds/sample-voters.ts",
     "db:seed:volunteers": "tsx prisma/seeds/sample-volunteers.ts",
+    "db:seed:toronto-mayor": "tsx prisma/seeds/toronto-mayoral-campaign.ts",
     "db:seed:sample": "npm run db:seed:voters && npm run db:seed:volunteers",
     "db:seed:boundaries": "tsx prisma/seeds/ingest-boundaries.ts",
     "db:seed:boundaries:gis": "tsx prisma/seeds/ingest-gis-boundaries.ts",

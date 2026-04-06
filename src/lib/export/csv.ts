@@ -2,9 +2,11 @@
  * CSV export helpers — RFC 4180 compliant with proper escaping.
  */
 
+import { sanitizeCellValue } from "@/lib/security/xlsx-safety";
+
 export function escapeCsvField(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const str = String(value);
+  const str = sanitizeCellValue(value);
   // Quote if it contains comma, newline, or double-quote
   if (/[",\n\r]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;

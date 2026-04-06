@@ -4,6 +4,54 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { createInteractionSchema } from "@/lib/validators";
 
 /**
+ * GET /api/interactions
+ * Cursor-paginated interactions history for a campaign.
+ */
+export async function GET(req: NextRequest) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+
+  const sp = req.nextUrl.searchParams;
+  const campaignId = sp.get("campaignId");
+  if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+    select: { userId: true },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const cursor = sp.get("cursor")?.trim() || undefined;
+  const pageSize = Math.max(1, Math.min(250, Number(sp.get("pageSize") ?? "50")));
+
+  const [batch, total] = await Promise.all([
+    prisma.interaction.findMany({
+      where: { contact: { campaignId } },
+      include: {
+        contact: { select: { id: true, firstName: true, lastName: true, address1: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: pageSize + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    }),
+    prisma.interaction.count({ where: { contact: { campaignId } } }),
+  ]);
+
+  const hasMore = batch.length > pageSize;
+  const interactions = hasMore ? batch.slice(0, pageSize) : batch;
+  const nextCursor = hasMore ? interactions[interactions.length - 1]?.id ?? null : null;
+
+  return NextResponse.json({
+    data: interactions,
+    total,
+    pageSize,
+    hasMore,
+    nextCursor,
+  });
+}
+
+/**
  * POST /api/interactions
  * Log a new interaction with a contact
  */

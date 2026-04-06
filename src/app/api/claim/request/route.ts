@@ -8,7 +8,7 @@ import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnsti
 const SECRET = process.env.NEXTAUTH_SECRET;
 
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "auth");
+  const limited = await rateLimit(req, "auth");
   if (limited) return limited;
 
   if (!SECRET) {

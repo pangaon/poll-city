@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Public endpoint (rate-limited).
  */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const limited = rateLimit(req, "read");
+  const limited = await rateLimit(req, "read");
   if (limited) return limited;
 
   const daysParam = req.nextUrl.searchParams.get("days");

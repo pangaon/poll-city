@@ -48,6 +48,13 @@ This standard is mandatory for each checklist item in docs/FEATURE_EXECUTION_CHE
 - Single feature commit includes all code, docs, and validation updates.
 - Checklist item updated with status, commit hash, and report summary.
 
+8. Train Adoni (mandatory)
+- Write or update the help article for this feature.
+- Run: `npm run adoni:train`
+- Confirm output shows the new feature was included in the knowledge base.
+- Test: ask Adoni about the feature and confirm he answers accurately.
+- A feature Adoni does not know about is a feature that will generate support tickets.
+
 ## Cross-Feature Planning Rule
 
 Before coding, map dependencies and downstream impact:

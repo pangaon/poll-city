@@ -8,6 +8,7 @@ declare module "next-auth" {
       name: string | null;
       role: string;
       activeCampaignId: string | null;
+      invalidSession?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     id: string;
     role: string;
     activeCampaignId: string | null;
+    sessionVersion?: number;
   }
 }
 
@@ -23,5 +25,9 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     activeCampaignId: string | null;
+    sessionVersion?: number;
+    invalidSession?: boolean;
+    requires2FA?: boolean;
+    twoFactorVerified?: boolean;
   }
 }
