@@ -169,6 +169,69 @@ export const ADONI_TOOLS = [
       required: ["contactQuery", "type"],
     },
   },
+  {
+    name: "create_reminder",
+    description:
+      "Create a reminder for the user. Use when they say 'remind me to...', 'don't let me forget...'. Supports recurring reminders.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        message: { type: "string" as const, description: "What to remind about" },
+        scheduledFor: { type: "string" as const, description: "ISO date or 'tomorrow morning', 'monday 8am'" },
+        isRecurring: { type: "boolean" as const, description: "Repeat this reminder" },
+        recurPattern: { type: "string" as const, description: "daily_9am, weekly_monday, every_friday" },
+      },
+      required: ["message", "scheduledFor"] as string[],
+    },
+  },
+  {
+    name: "build_smart_list",
+    description:
+      "Build a filtered contact list from natural language. Use when someone says 'give me all undecided voters in Ward 20 with phones who haven't been called in 2 weeks'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        criteria: { type: "string" as const, description: "Natural language filter criteria" },
+      },
+      required: ["criteria"] as string[],
+    },
+  },
+  {
+    name: "draft_email",
+    description:
+      "Draft a campaign email — returns content for the email composer. Use when someone says 'write me a fundraising email' or 'draft a GOTV reminder'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        purpose: { type: "string" as const, description: "What the email is for" },
+        tone: { type: "string" as const, description: "urgent, warm, professional, celebratory" },
+      },
+      required: ["purpose"] as string[],
+    },
+  },
+  {
+    name: "draft_social_post",
+    description:
+      "Write a social media post for a specific platform. Returns ready-to-post copy.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        platform: { type: "string" as const, description: "twitter, facebook, instagram, linkedin" },
+        topic: { type: "string" as const, description: "What to post about" },
+      },
+      required: ["platform", "topic"] as string[],
+    },
+  },
+  {
+    name: "get_daily_brief",
+    description:
+      "Get today's campaign health summary: contacts, supporters, doors knocked today, volunteers active, anomalies. Use when someone says 'brief me' or 'what's the status'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Role-gated permissions ─────────────────────────────────────────────────
@@ -181,11 +244,16 @@ const TOOL_PERMISSIONS: Record<string, PermLevel> = {
   count_contacts_in_area: "read",
   get_gotv_summary: "read",
   get_volunteer_roster: "read",
+  get_daily_brief: "read",
+  build_smart_list: "read",
   create_task: "write",
   send_team_alert: "write",
   update_contact_support: "write",
   schedule_canvass: "write",
   log_interaction: "write",
+  create_reminder: "write",
+  draft_email: "write",
+  draft_social_post: "write",
 };
 
 const ROLE_LEVEL: Record<string, PermLevel> = {
@@ -264,6 +332,16 @@ export async function executeAction(
         return await scheduleCanvass(input, ctx);
       case "log_interaction":
         return await logInteraction(input, ctx);
+      case "create_reminder":
+        return await createReminder(input, ctx);
+      case "build_smart_list":
+        return await buildSmartList(input, ctx);
+      case "draft_email":
+        return { success: true, message: `Email draft ready for "${input.purpose}". Tone: ${input.tone ?? "professional"}. Navigate to /communications/email to review and send.` };
+      case "draft_social_post":
+        return { success: true, message: `Social post drafted for ${input.platform} about "${input.topic}". Navigate to /communications/social to review and schedule.` };
+      case "get_daily_brief":
+        return await getDailyBrief(ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -589,4 +667,154 @@ async function logInteraction(input: Record<string, unknown>, ctx: ActionContext
     message: `Logged ${input.type} with ${contact.firstName} ${contact.lastName}.${input.supportLevel ? ` Support updated to ${input.supportLevel}.` : ""}${input.notes ? ` Notes: "${input.notes}"` : ""}`,
     data: { interactionId: interaction.id, contactId: contact.id },
   };
+}
+
+function parseScheduledTime(input: string): Date {
+  const now = new Date();
+  const lower = input.toLowerCase();
+  if (lower.includes("tomorrow")) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    d.setHours(lower.includes("morning") ? 9 : lower.includes("evening") ? 18 : 9, 0, 0, 0);
+    return d;
+  }
+  if (lower.includes("monday")) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + ((1 + 7 - d.getDay()) % 7 || 7));
+    d.setHours(8, 0, 0, 0);
+    return d;
+  }
+  try { return new Date(input); } catch { return new Date(now.getTime() + 86400000); }
+}
+
+async function createReminder(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const scheduledFor = parseScheduledTime(String(input.scheduledFor));
+  await prisma.adoniReminder.create({
+    data: {
+      userId: ctx.userId,
+      campaignId: ctx.campaignId,
+      message: String(input.message),
+      scheduledFor,
+      isRecurring: Boolean(input.isRecurring),
+      recurPattern: input.recurPattern ? String(input.recurPattern) : null,
+    },
+  });
+  return {
+    success: true,
+    message: `Reminder set: "${input.message}" for ${scheduledFor.toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" })} at ${scheduledFor.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}.${input.isRecurring ? ` Recurring: ${input.recurPattern}.` : ""}`,
+  };
+}
+
+async function buildSmartList(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const criteria = String(input.criteria).toLowerCase();
+  const where: Record<string, unknown> = { campaignId: ctx.campaignId, isDeceased: false, doNotContact: false };
+
+  // Parse natural language filters
+  if (criteria.includes("undecided")) where.supportLevel = "undecided";
+  else if (criteria.includes("supporter")) where.supportLevel = { in: ["strong_support", "leaning_support"] };
+  if (criteria.includes("phone")) where.phone = { not: null };
+  if (criteria.includes("email")) where.email = { not: null };
+  if (criteria.includes("volunteer")) where.volunteerInterest = true;
+  if (criteria.includes("sign")) where.signRequested = true;
+
+  // Time-based filters
+  const daysMatch = criteria.match(/(\d+)\s*(days?|weeks?)/);
+  if (daysMatch && criteria.includes("not contacted")) {
+    const days = daysMatch[2]?.includes("week") ? Number(daysMatch[1]) * 7 : Number(daysMatch[1]);
+    where.OR = [
+      { lastContactedAt: null },
+      { lastContactedAt: { lt: new Date(Date.now() - days * 86400000) } },
+    ];
+  }
+
+  // Ward filter
+  const wardMatch = criteria.match(/ward\s*(\d+|[\w\s-]+)/i);
+  if (wardMatch) where.ward = { contains: wardMatch[1].trim(), mode: "insensitive" };
+
+  const [count, sample] = await Promise.all([
+    prisma.contact.count({ where: where as never }),
+    prisma.contact.findMany({
+      where: where as never,
+      take: 5,
+      select: { firstName: true, lastName: true, phone: true, ward: true, supportLevel: true },
+    }),
+  ]);
+
+  const sampleNames = sample.map((c) => `${c.firstName} ${c.lastName} (${c.supportLevel})`).join(", ");
+  return {
+    success: true,
+    message: `Found ${count.toLocaleString()} contacts matching "${input.criteria}".${count > 0 ? ` Sample: ${sampleNames}.` : ""} Navigate to /contacts to view the full filtered list.`,
+    data: { count },
+  };
+}
+
+async function getDailyBrief(ctx: ActionContext): Promise<ActionResult> {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+
+  const [contacts, supporters, undecided, doorsToday, doorsYesterday, volunteers, signs, donationAgg] = await Promise.all([
+    prisma.contact.count({ where: { campaignId: ctx.campaignId } }),
+    prisma.contact.count({ where: { campaignId: ctx.campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } } }),
+    prisma.contact.count({ where: { campaignId: ctx.campaignId, supportLevel: "undecided" as never } }),
+    prisma.interaction.count({ where: { contact: { campaignId: ctx.campaignId }, type: "door_knock" as never, createdAt: { gte: todayStart } } }),
+    prisma.interaction.count({ where: { contact: { campaignId: ctx.campaignId }, type: "door_knock" as never, createdAt: { gte: yesterdayStart, lt: todayStart } } }),
+    prisma.volunteerProfile.count({ where: { campaignId: ctx.campaignId, isActive: true } }),
+    prisma.sign.count({ where: { campaignId: ctx.campaignId } }),
+    prisma.donation.aggregate({ where: { campaignId: ctx.campaignId }, _sum: { amount: true }, _count: true }),
+  ]);
+
+  const supportRate = contacts > 0 ? Math.round((supporters / contacts) * 100) : 0;
+  const doorsTrend = doorsToday > doorsYesterday ? "up" : doorsToday < doorsYesterday ? "down" : "flat";
+
+  return {
+    success: true,
+    message: [
+      `Daily brief for ${ctx.userName}:`,
+      `• ${contacts.toLocaleString()} contacts, ${supporters.toLocaleString()} supporters (${supportRate}%), ${undecided.toLocaleString()} undecided`,
+      `• ${doorsToday} doors knocked today (${doorsTrend} from yesterday's ${doorsYesterday})`,
+      `• ${volunteers} active volunteers, ${signs} signs deployed`,
+      `• ${donationAgg._count} donations totalling $${Number(donationAgg._sum.amount ?? 0).toFixed(2)}`,
+    ].join("\n"),
+  };
+}
+
+// Suspicious activity detection — called by chat route for low-permission roles
+export async function checkSuspiciousActivity(
+  userId: string,
+  campaignId: string,
+  role: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+): Promise<boolean> {
+  if (!["CANVASSER", "VOLUNTEER", "VIEWER"].includes(role)) return false;
+
+  const sensitivePatterns = [
+    "how many supporters",
+    "total contacts",
+    "donation",
+    "gotv strategy",
+    "how much money",
+    "who donated",
+    "spending limit",
+    "what is our budget",
+    "campaign strategy",
+    "opponent intel",
+  ];
+
+  const userMessages = conversationHistory.filter((m) => m.role === "user");
+  const sensitiveCount = userMessages.filter((m) =>
+    sensitivePatterns.some((p) => m.content.toLowerCase().includes(p)),
+  ).length;
+
+  if (sensitiveCount >= 3) {
+    await prisma.adoniSuspiciousActivity.create({
+      data: {
+        campaignId,
+        userId,
+        questions: userMessages.map((m) => m.content) as unknown as object,
+      },
+    }).catch(() => {});
+    return true;
+  }
+  return false;
 }

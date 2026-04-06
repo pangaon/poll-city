@@ -3,7 +3,8 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
-import { ADONI_TOOLS, executeAction, type ActionContext } from "@/lib/adoni/actions";
+import { ADONI_TOOLS, executeAction, checkSuspiciousActivity, type ActionContext } from "@/lib/adoni/actions";
+import { loadMemory, updateMemory, buildGreeting } from "@/lib/adoni/memory";
 
 type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
 type ContentBlock =
@@ -192,6 +193,22 @@ export async function POST(req: NextRequest) {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
+  // Load user memory for personalisation
+  const memory = activeCampaignId
+    ? await loadMemory(session!.user.id, activeCampaignId)
+    : null;
+
+  // Inject memory context into system prompt if available
+  const memoryContext = memory
+    ? [
+        memory.prefersBrief ? "\nUSER PREFERENCE: keep responses under 100 words unless asked for detail." : "",
+        memory.openItems.length > 0 ? `\nOPEN ITEMS FROM LAST CONVERSATION: ${memory.openItems.slice(-3).join("; ")}` : "",
+        memory.decisions.length > 0 ? `\nCAMPAIGN DECISIONS TO REMEMBER: ${memory.decisions.slice(-5).join("; ")}` : "",
+        memory.facts.length > 0 ? `\nCAMPAIGN FACTS: ${memory.facts.slice(-5).join("; ")}` : "",
+      ].filter(Boolean).join("")
+    : "";
+  const fullSystemPrompt = systemPrompt + memoryContext;
+
   try {
     let assistantText = "";
 
@@ -199,7 +216,7 @@ export async function POST(req: NextRequest) {
       assistantText =
         "Adoni is ready, but ANTHROPIC_API_KEY is not configured yet. Add it in Vercel environment variables to enable live strategy responses.";
     } else {
-      // Look up role + auto-execute setting for action gating
+      // Suspicious activity check for low-permission roles
       let userRole = "VOLUNTEER";
       let autoExecuteEnabled = true; // default on — campaign can disable
       if (activeCampaignId) {
@@ -214,16 +231,26 @@ export async function POST(req: NextRequest) {
           }),
         ]);
         userRole = membership?.role ?? "VOLUNTEER";
-        // Auto-execute stored in campaign.customization JSON: { adoniAutoExecute: boolean }
         const custom = campaignSettings?.customization as Record<string, unknown> | null;
         if (custom && typeof custom.adoniAutoExecute === "boolean") {
           autoExecuteEnabled = custom.adoniAutoExecute;
         }
+
+        // Suspicious activity detection for canvassers/volunteers
+        const plainMessages = messages
+          .filter((m) => typeof m.content === "string")
+          .map((m) => ({ role: String(m.role), content: String(m.content) }));
+        await checkSuspiciousActivity(session!.user.id, activeCampaignId, userRole, plainMessages);
       }
       const actionCtx: ActionContext | null = activeCampaignId
         ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member", userRole, autoExecuteEnabled }
         : null;
-      assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, systemPrompt, messages, actionCtx);
+      assistantText = await completeWithAnthropic(process.env.ANTHROPIC_API_KEY, fullSystemPrompt, messages, actionCtx);
+
+      // Update user memory from this conversation turn
+      if (activeCampaignId && memory && typeof lastUser === "string") {
+        updateMemory(session!.user.id, activeCampaignId, lastUser, memory).catch(() => {});
+      }
     }
 
     const adoniConversation = (prisma as unknown as {

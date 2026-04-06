@@ -485,7 +485,7 @@ model OfficialFollow {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Household {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   address1    String
   address2    String?
   city        String?
@@ -495,12 +495,12 @@ model Household {
   riding      String?
   lat         Float?
   lng         Float?
-  visited     Boolean  @default(false)
+  visited     Boolean   @default(false)
   visitedAt   DateTime?
   totalVoters Int? // from official voter file
   campaignId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contacts Contact[]
@@ -2332,4 +2332,56 @@ model OutreachLog {
   @@index([type, sentAt])
   @@index([recipientEmail])
   @@map("outreach_logs")
+}
+
+model AdoniUserMemory {
+  id                 String   @id @default(cuid())
+  userId             String
+  campaignId         String
+  preferredName      String?
+  communicationStyle String?  @default("balanced")
+  prefersBrief       Boolean  @default(false)
+  topPriorities      Json?
+  stressPoints       Json?
+  expertiseAreas     Json?
+  facts              Json?
+  decisions          Json?
+  openItems          Json?
+  lastTopics         Json?
+  unresolvedItems    Json?
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+
+  @@unique([userId, campaignId])
+  @@map("adoni_user_memory")
+}
+
+model AdoniReminder {
+  id           String    @id @default(cuid())
+  userId       String
+  campaignId   String
+  message      String
+  scheduledFor DateTime
+  isRecurring  Boolean   @default(false)
+  recurPattern String?
+  sent         Boolean   @default(false)
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([scheduledFor, sent])
+  @@index([userId, campaignId])
+  @@map("adoni_reminders")
+}
+
+model AdoniSuspiciousActivity {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  sessionId  String?
+  questions  Json
+  flaggedAt  DateTime @default(now())
+  reviewed   Boolean  @default(false)
+
+  @@index([campaignId, flaggedAt])
+  @@map("adoni_suspicious_activity")
 }
