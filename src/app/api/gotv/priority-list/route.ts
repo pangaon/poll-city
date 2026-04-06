@@ -1,7 +1,28 @@
+/**
+ * GET /api/gotv/priority-list — P1-P4 tier filtered contact list.
+ *
+ * George's spec:
+ * Query params: tier (P1/P2/P3/P4), page, limit
+ * Returns contacts filtered by tier who have NOT voted yet
+ * Sorted by support level (strongest first)
+ * Include: id, firstName, lastName, address, phone, supportLevel, lastContactedAt, voted
+ *
+ * Tier mapping (using support level as proxy):
+ * P1 = strong_support (most reliable — call on election morning)
+ * P2 = leaning_support (call day before + morning)
+ * P3 = undecided (persuadable — call 3 days out)
+ * P4 = leaning_against (low priority)
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
-import { SupportLevel } from "@prisma/client";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+
+const TIER_MAP: Record<string, string[]> = {
+  P1: ["strong_support"],
+  P2: ["leaning_support"],
+  P3: ["undecided"],
+  P4: ["leaning_against"],
+};
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -9,7 +30,8 @@ export async function GET(req: NextRequest) {
   const permError = requirePermission(session!.user.role as string, "gotv:read");
   if (permError) return permError;
 
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const sp = req.nextUrl.searchParams;
+  const campaignId = sp.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
   const membership = await prisma.membership.findUnique({
@@ -17,19 +39,46 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // Supporters who have NOT yet voted
-  const contacts = await prisma.contact.findMany({
-    where: {
-      campaignId,
-      supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] },
-      gotvStatus: { notIn: ["voted"] },
-      isDeceased: false,
-      phone: { not: null },
-    },
-    orderBy: [{ supportLevel: "asc" }, { lastName: "asc" }],
-    take: 200,
-    select: { id: true, firstName: true, lastName: true, phone: true, address1: true, city: true, supportLevel: true, gotvStatus: true },
-  });
+  const tier = sp.get("tier")?.toUpperCase() ?? "P1";
+  const page = Math.max(1, Number(sp.get("page") || "1"));
+  const limit = Math.min(200, Math.max(1, Number(sp.get("limit") || "50")));
+  const skip = (page - 1) * limit;
 
-  return NextResponse.json({ data: contacts });
+  const supportLevels = TIER_MAP[tier] ?? TIER_MAP.P1;
+
+  const where = {
+    campaignId,
+    supportLevel: { in: supportLevels as any[] },
+    voted: false,
+    isDeceased: false,
+  };
+
+  const [contacts, total] = await Promise.all([
+    prisma.contact.findMany({
+      where,
+      orderBy: [{ lastContactedAt: "asc" }, { lastName: "asc" }],
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        address1: true,
+        phone: true,
+        supportLevel: true,
+        lastContactedAt: true,
+        voted: true,
+      },
+    }),
+    prisma.contact.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    tier,
+    contacts,
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit),
+  });
 }
