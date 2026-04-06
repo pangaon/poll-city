@@ -12,6 +12,16 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:57  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **iOS/PWA verification runbook added for closure of mobile directive**
+- Context:
+  - Added [docs/MOBILE_PWA_IOS_UAT.md](docs/MOBILE_PWA_IOS_UAT.md) with explicit iPhone viewport and PWA standalone checks.
+  - Runbook includes hamburger/menu, bottom-nav safe area, Adoni mobile behavior, and viewport stability acceptance criteria.
+- Decision:
+  - Use this runbook as the canonical pass/fail gate to resolve the 17:50 "PWA + Adoni mobile UX" directive.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 18:52  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **iPhone/PWA viewport stability hardening shipped (dvh shell + compact topbar spacing)**
 - Context:
