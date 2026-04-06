@@ -204,6 +204,92 @@ enum BudgetItemType {
   expense
 }
 
+enum EventVisibility {
+  internal
+  supporters_only
+  public
+}
+
+enum EventStatus {
+  draft
+  scheduled
+  live
+  completed
+  cancelled
+  archived
+}
+
+enum EventRsvpStatus {
+  going
+  interested
+  not_going
+  waitlisted
+  checked_in
+  no_show
+}
+
+enum SocialPlatform {
+  x
+  facebook
+  instagram
+  linkedin
+  tiktok
+  youtube
+  threads
+  bluesky
+}
+
+enum SocialAccountStatus {
+  active
+  disconnected
+  error
+  paused
+}
+
+enum SocialPostStatus {
+  draft
+  pending_approval
+  approved
+  scheduled
+  publishing
+  published
+  failed
+  cancelled
+}
+
+enum SocialMentionSentiment {
+  positive
+  neutral
+  negative
+  mixed
+  unknown
+}
+
+enum CasePriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum CaseStatus {
+  open
+  in_progress
+  waiting_on_resident
+  waiting_on_agency
+  resolved
+  closed
+}
+
+enum CaseChannel {
+  web
+  phone
+  email
+  in_person
+  social
+  referral
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // USER & AUTH
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,14 +366,20 @@ model User {
   canvasserLocation CanvasserLocation?
 
   // Social side
-  pollResponses     PollResponse[]
-  supportSignals    SupportSignal[]
-  officialFollows   OfficialFollow[]
-  questions         PublicQuestion[]
-  notifications     Notification[]
-  consentLogs       ConsentLog[]
-  pushSubscriptions PushSubscription[]
-  notificationLogs  NotificationLog[]
+  pollResponses         PollResponse[]
+  supportSignals        SupportSignal[]
+  officialFollows       OfficialFollow[]
+  questions             PublicQuestion[]
+  notifications         Notification[]
+  consentLogs           ConsentLog[]
+  pushSubscriptions     PushSubscription[]
+  notificationLogs      NotificationLog[]
+  socialPostsAuthored   SocialPost[]          @relation("SocialPostAuthor")
+  socialPostsApproved   SocialPost[]          @relation("SocialPostApprover")
+  socialPostsRejected   SocialPost[]          @relation("SocialPostRejector")
+  socialMentionsOwned   SocialMention[]       @relation("SocialMentionAssignee")
+  constituentCasesOwned ConstituentCaseFile[] @relation("ConstituentCaseAssignee")
+  constituentCaseNotes  ConstituentCaseNote[]
 
   @@map("users")
 }
@@ -372,6 +464,11 @@ model Campaign {
   coalitions                Coalition[]
   opponentIntel             OpponentIntel[]
   events                    Event[]
+  socialAccounts            SocialAccount[]
+  socialPosts               SocialPost[]
+  socialMentions            SocialMention[]
+  constituents              Constituent[]
+  constituentCaseFiles      ConstituentCaseFile[]
   volunteerExpenses         VolunteerExpense[]
   budgetItems               BudgetItem[]
   budgetRules               BudgetRule[]
@@ -459,6 +556,8 @@ model Official {
   approvalRating   ApprovalRating?
   sentimentSignals SentimentSignal[]
   outreach         OfficialOutreach[]
+  constituents     Constituent[]
+  caseFiles        ConstituentCaseFile[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -608,6 +707,8 @@ model Contact {
   customFieldValues   CustomFieldValue[]
   turfStops           TurfStop[]
   superSupporterTasks SuperSupporterTask[]
+  constituents        Constituent[]
+  eventRsvps          EventRsvp[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -1806,37 +1907,269 @@ model OpponentIntel {
 }
 
 model Event {
-  id          String   @id @default(cuid())
-  campaignId  String
-  name        String
-  eventDate   DateTime
-  location    String
-  capacity    Int?
-  description String?
-  isPublic    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String          @id @default(cuid())
+  campaignId        String
+  name              String
+  slug              String?
+  eventDate         DateTime
+  timezone          String          @default("America/Toronto")
+  location          String
+  address1          String?
+  address2          String?
+  city              String?
+  province          String?
+  postalCode        String?
+  lat               Float?
+  lng               Float?
+  capacity          Int?
+  maxWaitlist       Int?
+  description       String?
+  status            EventStatus     @default(draft)
+  visibility        EventVisibility @default(internal)
+  isPublic          Boolean         @default(false)
+  allowPublicRsvp   Boolean         @default(false)
+  requiresApproval  Boolean         @default(false)
+  isVirtual         Boolean         @default(false)
+  virtualUrl        String?
+  recurrenceRule    String?
+  followUpMessage   String?
+  checkInQrSecret   String?
+  icalUid           String?
+  lastReminderRunAt DateTime?
+  publishedAt       DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  campaign Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  rsvps    EventRsvp[]
+  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rsvps     EventRsvp[]
+  reminders EventReminder[]
 
   @@index([campaignId, eventDate])
+  @@index([campaignId, status])
   @@map("events")
 }
 
 model EventRsvp {
-  id        String   @id @default(cuid())
-  eventId   String
-  contactId String?
-  name      String
-  email     String
-  attended  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id             String          @id @default(cuid())
+  eventId        String
+  contactId      String?
+  name           String
+  email          String
+  phone          String?
+  status         EventRsvpStatus @default(interested)
+  attended       Boolean         @default(false)
+  checkedInAt    DateTime?
+  checkInCode    String?
+  notes          String?
+  source         String?
+  metadata       Json?
+  followUpSentAt DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@index([eventId, status])
+  @@map("event_rsvps")
+}
+
+model EventReminder {
+  id           String    @id @default(cuid())
+  eventId      String
+  channel      String
+  templateKey  String?
+  scheduledFor DateTime
+  sentAt       DateTime?
+  status       String    @default("pending")
+  errorMessage String?
+  createdAt    DateTime  @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  @@index([eventId])
-  @@map("event_rsvps")
+  @@index([eventId, scheduledFor])
+  @@index([status, scheduledFor])
+  @@map("event_reminders")
+}
+
+model SocialAccount {
+  id                String              @id @default(cuid())
+  campaignId        String
+  platform          SocialPlatform
+  handle            String
+  displayName       String?
+  externalAccountId String?
+  accessTokenEnc    String?
+  refreshTokenEnc   String?
+  tokenExpiresAt    DateTime?
+  status            SocialAccountStatus @default(active)
+  metadata          Json?
+  lastSyncedAt      DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  posts    SocialPost[]
+  mentions SocialMention[]
+
+  @@unique([campaignId, platform, handle])
+  @@index([campaignId, platform])
+  @@map("social_accounts")
+}
+
+model SocialPost {
+  id                  String           @id @default(cuid())
+  campaignId          String
+  socialAccountId     String?
+  authorUserId        String?
+  title               String?
+  content             String
+  mediaUrls           String[]         @default([])
+  linkUrl             String?
+  hashtags            String[]         @default([])
+  targetPlatforms     SocialPlatform[] @default([])
+  status              SocialPostStatus @default(draft)
+  scheduledFor        DateTime?
+  publishedAt         DateTime?
+  failedAt            DateTime?
+  failureReason       String?
+  externalPostId      String?
+  approvalRequestedAt DateTime?
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  rejectedAt          DateTime?
+  rejectedByUserId    String?
+  metrics             Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  author        User?          @relation("SocialPostAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  approvedBy    User?          @relation("SocialPostApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectedBy    User?          @relation("SocialPostRejector", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, status])
+  @@index([scheduledFor, status])
+  @@map("social_posts")
+}
+
+model SocialMention {
+  id                String                 @id @default(cuid())
+  campaignId        String
+  socialAccountId   String?
+  platform          SocialPlatform
+  externalMentionId String
+  authorHandle      String?
+  authorName        String?
+  content           String
+  url               String?
+  mentionedAt       DateTime
+  sentiment         SocialMentionSentiment @default(unknown)
+  needsResponse     Boolean                @default(false)
+  respondedAt       DateTime?
+  assignedToUserId  String?
+  resolutionNotes   String?
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  assignedTo    User?          @relation("SocialMentionAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, platform, externalMentionId])
+  @@index([campaignId, mentionedAt])
+  @@index([campaignId, needsResponse])
+  @@map("social_mentions")
+}
+
+model Constituent {
+  id              String    @id @default(cuid())
+  officialId      String
+  campaignId      String?
+  contactId       String?
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  address1        String?
+  address2        String?
+  city            String?
+  province        String?
+  postalCode      String?
+  ward            String?
+  riding          String?
+  tags            String[]  @default([])
+  isPriority      Boolean   @default(false)
+  notes           String?
+  lastContactedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  official  Official              @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  campaign  Campaign?             @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  contact   Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  caseFiles ConstituentCaseFile[]
+
+  @@index([officialId, lastName, firstName])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([postalCode])
+  @@map("constituents")
+}
+
+model ConstituentCaseFile {
+  id                String       @id @default(cuid())
+  officialId        String
+  constituentId     String
+  campaignId        String?
+  title             String
+  description       String?
+  category          String?
+  channel           CaseChannel  @default(web)
+  priority          CasePriority @default(medium)
+  status            CaseStatus   @default(open)
+  externalReference String?
+  metadata          Json?
+  openedAt          DateTime     @default(now())
+  dueAt             DateTime?
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+  assignedToUserId  String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  official    Official              @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  constituent Constituent           @relation(fields: [constituentId], references: [id], onDelete: Cascade)
+  campaign    Campaign?             @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  assignedTo  User?                 @relation("ConstituentCaseAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  notes       ConstituentCaseNote[]
+
+  @@index([officialId, status])
+  @@index([constituentId])
+  @@index([assignedToUserId, status])
+  @@index([campaignId])
+  @@map("constituent_case_files")
+}
+
+model ConstituentCaseNote {
+  id           String   @id @default(cuid())
+  caseFileId   String
+  authorUserId String?
+  note         String
+  isInternal   Boolean  @default(true)
+  attachments  String[] @default([])
+  createdAt    DateTime @default(now())
+
+  caseFile ConstituentCaseFile @relation(fields: [caseFileId], references: [id], onDelete: Cascade)
+  author   User?               @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([caseFileId, createdAt])
+  @@map("constituent_case_notes")
 }
 
 model SuperSupporterTask {
@@ -2384,4 +2717,18 @@ model AdoniSuspiciousActivity {
 
   @@index([campaignId, flaggedAt])
   @@map("adoni_suspicious_activity")
+}
+
+model SecurityRule {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  isActive    Boolean  @default(true)
+  threshold   Int
+  windowMins  Int
+  severity    String
+  action      String   @default("alert")
+  createdAt   DateTime @default(now())
+
+  @@map("security_rules")
 }

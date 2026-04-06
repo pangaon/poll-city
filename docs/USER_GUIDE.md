@@ -1,5 +1,37 @@
 # Poll City User Guide
 
+## v4.0.27 Enterprise Events + Social + Constituent Services Addendum — April 4, 2026
+
+### Event Lifecycle Operations (`/events`)
+
+1. Create events from the Events page with campaign, location, and schedule details.
+2. Use event detail APIs to update lifecycle status (`draft`, `scheduled`, `live`, `completed`, `cancelled`) and visibility.
+3. Manage RSVPs through event RSVP endpoints and staff check-in flow.
+4. Export individual events as calendar files (`.ics`) for distribution.
+5. Duplicate prior events to accelerate repeat campaign programming.
+
+### Social Manager (`/communications/social`)
+
+1. Open Communications -> Social Media.
+2. Add campaign social accounts per platform.
+3. Draft posts and assign status (`draft`, `pending approval`, `approved`, `scheduled`, `published`).
+4. Use queue controls to advance post lifecycle and mark publish outcomes.
+5. Review inbound mentions and mark items responded as outreach is completed.
+
+### Candidate Public Events + RSVP (`/api/public/candidates/[slug]/events`)
+
+1. Public candidate pages can now fetch active public events by campaign slug.
+2. Public RSVP submissions are protected by Turnstile verification.
+3. RSVP processing respects event capacity and approval settings.
+
+### Official Constituent Casework APIs (`/api/officials/[id]/case-files`)
+
+1. Add or search constituents under an official profile.
+2. Open case files with channel, priority, due date, and assignment metadata.
+3. Update case status through lifecycle states (`open`, `in_progress`, `waiting`, `resolved`, `closed`).
+4. Add internal case notes for historical context and accountability.
+5. Official case routes are campaign-authorized via official-linked membership checks.
+
 ## v4.0.26 Volunteer Management Addendum — April 5, 2026
 
 ### Volunteer Program Oversight (`/volunteers`)

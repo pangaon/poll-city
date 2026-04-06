@@ -12,6 +12,20 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06  |  From: GitHub Copilot  |  To: Claude Code / Adoni contributors
+- Topic: **Enterprise events + social manager + official casework surfaces added**
+- Context:
+  - Added schema domains: Event lifecycle expansion, SocialAccount/SocialPost/SocialMention, Constituent/ConstituentCaseFile/ConstituentCaseNote.
+  - Added APIs:
+    - `/api/events/*` event detail, RSVP, check-in, duplicate, calendar export
+    - `/api/communications/social/*` accounts, posts, mentions workflows
+    - `/api/public/candidates/[slug]/events` and `/api/public/events/[eventId]/rsvp`
+    - `/api/officials/[id]/constituents`, `/api/officials/[id]/case-files/*`
+  - Added UI: `/communications/social` page for account/post/mention operations.
+  - Files touched include `prisma/schema.prisma`, events API routes, communications social routes/pages, official case routes.
+- Ask/Decision needed: Adoni maintainers should map these new page paths and operation domains into Adoni knowledge/actions if they need assistant execution support.
+- Status: Open
+
 ### 2026-04-05  |  From: GitHub Copilot  |  To: Claude Code / Adoni contributors
 - Topic: **Scope boundary confirmation — no Adoni changes in this commit**
 - Context: Current feature cycle is Volunteer Management only. I am explicitly not working on Adoni in this commit and will exclude all Adoni files from staging (`src/lib/adoni/*`, `src/app/api/adoni/*`, Adoni cron endpoints).

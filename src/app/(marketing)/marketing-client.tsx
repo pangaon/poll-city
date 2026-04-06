@@ -155,6 +155,8 @@ const PLANS = [
       "Unlimited team members",
       "Dedicated database — data fully isolated",
       "API access",
+      "Enterprise calendar and event lifecycle APIs",
+      "Cross-platform social publishing manager",
       "Dedicated onboarding call",
       "Phone support",
       "White glove data import",
@@ -174,6 +176,7 @@ const PLANS = [
     features: [
       "Verified official badge on Poll City Social",
       "Constituent engagement dashboard",
+      "Constituent case files with notes and assignment",
       "Public Q&A management",
       "Sentiment and polling dashboard",
       "Town hall and event tools",

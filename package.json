@@ -18,6 +18,7 @@
     "docs:check:master": "node scripts/master-doc-consistency.mjs",
     "test:contracts": "node scripts/contract-tests.mjs",
     "ai:ops:daily": "node scripts/ai-ops-daily.mjs",
+    "adoni:train": "tsx scripts/train-adoni.ts",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",

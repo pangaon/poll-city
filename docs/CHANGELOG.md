@@ -1,5 +1,42 @@
 # Poll City Changelog
 
+## [4.0.27] - April 4, 2026 — ENTERPRISE EVENTS + SOCIAL MANAGER + CONSTITUENT CASEWORK
+
+### Calendar + Events Suite (`/events`, `/api/events/*`)
+- Expanded event lifecycle support with status, visibility, virtual event fields, recurrence metadata, waitlist controls, and reminder logging in schema.
+- Added event operations endpoints:
+  - `GET/PATCH/DELETE /api/events/[eventId]`
+  - `GET/POST /api/events/[eventId]/rsvps`
+  - `POST /api/events/[eventId]/check-in`
+  - `POST /api/events/[eventId]/duplicate`
+  - `GET /api/events/[eventId]/calendar` (ICS export)
+- Upgraded `GET /api/events` with date/status filtering and RSVP/check-in aggregates.
+
+### Social Media Manager (`/communications/social`, `/api/communications/social/*`)
+- Added campaign social account management endpoint: `GET/POST /api/communications/social/accounts`.
+- Added social post lifecycle endpoints:
+  - `GET/POST /api/communications/social/posts`
+  - `PATCH/DELETE /api/communications/social/posts/[id]`
+- Added mentions inbox endpoints:
+  - `GET/POST /api/communications/social/mentions`
+  - `PATCH /api/communications/social/mentions/[id]`
+- Added in-app Social Manager page at `/communications/social` for account onboarding, publishing queue operations, and mention resolution workflow.
+
+### Candidate Public Event Conversion (`/api/public/*`)
+- Added public candidate events feed: `GET /api/public/candidates/[slug]/events`.
+- Added Turnstile-protected public RSVP endpoint: `POST /api/public/events/[eventId]/rsvp` with capacity and approval-aware status handling.
+
+### Elected Official Constituent Services (`/api/officials/[id]/*`)
+- Added constituent intake/list endpoint: `GET/POST /api/officials/[id]/constituents`.
+- Added case management endpoints:
+  - `GET/POST /api/officials/[id]/case-files`
+  - `PATCH /api/officials/[id]/case-files/[caseId]`
+  - `POST /api/officials/[id]/case-files/[caseId]/notes`
+- Added official access guard helper for campaign-linked official authorization.
+
+### Outcome
+- Poll City now supports an enterprise event lifecycle, integrated social publishing workflows, public candidate event conversion, and official constituent case operations from first-party APIs.
+
 ## [4.0.26] - April 5, 2026 — VOLUNTEER MANAGEMENT HARDENING
 
 ### Volunteer Operations (`/volunteers`)

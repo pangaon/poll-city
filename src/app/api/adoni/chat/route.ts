@@ -4,7 +4,8 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
 import { ADONI_TOOLS, executeAction, checkSuspiciousActivity, type ActionContext } from "@/lib/adoni/actions";
-import { loadMemory, updateMemory, buildGreeting } from "@/lib/adoni/memory";
+import { loadMemory, updateMemory } from "@/lib/adoni/memory";
+import { detectPromptInjection, logSecurityThreat } from "@/lib/security/monitor";
 
 type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
 type ContentBlock =
@@ -192,6 +193,23 @@ export async function POST(req: NextRequest) {
   });
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+
+  // Prompt injection guard — deflect naturally, log silently
+  if (typeof lastUser === "string" && detectPromptInjection(lastUser)) {
+    await logSecurityThreat({
+      type: "prompt_injection",
+      severity: "high",
+      ip: req.headers.get("x-forwarded-for")?.split(",")[0] ?? null,
+      userAgent: req.headers.get("user-agent"),
+      userId: session!.user.id,
+      route: "/api/adoni/chat",
+      details: { snippet: lastUser.slice(0, 100) },
+    });
+    const deflection = streamText("I'm here to help with your campaign! What can we work on together?");
+    return new Response(deflection, {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   // Load user memory for personalisation
   const memory = activeCampaignId
