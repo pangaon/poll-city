@@ -61,6 +61,8 @@
 - Audit logging on every write (create, update, delete, bulk-update, bulk-tag)
 - Permission checks: contacts:read, contacts:write, contacts:delete
 - Video walkthrough script written (docs/video-scripts/contacts-management.md)
+- Contact slide-over now includes explicit load-error retry and save-failure surfacing for in-list operator recovery.
+- Contacts list/detail surfaces are wrapped with ErrorBoundary fallbacks and auto-reset keys for safer UI recovery.
 
 ## [4.0.28] - April 5, 2026 — VIDEO DOCUMENTATION SYSTEM + VERIFICATION WALL
 

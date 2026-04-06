@@ -1,5 +1,21 @@
 # Poll City User Guide
 
+## v5.0.1 Contact Slide-Over Reliability Addendum — April 6, 2026
+
+### Fast Contact Updates with Slide-Over (`/contacts`)
+
+1. Open Contacts and click any row to open the right-side contact slide-over panel.
+2. Update support level directly from the 5-button selector.
+3. Toggle quick flags (`Follow up`, `Volunteer`, `Sign`) without leaving the table.
+4. Edit notes inline and save from the panel.
+5. Use **View full profile** when you need full timeline/task depth.
+
+### Recovery Behavior
+
+1. If contact detail load fails, the panel now shows a clear inline error with **Retry**.
+2. If save fails, the panel stays open and surfaces the error so you can retry immediately.
+3. This keeps operators in list context during high-volume campaign workflows.
+
 ## v4.0.28 Video Documentation + Verification Wall Addendum — April 5, 2026
 
 ### Public Help Center (`/help`)
