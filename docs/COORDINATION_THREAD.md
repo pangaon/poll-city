@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:31  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Push notifications API hardening (no-store cache policy)**
+- Context:
+  - Added `Cache-Control: no-store` across push subscription and send/test endpoints:
+    - [src/app/api/notifications/subscribe/route.ts](src/app/api/notifications/subscribe/route.ts)
+    - [src/app/api/notifications/send/route.ts](src/app/api/notifications/send/route.ts)
+    - [src/app/api/notifications/test/route.ts](src/app/api/notifications/test/route.ts)
+  - Goal: prevent caching of push endpoint metadata and delivery payload responses.
+  - Validation: diagnostics clean on all touched files.
+  - Isolation: no edits made to current parallel in-flight API files.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:22  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Debug media/report hardening + Prisma delegate-safe fallback**
 - Context:

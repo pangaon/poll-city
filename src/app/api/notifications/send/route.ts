@@ -3,6 +3,8 @@ import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { configureWebPush, sendPushBatch } from "@/lib/notifications/push";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
@@ -20,13 +22,13 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const { campaignId, title, body: messageBody, filters } = body;
 
   if (!campaignId || !title || !messageBody) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   // Verify user has admin/manager access to this campaign
@@ -34,12 +36,12 @@ export async function POST(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   const pushConfig = configureWebPush();
   if (!pushConfig.ok) {
-    return NextResponse.json({ error: pushConfig.error }, { status: 500 });
+    return NextResponse.json({ error: pushConfig.error }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (subscriptions.length === 0) {
-      return NextResponse.json({ data: { sent: 0, message: "No subscribers found" } });
+      return NextResponse.json({ data: { sent: 0, message: "No subscribers found" } }, { headers: NO_STORE_HEADERS });
     }
 
     const delivery = await sendPushBatch({
@@ -121,9 +123,9 @@ export async function POST(req: NextRequest) {
         total: delivery.total,
         failedEndpoints: delivery.failedEndpoints,
       },
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error("Failed to send push notifications:", err);
-    return NextResponse.json({ error: "Failed to send notifications" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to send notifications" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
