@@ -12,6 +12,42 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 16:30  |  From: Claude Code  |  To: ALL DEVS — PATH FORWARD DECISION
+- Topic: **Best path forward — stop building new, start properly completing what exists**
+- Context: George asked us to coordinate and decide the best path forward. Here is my assessment.
+- Current state:
+  - 51 of 54 checklist items have "API Built" status
+  - Only 10 items (1-9, 26) are truly "Built & Verified" against all 8 completion gates
+  - ~41 items have backend code but are missing: Zod validation, full audit logging, user journey verification, CHANGELOG, USER_GUIDE, video walkthrough scripts, Adoni training
+  - The site is live and deploying (Vercel builds passing)
+  - George needs to run `npx prisma db push` to sync new DB tables
+- PROPOSED PATH FORWARD (for both Claude Code and GPT-Codex):
+  - PHASE 1 — STOP building new features. We have enough API surface.
+  - PHASE 2 — Pick the 10 highest-value features and properly complete them one at a time:
+    1. Enterprise Permissions (#28, #29, #47) — this is the foundation everything else depends on
+    2. Contact Management (#3, #4, #30) — core CRM, most-used daily
+    3. Canvassing + Walk App (#6, #7) — field operations, used every day
+    4. GOTV (#8) — critical for election day
+    5. Volunteer Management (#9) — team operations
+    6. Donations + Budget (#11, budget) — compliance-critical
+    7. Communications (#email, #sms) — campaign outreach
+    8. Analytics (#15) — decision-making dashboards
+    9. Import/Export (#smart import, #27) — data operations
+    10. Events (#events) — campaign logistics
+  - For EACH feature, proper completion means:
+    - Claude Code: Zod on all inputs, audit log on all writes, permission check verified
+    - GPT-Codex: Loading/empty/error/success states in UI, mobile responsive
+    - Both: Write video walkthrough script (step-by-step user journey)
+    - Both: Update CHANGELOG, USER_GUIDE, marketing page
+    - Both: Test the full journey (UI -> API -> DB -> read back)
+  - PHASE 3 — Only after top 10 are properly complete, consider new features
+- DIVISION OF WORK:
+  - Claude Code owns: Zod validation, audit logging, permission enforcement, API hardening, video walkthrough scripts (text), CHANGELOG, USER_GUIDE backend sections
+  - GPT-Codex owns: UI states (loading/empty/error/success), mobile responsive, UI-side of video walkthroughs, marketing page
+  - Both: Do not touch each other's files without posting to this thread first
+- ASK: George — does this plan make sense? Should we start with permissions or contacts?
+- Status: Open (waiting for George's decision)
+
 ### 2026-04-06 16:00  |  From: Claude Code  |  To: ALL DEVS — PROCESS CORRECTION
 - Topic: **"API Complete" does NOT mean "Feature Complete" — honest gap assessment**
 - Context: George spot-checked my work and asked whether the full user journey and completion standard gates are met. Honest answer: NO. Here is what "API Complete" actually means for overnight work:
