@@ -382,7 +382,9 @@ model User {
   socialMentionsOwned   SocialMention[]       @relation("SocialMentionAssignee")
   constituentCasesOwned ConstituentCaseFile[] @relation("ConstituentCaseAssignee")
   constituentCaseNotes  ConstituentCaseNote[]
-  volunteerLocations    VolunteerLocation[]
+  volunteerLocations      VolunteerLocation[]
+  voiceBroadcastsCreated  VoiceBroadcast[]     @relation("VoiceBroadcastCreator")
+  phoneBankSessions       PhoneBankSession[]   @relation("PhoneBankVolunteer")
 
   @@map("users")
 }
@@ -491,6 +493,10 @@ model Campaign {
   MerchProduct              MerchProduct[]
   campaignRoles             CampaignRole[]
   permissionAuditLogs       PermissionAuditLog[]
+  voiceBroadcasts           VoiceBroadcast[]
+  voiceOptOuts              VoiceOptOut[]
+  callCenterIntegrations    CallCenterIntegration[]
+  phoneBankSessions         PhoneBankSession[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -764,9 +770,10 @@ model Contact {
   gotvRecords         GotvRecord[]
   customFieldValues   CustomFieldValue[]
   turfStops           TurfStop[]
-  superSupporterTasks SuperSupporterTask[]
-  constituents        Constituent[]
-  eventRsvps          EventRsvp[]
+  superSupporterTasks  SuperSupporterTask[]
+  constituents         Constituent[]
+  eventRsvps           EventRsvp[]
+  voiceBroadcastCalls  VoiceBroadcastCall[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -2843,4 +2850,151 @@ model SecurityRule {
   createdAt   DateTime @default(now())
 
   @@map("security_rules")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE COMMUNICATIONS (Robocalls, Voice Drops, IVR Polls)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model VoiceBroadcast {
+  id              String    @id @default(cuid())
+  campaignId      String
+  createdById     String
+  name            String
+  type            String    // robocall | voice_drop | ivr_poll
+  status          String    @default("draft") // draft | scheduled | in_progress | paused | completed | cancelled
+  audioUrl        String?   // pre-recorded audio file URL
+  twimlScript     String?   // TwiML for IVR
+  ivrQuestions    Json?     // IVR question config for polls
+  targetAudience  Json?     // filter criteria for contacts
+  totalContacts   Int       @default(0)
+  completedCalls  Int       @default(0)
+  answeredCalls   Int       @default(0)
+  failedCalls     Int       @default(0)
+  optOutCount     Int       @default(0)
+  scheduledFor    DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  // CRTC compliance
+  crtcCompliant   Boolean   @default(false)
+  callerId        String?   // must be valid Canadian number
+  callerIdName    String?
+  doNotCallChecked Boolean  @default(false)
+  consentVerified Boolean   @default(false)
+  callWindowStart String?   // e.g. "09:00" (CRTC: 9am-9:30pm local)
+  callWindowEnd   String?   // e.g. "21:30"
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  campaign  Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy User                 @relation("VoiceBroadcastCreator", fields: [createdById], references: [id])
+  calls     VoiceBroadcastCall[]
+
+  @@index([campaignId, status])
+  @@index([status, scheduledFor])
+  @@map("voice_broadcasts")
+}
+
+model VoiceBroadcastCall {
+  id            String    @id @default(cuid())
+  broadcastId   String
+  contactId     String
+  phone         String
+  status        String    @default("queued") // queued | ringing | answered | completed | failed | busy | no_answer | voicemail | opted_out
+  duration      Int?      // seconds
+  twilioSid     String?   // Twilio call SID
+  ivrResponses  Json?     // keypress responses for IVR polls
+  supportLevel  String?   // extracted from IVR response
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  broadcast VoiceBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  contact   Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastId, status])
+  @@index([contactId])
+  @@map("voice_broadcast_calls")
+}
+
+model VoiceOptOut {
+  id         String   @id @default(cuid())
+  campaignId String
+  phone      String
+  source     String   @default("ivr_keypress") // ivr_keypress | manual | dncl
+  optedOutAt DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, phone])
+  @@map("voice_opt_outs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALL CENTER INTEGRATION (CallHub, universal webhook)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CallCenterIntegration {
+  id           String   @id @default(cuid())
+  campaignId   String
+  provider     String   // callhub | generic
+  name         String
+  apiKey       String?
+  apiUrl       String?
+  webhookSecret String  @default(cuid())
+  isActive     Boolean  @default(true)
+  lastSyncAt   DateTime?
+  syncStats    Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaign Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events   CallCenterWebhookEvent[]
+
+  @@unique([campaignId, provider])
+  @@map("call_center_integrations")
+}
+
+model CallCenterWebhookEvent {
+  id            String   @id @default(cuid())
+  integrationId String
+  eventType     String   // call.completed | call.failed | sms.delivered
+  contactId     String?  // matched Poll City contact
+  externalId    String?  // external system call/event ID
+  phone         String?
+  payload       Json
+  processed     Boolean  @default(false)
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  integration CallCenterIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, processed])
+  @@index([phone])
+  @@map("call_center_webhook_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHONE BANKING (Twilio Browser SDK)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PhoneBankSession {
+  id           String    @id @default(cuid())
+  campaignId   String
+  volunteerId  String
+  status       String    @default("active") // active | paused | completed
+  callsMade    Int       @default(0)
+  answeredCalls Int      @default(0)
+  totalDuration Int      @default(0) // seconds
+  scriptId     String?   // CanvassingScript reference
+  contactFilter Json?    // which contacts to call
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  volunteer User     @relation("PhoneBankVolunteer", fields: [volunteerId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([volunteerId])
+  @@map("phone_bank_sessions")
 }
