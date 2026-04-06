@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 import { enforceLimit } from "@/lib/rate-limit-redis";
@@ -47,6 +47,8 @@ async function sendSms(to: string, body: string): Promise<boolean> {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "sms:write");
+  if (permError) return permError;
   const limited = await enforceLimit(req, "export", session!.user.id);
   if (limited) return limited;
 

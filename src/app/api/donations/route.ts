@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { parsePagination } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "donations:read");
+  if (permError) return permError;
 
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
@@ -56,6 +58,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "donations:write");
+  if (permError) return permError;
 
   const donationId = req.nextUrl.searchParams.get("id");
   if (!donationId) return NextResponse.json({ error: "id is required" }, { status: 400 });
