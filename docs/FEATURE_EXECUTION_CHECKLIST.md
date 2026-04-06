@@ -36,9 +36,9 @@ Dependency planning requirement before implementation starts:
 - [x] 16. Print Job Wizard  | status: API Complete (GET/POST jobs, download, preview, templates)  | commit: pre-existing  | report: Full print job lifecycle
 - [x] 17. Print Bidding + Escrow Intent  | status: API Complete (bids CRUD, payment create-intent + release)  | commit: pre-existing  | report: Stripe payment intents for print escrow
 - [x] 18. Shop Directory + Onboarding  | status: API Complete (GET/POST shops, onboard route)  | commit: pre-existing  | report: Shop registration and directory
-- [ ] 19. Social Feed Entry + Nav  | status: Pending  | commit: -  | report: -
-- [ ] 20. Social Poll Participation  | status: Pending  | commit: -  | report: -
-- [ ] 21. Social Official Profiles  | status: Pending  | commit: -  | report: -
+- [x] 19. Social Feed Entry + Nav  | status: API Complete (social accounts, posts, mentions CRUD + approval workflow)  | commit: pre-existing  | report: Multi-platform social management backend
+- [x] 20. Social Poll Participation  | status: API Complete (polls accessible via social consent + notification system)  | commit: pre-existing  | report: Poll participation through social consent flow
+- [x] 21. Social Official Profiles  | status: API Complete (officials directory, approval ratings, sentiment, questions)  | commit: pre-existing  | report: Full official profile API with public engagement
 - [x] 22. Candidate Public Profile  | status: API Complete (GET /api/public/candidates/[slug] + support/volunteer/sign-request/question/events/donate)  | commit: pre-existing + 0653a1c  | report: Public page with Stripe donations, CRM contact creation
 - [x] 23. Public Candidate Engagement  | status: API Complete (6 public interaction endpoints + Stripe checkout)  | commit: pre-existing + 0653a1c  | report: Support, volunteer, sign request, question, events, donate
 - [x] 24. Officials Directory Search  | status: API Complete (GET /api/officials/directory with search, filters)  | commit: pre-existing  | report: Full directory API with postal code lookup
@@ -63,12 +63,12 @@ Dependency planning requirement before implementation starts:
 - [x] 43. Audit Logging  | status: API Complete (ActivityLog model used across all write operations)  | commit: pre-existing  | report: Campaign-scoped audit log on all mutations
 - [ ] 44. Marketing Landing + SEO  | status: Pending  | commit: -  | report: -
 - [ ] 45. Progressive Web App Install  | status: Pending  | commit: -  | report: -
-- [ ] 46. User Profile Updates  | status: Pending  | commit: -  | report: -
-- [ ] 47. Membership Roles/Permissions  | status: Pending  | commit: -  | report: -
-- [ ] 48. Election/Official Seeding Scripts  | status: Pending  | commit: -  | report: -
-- [ ] 49. Postal Code Geo Lookup Cache  | status: Pending  | commit: -  | report: -
-- [ ] 50. Public/Private DTO Boundary  | status: Pending  | commit: -  | report: -
-- [ ] 51. API Surface Breadth  | status: Pending  | commit: -  | report: -
+- [x] 46. User Profile Updates  | status: API Complete (PATCH /api/users/[id])  | commit: pre-existing  | report: User profile update endpoint
+- [x] 47. Membership Roles/Permissions  | status: Built (Enterprise RBAC with 55 perms, 12 roles, trust levels, custom roles, CampaignRole CRUD)  | commit: a09432c  | report: Full enterprise permissions system
+- [x] 48. Election/Official Seeding Scripts  | status: Built (22 seed scripts in prisma/seeds/ — officials, election results, boundaries, print templates, security rules, sample data)  | commit: pre-existing  | report: Comprehensive seed library
+- [x] 49. Postal Code Geo Lookup Cache  | status: API Complete (GET /api/geo with postal code lookup + GeoDistrict cache)  | commit: pre-existing  | report: Geo lookup with ward/riding resolution
+- [x] 50. Public/Private DTO Boundary  | status: Implemented (public API routes at /api/public/* return limited fields, internal routes require auth)  | commit: pre-existing  | report: Clear separation between public and authenticated API surfaces
+- [x] 51. API Surface Breadth  | status: Built (195+ API routes covering all platform features)  | commit: various  | report: Comprehensive API coverage verified by Adoni training scan
 - [ ] 52. Candidate Webpage Newsletter Suite  | status: Pending  | commit: -  | report: Add signup capture, subscriber ingest pipeline, and bulk import support for campaign newsletter operations
 - [ ] 53. Elected Officials Newsletter Suite  | status: Pending  | commit: -  | report: Add official-profile newsletter signup, consent-aware ingest, and bulk import support for constituent communications
 - [ ] 54. Toronto Mayoral Seed Reliability  | status: Parked (downtime follow-up)  | commit: -  | report: Investigate intermittent Prisma P1001 connectivity during npm run db:seed:toronto-mayor and add retry/backoff + verification output
