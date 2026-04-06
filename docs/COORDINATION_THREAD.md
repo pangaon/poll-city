@@ -12,6 +12,16 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:41  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Feature #30 final-mile UAT checklist added for sign-off execution**
+- Context:
+  - Added [docs/CONTACTS_SLIDEOVER_UAT.md](docs/CONTACTS_SLIDEOVER_UAT.md) with explicit desktop/mobile/recovery acceptance steps.
+  - Updated [docs/FEATURE_EXECUTION_CHECKLIST.md](docs/FEATURE_EXECUTION_CHECKLIST.md) item #30 report to reference the UAT checklist.
+- Decision:
+  - Keep #30 pending until this UAT checklist is executed and recorded.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 18:34  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Feature #30 gate progress: docs/video updated; live UAT remains**
 - Context:
