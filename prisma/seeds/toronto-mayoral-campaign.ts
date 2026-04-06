@@ -14,6 +14,9 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const MAX_ATTEMPTS = Number(process.env.SEED_MAX_ATTEMPTS ?? 4);
+const BASE_BACKOFF_MS = Number(process.env.SEED_BACKOFF_MS ?? 1500);
+
 const FIRST = ["Ava", "Noah", "Liam", "Emma", "Mia", "Lucas", "Sofia", "Ethan", "Olivia", "Mason", "Zoe", "Aria", "Daniel", "Layla", "Isaac", "Leah", "Eli", "Hannah", "Nora", "Caleb"];
 const LAST = ["Singh", "Chen", "Patel", "Smith", "Brown", "Khan", "Martin", "Taylor", "Wilson", "Morrison", "Lopez", "Ali", "Johnson", "Clark", "Wang", "King", "Bouchard", "Roy", "Nguyen", "Garcia"];
 const STREETS = ["Bloor St", "Danforth Ave", "Yonge St", "Queen St", "King St", "Dundas St", "Eglinton Ave", "Bathurst St", "College St", "Jarvis St", "Spadina Ave", "Front St"];
@@ -44,7 +47,63 @@ async function ensureUser(email: string, name: string, role: Role, passwordHash:
   });
 }
 
+function isRetryableDbError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message ?? "";
+  return (
+    message.includes("P1001") ||
+    message.includes("Can't reach database server") ||
+    message.includes("ECONNRESET") ||
+    message.includes("ETIMEDOUT") ||
+    message.includes("Connection terminated")
+  );
+}
+
+async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runWithRetry(task: () => Promise<void>) {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const startedAt = Date.now();
+    try {
+      console.log(`Toronto mayor seed attempt ${attempt}/${MAX_ATTEMPTS}`);
+      await prisma.$connect();
+      await task();
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`Toronto mayor seed attempt ${attempt} succeeded in ${elapsedMs}ms`);
+      return;
+    } catch (error) {
+      lastError = error;
+      const retryable = isRetryableDbError(error);
+      const canRetry = retryable && attempt < MAX_ATTEMPTS;
+
+      if (!canRetry) {
+        throw error;
+      }
+
+      const jitter = Math.floor(Math.random() * 250);
+      const delay = BASE_BACKOFF_MS * 2 ** (attempt - 1) + jitter;
+      console.warn(
+        `Seed attempt ${attempt} failed with transient DB error; retrying in ${delay}ms...`
+      );
+      await wait(delay);
+    } finally {
+      try {
+        await prisma.$disconnect();
+      } catch {
+        // Ignore disconnect failures during retry loop.
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function main() {
+  const runStartedAt = Date.now();
   console.log("Seeding Toronto mayoral campaign dataset...");
 
   const passwordHash = await bcrypt.hash("password123", 12);
@@ -364,11 +423,12 @@ async function main() {
     tasks: tasksCount,
     interactions: interactionsCount,
     donations: donationsCount,
+    durationMs: Date.now() - runStartedAt,
   });
   console.log("Team test users:", ["admin@pollcity.dev", "manager@pollcity.dev", "lead@pollcity.dev", "volunteer@pollcity.dev"]);
 }
 
-main()
+runWithRetry(main)
   .catch((error) => {
     console.error(error);
     process.exit(1);
