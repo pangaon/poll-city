@@ -166,6 +166,11 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     () => `/tv/${tvSlug}?token=${tvToken}&rotation=${tvRotationSec}`,
     [tvRotationSec, tvSlug, tvToken],
   );
+  const maskedTvToken = useMemo(() => {
+    if (!tvToken) return "";
+    if (tvToken.length <= 4) return "*".repeat(tvToken.length);
+    return `${tvToken.slice(0, 2)}${"*".repeat(Math.max(4, tvToken.length - 4))}${tvToken.slice(-2)}`;
+  }, [tvToken]);
 
   async function copyTvLink() {
     const absolute = typeof window !== "undefined" ? `${window.location.origin}${tvLink}` : tvLink;
@@ -197,6 +202,15 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
     const id = window.setInterval(() => setTick((v) => v + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!showTvPanel) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowTvPanel(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showTvPanel]);
 
   const supportRate = data.totalContacts > 0
     ? Math.round((data.supporters / data.totalContacts) * 100)
@@ -821,8 +835,11 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       </Card>
 
       {showTvPanel && (
-        <div className="fixed inset-0 z-50 bg-black/30">
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 p-5 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setShowTvPanel(false)}>
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 p-5 overflow-y-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">TV Mode</h2>
               <button onClick={() => setShowTvPanel(false)} className="rounded-md p-1 hover:bg-gray-100 text-gray-500">
@@ -895,7 +912,8 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
 
             <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3">
               <p className="text-sm font-semibold text-red-900">Security</p>
-              <p className="mt-1 text-xs text-red-700">Token: {tvToken}</p>
+              <p className="mt-1 text-xs text-red-700">Token: {maskedTvToken}</p>
+              <p className="mt-1 text-[11px] text-red-600">Token value is masked in UI. Use copy link for sharing.</p>
               <button
                 onClick={() => setTvToken(Math.random().toString(36).slice(2, 10).toUpperCase())}
                 className="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700"

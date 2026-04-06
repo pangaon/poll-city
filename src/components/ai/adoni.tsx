@@ -401,7 +401,7 @@ export default function AdoniButton() {
       {showChat && (
         <>
           {mode === "panel" && (
-            <div className="fixed bottom-5 right-5 z-50 w-[400px] max-w-[calc(100vw-1rem)] max-h-[85vh] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
+            <div className="fixed bottom-5 right-5 z-50 flex h-[min(85vh,760px)] w-[400px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
               <header className="flex items-center justify-between bg-gradient-to-r from-blue-800 to-sky-600 px-4 py-3 text-white">
                 <div>
                   <p className="text-sm font-semibold">Adoni</p>
@@ -492,7 +492,7 @@ export default function AdoniButton() {
           )}
 
           {mode === "fullscreen" && !isMobile && (
-            <div className="fixed inset-0 z-[60] bg-slate-950/40 animate-[adoni-fade-in_260ms_ease-out]">
+            <div className="fixed inset-0 z-[2100] bg-slate-950/40 animate-[adoni-fade-in_260ms_ease-out]">
               <div className="absolute inset-4 rounded-3xl bg-white shadow-2xl overflow-hidden grid grid-cols-[480px_1fr]">
                 <section className="border-r border-slate-200 flex flex-col min-h-0">
                   <header className="flex items-center justify-between bg-gradient-to-r from-blue-800 to-sky-600 px-5 py-4 text-white">
