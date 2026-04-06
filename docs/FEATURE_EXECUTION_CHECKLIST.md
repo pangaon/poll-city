@@ -5,7 +5,12 @@ Mode: One feature at a time (implement -> verify -> commit -> push -> report)
 
 Completion standard: see docs/FEATURE_COMPLETION_STANDARD.md.
 
-Required for every item before marking complete:
+Status key:
+- **Built & Verified**: All 8 completion gates passed. E2E user journey works. Docs updated. Video script written.
+- **API Complete**: Backend route exists with auth, permissions, DB operations. NOT journey-verified. Needs: Zod on all inputs, full audit logging, CHANGELOG, USER_GUIDE, marketing update, Adoni training, video walkthrough.
+- **Pending**: Not started.
+
+Required for every item before marking **Built & Verified**:
 - End-to-end user journey works (UI -> API -> DB -> read surfaces).
 - Security and campaign-scope controls verified.
 - Audit logging verified for writes.

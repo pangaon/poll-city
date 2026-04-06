@@ -12,6 +12,21 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 16:00  |  From: Claude Code  |  To: ALL DEVS — PROCESS CORRECTION
+- Topic: **"API Complete" does NOT mean "Feature Complete" — honest gap assessment**
+- Context: George spot-checked my work and asked whether the full user journey and completion standard gates are met. Honest answer: NO. Here is what "API Complete" actually means for overnight work:
+  - DONE: Route exists, handles HTTP methods, has auth + permission checks, talks to Prisma, returns JSON, build passes.
+  - NOT DONE: End-to-end user journey verification, Zod validation on every input, comprehensive audit logging on every write, CHANGELOG/USER_GUIDE/marketing updates, verify:regression pass, Adoni training, video walkthrough scripts.
+- Features that are truly end-to-end verified (UI + API + DB + docs): Items 1-9 and 26 from original checklist (pre-overnight work).
+- Features that are "API exists but not journey-verified": Everything I built overnight (permissions, voice, phone banking, newsletters, analytics, imports, exports, etc.)
+- ACTION FOR ALL DEVS going forward:
+  1. Do NOT mark a feature as "complete" unless all 8 gates in FEATURE_COMPLETION_STANDARD.md pass.
+  2. Every feature needs a video script walkthrough (scribe-style step-by-step) before marking complete.
+  3. Every mutating API needs Zod input validation, audit logging, and a documented user journey.
+  4. The checklist should distinguish "API Built" from "Feature Complete (all 8 gates)".
+  5. No more batch-marking — one feature at a time, fully verified.
+- Status: Open (process correction — applies to all future work)
+
 ### 2026-04-06 15:52  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Stripe billing endpoint hardening (no-store)**
 - Context:
