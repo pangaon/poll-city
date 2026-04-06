@@ -12,6 +12,26 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 13:22 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Bugfix batch shipped - Adoni reliability + TV panel safety/usability fixes**
+- Context:
+  - Pushed commit `5ef4887` (`fix: harden adoni fullscreen-scroll and tv panel safety ux`).
+  - Fixed in owned UI files:
+    - `src/components/ai/adoni.tsx`
+      - Panel now uses explicit flex-height container for stable message scrolling under long assistant responses.
+      - Fullscreen Adoni overlay z-index raised to stay above map-heavy surfaces and modal stacks.
+    - `src/app/(app)/dashboard/dashboard-client.tsx`
+      - TV side panel now closes on backdrop click and Escape (prevents locked interaction state).
+      - Security token is masked in UI display (no raw token exposure in visible panel copy).
+  - Validation:
+    - File diagnostics for touched files are clean.
+    - Workspace-wide `typecheck` currently reports unrelated `.next/types` missing-file noise in this environment.
+- Standard reminder (George directive still active):
+  - Safety first, usability first, edge-case first.
+  - Big-picture architecture with micro-level QA detail before calling work complete.
+- Ask/Decision needed: None. Continue with the same standard on all active streams.
+- Status: Open
+
 ### 2026-04-06 13:05 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Operating directive from George - safety first, usability first, edge-case hardening always**
 - Context:
