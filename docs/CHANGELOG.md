@@ -1,5 +1,67 @@
 # Poll City Changelog
 
+## [5.0.0] - April 6, 2026 — ENTERPRISE PERMISSIONS + VOICE + ANALYTICS + NEWSLETTER
+
+### Enterprise Permissions System
+- 55 granular permissions across 8 groups (Contacts, Team, Finance, Communications, Operations, Analytics, Administration, Adoni AI)
+- 12 default role templates from Super Admin to Viewer
+- Custom role creation with per-campaign scoping
+- Trust levels 1-5 gating sensitive data access
+- Adoni permission firewall — AI assistant respects role boundaries
+- Permission audit log tracking every role/trust change
+- 79 API handlers now permission-gated
+
+### Voice Communications (CRTC Compliant)
+- Robocalls, voice drops, and IVR polls
+- CRTC compliance engine (9am-9:30pm calling hours, caller ID validation, opt-out via keypress)
+- Twilio status webhook with real-time call tracking
+- IVR poll responses update contact support level instantly
+
+### Phone Banking
+- Browser-based calling via Twilio Voice SDK
+- Volunteer's personal number never exposed — campaign number shown
+- Session management with GOTV-priority contact queue
+
+### Call Center Integration
+- Universal webhook receiver for any call center (CallHub, etc.)
+- Contact matching by Poll City ID or phone number
+- Auto-creates interaction records from call results
+
+### Campaign Analytics Suite
+- Campaign overview, canvassing trends, supporter breakdown, donation analytics, GOTV tracker
+- All permission-gated
+
+### Background Import System
+- Upload returns in under 2 seconds with job ID
+- 500-row chunked transactions (no server blocking)
+- Progress polling API for real-time status
+- 24-hour rollback window
+
+### Newsletter System
+- Public subscribe endpoint with CASL consent tracking
+- Subscriber management and bulk import
+- Newsletter campaign CRUD with Resend integration
+
+### Feature Flags + Tier Gating
+- 33 feature flags across Free, Pro ($49/mo), Enterprise ($149/mo) tiers
+- Campaign-level overrides
+
+### Additional
+- Public Stripe donations for candidate pages
+- Case number auto-generation (WD-2026-0001) for constituent case files
+- Targeted filtered exports (6 types with street/ward/poll filters)
+- Dynamic sitemap with candidate and official pages
+- Geocoding cron (hourly, Nominatim)
+- Event reminders cron (hourly, Resend)
+- Standardized API error system (18 typed error codes)
+- Zod validators for voice, newsletter, permissions routes
+
+### Contact Management (Full-Gate Verified)
+- Zod validation on all create/update/bulk operations
+- Audit logging on every write (create, update, delete, bulk-update, bulk-tag)
+- Permission checks: contacts:read, contacts:write, contacts:delete
+- Video walkthrough script written (docs/video-scripts/contacts-management.md)
+
 ## [4.0.28] - April 5, 2026 — VIDEO DOCUMENTATION SYSTEM + VERIFICATION WALL
 
 ### Public Help Center (`/help`, `/help/[slug]`)
