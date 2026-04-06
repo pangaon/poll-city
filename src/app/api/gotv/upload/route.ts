@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { parseAnyFile, parseExcelFile, detectFileType } from "@/lib/import/file-parser";
 import { matchLists } from "@/lib/import/fuzzy-matcher";
@@ -60,6 +60,8 @@ function hasExpectedColumns(rawHeaders: string[]): boolean {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "gotv:write");
+  if (permError) return permError;
 
   // File size guard: reject requests over 5MB before parsing
   const contentLength = Number(req.headers.get("content-length") ?? "0");

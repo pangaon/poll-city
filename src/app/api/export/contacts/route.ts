@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
 
@@ -7,6 +7,8 @@ export async function GET(req: NextRequest) {
   try {
     const { session, error } = await apiAuth(req);
     if (error) return error;
+    const permError = requirePermission(session!.user.role as string, "contacts:export");
+    if (permError) return permError;
 
     const { searchParams } = new URL(req.url);
     const campaignId = searchParams.get("campaignId");
