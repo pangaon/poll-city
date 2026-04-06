@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
+import { targetedExportSchema } from "@/lib/validators/permissions";
 
 type ExportType = "contacts" | "walklist" | "signs" | "gotv" | "volunteers" | "donations";
 
@@ -17,12 +18,14 @@ export async function POST(req: NextRequest) {
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const body = await req.json();
+  const parsed = targetedExportSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
   const {
-    type = "contacts",
-    filters = {},
-    fields = [],
-    format = "csv",
-  } = body as {
+    type,
+    filters,
+    fields,
+    format,
+  } = parsed.data as {
     type: ExportType;
     filters: {
       street?: string;

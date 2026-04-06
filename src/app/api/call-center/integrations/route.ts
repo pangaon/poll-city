@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
+import { callCenterIntegrationSchema } from "@/lib/validators/campaigns";
 
 function maskSecret(secret: string): string {
   if (!secret) return "";
@@ -49,8 +50,10 @@ export async function POST(req: NextRequest) {
   const campaignId = (session.user as any).activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
-  const { provider, name, apiKey, apiUrl } = await req.json();
-  if (!provider || !name) return NextResponse.json({ error: "provider and name required" }, { status: 400 });
+  const body = await req.json();
+  const parsed = callCenterIntegrationSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
+  const { provider, name, apiKey, apiUrl } = parsed.data;
 
   const integration = await prisma.callCenterIntegration.create({
     data: { campaignId, provider, name, apiKey: apiKey ?? null, apiUrl: apiUrl ?? null },
