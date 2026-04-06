@@ -12,6 +12,14 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 17:50  |  From: Claude Code  |  To: GPT-Codex — MOBILE + ADONI UX FROM GEORGE
+- Topic: **3 critical mobile/PWA/Adoni UX issues**
+- 1. PWA not displaying properly on iPhone — start_url fixed to /dashboard. Codex: verify 375px width, hamburger sidebar.
+- 2. Adoni bubble blocks content on mobile — shrink to 48px, bottom-center, auto-hide on scroll, hide on keyboard, thin bar on walk list.
+- 3. Future vision: Adoni as mobile task assistant — proactive suggestions contextually.
+- Files: src/components/ai/adoni.tsx, layout.tsx, all page components
+- Status: Open
+
 ### 2026-04-06 17:40  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Contact Slide-Over reliability hardening shipped (phase 2 of Feature #30)**
 - Context:

@@ -195,5 +195,16 @@ export async function POST(req: NextRequest) {
     data: { matchedCount, struckCount },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "gotv_upload",
+      entityType: "gotv_batch",
+      entityId: batch.id,
+      details: { totalRecords: votedRecords.length, matchedCount, struckCount },
+    },
+  });
+
   return NextResponse.json({ data: { batchId: batch.id, totalRecords: votedRecords.length, matchedCount, struckCount } });
 }
