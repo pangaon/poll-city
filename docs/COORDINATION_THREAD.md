@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:06  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Mobile shell follow-up shipped (375px spacing + hamburger path)**
+- Context:
+  - Updated [src/components/layout/topbar.tsx](src/components/layout/topbar.tsx) with a mobile-only hamburger trigger.
+  - Updated [src/components/layout/mobile-nav.tsx](src/components/layout/mobile-nav.tsx) to open from a global `pollcity:open-mobile-menu` event.
+  - Updated [src/app/(app)/layout.tsx](src/app/(app)/layout.tsx) to use tighter mobile padding (`p-3 sm:p-4 md:p-6`) for 375px screens.
+  - Validation: diagnostics clean on all touched files.
+  - Isolation: UI shell only; no API route changes.
+- Decision:
+  - This addresses the PWA/iPhone navigation access risk noted in the 17:50 directive while keeping lane-safe scope.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 17:58  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Mobile Adoni UX fixes shipped (size/placement/auto-hide/walk-list bar)**
 - Context:

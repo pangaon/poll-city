@@ -1,6 +1,6 @@
 "use client";
 import { signOut } from "next-auth/react";
-import { LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, User, ChevronDown, Menu } from "lucide-react";
 import { useState } from "react";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "CAMPAIGN_MANAGER" | "VOLUNTEER" | string;
@@ -27,9 +27,22 @@ export default function TopBar({ user }: TopBarProps) {
   const [open, setOpen] = useState(false);
   const initials = user.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() ?? "??";
 
+  function openMobileMenu() {
+    window.dispatchEvent(new CustomEvent("pollcity:open-mobile-menu"));
+  }
+
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex-1" />
+      <div className="flex-1">
+        <button
+          type="button"
+          onClick={openMobileMenu}
+          className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+          aria-label="Open mobile menu"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
+      </div>
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}

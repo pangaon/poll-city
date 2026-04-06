@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Home, Map, Menu, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -61,6 +61,14 @@ const MORE_GROUPS = [
 export default function MobileNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    const open = () => setMoreOpen(true);
+    window.addEventListener("pollcity:open-mobile-menu", open as EventListener);
+    return () => {
+      window.removeEventListener("pollcity:open-mobile-menu", open as EventListener);
+    };
+  }, []);
 
   return (
     <>
