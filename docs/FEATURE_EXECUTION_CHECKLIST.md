@@ -27,11 +27,11 @@ Dependency planning requirement before implementation starts:
 - [x] 7. Walk App + GPS  | status: Built & Verified (household visited tracking + campaign-scoped household visit API + offline queue support)  | commit: pending  | report: Completed with address-level completion tracking for field accountability
 - [x] 8. GOTV Priority + Upload  | status: Built & Verified (tabbed GOTV engine + tiers API + election-day command metrics)  | commit: pending  | report: Completed with campaign-scoped scoring, strike-off progress, and live command-center pacing
 - [x] 9. Volunteer Management  | status: Built & Verified (shift-hour crediting + expense approval transitions + volunteer ops stats dashboard)  | commit: pending  | report: Completed with manager-grade oversight for volunteer labor and reimbursements
-- [ ] 10. Sign Tracking  | status: Pending  | commit: -  | report: -
-- [ ] 11. Donation Logging  | status: Pending  | commit: -  | report: -
-- [ ] 12. Task Management  | status: Pending  | commit: -  | report: -
+- [x] 10. Sign Tracking  | status: API Complete (GET/PATCH/POST quick-capture + audit log + notifications)  | commit: pre-existing  | report: Backend complete — UI pending (GPT-Codex)
+- [x] 11. Donation Logging  | status: API Complete (GET/PATCH donations + permission-gated + Stripe public checkout)  | commit: feb5be1  | report: Backend complete with permissions. Public Stripe donation at /api/public/candidates/[slug]/donate
+- [x] 12. Task Management  | status: API Complete (GET/POST tasks + PATCH/DELETE [id])  | commit: pre-existing  | report: Backend complete — UI pending (GPT-Codex)
 - [ ] 13. Poll Builder + Results  | status: Pending  | commit: -  | report: -
-- [ ] 14. Push Subscription + Send  | status: Pending  | commit: -  | report: -
+- [x] 14. Push Subscription + Send  | status: API Complete (subscribe, send, schedule, history, stats, staff-alert, test)  | commit: pre-existing  | report: 7 notification endpoints, full lifecycle
 - [ ] 15. Campaign Analytics  | status: Pending  | commit: -  | report: -
 - [ ] 16. Print Job Wizard  | status: Pending  | commit: -  | report: -
 - [ ] 17. Print Bidding + Escrow Intent  | status: Pending  | commit: -  | report: -
@@ -44,8 +44,8 @@ Dependency planning requirement before implementation starts:
 - [ ] 24. Officials Directory Search  | status: Pending  | commit: -  | report: -
 - [ ] 25. Officials Claim Link Request  | status: Pending  | commit: -  | report: -
 - [x] 26. In-App Help Center  | status: Built & Verified (public /help center + /help/[slug] video-first articles + ops /ops/videos and /ops/verify verification wall)  | commit: pending  | report: Completed with retroactive queue, mark-recorded flow, video hard gate, and Adoni training trigger
-- [ ] 27. Specialized CSV Exports  | status: Pending  | commit: -  | report: -
-- [ ] 28. Team Management  | status: Pending  | commit: -  | report: -
+- [x] 27. Specialized CSV Exports  | status: Built (POST /api/export/targeted — 6 types, filters by street/ward/poll/support, CSV+JSON)  | commit: 0653a1c  | report: Completed with targeted export system supporting contacts, walklist, signs, gotv, volunteers, donations
+- [x] 28. Team Management  | status: API Complete (GET team, PATCH/DELETE members, permission-gated, CampaignRole CRUD, audit log)  | commit: a09432c  | report: Enterprise permissions system with 55 granular permissions, 12 roles, trust levels, custom role creation
 - [ ] 29. Feature Flags / Tier Gating  | status: Pending  | commit: -  | report: -
 - [ ] 30. Contact Slide-Over Panel  | status: Pending  | commit: -  | report: -
 - [ ] 31. Error System  | status: Pending  | commit: -  | report: -
