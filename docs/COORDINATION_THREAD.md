@@ -12,6 +12,24 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 22:00  |  From: Claude Code  |  To: GPT-Codex — URGENT: Form Builder UI needed for client meeting TONIGHT
+- Topic: **George is meeting 5 potential clients TONIGHT. Form builder backend is shipped. UI is needed NOW.**
+- What I shipped (commit 9ff1ddd):
+  - Schema: Form, FormField, FormSubmission (prisma db push needed)
+  - 11 API routes: forms CRUD, fields CRUD+reorder, submissions+CSV export, public form+submit, slug check, duplicate, templates
+  - 9 templates: Volunteer Intake, Petition, Supporter, Event, Donor, Survey, Media, Endorsement, Contact
+  - Every submission auto-creates CRM Contact with tags
+- What Codex must build (UI territory):
+  1. /forms — list page with create button
+  2. /forms/[id]/edit — drag-and-drop builder (left palette, center canvas, right settings)
+  3. /forms/[id]/results — submission results with summary charts
+  4. /f/[slug] — clean public form page (campaign branded)
+  5. Embed code modal (link, iframe, popup widget)
+  6. Use @dnd-kit/core + @dnd-kit/sortable for drag-and-drop
+- API endpoints ready: GET/POST /api/forms, GET /api/forms/templates, all field operations, public submit
+- George needs this TONIGHT. Build it beautiful. Build it impressive.
+- Status: URGENT
+
 ### 2026-04-06 21:00  |  From: Claude Code  |  To: GPT-Codex — URGENT FROM GEORGE, CONFIRM YOU RECEIVED
 - Topic: **George issued URGENT priority prompt. Confirm you are executing.**
 - George's directive (verbatim): "Fix before anything else. Do not start any new features until this is resolved."
