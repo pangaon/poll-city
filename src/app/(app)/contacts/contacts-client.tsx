@@ -116,6 +116,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showColumnManager, setShowColumnManager] = useState(false);
@@ -354,6 +355,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams({ campaignId, page: String(page), pageSize: String(pageSize) });
       params.set("sort", encodeSorts(sorts));
@@ -365,10 +367,18 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
       if (wards.length > 0) params.set("wards", wards.join(","));
       const res = await fetch(`/api/contacts?${params}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed to load contacts");
+      }
       const data = await res.json();
       setContacts(data.data ?? []);
       setTotal(data.total ?? 0);
-    } catch { toast.error("Failed to load contacts"); }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load contacts";
+      setLoadError(message);
+      toast.error(message);
+    }
     finally { setLoading(false); }
   }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards, sorts]);
 
@@ -377,10 +387,20 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   useEffect(() => { setPage(1); }, [debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasActiveFilters = Boolean(
+    debouncedSearch ||
+    supportLevels.length ||
+    selectedTags.length ||
+    wards.length ||
+    followUp ||
+    volunteerOnly ||
+    signOnly
+  );
 
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [slideOverContactId, setSlideOverContactId] = useState<string | null>(null);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedContacts(checked ? contacts.map(c => c.id) : []);
@@ -395,42 +415,66 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   };
 
   const handleBulkTag = async (tagIds: string[]) => {
+    setBulkSubmitting(true);
     try {
-      await fetch("/api/contacts/bulk-tag", {
+      const res = await fetch("/api/contacts/bulk-tag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contactIds: selectedContacts, tagIds }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed to update tags");
+      }
       toast.success("Tags updated");
       loadContacts();
       setSelectedContacts([]);
-    } catch {
-      toast.error("Failed to update tags");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update tags");
+    } finally {
+      setBulkSubmitting(false);
     }
   };
 
   const handleBulkUpdateSupport = async (supportLevel: SupportLevel) => {
+    setBulkSubmitting(true);
     try {
-      await fetch("/api/contacts/bulk-update", {
+      const res = await fetch("/api/contacts/bulk-update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contactIds: selectedContacts, supportLevel }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed to update support levels");
+      }
       toast.success("Support levels updated");
       loadContacts();
       setSelectedContacts([]);
-    } catch {
-      toast.error("Failed to update support levels");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update support levels");
+    } finally {
+      setBulkSubmitting(false);
     }
   };
 
   const exportCSV = async () => {
-    const url = `/api/import-export?campaignId=${campaignId}&type=contacts`;
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = `contacts-${Date.now()}.csv`; a.click();
-    toast.success("Export downloaded");
+    try {
+      const url = `/api/import-export?campaignId=${campaignId}&type=contacts`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `contacts-${Date.now()}.csv`;
+      a.click();
+      toast.success("Export downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
   };
 
   return (
@@ -666,6 +710,18 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         )}
       </Card>
 
+      {loadError && (
+        <Card className="p-4 border-red-200 bg-red-50">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-red-900">Unable to load contacts</p>
+              <p className="text-xs text-red-700 mt-0.5">{loadError}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={loadContacts}>Retry</Button>
+          </div>
+        </Card>
+      )}
+
       {/* Bulk Actions */}
       {selectedContacts.length > 0 && (
         <Card className="p-4 bg-blue-50 border-blue-200">
@@ -677,7 +733,10 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
               </span>
             </div>
             <div className="flex gap-2">
-              <Select onChange={(e) => e.target.value && handleBulkUpdateSupport(e.target.value as SupportLevel)}>
+              <Select
+                onChange={(e) => e.target.value && handleBulkUpdateSupport(e.target.value as SupportLevel)}
+                disabled={bulkSubmitting}
+              >
                 <option value="">Update support level</option>
                 {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -688,8 +747,9 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                 onChange={handleBulkTag}
                 options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
                 placeholder="Add tags"
+                disabled={bulkSubmitting}
               />
-              <Button variant="outline" size="sm" onClick={() => setSelectedContacts([])}>
+              <Button variant="outline" size="sm" onClick={() => setSelectedContacts([])} disabled={bulkSubmitting}>
                 Clear
               </Button>
             </div>
@@ -699,6 +759,23 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
       {/* Mobile card view (below md) */}
       <div className="md:hidden space-y-2">
+        {loading && (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={`mobile-skeleton-${i}`} className="bg-white rounded-xl border border-slate-200 p-3.5">
+              <div className="h-4 w-40 bg-slate-100 rounded animate-pulse mb-2" />
+              <div className="h-3 w-28 bg-slate-100 rounded animate-pulse mb-2" />
+              <div className="h-3 w-20 bg-slate-100 rounded animate-pulse" />
+            </div>
+          ))
+        )}
+        {!loading && contacts.length === 0 && (
+          <Card className="p-6 text-center">
+            <p className="text-sm font-semibold text-slate-900">No contacts found</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {hasActiveFilters ? "Try clearing filters or search terms." : "Add your first contact to get started."}
+            </p>
+          </Card>
+        )}
         {contacts.map((c) => {
           const supportColor =
             c.supportLevel === "strong_support" ? "border-l-emerald-500" :
@@ -803,7 +880,16 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                   </tr>
                 ))
               ) : contacts.length === 0 ? (
-                <tr><td colSpan={columnOrder.filter((k) => !hiddenColumns.includes(k)).length + 1} className="py-16 text-center text-gray-400 text-sm">No contacts found</td></tr>
+                <tr>
+                  <td colSpan={columnOrder.filter((k) => !hiddenColumns.includes(k)).length + 1} className="py-16 text-center text-gray-400 text-sm">
+                    <div className="space-y-1">
+                      <p className="font-medium text-gray-700">No contacts found</p>
+                      <p className="text-xs text-gray-500">
+                        {hasActiveFilters ? "Try clearing filters or search terms." : "Add your first contact to get started."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
               ) : contacts.map((c) => (
                 <tr
                   key={c.id}
