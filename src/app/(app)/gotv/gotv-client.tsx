@@ -70,6 +70,18 @@ interface GapResponse {
 export default function GotvClient({ campaignId }: Props) {
   const [active, setActive] = useState<Tab>("priority");
   const [gapData, setGapData] = useState<GapResponse | null>(null);
+  const [scope, setScope] = useState<"single" | "regional" | "national">("single");
+  const [density, setDensity] = useState<"auto" | "compact" | "comfortable">("auto");
+  const [viewport, setViewport] = useState({ width: 1366, height: 900 });
+
+  useEffect(() => {
+    function syncViewport() {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    }
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -94,8 +106,37 @@ export default function GotvClient({ campaignId }: Props) {
     };
   }, [campaignId]);
 
+  useEffect(() => {
+    if (density !== "auto") return;
+    if (viewport.width >= 1700 && viewport.height >= 920) {
+      setScope("national");
+      return;
+    }
+    if (viewport.width >= 1280 && viewport.height >= 760) {
+      setScope("regional");
+      return;
+    }
+    setScope("single");
+  }, [density, viewport.height, viewport.width]);
+
+  const resolvedDensity = density === "auto"
+    ? (viewport.height < 760 || viewport.width < 1100 ? "compact" : "comfortable")
+    : density;
+
+  const mapHeight = resolvedDensity === "compact"
+    ? Math.max(250, Math.min(340, Math.floor(viewport.height * 0.34)))
+    : Math.max(320, Math.min(480, Math.floor(viewport.height * 0.42)));
+
+  const shellWidthClass = scope === "national"
+    ? "max-w-[min(98vw,1880px)]"
+    : scope === "regional"
+      ? "max-w-[min(96vw,1600px)]"
+      : "max-w-6xl";
+
+  const shellSpacingClass = resolvedDensity === "compact" ? "py-4 md:py-6 space-y-4" : "py-6 md:py-10 space-y-5";
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 pb-[env(safe-area-inset-bottom)]">
+    <div className={`${shellWidthClass} mx-auto px-4 ${shellSpacingClass} pb-[env(safe-area-inset-bottom)]`}>
       <header
         className="rounded-2xl p-5 md:p-8 text-white mb-6"
         style={{ background: "linear-gradient(135deg,#7C2D12 0%,#DC2626 60%,#F59E0B 100%)" }}
@@ -143,9 +184,48 @@ export default function GotvClient({ campaignId }: Props) {
         )}
       </section>
 
-      <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">War Room Layout</p>
+            <p className="text-sm text-slate-600 mt-1">
+              Adaptive canvas tuned for {scope === "single" ? "single campaign" : scope === "regional" ? "regional race cluster" : "national or province-wide command"} operations.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(["single", "regional", "national"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScope(s)}
+                className={`h-9 px-3 rounded-full text-xs font-semibold border transition-colors ${scope === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
+              >
+                {s === "single" ? "Single" : s === "regional" ? "Regional" : "National"}
+              </button>
+            ))}
+
+            {(["auto", "compact", "comfortable"] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDensity(d)}
+                className={`h-9 px-3 rounded-full text-xs font-semibold border transition-colors ${density === d ? "bg-blue-700 text-white border-blue-700" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
+              >
+                {d === "auto" ? "Density: Auto" : d === "compact" ? "Compact" : "Comfortable"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3 text-xs text-slate-500">
+          Viewport: <span className="font-semibold text-slate-700 tabular-nums">{viewport.width}x{viewport.height}</span>
+          {" "}• Map auto-height: <span className="font-semibold text-slate-700 tabular-nums">{mapHeight}px</span>
+          {" "}• Scroll profile: <span className="font-semibold text-slate-700">{resolvedDensity === "compact" ? "compressed" : "balanced"}</span>
+        </div>
+      </section>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter density map</p>
-        <CampaignMap mode="gotv" height={320} showControls />
+        <CampaignMap mode="gotv" height={mapHeight} showControls />
       </div>
 
       {/* Tabs — horizontal scroll on mobile */}
