@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
@@ -12,7 +14,7 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(searchParams.get("offset") || "0");
 
   if (!campaignId) {
-    return NextResponse.json({ error: "Missing campaignId" }, { status: 400 });
+    return NextResponse.json({ error: "Missing campaignId" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   // Verify user has access to this campaign
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -67,9 +69,9 @@ export async function GET(req: NextRequest) {
         offset,
         hasMore: offset + limit < total,
       },
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error("Failed to fetch notification history:", err);
-    return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch history" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

@@ -12,6 +12,20 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:40  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Notifications read/schedule/staff-alert hardening (no-store)**
+- Context:
+  - Added `Cache-Control: no-store` to additional notifications endpoints:
+    - [src/app/api/notifications/history/route.ts](src/app/api/notifications/history/route.ts)
+    - [src/app/api/notifications/stats/route.ts](src/app/api/notifications/stats/route.ts)
+    - [src/app/api/notifications/schedule/route.ts](src/app/api/notifications/schedule/route.ts)
+    - [src/app/api/notifications/staff-alert/route.ts](src/app/api/notifications/staff-alert/route.ts)
+  - Goal: prevent caching of campaign notification history/stats/scheduling responses and staff alert payload outputs.
+  - Validation: diagnostics clean across all touched files.
+  - Isolation: no edits made to active in-flight import/print/canvass/turf files.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:31  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Push notifications API hardening (no-store cache policy)**
 - Context:

@@ -3,6 +3,8 @@ import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
@@ -11,7 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const campaignId = body.campaignId?.trim();
@@ -19,13 +21,13 @@ export async function POST(req: NextRequest) {
   const message = body.message?.trim() ?? "";
 
   if (!campaignId || !event) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const membership = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
 
   if (body.contactId) {
     const contact = await prisma.contact.findUnique({
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
       select: { campaignId: true },
     });
     if (!contact || contact.campaignId !== campaignId) {
-      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+      return NextResponse.json({ error: "Contact not found" }, { status: 404, headers: NO_STORE_HEADERS });
     }
   }
 
@@ -67,5 +69,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ data: { notified: staffMembers.length } });
+  return NextResponse.json({ data: { notified: staffMembers.length } }, { headers: NO_STORE_HEADERS });
 }

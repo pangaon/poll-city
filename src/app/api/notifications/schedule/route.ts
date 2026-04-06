@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
+
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "notifications:write");
+  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) {
-    return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+    return NextResponse.json({ error: "campaignId is required" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const membership = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
 
   const data = await prisma.notificationLog.findMany({
     where: { campaignId, status: "scheduled" },
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
     take: 100,
   });
 
-  return NextResponse.json({ data });
+  return NextResponse.json({ data }, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(req: NextRequest) {
@@ -40,27 +44,27 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   if (!body.campaignId || !body.title || !body.body || !body.scheduledFor) {
-    return NextResponse.json({ error: "campaignId, title, body and scheduledFor are required" }, { status: 400 });
+    return NextResponse.json({ error: "campaignId, title, body and scheduledFor are required" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const membership = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } },
   });
   if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   const scheduledFor = new Date(body.scheduledFor);
   if (Number.isNaN(scheduledFor.getTime())) {
-    return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   if (body.body.length > 120) {
-    return NextResponse.json({ error: "Message must be 120 characters or less" }, { status: 400 });
+    return NextResponse.json({ error: "Message must be 120 characters or less" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const log = await prisma.notificationLog.create({
@@ -75,7 +79,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ data: log }, { status: 201 });
+  return NextResponse.json({ data: log }, { status: 201, headers: NO_STORE_HEADERS });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -84,17 +88,17 @@ export async function DELETE(req: NextRequest) {
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
-    return NextResponse.json({ error: "id is required" }, { status: 400 });
+    return NextResponse.json({ error: "id is required" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const existing = await prisma.notificationLog.findUnique({ where: { id } });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404, headers: NO_STORE_HEADERS });
 
   const membership = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId: existing.campaignId } },
   });
   if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   const cancelled = await prisma.notificationLog.update({
@@ -102,5 +106,5 @@ export async function DELETE(req: NextRequest) {
     data: { status: "cancelled" },
   });
 
-  return NextResponse.json({ data: cancelled });
+  return NextResponse.json({ data: cancelled }, { headers: NO_STORE_HEADERS });
 }

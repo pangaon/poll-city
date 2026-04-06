@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) {
-    return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
+    return NextResponse.json({ error: "campaignId is required" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const membership = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
 
   const logs = await prisma.notificationLog.findMany({
     where: { campaignId, status: "sent" },
@@ -47,5 +49,5 @@ export async function GET(req: NextRequest) {
       deliveryRate,
       recent: logs,
     },
-  });
+  }, { headers: NO_STORE_HEADERS });
 }
