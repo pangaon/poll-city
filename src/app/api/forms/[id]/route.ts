@@ -1,0 +1,107 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db/prisma";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+
+type Ctx = { params: { id: string } };
+
+export async function GET(req: NextRequest, { params }: Ctx) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:read");
+  if (permError) return permError;
+  const campaignId = (session!.user as any).activeCampaignId as string;
+
+  const form = await prisma.form.findFirst({
+    where: { id: params.id, campaignId },
+    include: {
+      fields: { orderBy: { order: "asc" } },
+      _count: { select: { submissions: true } },
+    },
+  });
+
+  if (!form) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(form);
+}
+
+export async function PUT(req: NextRequest, { params }: Ctx) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:write");
+  if (permError) return permError;
+  const campaignId = (session!.user as any).activeCampaignId as string;
+
+  const existing = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
+  if (!existing) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+
+  try {
+    const body = await req.json();
+    const {
+      name, title, description, logoUrl, primaryColour, backgroundUrl,
+      isActive, isPublic, requireAuth: reqAuth, allowMultiple, submitLimit,
+      opensAt, closesAt, successMessage, successRedirectUrl, notifyOnSubmit,
+      notifyEmails, autoCreateContact, defaultTags, defaultSupportLevel,
+    } = body;
+
+    // If slug is being changed, verify uniqueness
+    let slug = body.slug;
+    if (slug && slug !== existing.slug) {
+      const conflict = await prisma.form.findUnique({ where: { slug } });
+      if (conflict) {
+        return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
+      }
+    }
+
+    const form = await prisma.form.update({
+      where: { id: params.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(slug !== undefined && { slug }),
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(logoUrl !== undefined && { logoUrl }),
+        ...(primaryColour !== undefined && { primaryColour }),
+        ...(backgroundUrl !== undefined && { backgroundUrl }),
+        ...(isActive !== undefined && { isActive }),
+        ...(isPublic !== undefined && { isPublic }),
+        ...(reqAuth !== undefined && { requireAuth: reqAuth }),
+        ...(allowMultiple !== undefined && { allowMultiple }),
+        ...(submitLimit !== undefined && { submitLimit }),
+        ...(opensAt !== undefined && { opensAt: opensAt ? new Date(opensAt) : null }),
+        ...(closesAt !== undefined && { closesAt: closesAt ? new Date(closesAt) : null }),
+        ...(successMessage !== undefined && { successMessage }),
+        ...(successRedirectUrl !== undefined && { successRedirectUrl }),
+        ...(notifyOnSubmit !== undefined && { notifyOnSubmit }),
+        ...(notifyEmails !== undefined && { notifyEmails }),
+        ...(autoCreateContact !== undefined && { autoCreateContact }),
+        ...(defaultTags !== undefined && { defaultTags }),
+        ...(defaultSupportLevel !== undefined && { defaultSupportLevel }),
+      },
+    });
+
+    return NextResponse.json(form);
+  } catch (err: any) {
+    console.error("[PUT /api/forms/[id]]", err);
+    return NextResponse.json({ error: "Failed to update form" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: Ctx) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:write");
+  if (permError) return permError;
+  const campaignId = (session!.user as any).activeCampaignId as string;
+
+  const existing = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
+  if (!existing) {
+    return NextResponse.json({ error: "Form not found" }, { status: 404 });
+  }
+
+  await prisma.form.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}

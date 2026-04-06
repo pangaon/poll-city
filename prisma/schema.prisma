@@ -501,6 +501,7 @@ model Campaign {
   phoneBankSessions         PhoneBankSession[]
   newsletterSubscribers     NewsletterSubscriber[]
   newsletterCampaigns       NewsletterCampaign[]
+  forms                     Form[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -3109,4 +3110,90 @@ model NewsletterCampaign {
   @@index([campaignId, status])
   @@index([officialId, status])
   @@map("newsletter_campaigns")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM FORM BUILDER (Drag & Drop)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Form {
+  id              String   @id @default(cuid())
+  campaignId      String
+  name            String
+  slug            String   @unique
+  title           String
+  description     String?
+  logoUrl         String?
+  primaryColour   String   @default("#1a4782")
+  backgroundUrl   String?
+  isActive        Boolean  @default(true)
+  isPublic        Boolean  @default(true)
+  requireAuth     Boolean  @default(false)
+  allowMultiple   Boolean  @default(false)
+  submitLimit     Int?
+  opensAt         DateTime?
+  closesAt        DateTime?
+  successMessage  String   @default("Thank you! Your response has been received.")
+  successRedirectUrl String?
+  notifyOnSubmit  Boolean  @default(true)
+  notifyEmails    String[]
+  autoCreateContact Boolean @default(true)
+  defaultTags     String[]
+  defaultSupportLevel String @default("unknown")
+  viewCount       Int      @default(0)
+  submissionCount Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  campaign    Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fields      FormField[]
+  submissions FormSubmission[]
+
+  @@index([campaignId])
+  @@map("forms")
+}
+
+model FormField {
+  id           String   @id @default(cuid())
+  formId       String
+  order        Int
+  type         String
+  label        String
+  placeholder  String?
+  helpText     String?
+  defaultValue String?
+  required     Boolean  @default(false)
+  minLength    Int?
+  maxLength    Int?
+  minValue     Float?
+  maxValue     Float?
+  pattern      String?
+  options      Json?
+  width        String   @default("full")
+  crmField     String?
+  showIf       Json?
+  content      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, order])
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  data        Json
+  contactId   String?
+  ip          String?
+  userAgent   String?
+  referrer    String?
+  completedAt DateTime @default(now())
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, completedAt])
+  @@map("form_submissions")
 }
