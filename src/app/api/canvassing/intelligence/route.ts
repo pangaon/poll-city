@@ -40,13 +40,38 @@ export async function GET(req: NextRequest) {
     select: { id: true, details: true, createdAt: true },
   });
 
-  const entries = intel.map((i) => ({
-    id: i.id,
-    ...((i.details as Record<string, unknown>) ?? {}),
-    createdAt: i.createdAt,
-  }));
+  type IntelEntry = {
+    id: string;
+    createdAt: Date;
+    signType?: "our_sign" | "opponent_sign" | "multiple_opponent" | "no_sign" | "our_and_opponent";
+    address?: string;
+    lat?: number;
+    lng?: number;
+    notes?: string;
+  };
 
-  // Aggregate stats
+  const entries: IntelEntry[] = intel.map((i) => {
+    const details = i.details && typeof i.details === "object" ? (i.details as Record<string, unknown>) : {};
+    const signType = details.signType;
+
+    return {
+      id: i.id,
+      createdAt: i.createdAt,
+      signType:
+        signType === "our_sign" ||
+        signType === "opponent_sign" ||
+        signType === "multiple_opponent" ||
+        signType === "no_sign" ||
+        signType === "our_and_opponent"
+          ? signType
+          : undefined,
+      address: typeof details.address === "string" ? details.address : undefined,
+      lat: typeof details.lat === "number" ? details.lat : undefined,
+      lng: typeof details.lng === "number" ? details.lng : undefined,
+      notes: typeof details.notes === "string" ? details.notes : undefined,
+    };
+  });
+
   const ourSigns = entries.filter((e) => e.signType === "our_sign" || e.signType === "our_and_opponent").length;
   const opponentSigns = entries.filter((e) => e.signType === "opponent_sign" || e.signType === "multiple_opponent" || e.signType === "our_and_opponent").length;
   const noSigns = entries.filter((e) => e.signType === "no_sign").length;
