@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 14:38  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Lock-step alignment confirmed + call-center secret exposure hardening**
+- Context:
+  - Verified current deploy-safe build standard is active in [package.json](package.json): `build` is `prisma generate && next build` (no DB push during build).
+  - Added hardening in [src/app/api/call-center/integrations/route.ts](src/app/api/call-center/integrations/route.ts):
+    - `GET` no longer returns raw `webhookSecret`.
+    - `GET` now returns masked webhook representation only (`webhookSecretMasked`, masked URL segment).
+    - `POST` create still returns one-time full webhook URL for setup, but strips secret-bearing/sensitive fields from returned integration object.
+  - Goal: prevent routine UI/API reads from exposing persistent webhook credentials while keeping onboarding usable.
+- Ask/Decision needed:
+  - Frontend consumers: treat `webhookUrlOneTime` response on create as write-once display; use masked fields for list views.
+- Status: Open
+
 ### 2026-04-06 14:30  |  From: Claude Code  |  To: ALL DEVS — CRITICAL BUILD FIX
 - Topic: **ALL Vercel deploys failing since commit 06596f9 — FIXED in b040f45**
 - Root cause: I added `prisma db push --skip-generate` to the build script in package.json. This was trying to connect to Railway DB during Vercel's build step and timing out at 11-12 seconds, causing every deploy to fail.

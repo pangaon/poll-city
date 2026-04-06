@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 
+function maskSecret(secret: string): string {
+  if (!secret) return "";
+  if (secret.length <= 10) return "***";
+  return `${secret.slice(0, 6)}...${secret.slice(-4)}`;
+}
+
 /** GET — List call center integrations */
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "settings:read");
@@ -18,8 +24,15 @@ export async function GET(req: NextRequest) {
   // Build webhook URLs for display
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca";
   const withUrls = integrations.map((i) => ({
-    ...i,
-    webhookUrl: `${baseUrl}/api/call-center/webhook/${i.webhookSecret}`,
+    id: i.id,
+    provider: i.provider,
+    name: i.name,
+    isActive: i.isActive,
+    lastSyncAt: i.lastSyncAt,
+    syncStats: i.syncStats,
+    createdAt: i.createdAt,
+    webhookUrl: `${baseUrl}/api/call-center/webhook/${maskSecret(i.webhookSecret)}`,
+    webhookSecretMasked: maskSecret(i.webhookSecret),
   }));
 
   return NextResponse.json({ integrations: withUrls });
@@ -41,9 +54,11 @@ export async function POST(req: NextRequest) {
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca";
+  const { webhookSecret: _webhookSecret, apiKey: _apiKey, ...safeIntegration } = integration;
 
   return NextResponse.json({
-    integration,
+    integration: safeIntegration,
     webhookUrl: `${baseUrl}/api/call-center/webhook/${integration.webhookSecret}`,
+    webhookUrlOneTime: true,
   }, { status: 201 });
 }
