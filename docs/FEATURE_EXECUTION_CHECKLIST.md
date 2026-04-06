@@ -32,28 +32,28 @@ Dependency planning requirement before implementation starts:
 - [x] 12. Task Management  | status: API Complete (GET/POST tasks + PATCH/DELETE [id])  | commit: pre-existing  | report: Backend complete — UI pending (GPT-Codex)
 - [ ] 13. Poll Builder + Results  | status: Pending  | commit: -  | report: -
 - [x] 14. Push Subscription + Send  | status: API Complete (subscribe, send, schedule, history, stats, staff-alert, test)  | commit: pre-existing  | report: 7 notification endpoints, full lifecycle
-- [ ] 15. Campaign Analytics  | status: Pending  | commit: -  | report: -
-- [ ] 16. Print Job Wizard  | status: Pending  | commit: -  | report: -
-- [ ] 17. Print Bidding + Escrow Intent  | status: Pending  | commit: -  | report: -
-- [ ] 18. Shop Directory + Onboarding  | status: Pending  | commit: -  | report: -
+- [x] 15. Campaign Analytics  | status: API Complete (5 endpoints: campaign overview, canvassing, supporters, donations, GOTV)  | commit: 297bfcc  | report: Full analytics suite with permission gating
+- [x] 16. Print Job Wizard  | status: API Complete (GET/POST jobs, download, preview, templates)  | commit: pre-existing  | report: Full print job lifecycle
+- [x] 17. Print Bidding + Escrow Intent  | status: API Complete (bids CRUD, payment create-intent + release)  | commit: pre-existing  | report: Stripe payment intents for print escrow
+- [x] 18. Shop Directory + Onboarding  | status: API Complete (GET/POST shops, onboard route)  | commit: pre-existing  | report: Shop registration and directory
 - [ ] 19. Social Feed Entry + Nav  | status: Pending  | commit: -  | report: -
 - [ ] 20. Social Poll Participation  | status: Pending  | commit: -  | report: -
 - [ ] 21. Social Official Profiles  | status: Pending  | commit: -  | report: -
-- [ ] 22. Candidate Public Profile  | status: Pending  | commit: -  | report: -
-- [ ] 23. Public Candidate Engagement  | status: Pending  | commit: -  | report: -
-- [ ] 24. Officials Directory Search  | status: Pending  | commit: -  | report: -
-- [ ] 25. Officials Claim Link Request  | status: Pending  | commit: -  | report: -
+- [x] 22. Candidate Public Profile  | status: API Complete (GET /api/public/candidates/[slug] + support/volunteer/sign-request/question/events/donate)  | commit: pre-existing + 0653a1c  | report: Public page with Stripe donations, CRM contact creation
+- [x] 23. Public Candidate Engagement  | status: API Complete (6 public interaction endpoints + Stripe checkout)  | commit: pre-existing + 0653a1c  | report: Support, volunteer, sign request, question, events, donate
+- [x] 24. Officials Directory Search  | status: API Complete (GET /api/officials/directory with search, filters)  | commit: pre-existing  | report: Full directory API with postal code lookup
+- [x] 25. Officials Claim Link Request  | status: API Complete (POST /api/claim/request + GET /api/claim/verify)  | commit: pre-existing  | report: Claim request and email verification flow
 - [x] 26. In-App Help Center  | status: Built & Verified (public /help center + /help/[slug] video-first articles + ops /ops/videos and /ops/verify verification wall)  | commit: pending  | report: Completed with retroactive queue, mark-recorded flow, video hard gate, and Adoni training trigger
 - [x] 27. Specialized CSV Exports  | status: Built (POST /api/export/targeted — 6 types, filters by street/ward/poll/support, CSV+JSON)  | commit: 0653a1c  | report: Completed with targeted export system supporting contacts, walklist, signs, gotv, volunteers, donations
 - [x] 28. Team Management  | status: API Complete (GET team, PATCH/DELETE members, permission-gated, CampaignRole CRUD, audit log)  | commit: a09432c  | report: Enterprise permissions system with 55 granular permissions, 12 roles, trust levels, custom role creation
-- [ ] 29. Feature Flags / Tier Gating  | status: Pending  | commit: -  | report: -
+- [x] 29. Feature Flags / Tier Gating  | status: Built (33 flags, 3 tiers, campaign overrides, GET /api/feature-flags)  | commit: c6d70d8  | report: Free/Pro/Enterprise gating with sanitized overrides
 - [ ] 30. Contact Slide-Over Panel  | status: Pending  | commit: -  | report: -
 - [ ] 31. Error System  | status: Pending  | commit: -  | report: -
-- [ ] 32. Officials Claim Verification  | status: Pending  | commit: -  | report: -
+- [x] 32. Officials Claim Verification  | status: API Complete (GET /api/claim/verify with token validation)  | commit: pre-existing  | report: Email token verification for official claims
 - [ ] 33. Campaign Creation Wizard  | status: Pending  | commit: -  | report: -
-- [ ] 34. Credentials Login  | status: Pending  | commit: -  | report: -
-- [ ] 35. OAuth Login  | status: Pending  | commit: -  | report: -
-- [ ] 36. Subscription Checkout  | status: Pending  | commit: -  | report: -
+- [x] 34. Credentials Login  | status: API Complete (NextAuth credentials + forgot/reset password + verify-reset-token)  | commit: pre-existing  | report: Full auth flow with 2FA support
+- [x] 35. OAuth Login  | status: API Complete (NextAuth [...nextauth] with Google provider)  | commit: pre-existing  | report: OAuth via NextAuth
+- [x] 36. Subscription Checkout  | status: API Complete (Stripe checkout, portal, invoices, webhook)  | commit: pre-existing  | report: Full Stripe billing integration
 - [ ] 37. Print Escrow Release  | status: Pending  | commit: -  | report: -
 - [ ] 38. Abuse Controls (Duplicate Vote, Size Guard)  | status: Pending  | commit: -  | report: -
 - [ ] 39. Rate Limiting  | status: Pending  | commit: -  | report: -
