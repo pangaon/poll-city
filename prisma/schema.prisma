@@ -1553,11 +1553,16 @@ model ImportLog {
   updatedCount  Int       @default(0)
   skippedCount  Int       @default(0)
   errorCount    Int       @default(0)
-  status        String    @default("processing")
+  status        String    @default("queued") // queued | processing | completed | completed_with_errors | failed | rolled_back
   mapping       Json?
   warnings      Json?
   invalidRows   Json?
   errors        Json?
+  parsedData    Json?     // stored rows for background processing
+  chunkSize     Int       @default(500)
+  currentChunk  Int       @default(0)
+  rollbackData  Json?     // IDs of created contacts for rollback
+  rollbackDeadline DateTime? // 24h after completion
   completedAt   DateTime?
   createdAt     DateTime  @default(now())
 
@@ -1566,6 +1571,7 @@ model ImportLog {
 
   @@index([campaignId, createdAt])
   @@index([userId, createdAt])
+  @@index([status])
   @@map("import_logs")
 }
 
