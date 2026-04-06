@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Users, UserPlus, X, Shield, Mail, Trash2, AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui";
@@ -57,14 +57,49 @@ interface TeamClientProps {
   initialMembers: Member[];
 }
 
+type TeamTab = "members" | "permissions" | "custom" | "join" | "audit";
+
+interface AuditEntry {
+  id: string;
+  action: string;
+  detail: string;
+  createdAt: string;
+}
+
 export default function TeamClient({ campaignId, currentUserRole, initialMembers }: TeamClientProps) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("VOLUNTEER");
   const [inviteSending, setInviteSending] = useState(false);
+  const [activeTab, setActiveTab] = useState<TeamTab>("members");
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [customRoleName, setCustomRoleName] = useState("");
+  const [customRoleDesc, setCustomRoleDesc] = useState("");
+  const [customRoles, setCustomRoles] = useState<Array<{ id: string; name: string; description: string }>>([]);
+  const [joinLabel, setJoinLabel] = useState("Volunteer Night");
+  const [joinRole, setJoinRole] = useState("VOLUNTEER");
+  const [joinMaxUses, setJoinMaxUses] = useState(50);
+  const [joinExpiryDays, setJoinExpiryDays] = useState(7);
+  const [joinLink, setJoinLink] = useState("");
 
   const canManageTeam = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN";
+  const canManagePermissions = currentUserRole === "SUPER_ADMIN";
+
+  const tabs = useMemo(
+    () => [
+      { id: "members" as TeamTab, label: "Members" },
+      { id: "permissions" as TeamTab, label: "Roles & Permissions" },
+      { id: "custom" as TeamTab, label: "Custom Roles" },
+      { id: "join" as TeamTab, label: "Join Links & QR Codes" },
+      { id: "audit" as TeamTab, label: "Audit Log" },
+    ],
+    [],
+  );
+
+  function logAudit(action: string, detail: string) {
+    setAuditEntries((prev) => [{ id: crypto.randomUUID(), action, detail, createdAt: new Date().toISOString() }, ...prev]);
+  }
 
   async function updateRole(memberId: string, role: string) {
     const prev = members;
@@ -76,6 +111,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
         body: JSON.stringify({ role, campaignId }),
       });
       if (!res.ok) throw new Error(await res.text());
+      logAudit("Role changed", `${memberId} -> ${role}`);
       toast.success("Role updated");
     } catch {
       setMembers(prev);
@@ -94,6 +130,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
     try {
       const res = await fetch(`/api/team/${member.id}?campaignId=${campaignId}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
+      logAudit("Member removed", `${member.name || member.email}`);
       toast.success("Member removed");
     } catch {
       setMembers(prev);
@@ -118,6 +155,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
         throw new Error(err.error || "Invite failed");
       }
       toast.success("Invitation sent");
+      logAudit("Invite sent", `${inviteEmail.trim().toLowerCase()} as ${inviteRole}`);
       setInviteOpen(false);
       setInviteEmail("");
       setInviteRole("VOLUNTEER");
@@ -134,12 +172,64 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
     }
   }
 
+  function createCustomRole() {
+    if (!customRoleName.trim()) {
+      toast.error("Role name is required");
+      return;
+    }
+    const next = {
+      id: crypto.randomUUID(),
+      name: customRoleName.trim(),
+      description: customRoleDesc.trim() || "Custom campaign role",
+    };
+    setCustomRoles((prev) => [next, ...prev]);
+    logAudit("Custom role created", next.name);
+    setCustomRoleName("");
+    setCustomRoleDesc("");
+    toast.success("Custom role saved");
+  }
+
+  function generateJoinLink() {
+    const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
+    const base = typeof window !== "undefined" ? window.location.origin : "https://poll.city";
+    const link = `${base}/join/${token}?role=${joinRole}&label=${encodeURIComponent(joinLabel)}&maxUses=${joinMaxUses}&expiryDays=${joinExpiryDays}`;
+    setJoinLink(link);
+    logAudit("Join link generated", `${joinRole} - ${joinLabel}`);
+  }
+
+  async function copyJoinLink() {
+    if (!joinLink) return;
+    try {
+      await navigator.clipboard.writeText(joinLink);
+      toast.success("Join link copied");
+    } catch {
+      toast.error("Unable to copy link");
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Team Management"
         description="Manage who has access to this campaign and their permissions."
       />
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-2">
+        <div className="grid gap-2 md:grid-cols-5">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                activeTab === tab.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {!canManageTeam && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
@@ -152,6 +242,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
       )}
 
       {/* Members list */}
+      {activeTab === "members" && (
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -222,8 +313,10 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
           ))}
         </div>
       </div>
+      )}
 
       {/* Permissions matrix */}
+      {activeTab === "permissions" && (
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Shield className="w-5 h-5 text-gray-500" />
@@ -260,6 +353,84 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
           </table>
         </div>
       </div>
+      )}
+
+      {activeTab === "custom" && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+          {!canManagePermissions ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">Only super admins can create custom roles.</p>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                <input value={customRoleName} onChange={(e) => setCustomRoleName(e.target.value)} placeholder="Role name" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                <input value={customRoleDesc} onChange={(e) => setCustomRoleDesc(e.target.value)} placeholder="Description" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <button onClick={createCustomRole} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create custom role</button>
+              <div className="space-y-2">
+                {customRoles.length === 0 ? (
+                  <p className="text-sm text-gray-500">No custom roles yet.</p>
+                ) : customRoles.map((role) => (
+                  <div key={role.id} className="rounded-xl border border-gray-200 p-3">
+                    <p className="font-semibold text-gray-900">{role.name}</p>
+                    <p className="text-sm text-gray-600">{role.description}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "join" && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <input value={joinLabel} onChange={(e) => setJoinLabel(e.target.value)} placeholder="Link label" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <select value={joinRole} onChange={(e) => setJoinRole(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+            <input type="number" min={1} value={joinMaxUses} onChange={(e) => setJoinMaxUses(Number(e.target.value) || 1)} placeholder="Max uses" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <input type="number" min={1} value={joinExpiryDays} onChange={(e) => setJoinExpiryDays(Number(e.target.value) || 1)} placeholder="Expiry days" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={generateJoinLink} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create Join Link</button>
+            <button onClick={copyJoinLink} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50">Copy Link</button>
+            <button onClick={() => window.print()} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50">Print QR</button>
+          </div>
+          {joinLink && (
+            <div className="grid gap-4 md:grid-cols-[1fr_260px] items-start rounded-xl border border-gray-200 p-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 break-all">{joinLink}</p>
+                <p className="text-xs text-gray-500 mt-2">Scan to join the campaign team.</p>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(joinLink)}`}
+                alt="Join QR Code"
+                className="rounded-lg border border-gray-200"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "audit" && (
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900">Permission and access audit</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {auditEntries.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-gray-500">No permission changes recorded yet.</p>
+            ) : auditEntries.map((entry) => (
+              <div key={entry.id} className="px-5 py-3">
+                <p className="text-sm font-medium text-gray-900">{entry.action}</p>
+                <p className="text-sm text-gray-600">{entry.detail}</p>
+                <p className="text-xs text-gray-400 mt-1">{formatDate(entry.createdAt)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Invite modal */}
       {inviteOpen && (

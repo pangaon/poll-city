@@ -104,6 +104,42 @@ const SIDEBAR_SECTIONS: NavSection[] = [
 
 const STORAGE_KEY = "poll-city:sidebar-collapsed-sections";
 
+const CANVASSER_SECTIONS: NavSection[] = [
+  {
+    id: "canvasser",
+    label: "Canvasser",
+    icon: Map,
+    items: [
+      { href: "/canvassing/walk", icon: Map, label: "My Turf" },
+      { href: "/tasks", icon: CheckCircle2, label: "My Tasks" },
+      { href: "/ai-assist", icon: Bot, label: "Ask Adoni" },
+    ],
+  },
+];
+
+const FINANCE_SECTIONS: NavSection[] = [
+  {
+    id: "finance",
+    label: "Finance",
+    icon: DollarSign,
+    items: [
+      { href: "/budget", icon: DollarSign, label: "Budget Overview" },
+      { href: "/donations", icon: CreditCard, label: "Donations" },
+      { href: "/volunteers/expenses", icon: FileText, label: "Expenses" },
+      { href: "/reports", icon: BarChart3, label: "Reports" },
+      { href: "/budget?view=filing", icon: CheckCircle2, label: "Filing Checklist" },
+    ],
+  },
+  {
+    id: "account",
+    label: "My Account",
+    icon: Settings,
+    items: [
+      { href: "/settings", icon: Settings, label: "My Account" },
+    ],
+  },
+];
+
 function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
   return items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 }
@@ -115,6 +151,10 @@ export default function Sidebar() {
   const [opsOutstanding, setOpsOutstanding] = useState<number>(0);
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const roleName = (session?.user?.role ?? "").toString().toUpperCase();
+  const isCanvasserOnly = roleName === "VOLUNTEER" || roleName === "CANVASSER";
+  const isFinanceOnly = roleName.includes("FINANCE");
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -139,8 +179,11 @@ export default function Sidebar() {
   }, [isAdmin]);
 
   const sidebarSections = useMemo(() => {
+    if (isCanvasserOnly) return CANVASSER_SECTIONS;
+    if (isFinanceOnly) return FINANCE_SECTIONS;
     if (!isAdmin) return SIDEBAR_SECTIONS;
-    return [
+
+    const base = [
       ...SIDEBAR_SECTIONS,
       {
         id: "operations",
@@ -153,7 +196,22 @@ export default function Sidebar() {
         ],
       },
     ];
-  }, [isAdmin]);
+
+    if (isSuperAdmin) {
+      base.push({
+        id: "admin",
+        label: "Admin",
+        icon: Shield,
+        items: [
+          { href: "/settings/team?tab=permissions", icon: Shield, label: "Permission Console" },
+          { href: "/settings/team?tab=audit", icon: Activity, label: "Audit Log" },
+          { href: "/ops/security", icon: Lock, label: "Security" },
+        ],
+      });
+    }
+
+    return base;
+  }, [isAdmin, isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
 
   useEffect(() => {
     try {
