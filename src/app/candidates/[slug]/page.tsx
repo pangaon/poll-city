@@ -1,216 +1,230 @@
+import { type Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Metadata } from "next";
 import prisma from "@/lib/db/prisma";
-import PublicNav from "@/components/layout/public-nav";
-import CandidatePageClient, { type CampaignData, type PollData, type ElectionHistoryRow, type PageCustomization } from "./candidate-page-client";
-import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
+import CandidatePageClient, { type CandidatePageData, type CandidatePageCustomization } from "@/components/public/candidate-site/candidate-page-client";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: { slug: string };
 }
 
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+type CustomIssue = {
+  id: string;
+  title: string;
+  summary?: string;
+  details?: string;
+  order?: number;
+};
 
-async function getElectionHistory(candidateName: string | null | undefined, officialName: string | null | undefined): Promise<ElectionHistoryRow[]> {
-  const name = (candidateName || officialName)?.trim();
-  if (!name) return [];
-  const parts = name.split(/\s+/);
-  const lastName = parts[parts.length - 1];
-  try {
-    return await prisma.electionResult.findMany({
-      where: { candidateName: { contains: lastName, mode: "insensitive" }, electionType: "municipal" },
-      orderBy: { electionDate: "desc" },
-      take: 10,
-      select: { id: true, electionDate: true, jurisdiction: true, candidateName: true, votesReceived: true, totalVotesCast: true, percentage: true, won: true },
-    });
-  } catch { return []; }
-}
+type CustomEndorsement = {
+  id: string;
+  name: string;
+  role?: string;
+  quote: string;
+  photoUrl?: string;
+};
 
-function levelToElectionType(level: string): string {
-  if (level === "federal") return "federal";
-  if (level === "provincial") return "provincial";
-  return "municipal";
-}
+type CustomFaq = {
+  id: string;
+  q: string;
+  a: string;
+};
 
-function levelBadge(level: string): string {
-  const map: Record<string, string> = {
-    federal: "Federal MP",
-    provincial: "Provincial MPP",
-    municipal: "Municipal Councillor",
+function mapCustomization(raw: unknown): CandidatePageCustomization {
+  const cx = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const issueItems = Array.isArray(cx.platformItems) ? cx.platformItems : Array.isArray(cx.platform) ? cx.platform : [];
+  const endorsementItems = Array.isArray(cx.endorsements) ? cx.endorsements : [];
+  const faqItems = Array.isArray(cx.customFaq) ? cx.customFaq : [];
+
+  const issues: CustomIssue[] = issueItems
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item, index) => ({
+      id: typeof item.id === "string" ? item.id : `issue-${index}`,
+      title: typeof item.title === "string" ? item.title : (typeof item.q === "string" ? item.q : "Priority Issue"),
+      summary: typeof item.summary === "string" ? item.summary : (typeof item.description === "string" ? item.description : undefined),
+      details: typeof item.details === "string" ? item.details : (typeof item.body === "string" ? item.body : undefined),
+      order: typeof item.order === "number" ? item.order : index,
+    }));
+
+  const endorsements: CustomEndorsement[] = endorsementItems
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item, index) => ({
+      id: typeof item.id === "string" ? item.id : `endorsement-${index}`,
+      name: typeof item.name === "string" ? item.name : (typeof item.org === "string" ? item.org : "Community Supporter"),
+      role: typeof item.role === "string" ? item.role : undefined,
+      quote: typeof item.quote === "string" ? item.quote : "Proud to support this campaign.",
+      photoUrl: typeof item.photoUrl === "string" ? item.photoUrl : undefined,
+    }));
+
+  const faqs: CustomFaq[] = faqItems
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item, index) => ({
+      id: typeof item.id === "string" ? item.id : `faq-${index}`,
+      q: typeof item.q === "string" ? item.q : "Question",
+      a: typeof item.a === "string" ? item.a : "Answer pending approval.",
+    }));
+
+  return {
+    heroBannerUrl: typeof cx.heroBannerUrl === "string" ? cx.heroBannerUrl : undefined,
+    backgroundImageUrl: typeof cx.backgroundImageUrl === "string" ? cx.backgroundImageUrl : undefined,
+    candidatePhotoUrl: typeof cx.candidatePhotoUrl === "string" ? cx.candidatePhotoUrl : undefined,
+    candidatePhotoUrl2: typeof cx.candidatePhotoUrl2 === "string" ? cx.candidatePhotoUrl2 : undefined,
+    office: typeof cx.office === "string" ? cx.office : undefined,
+    municipality: typeof cx.municipality === "string" ? cx.municipality : undefined,
+    ward: typeof cx.ward === "string" ? cx.ward : undefined,
+    boundaryGeoJSON: cx.boundaryGeoJSON,
+    yearsInCommunity: typeof cx.yearsInCommunity === "number" ? cx.yearsInCommunity : undefined,
+    communityConnections: Array.isArray(cx.communityConnections)
+      ? cx.communityConnections.filter((x): x is string => typeof x === "string")
+      : [],
+    videoUrl: typeof cx.videoUrl === "string" ? cx.videoUrl : undefined,
+    gallery: Array.isArray(cx.gallery)
+      ? cx.gallery
+          .filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null)
+          .map((x, i) => ({
+            id: typeof x.id === "string" ? x.id : `gallery-${i}`,
+            url: typeof x.url === "string" ? x.url : "",
+            caption: typeof x.caption === "string" ? x.caption : undefined,
+            order: typeof x.order === "number" ? x.order : i,
+          }))
+          .filter((x) => x.url)
+      : [],
+    issues,
+    endorsements,
+    faqs,
   };
-  return map[level] ?? "Official";
 }
 
-/* ─── Metadata ────────────────────────────────────────────────────────────── */
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+async function getCandidatePageData(slug: string): Promise<CandidatePageData | null> {
   const campaign = await prisma.campaign.findUnique({
-    where: { slug: params.slug },
-    select: { candidateName: true, jurisdiction: true, electionType: true, candidateBio: true, isPublic: true, officialId: true, customization: true },
-  });
-  if (campaign?.isPublic || campaign?.officialId) {
-    const cx = (campaign.customization ?? {}) as { metaTitle?: string; metaDescription?: string };
-    const title = cx.metaTitle || `${campaign.candidateName} — ${campaign.jurisdiction}`;
-    const description = cx.metaDescription || (campaign.candidateBio?.slice(0, 160) ?? `Vote for ${campaign.candidateName}.`);
-    return {
-      title,
-      description,
-      openGraph: { title, description, type: "website" },
-    };
-  }
-  const official = await prisma.official.findFirst({ where: { externalId: params.slug }, select: { name: true, district: true } });
-  if (official) {
-    return { title: `${official.name} — ${official.district}`, description: `Official profile on Poll City.` };
-  }
-  return { title: "Candidate Not Found" };
-}
-
-/* ─── Page ────────────────────────────────────────────────────────────────── */
-
-export default async function CandidatePage({ params }: PageProps) {
-  // 1. Try campaign by slug
-  const campaign = await prisma.campaign.findUnique({
-    where: { slug: params.slug },
-    include: {
-      official: {
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      electionType: true,
+      electionDate: true,
+      jurisdiction: true,
+      candidateName: true,
+      candidateTitle: true,
+      candidateBio: true,
+      candidateEmail: true,
+      candidatePhone: true,
+      logoUrl: true,
+      primaryColor: true,
+      secondaryColor: true,
+      accentColor: true,
+      tagline: true,
+      websiteUrl: true,
+      twitterHandle: true,
+      facebookUrl: true,
+      instagramHandle: true,
+      customization: true,
+      isPublic: true,
+      events: {
+        where: { isPublic: true, status: { in: ["scheduled", "live"] }, eventDate: { gte: new Date() } },
+        orderBy: { eventDate: "asc" },
+        take: 6,
         select: {
-          id: true, isClaimed: true, name: true, firstName: true, lastName: true,
-          title: true, level: true, photoUrl: true, website: true, twitter: true,
-          facebook: true, instagram: true, linkedIn: true, phone: true, address: true, email: true,
-          partyName: true, party: true,
+          id: true,
+          name: true,
+          eventDate: true,
+          location: true,
+          city: true,
+          province: true,
+          postalCode: true,
+          lat: true,
+          lng: true,
+          description: true,
+          isVirtual: true,
+          virtualUrl: true,
+          _count: { select: { rsvps: true } },
         },
       },
-      polls: {
-        where: { isActive: true, visibility: "public" },
-        include: { options: true, responses: { select: { optionId: true } } },
-      },
-      _count: { select: { contacts: { where: { supportLevel: "strong_support" } } } },
-    },
-  });
-  // Note: pageViews increment is handled client-side via POST /api/campaigns/[id]/customization
-
-  // 2. Campaign found and public (or has official) → show it
-  if (campaign && (campaign.isPublic || campaign.official)) {
-    const electionHistory = await getElectionHistory(campaign.candidateName, campaign.official?.name ?? null);
-
-    const polls: PollData[] = campaign.polls.map((poll: {
-      id: string; question: string;
-      options: { id: string; text: string }[];
-      responses: { optionId: string | null }[];
-    }) => {
-      const validResponses = poll.responses.filter((r): r is { optionId: string } => r.optionId !== null);
-      return {
-        id: poll.id,
-        question: poll.question,
-        options: poll.options.map((opt: { id: string; text: string }) => ({
-          id: opt.id,
-          text: opt.text,
-          count: validResponses.filter((r: { optionId: string }) => r.optionId === opt.id).length,
-          percentage: validResponses.length > 0
-            ? Math.round((validResponses.filter((r: { optionId: string }) => r.optionId === opt.id).length / validResponses.length) * 100)
-            : 0,
-        })),
-      };
-    });
-
-    const campaignData: CampaignData = {
-      id: campaign.id,
-      slug: campaign.slug,
-      candidateName: campaign.candidateName,
-      candidateTitle: campaign.candidateTitle,
-      candidateBio: campaign.candidateBio,
-      jurisdiction: campaign.jurisdiction,
-      electionType: campaign.electionType,
-      logoUrl: campaign.logoUrl,
-      primaryColor: campaign.primaryColor,
-      supporterCount: campaign._count.contacts,
-      customization: (campaign.customization ?? null) as PageCustomization | null,
-      official: campaign.official
-        ? {
-            id: campaign.official.id,
-            isClaimed: campaign.official.isClaimed,
-            name: campaign.official.name,
-            title: campaign.official.title,
-            level: String(campaign.official.level),
-            levelBadge: levelBadge(String(campaign.official.level)),
-            photoUrl: campaign.official.photoUrl,
-            website: campaign.official.website,
-            twitter: campaign.official.twitter,
-            facebook: campaign.official.facebook,
-            instagram: campaign.official.instagram,
-            linkedIn: campaign.official.linkedIn,
-            phone: campaign.official.phone,
-            address: campaign.official.address,
-            email: campaign.official.email,
-            partyName: campaign.official.partyName,
-            party: campaign.official.party,
-          }
-        : null,
-    };
-
-    return (
-      <>
-        <PublicNav />
-        <CandidatePageClient campaign={campaignData} polls={polls} electionHistory={electionHistory} />
-        <DebugToolbarGate />
-      </>
-    );
-  }
-
-  // 3. No campaign → try official by externalId
-  const official = await prisma.official.findFirst({
-    where: { externalId: params.slug },
-    select: {
-      id: true, isClaimed: true, name: true, firstName: true, lastName: true,
-      title: true, level: true, photoUrl: true, website: true, twitter: true,
-      facebook: true, instagram: true, linkedIn: true, phone: true, address: true, email: true, district: true,
-      partyName: true, party: true,
     },
   });
 
-  if (official) {
-    const electionHistory = await getElectionHistory(null, official.name);
+  if (!campaign || !campaign.isPublic) return null;
 
-    const campaignData: CampaignData = {
-      id: official.id,
-      slug: params.slug,
-      candidateName: official.name,
-      candidateTitle: official.title ?? null,
-      candidateBio: null,
-      jurisdiction: official.district,
-      electionType: levelToElectionType(String(official.level)),
-      logoUrl: null,
-      primaryColor: "#1E3A8A",
-      supporterCount: 0,
-      official: {
-        id: official.id,
-        isClaimed: official.isClaimed,
-        name: official.name,
-        title: official.title ?? null,
-        level: String(official.level),
-        levelBadge: levelBadge(String(official.level)),
-        photoUrl: official.photoUrl,
-        website: official.website,
-        twitter: official.twitter,
-        facebook: official.facebook,
-        instagram: official.instagram,
-        linkedIn: official.linkedIn,
-        phone: official.phone,
-        address: official.address,
-        email: official.email,
-        partyName: official.partyName,
-        party: official.party,
-      },
+  const customization = mapCustomization(campaign.customization);
+
+  return {
+    id: campaign.id,
+    slug: campaign.slug,
+    campaignName: campaign.name,
+    candidateName: campaign.candidateName ?? campaign.name,
+    candidateTitle: campaign.candidateTitle ?? "Candidate",
+    candidateBio: campaign.candidateBio,
+    candidateEmail: campaign.candidateEmail,
+    candidatePhone: campaign.candidatePhone,
+    tagline: campaign.tagline,
+    electionType: campaign.electionType,
+    electionDate: campaign.electionDate,
+    jurisdiction: campaign.jurisdiction,
+    logoUrl: campaign.logoUrl,
+    primaryColor: campaign.primaryColor ?? "#1a4782",
+    accentColor: campaign.accentColor ?? campaign.secondaryColor ?? "#d71920",
+    websiteUrl: campaign.websiteUrl,
+    twitterHandle: campaign.twitterHandle,
+    facebookUrl: campaign.facebookUrl,
+    instagramHandle: campaign.instagramHandle,
+    events: campaign.events.map((event) => ({
+      id: event.id,
+      name: event.name,
+      eventDate: event.eventDate,
+      location: event.location,
+      city: event.city,
+      province: event.province,
+      postalCode: event.postalCode,
+      lat: event.lat,
+      lng: event.lng,
+      description: event.description,
+      isVirtual: event.isVirtual,
+      virtualUrl: event.virtualUrl,
+      rsvpCount: event._count.rsvps,
+    })),
+    customization,
+  };
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const data = await getCandidatePageData(params.slug);
+  if (!data) {
+    return {
+      title: "Candidate Not Found",
+      description: "The requested campaign page could not be found.",
     };
-
-    return (
-      <>
-        <PublicNav />
-        <CandidatePageClient campaign={campaignData} polls={[]} electionHistory={electionHistory} />
-        <DebugToolbarGate />
-      </>
-    );
   }
 
-  notFound();
+  const electionYear = data.electionDate ? new Date(data.electionDate).getFullYear() : new Date().getFullYear();
+  const title = `${data.candidateName} for ${data.candidateTitle} — ${data.jurisdiction ?? "Your Community"} ${electionYear}`;
+  const description =
+    data.tagline ||
+    `${data.candidateName} is running for ${data.candidateTitle} in ${data.jurisdiction ?? "their community"}. Learn the platform, upcoming events, and ways to get involved.`;
+  const ogImage = data.customization.candidatePhotoUrl || data.logoUrl || undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      url: `https://poll.city/candidates/${data.slug}`,
+      images: ogImage ? [{ url: ogImage }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImage ? [ogImage] : [],
+    },
+  };
+}
+
+export default async function CandidatePage({ params }: PageProps) {
+  const pageData = await getCandidatePageData(params.slug);
+  if (!pageData) notFound();
+  return <CandidatePageClient campaign={pageData} />;
 }
