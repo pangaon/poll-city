@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import CampaignCostCalculator from "@/components/calculator/campaign-cost-calculator";
 
 export const metadata = {
   title: "Get started with Poll City",
@@ -46,6 +47,11 @@ export default function OnboardingPage() {
             <CheckCircle2 className="w-5 h-5 text-slate-300 mt-1 shrink-0" />
           </Link>
         ))}
+
+        <div className="pt-4">
+          <p className="text-sm font-semibold text-slate-700 mb-2">Step 3 planning helper</p>
+          <CampaignCostCalculator compact defaultElectionType="municipal-council" />
+        </div>
       </section>
     </main>
   );

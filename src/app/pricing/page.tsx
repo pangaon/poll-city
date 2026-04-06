@@ -3,6 +3,7 @@ import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { CheckCircle } from "lucide-react";
+import CampaignCostCalculator from "@/components/calculator/campaign-cost-calculator";
 
 export default function PricingPage() {
   return (
@@ -96,6 +97,10 @@ export default function PricingPage() {
           <p className="text-sm text-gray-500">
             Questions? <a href="mailto:support@pollcity.com" className="text-blue-600 hover:underline">Contact our team</a>
           </p>
+        </div>
+
+        <div className="max-w-5xl mx-auto mt-12">
+          <CampaignCostCalculator compact />
         </div>
       </div>
     </div>
