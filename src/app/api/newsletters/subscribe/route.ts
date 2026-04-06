@@ -6,17 +6,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { newsletterSubscribeSchema } from "@/lib/validators/newsletter";
 
 export async function POST(req: NextRequest) {
   const rateLimitResponse = await rateLimit(req, "form");
   if (rateLimitResponse) return rateLimitResponse;
 
   const body = await req.json();
-  const { email, firstName, lastName, postalCode, campaignId, officialId, consent } = body;
-
-  if (!email?.trim()) return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  if (!consent) return NextResponse.json({ error: "Consent is required (CASL compliance)" }, { status: 400 });
-  if (!campaignId && !officialId) return NextResponse.json({ error: "campaignId or officialId required" }, { status: 400 });
+  const parsed = newsletterSubscribeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
+  }
+  const { email, firstName, lastName, postalCode, campaignId, officialId } = parsed.data;
 
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
 

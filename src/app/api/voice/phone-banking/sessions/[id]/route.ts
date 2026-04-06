@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
+import { phoneBankResultSchema } from "@/lib/validators/voice";
 
 /** GET — Get the next contact to call in this session */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -73,8 +74,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!pbSession) return NextResponse.json({ error: "Session not found" }, { status: 404 });
   if (pbSession.volunteerId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { contactId, result, supportLevel, notes, duration } = await req.json();
-  if (!contactId || !result) return NextResponse.json({ error: "contactId and result required" }, { status: 400 });
+  const body = await req.json();
+  const parsed = phoneBankResultSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
+  }
+  const { contactId, result, supportLevel, notes, duration } = parsed.data;
 
   // Log interaction
   await prisma.interaction.create({

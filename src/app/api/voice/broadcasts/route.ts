@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
+import { createVoiceBroadcastSchema } from "@/lib/validators/voice";
 
 /** GET — List voice broadcasts for the active campaign */
 export async function GET(req: NextRequest) {
@@ -28,12 +29,11 @@ export async function POST(req: NextRequest) {
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const body = await req.json();
-  const { name, type, audioUrl, twimlScript, ivrQuestions, targetAudience, callerId, callerIdName, callWindowStart, callWindowEnd, scheduledFor } = body;
-
-  if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  if (!["robocall", "voice_drop", "ivr_poll"].includes(type)) {
-    return NextResponse.json({ error: "Type must be robocall, voice_drop, or ivr_poll" }, { status: 400 });
+  const parsed = createVoiceBroadcastSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
   }
+  const { name, type, audioUrl, twimlScript, ivrQuestions, targetAudience, callerId, callerIdName, callWindowStart, callWindowEnd, scheduledFor } = parsed.data;
 
   const broadcast = await prisma.voiceBroadcast.create({
     data: {
@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       type,
       status: "draft",
-      audioUrl: audioUrl || null,
-      twimlScript: twimlScript || null,
-      ivrQuestions: ivrQuestions || null,
-      targetAudience: targetAudience || null,
-      callerId: callerId || null,
-      callerIdName: callerIdName || null,
+      audioUrl: audioUrl ?? null,
+      twimlScript: twimlScript ?? null,
+      ivrQuestions: (ivrQuestions as object) ?? null,
+      targetAudience: (targetAudience as object) ?? null,
+      callerId: callerId ?? null,
+      callerIdName: callerIdName ?? null,
       callWindowStart: callWindowStart || "09:00",
       callWindowEnd: callWindowEnd || "21:30",
       scheduledFor: scheduledFor ? new Date(scheduledFor) : null,

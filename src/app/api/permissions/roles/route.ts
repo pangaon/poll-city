@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { ALL_PERMISSIONS } from "@/lib/permissions/constants";
+import { createRoleSchema } from "@/lib/validators/permissions";
 
 /** GET — List all roles for the active campaign */
 export async function GET(req: NextRequest) {
@@ -25,11 +26,11 @@ export async function POST(req: NextRequest) {
 
   const campaignId = (session.user as any).activeCampaignId as string;
   const body = await req.json();
-  const { name, description, colour, permissions, trustFloor, trustCeiling, copyFromRoleId } = body;
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: "Role name is required" }, { status: 400 });
+  const parsed = createRoleSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
   }
+  const { name, description, colour, permissions, trustFloor, trustCeiling, copyFromRoleId } = parsed.data;
 
   // Generate slug from name
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
