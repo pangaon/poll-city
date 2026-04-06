@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { createFormSchema } from "@/lib/validators/forms";
+import { getTemplate } from "@/lib/forms/templates";
 
 function slugify(name: string): string {
   return name
@@ -35,13 +37,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, title, description } = body;
+    const parsed = createFormSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
+    const { name, title, description, templateKey, primaryColour } = parsed.data;
 
-    if (!name || !title) {
-      return NextResponse.json({ error: "name and title are required" }, { status: 400 });
-    }
-
-    let slug = body.slug ? body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") : slugify(name);
+    let slug = parsed.data.slug || slugify(name);
 
     if (!slug) {
       return NextResponse.json({ error: "Could not generate a valid slug" }, { status: 400 });
@@ -60,10 +60,36 @@ export async function POST(req: NextRequest) {
         slug,
         title,
         description: description || null,
+        ...(primaryColour ? { primaryColour } : {}),
       },
     });
 
-    return NextResponse.json(form, { status: 201 });
+    // If creating from a template, auto-populate fields
+    if (templateKey) {
+      const template = getTemplate(templateKey);
+      if (template) {
+        const fieldData = template.fields.map((f, i) => ({
+          formId: form.id,
+          order: i,
+          type: f.type,
+          label: f.label,
+          placeholder: f.placeholder ?? null,
+          helpText: f.helpText ?? null,
+          required: f.required ?? false,
+          options: f.options ? (f.options as any) : undefined,
+          crmField: f.crmField ?? null,
+          width: f.width ?? "full",
+        }));
+        await prisma.formField.createMany({ data: fieldData });
+      }
+    }
+
+    const created = await prisma.form.findUnique({
+      where: { id: form.id },
+      include: { fields: { orderBy: { order: "asc" } }, _count: { select: { submissions: true } } },
+    });
+
+    return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/forms]", err);
     return NextResponse.json({ error: "Failed to create form" }, { status: 500 });
