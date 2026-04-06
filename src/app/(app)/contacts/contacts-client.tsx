@@ -697,8 +697,51 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         </Card>
       )}
 
-      {/* Table */}
-      <Card className="overflow-hidden">
+      {/* Mobile card view (below md) */}
+      <div className="md:hidden space-y-2">
+        {contacts.map((c) => {
+          const supportColor =
+            c.supportLevel === "strong_support" ? "border-l-emerald-500" :
+            c.supportLevel === "leaning_support" ? "border-l-emerald-300" :
+            c.supportLevel === "undecided" ? "border-l-amber-400" :
+            c.supportLevel === "leaning_opposition" ? "border-l-orange-400" :
+            c.supportLevel === "strong_opposition" ? "border-l-red-500" : "border-l-slate-300";
+          return (
+            <div
+              key={c.id}
+              onClick={() => setSlideOverContactId(c.id)}
+              className={`bg-white rounded-xl border border-slate-200 border-l-4 ${supportColor} p-3.5 active:bg-slate-50 cursor-pointer`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900 truncate">{fullName(c.firstName, c.lastName)}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    {c.phone ? formatPhone(c.phone) : c.email ?? "No contact info"}
+                  </p>
+                </div>
+                <SupportLevelBadge level={c.supportLevel} />
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                {c.ward && <span>{c.ward}</span>}
+                {c._count.interactions > 0 && <span>{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</span>}
+                {c.followUpNeeded && <span className="text-amber-600 font-semibold">Follow-up</span>}
+                {c.volunteerInterest && <span className="text-blue-600 font-semibold">Volunteer</span>}
+              </div>
+              {c.tags.length > 0 && (
+                <div className="flex gap-1 mt-2 flex-wrap">
+                  {c.tags.slice(0, 3).map(({ tag }) => (
+                    <span key={tag.id} className="text-[10px] px-1.5 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: tag.color }}>{tag.name}</span>
+                  ))}
+                  {c.tags.length > 3 && <span className="text-[10px] text-slate-400">+{c.tags.length - 3}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table (md and above) */}
+      <Card className="overflow-hidden hidden md:block">
         <div className="max-h-[65vh] overflow-x-auto overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
