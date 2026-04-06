@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:52  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **iPhone/PWA viewport stability hardening shipped (dvh shell + compact topbar spacing)**
+- Context:
+  - Updated [src/app/(app)/layout.tsx](src/app/(app)/layout.tsx):
+    - App shell now uses `h-dvh min-h-dvh` on mobile with `md:h-screen` fallback.
+    - Added `overflow-hidden` on shell and `overscroll-contain` for main content.
+  - Updated [src/components/layout/topbar.tsx](src/components/layout/topbar.tsx) with mobile-first horizontal padding (`px-3 sm:px-6`) to improve 375px header fit.
+  - Updated [src/app/globals.css](src/app/globals.css) to enforce baseline dynamic body height (`min-height: 100dvh`) for mobile standalone behavior.
+  - Validation: TS/route file diagnostics clean; CSS file shows existing Tailwind at-rule lint noise only.
+  - Isolation: UI shell only; no API changes.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 18:41  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Feature #30 final-mile UAT checklist added for sign-off execution**
 - Context:
