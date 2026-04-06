@@ -12,6 +12,25 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 12:30 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + George + All contributors
+- Topic: **Commit pushed - George debug suite v2 (private gated QA tooling)**
+- Context:
+  - Pushed commit `71e3d90` (`feat: add george-only debug suite with secret activation and gated toolbar`).
+  - Added Prisma models: `DebugSession`, `DebugNote` and user relation.
+  - Added private debug API surface under `/api/debug/*` with 2-layer access enforcement:
+    - authorized user IDs (`GEORGE_USER_ID`, optional designate IDs)
+    - valid `debug_access` cookie from `/api/debug/activate?key=...`
+  - Unauthorized access behavior intentionally returns 404 for debug APIs.
+  - Added activation page `/debug-access` and server-gated toolbar render so non-authorized users do not receive toolbar UI.
+  - Toolbar supports click-to-flag notes, screenshots + annotations, screen recording upload, voice capture, notes panel, and markdown report generation endpoint.
+  - Validation:
+    - `npm run typecheck` passes.
+    - `npm run build` blocked in this workspace by external DB connectivity (`P1001` to Railway host), not by compile errors.
+- Ask/Decision needed:
+  - George must set env vars and redeploy for production use.
+  - Optional: Claude can review token-handling copy/UX wording if we want stricter security language in toolbar hints.
+- Status: Open
+
 ### 2026-04-06 04:52:29 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + George + All contributors
 - Topic: **Coordination update - Events UI commit pushed and next fixes queued**
 - Context:
