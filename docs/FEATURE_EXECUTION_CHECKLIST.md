@@ -30,7 +30,7 @@ Dependency planning requirement before implementation starts:
 - [x] 10. Sign Tracking  | status: API Complete (GET/PATCH/POST quick-capture + audit log + notifications)  | commit: pre-existing  | report: Backend complete — UI pending (GPT-Codex)
 - [x] 11. Donation Logging  | status: API Complete (GET/PATCH donations + permission-gated + Stripe public checkout)  | commit: feb5be1  | report: Backend complete with permissions. Public Stripe donation at /api/public/candidates/[slug]/donate
 - [x] 12. Task Management  | status: API Complete (GET/POST tasks + PATCH/DELETE [id])  | commit: pre-existing  | report: Backend complete — UI pending (GPT-Codex)
-- [ ] 13. Poll Builder + Results  | status: Pending  | commit: -  | report: -
+- [x] 13. Poll Builder + Results  | status: API Complete (GET/POST polls, GET/PATCH [id], POST/GET respond, GET verify-receipt)  | commit: pre-existing  | report: Full poll lifecycle with anonymous voting and receipt verification
 - [x] 14. Push Subscription + Send  | status: API Complete (subscribe, send, schedule, history, stats, staff-alert, test)  | commit: pre-existing  | report: 7 notification endpoints, full lifecycle
 - [x] 15. Campaign Analytics  | status: API Complete (5 endpoints: campaign overview, canvassing, supporters, donations, GOTV)  | commit: 297bfcc  | report: Full analytics suite with permission gating
 - [x] 16. Print Job Wizard  | status: API Complete (GET/POST jobs, download, preview, templates)  | commit: pre-existing  | report: Full print job lifecycle
@@ -54,13 +54,13 @@ Dependency planning requirement before implementation starts:
 - [x] 34. Credentials Login  | status: API Complete (NextAuth credentials + forgot/reset password + verify-reset-token)  | commit: pre-existing  | report: Full auth flow with 2FA support
 - [x] 35. OAuth Login  | status: API Complete (NextAuth [...nextauth] with Google provider)  | commit: pre-existing  | report: OAuth via NextAuth
 - [x] 36. Subscription Checkout  | status: API Complete (Stripe checkout, portal, invoices, webhook)  | commit: pre-existing  | report: Full Stripe billing integration
-- [ ] 37. Print Escrow Release  | status: Pending  | commit: -  | report: -
-- [ ] 38. Abuse Controls (Duplicate Vote, Size Guard)  | status: Pending  | commit: -  | report: -
-- [ ] 39. Rate Limiting  | status: Pending  | commit: -  | report: -
-- [ ] 40. CAPTCHA  | status: Pending  | commit: -  | report: -
-- [ ] 41. Anonymous Polling  | status: Pending  | commit: -  | report: -
-- [ ] 42. Error Boundary Component  | status: Pending  | commit: -  | report: -
-- [ ] 43. Audit Logging  | status: Pending  | commit: -  | report: -
+- [x] 37. Print Escrow Release  | status: API Complete (POST /api/print/payment/release)  | commit: pre-existing  | report: Stripe escrow release for completed print jobs
+- [x] 38. Abuse Controls (Duplicate Vote, Size Guard)  | status: API Complete (rate limiting on all public endpoints, Turnstile CAPTCHA, poll vote dedup via receipt)  | commit: pre-existing  | report: Rate limiting + CAPTCHA + dedup
+- [x] 39. Rate Limiting  | status: API Complete (enforceLimit on all mutation endpoints, per-user + per-IP)  | commit: pre-existing  | report: Redis-backed rate limiting across all public and auth endpoints
+- [x] 40. CAPTCHA  | status: API Complete (Cloudflare Turnstile on public forms — support, volunteer, sign-request, question)  | commit: pre-existing  | report: Turnstile verification with graceful degradation
+- [x] 41. Anonymous Polling  | status: API Complete (POST /api/polls/[id]/respond with receipt-based anonymity)  | commit: pre-existing  | report: Anonymous voting with receipt verification
+- [ ] 42. Error Boundary Component  | status: Pending (UI — GPT-Codex territory)  | commit: -  | report: -
+- [x] 43. Audit Logging  | status: API Complete (ActivityLog model used across all write operations)  | commit: pre-existing  | report: Campaign-scoped audit log on all mutations
 - [ ] 44. Marketing Landing + SEO  | status: Pending  | commit: -  | report: -
 - [ ] 45. Progressive Web App Install  | status: Pending  | commit: -  | report: -
 - [ ] 46. User Profile Updates  | status: Pending  | commit: -  | report: -
