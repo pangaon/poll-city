@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { SupportLevel } from "@prisma/client";
 import { toCSV } from "@/lib/utils";
 import {
@@ -59,6 +59,8 @@ function parseBoolean(value?: string | null): boolean {
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "import_export:read");
+  if (permError) return permError;
 
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
@@ -161,6 +163,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError2 = requirePermission(session!.user.role as string, "import_export:write");
+  if (permError2) return permError2;
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > 10_000_000) {

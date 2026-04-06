@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "settings:write");
+  if (permError) return permError;
 
   const campaignId = req.headers.get("x-campaign-id");
   if (!campaignId) {

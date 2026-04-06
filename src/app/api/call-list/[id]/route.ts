@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 const ALLOWED_STATUSES = new Set(["pending", "called", "completed", "skipped"]);
@@ -7,6 +7,8 @@ const ALLOWED_STATUSES = new Set(["pending", "called", "completed", "skipped"]);
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "canvassing:write");
+  if (permError) return permError;
 
   let body: { status?: string };
   try {
