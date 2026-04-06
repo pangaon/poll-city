@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "donations:write");
+  if (permError) return permError;
 
   let body: {
     campaignId?: string;
@@ -68,6 +70,17 @@ export async function POST(req: NextRequest) {
       method: body.method?.trim() || "cash",
       notes: body.notes?.trim() || null,
       status: "pledged",
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "donation_recorded",
+      entityType: "donation",
+      entityId: donation.id,
+      details: { amount, method: body.method || "cash" },
     },
   });
 
