@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import type { Prisma } from "@prisma/client";
 import { SocialPostStatus } from "@prisma/client";
 
@@ -19,6 +19,8 @@ function parseDate(value?: string | null): Date | null {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "social:write");
+  if (permError) return permError;
 
   const post = await prisma.socialPost.findUnique({ where: { id: params.id } });
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
@@ -89,6 +91,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError2 = requirePermission(session!.user.role as string, "social:write");
+  if (permError2) return permError2;
 
   const post = await prisma.socialPost.findUnique({ where: { id: params.id } });
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
