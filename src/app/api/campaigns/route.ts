@@ -54,6 +54,25 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Seed default permission roles for the new campaign
+  try {
+    const { seedDefaultRoles } = await import("@/lib/permissions/engine");
+    await seedDefaultRoles(campaign.id);
+
+    // Link the creator to the admin role
+    const adminRole = await prisma.campaignRole.findFirst({
+      where: { campaignId: campaign.id, slug: "admin" },
+    });
+    if (adminRole) {
+      await prisma.membership.update({
+        where: { userId_campaignId: { userId: session!.user.id, campaignId: campaign.id } },
+        data: { campaignRoleId: adminRole.id, trustLevel: 5 },
+      });
+    }
+  } catch (e) {
+    console.error("[Campaign Create] Failed to seed roles:", e);
+  }
+
   await prisma.activityLog.create({
     data: {
       campaignId: campaign.id,
