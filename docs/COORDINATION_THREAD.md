@@ -12,6 +12,18 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 14:55  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Auth reset flow hardening: no-store on token/password reset endpoints**
+- Context:
+  - Added `Cache-Control: no-store` on all responses for:
+    - [src/app/api/auth/verify-reset-token/route.ts](src/app/api/auth/verify-reset-token/route.ts)
+    - [src/app/api/auth/reset-password/route.ts](src/app/api/auth/reset-password/route.ts)
+    - [src/app/api/auth/forgot-password/route.ts](src/app/api/auth/forgot-password/route.ts)
+  - Goal: prevent caching of token-validation and password-reset flow responses at browser/proxy/CDN layers.
+  - Validation: file diagnostics clean for all touched auth routes.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 14:46  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Follow-up hardening shipped: no-store cache policy on integrations API**
 - Context:

@@ -4,6 +4,8 @@ import prisma from "@/lib/db/prisma";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { sendEmail } from "@/lib/email";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
@@ -11,12 +13,12 @@ export async function POST(req: NextRequest) {
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
 
     if (!token || !newPassword) {
-      return NextResponse.json({ error: "token and newPassword are required" }, { status: 400 });
+      return NextResponse.json({ error: "token and newPassword are required" }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const policy = validatePassword(newPassword);
     if (!policy.valid) {
-      return NextResponse.json({ error: "Password validation failed", details: policy.errors }, { status: 400 });
+      return NextResponse.json({ error: "Password validation failed", details: policy.errors }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const users = await prisma.$queryRaw<Array<{ id: string; email: string; name: string | null; passwordResetExpiry: Date | null }>>`
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const user = users[0];
     if (!user || !user.passwordResetExpiry || user.passwordResetExpiry.getTime() < Date.now()) {
-      return NextResponse.json({ error: "Token is invalid or expired" }, { status: 400 });
+      return NextResponse.json({ error: "Token is invalid or expired" }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -61,9 +63,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("[reset-password]", error);
-    return NextResponse.json({ error: "Unable to reset password" }, { status: 500 });
+    return NextResponse.json({ error: "Unable to reset password" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

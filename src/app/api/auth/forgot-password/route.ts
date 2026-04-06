@@ -4,21 +4,23 @@ import prisma from "@/lib/db/prisma";
 import { sendEmail } from "@/lib/email";
 import { enforceLimit, checkLimit } from "@/lib/rate-limit-redis";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function POST(req: NextRequest) {
   try {
     const ipLimited = await enforceLimit(req, "forgotPassword");
-    if (ipLimited) return NextResponse.json({ success: true }, { status: 200 });
+    if (ipLimited) return NextResponse.json({ success: true }, { status: 200, headers: NO_STORE_HEADERS });
 
     const body = await req.json().catch(() => null);
     const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
 
     if (!email) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     const emailOutcome = await checkLimit("forgotPassword", `email:${email}`);
     if (!emailOutcome.success) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     const user = await prisma.user.findUnique({
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     const token = randomBytes(32).toString("hex");
@@ -69,9 +71,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("[forgot-password]", error);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
   }
 }
