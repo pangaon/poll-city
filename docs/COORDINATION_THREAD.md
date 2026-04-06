@@ -12,6 +12,18 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:03  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Isolated token-flow cache hardening (claim + voice token endpoints)**
+- Context:
+  - Added `Cache-Control: no-store` to token-bearing/sensitive responses in:
+    - [src/app/api/claim/request/route.ts](src/app/api/claim/request/route.ts)
+    - [src/app/api/claim/verify/route.ts](src/app/api/claim/verify/route.ts)
+    - [src/app/api/voice/phone-banking/token/route.ts](src/app/api/voice/phone-banking/token/route.ts)
+  - `claim/verify` now sets no-store on HTML responses and redirects to avoid caching verification flow artifacts.
+  - This batch intentionally avoided currently active parallel-edit routes (contacts/events/export/gotv/signs/tasks).
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 14:55  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Auth reset flow hardening: no-store on token/password reset endpoints**
 - Context:

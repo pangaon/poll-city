@@ -4,19 +4,22 @@ import prisma from "@/lib/db/prisma";
 
 const SECRET = process.env.NEXTAUTH_SECRET;
 const TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
   if (!SECRET) {
     return new NextResponse(
       "<html><body><h2>Server configuration error.</h2></body></html>",
-      { status: 500, headers: { "Content-Type": "text/html" } }
+      { status: 500, headers: { "Content-Type": "text/html", ...NO_STORE_HEADERS } }
     );
   }
 
   const token = req.nextUrl.searchParams.get("token");
 
   if (!token) {
-    return NextResponse.redirect(new URL("/", req.url));
+    const response = NextResponse.redirect(new URL("/", req.url));
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 
   try {
@@ -29,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (sig !== expectedSig) {
       return new NextResponse(
         "<html><body><h2>Invalid or expired verification link.</h2><p><a href='/'>Go home</a></p></body></html>",
-        { status: 400, headers: { "Content-Type": "text/html" } }
+        { status: 400, headers: { "Content-Type": "text/html", ...NO_STORE_HEADERS } }
       );
     }
 
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
     if (age > TOKEN_TTL_SECONDS) {
       return new NextResponse(
         "<html><body><h2>Verification link has expired.</h2><p>Please <a href='/claim/" + campaignSlug + "'>request a new one</a>.</p></body></html>",
-        { status: 400, headers: { "Content-Type": "text/html" } }
+        { status: 400, headers: { "Content-Type": "text/html", ...NO_STORE_HEADERS } }
       );
     }
 
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
     if (!official) {
       return new NextResponse(
         "<html><body><h2>Official not found.</h2></body></html>",
-        { status: 404, headers: { "Content-Type": "text/html" } }
+        { status: 404, headers: { "Content-Type": "text/html", ...NO_STORE_HEADERS } }
       );
     }
 
@@ -71,12 +74,14 @@ export async function GET(req: NextRequest) {
     }
 
     // Redirect to pricing to choose a plan
-    return NextResponse.redirect(new URL("/pricing?claimed=1&campaign=" + campaignSlug, req.url));
+    const response = NextResponse.redirect(new URL("/pricing?claimed=1&campaign=" + campaignSlug, req.url));
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (err) {
     console.error("[claim/verify]", err);
     return new NextResponse(
       "<html><body><h2>Verification failed.</h2><p>The link may be malformed. <a href='/'>Go home</a></p></body></html>",
-      { status: 400, headers: { "Content-Type": "text/html" } }
+      { status: 400, headers: { "Content-Type": "text/html", ...NO_STORE_HEADERS } }
     );
   }
 }

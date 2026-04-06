@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "canvassing:write");
   if (error) return error;
@@ -17,7 +19,7 @@ export async function GET(req: NextRequest) {
   if (!accountSid || !apiKey || !apiSecret || !twimlAppSid) {
     return NextResponse.json({
       error: "Phone banking is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, and TWILIO_TWIML_APP_SID.",
-    }, { status: 503 });
+    }, { status: 503, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -43,11 +45,11 @@ export async function GET(req: NextRequest) {
       token: token.toJwt(),
       identity: session.user.id,
       expiresIn: 3600,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (e) {
     console.error("[Phone Banking] Token generation failed:", e);
     return NextResponse.json({
       error: "Failed to generate voice token. Ensure twilio package is installed: npm install twilio",
-    }, { status: 500 });
+    }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

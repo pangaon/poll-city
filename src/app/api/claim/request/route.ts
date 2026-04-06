@@ -6,13 +6,14 @@ import { sendEmail } from "@/lib/email";
 import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
 
 const SECRET = process.env.NEXTAUTH_SECRET;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, "auth");
   if (limited) return limited;
 
   if (!SECRET) {
-    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   try {
@@ -26,12 +27,12 @@ export async function POST(req: NextRequest) {
             ? "Captcha verification failed"
             : "Captcha token missing",
         },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
     if (!officialId || !email || !campaignSlug) {
-      return NextResponse.json({ error: "officialId, email, and campaignSlug are required" }, { status: 400 });
+      return NextResponse.json({ error: "officialId, email, and campaignSlug are required" }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     const emailLower = (email as string).toLowerCase().trim();
@@ -42,11 +43,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!official) {
-      return NextResponse.json({ error: "Official not found" }, { status: 404 });
+      return NextResponse.json({ error: "Official not found" }, { status: 404, headers: NO_STORE_HEADERS });
     }
 
     if (official.isClaimed) {
-      return NextResponse.json({ error: "This profile has already been claimed" }, { status: 409 });
+      return NextResponse.json({ error: "This profile has already been claimed" }, { status: 409, headers: NO_STORE_HEADERS });
     }
 
     // Generate a time-limited signed token
@@ -94,9 +95,9 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Verification email sent",
       ...(process.env.NODE_ENV !== "production" ? { verifyUrl } : {}),
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (err) {
     console.error("[claim/request]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
