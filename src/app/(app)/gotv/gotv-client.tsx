@@ -52,8 +52,47 @@ interface CommandResponse {
   electionDayReady: boolean;
 }
 
+interface GapResponse {
+  gap: number;
+  winThreshold: number;
+  supportersVoted: number;
+  totalSupporters: number;
+  supportersRemaining: number;
+  turnoutPct: number;
+  supporterTurnoutPct: number;
+  pacing: {
+    hoursRemaining: number;
+    votesNeededPerHour: number;
+    onTrack: boolean;
+  };
+}
+
 export default function GotvClient({ campaignId }: Props) {
   const [active, setActive] = useState<Tab>("priority");
+  const [gapData, setGapData] = useState<GapResponse | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadGap() {
+      try {
+        const res = await fetch(`/api/gotv/gap?campaignId=${campaignId}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as GapResponse;
+        if (mounted) setGapData(data);
+      } catch {
+        // Keep existing value and avoid noisy UI if connectivity blips.
+      }
+    }
+
+    void loadGap();
+    const id = window.setInterval(loadGap, 30_000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(id);
+    };
+  }, [campaignId]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 pb-[env(safe-area-inset-bottom)]">
@@ -67,6 +106,42 @@ export default function GotvClient({ campaignId }: Props) {
           Score, prioritise, and strike off. This is the engine that turns supporters into votes.
         </p>
       </header>
+
+      <section
+        className="mb-6 rounded-2xl p-5 md:p-8 text-center border border-red-200 bg-gradient-to-b from-red-50 to-white"
+        aria-label="The Gap"
+      >
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">THE GAP</p>
+        <p className="mt-2 text-sm md:text-base text-slate-600">Supporters still needed to reach winning threshold</p>
+
+        <div className="mt-3">
+          <p className="text-5xl md:text-7xl font-black tracking-tight text-red-700 tabular-nums">
+            {gapData ? gapData.gap.toLocaleString() : "--"}
+          </p>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Winning threshold</p>
+            <p className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums">{gapData ? gapData.winThreshold.toLocaleString() : "--"}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Supporters voted</p>
+            <p className="mt-1 text-2xl font-extrabold text-emerald-700 tabular-nums">{gapData ? gapData.supportersVoted.toLocaleString() : "--"}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Votes needed per hour</p>
+            <p className="mt-1 text-2xl font-extrabold text-blue-700 tabular-nums">{gapData ? gapData.pacing.votesNeededPerHour.toLocaleString() : "--"}</p>
+          </div>
+        </div>
+
+        {gapData && (
+          <p className="mt-4 text-sm text-slate-600">
+            Supporter turnout is <span className="font-bold text-slate-900 tabular-nums">{gapData.supporterTurnoutPct}%</span>. 
+            {" "}General turnout is <span className="font-bold text-slate-900 tabular-nums">{gapData.turnoutPct}%</span>.
+          </p>
+        )}
+      </section>
 
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3">
         <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter density map</p>
