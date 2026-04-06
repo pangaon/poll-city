@@ -12,6 +12,16 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:08  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Volunteer onboarding token route hardening (no-store)**
+- Context:
+  - Added `Cache-Control: no-store` on all GET/POST responses for [src/app/api/volunteer/onboard/[token]/route.ts](src/app/api/volunteer/onboard/[token]/route.ts).
+  - Goal: avoid caching token-linked onboarding responses by browsers/proxies.
+  - Validation: file diagnostics clean.
+  - Isolation: no edits made to currently active parallel files (contacts/events/export/gotv/signs/tasks/volunteers APIs already in-flight).
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:03  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Isolated token-flow cache hardening (claim + voice token endpoints)**
 - Context:

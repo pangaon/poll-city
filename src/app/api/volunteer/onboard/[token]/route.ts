@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
   const invite = await prisma.volunteerOnboardingToken.findUnique({
     where: { token: params.token },
@@ -18,9 +20,9 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     },
   });
 
-  if (!invite) return NextResponse.json({ error: "Invalid token" }, { status: 404 });
+  if (!invite) return NextResponse.json({ error: "Invalid token" }, { status: 404, headers: NO_STORE_HEADERS });
   if (invite.expiresAt.getTime() < Date.now()) {
-    return NextResponse.json({ error: "Token expired" }, { status: 410 });
+    return NextResponse.json({ error: "Token expired" }, { status: 410, headers: NO_STORE_HEADERS });
   }
 
   return NextResponse.json({
@@ -33,7 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
       preferredWard: invite.preferredWard,
       campaign: invite.campaign,
     },
-  });
+  }, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
@@ -50,13 +52,13 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   } | null;
 
   if (!body || !body.firstName || !body.lastName || !body.email || !body.acceptedCode) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
   const invite = await prisma.volunteerOnboardingToken.findUnique({ where: { token: params.token } });
-  if (!invite) return NextResponse.json({ error: "Invalid token" }, { status: 404 });
+  if (!invite) return NextResponse.json({ error: "Invalid token" }, { status: 404, headers: NO_STORE_HEADERS });
   if (invite.expiresAt.getTime() < Date.now()) {
-    return NextResponse.json({ error: "Token expired" }, { status: 410 });
+    return NextResponse.json({ error: "Token expired" }, { status: 410, headers: NO_STORE_HEADERS });
   }
 
   const emailLower = body.email.trim().toLowerCase();
@@ -114,5 +116,5 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     data: { status: "completed", consumedAt: new Date() },
   });
 
-  return NextResponse.json({ data: { success: true, contactId: contact.id } });
+  return NextResponse.json({ data: { success: true, contactId: contact.id } }, { headers: NO_STORE_HEADERS });
 }
