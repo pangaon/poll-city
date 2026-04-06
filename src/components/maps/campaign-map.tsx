@@ -46,11 +46,19 @@ interface AreaStats {
   volunteersNeeded: number;
 }
 
+export interface MapTurfSelection {
+  id: string | null;
+  name: string | null;
+  coordinates: Array<[number, number]>;
+  stats: AreaStats;
+}
+
 export interface CampaignMapProps {
   mode: CampaignMapMode;
   height?: number | string;
   turfId?: string;
   onTurfDraw?: (coordinates: Array<[number, number]>, stats: AreaStats) => void;
+  onTurfClick?: (selection: MapTurfSelection) => void;
   onAreaSelect?: (stats: AreaStats) => void;
   showControls?: boolean;
   showCalculator?: boolean;
@@ -147,6 +155,7 @@ export default function CampaignMap({
   height = 480,
   turfId,
   onTurfDraw,
+  onTurfClick,
   onAreaSelect,
   showControls = true,
   showCalculator = false,
@@ -310,7 +319,22 @@ export default function CampaignMap({
         {mapPoints.length > 1 && <FitMapBounds points={mapPoints} />}
 
         {layer.turfs && turfPolygons.map((poly, index) => (
-          <Polygon key={`turf-${index}`} positions={poly.points as LatLngExpression[]} pathOptions={{ color: "#2563eb", weight: 2, fillOpacity: 0.08 }}>
+          <Polygon
+            key={`turf-${index}`}
+            positions={poly.points as LatLngExpression[]}
+            pathOptions={{ color: "#2563eb", weight: 2, fillOpacity: 0.08 }}
+            eventHandlers={{
+              click: () => {
+                const pointCount = Math.max(1, poly.points.length * 16);
+                onTurfClick?.({
+                  id: typeof poly.properties.id === "string" ? poly.properties.id : null,
+                  name: typeof poly.properties.name === "string" ? poly.properties.name : null,
+                  coordinates: poly.points,
+                  stats: computeAreaStats(pointCount),
+                });
+              },
+            }}
+          >
             <Popup>Turf {(poly.properties.name as string) ?? index + 1}</Popup>
           </Polygon>
         ))}

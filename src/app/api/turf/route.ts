@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
     oddEven?: string;
     contactIds: string[];
     notes?: string;
+    boundary?: unknown;
+    centroid?: { lat: number; lng: number };
+    assignedUserId?: string | null;
   };
 
   try {
@@ -82,6 +85,10 @@ export async function POST(req: NextRequest) {
       streets: body.streets ?? [],
       oddEven: body.oddEven ?? "all",
       notes: body.notes ?? null,
+      boundary: body.boundary ?? undefined,
+      centroid: body.centroid ?? undefined,
+      assignedUserId: body.assignedUserId ?? null,
+      status: body.assignedUserId ? TurfStatus.assigned : TurfStatus.draft,
       totalStops: validIds.length,
       stops: {
         create: validIds.map((id, idx) => ({
