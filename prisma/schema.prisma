@@ -385,7 +385,8 @@ model User {
   volunteerLocations      VolunteerLocation[]
   voiceBroadcastsCreated  VoiceBroadcast[]     @relation("VoiceBroadcastCreator")
   phoneBankSessions       PhoneBankSession[]   @relation("PhoneBankVolunteer")
-  debugSessions           DebugSession[]
+  debugSessions            DebugSession[]
+  newsletterCampaignsAuthored NewsletterCampaign[] @relation("NewsletterAuthor")
 
   @@map("users")
 }
@@ -498,6 +499,8 @@ model Campaign {
   voiceOptOuts              VoiceOptOut[]
   callCenterIntegrations    CallCenterIntegration[]
   phoneBankSessions         PhoneBankSession[]
+  newsletterSubscribers     NewsletterSubscriber[]
+  newsletterCampaigns       NewsletterCampaign[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -622,7 +625,9 @@ model Official {
   sentimentSignals SentimentSignal[]
   outreach         OfficialOutreach[]
   constituents     Constituent[]
-  caseFiles        ConstituentCaseFile[]
+  caseFiles                ConstituentCaseFile[]
+  newsletterSubscribers    NewsletterSubscriber[]
+  newsletterCampaigns      NewsletterCampaign[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -3048,4 +3053,60 @@ model PhoneBankSession {
   @@index([campaignId, status])
   @@index([volunteerId])
   @@map("phone_bank_sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEWSLETTER SYSTEM (Candidate + Official newsletters)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NewsletterSubscriber {
+  id           String    @id @default(cuid())
+  campaignId   String?   // null for official-level newsletters
+  officialId   String?   // null for campaign newsletters
+  email        String
+  firstName    String?
+  lastName     String?
+  postalCode   String?
+  source       String    @default("web") // web | import | event | manual
+  status       String    @default("active") // active | unsubscribed | bounced
+  consentGiven Boolean   @default(true)
+  consentDate  DateTime  @default(now())
+  consentIp    String?
+  unsubscribedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  official Official? @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, email])
+  @@unique([officialId, email])
+  @@index([email])
+  @@index([campaignId, status])
+  @@index([officialId, status])
+  @@map("newsletter_subscribers")
+}
+
+model NewsletterCampaign {
+  id           String    @id @default(cuid())
+  campaignId   String?
+  officialId   String?
+  subject      String
+  body         String
+  status       String    @default("draft") // draft | scheduled | sending | sent | failed
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  sentCount    Int       @default(0)
+  openCount    Int       @default(0)
+  clickCount   Int       @default(0)
+  bounceCount  Int       @default(0)
+  createdById  String
+  createdAt    DateTime  @default(now())
+
+  campaign  Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  official  Official? @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("NewsletterAuthor", fields: [createdById], references: [id])
+
+  @@index([campaignId, status])
+  @@index([officialId, status])
+  @@map("newsletter_campaigns")
 }
