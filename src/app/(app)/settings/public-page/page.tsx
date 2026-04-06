@@ -417,8 +417,11 @@ export default function PublicPageSettings() {
 
   // Derived
   const userPlan: Plan = (campaign?.plan ?? "pro") as Plan;
-  const pageUrl = typeof window !== "undefined" && campaign
-    ? `${window.location.origin}/candidates/${campaign.slug}`
+  const campaignSlug = (campaign?.slug ?? "").trim();
+  const candidatePath = campaignSlug ? `/candidates/${campaignSlug}` : "/candidates";
+  const pagePathPreview = `poll.city${candidatePath}`;
+  const pageUrl = typeof window !== "undefined" && campaignSlug
+    ? `${window.location.origin}${candidatePath}`
     : "";
 
   useEffect(() => {
@@ -531,7 +534,7 @@ export default function PublicPageSettings() {
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${campaign?.slug ?? "campaign"}-qr.png`;
+    a.download = `${campaignSlug || "campaign"}-qr.png`;
     a.click();
   }
 
@@ -544,7 +547,7 @@ export default function PublicPageSettings() {
 
       {/* URL display */}
       <div className="flex items-center gap-2 bg-white/10 backdrop-blur rounded-xl px-4 py-3 mb-4">
-        <span className="flex-1 font-mono text-sm text-white break-all">{pageUrl || `poll.city/candidates/${campaign.slug}`}</span>
+        <span className="flex-1 font-mono text-sm text-white break-all">{pageUrl || pagePathPreview}</span>
         <button onClick={copyPageUrl} title="Copy URL"
           className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/20 transition-colors">
           <Copy className="w-4 h-4" />
@@ -977,7 +980,7 @@ export default function PublicPageSettings() {
           <p className="text-blue-700 text-sm font-medium hover:underline cursor-default truncate">
             {c.metaTitle || `${campaign.candidateName} — ${campaign.jurisdiction}`}
           </p>
-          <p className="text-green-700 text-xs">poll.city/candidates/{campaign.slug}</p>
+          <p className="text-green-700 text-xs">{pagePathPreview}</p>
           <p className="text-gray-600 text-xs mt-0.5 line-clamp-2">
             {c.metaDescription || `Vote for ${campaign.candidateName} in the upcoming election.`}
           </p>
