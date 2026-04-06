@@ -385,6 +385,7 @@ model User {
   volunteerLocations      VolunteerLocation[]
   voiceBroadcastsCreated  VoiceBroadcast[]     @relation("VoiceBroadcastCreator")
   phoneBankSessions       PhoneBankSession[]   @relation("PhoneBankVolunteer")
+  debugSessions           DebugSession[]
 
   @@map("users")
 }
@@ -2076,6 +2077,55 @@ model EventReminder {
   @@index([eventId, scheduledFor])
   @@index([status, scheduledFor])
   @@map("event_reminders")
+}
+
+model DebugSession {
+  id          String      @id @default(cuid())
+  userId      String
+  title       String?
+  status      String      @default("active")
+  notes       DebugNote[]
+  createdAt   DateTime    @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("debug_sessions")
+}
+
+model DebugNote {
+  id              String       @id @default(cuid())
+  sessionId       String
+  session         DebugSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Location
+  url             String
+  pagePath        String
+  elementSelector String?
+  elementText     String?
+  xPercent        Float?
+  yPercent        Float?
+
+  // The note
+  type            String
+  text            String
+  priority        String       @default("medium")
+
+  // Media
+  screenshotUrl   String?
+  videoUrl        String?
+
+  // Status
+  resolved        Boolean      @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+
+  createdAt       DateTime     @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([sessionId, resolved, type])
+  @@map("debug_notes")
 }
 
 model SocialAccount {

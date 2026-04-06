@@ -5,6 +5,7 @@ import TopBar from "@/components/layout/topbar";
 import { AppShellClient } from "@/components/app-shell-client";
 import AdoniButton from "@/components/ai/adoni";
 import MobileNav from "@/components/layout/mobile-nav";
+import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <MobileNav />
         </div>
         <AdoniButton />
+        <DebugToolbarGate />
       </div>
     </AppShellClient>
   );

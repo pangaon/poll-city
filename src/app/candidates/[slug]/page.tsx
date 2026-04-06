@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import prisma from "@/lib/db/prisma";
 import CandidatePageClient, { type CampaignData, type PollData, type ElectionHistoryRow, type PageCustomization } from "./candidate-page-client";
+import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
 
 interface PageProps {
   params: { slug: string };
@@ -146,7 +147,12 @@ export default async function CandidatePage({ params }: PageProps) {
         : null,
     };
 
-    return <CandidatePageClient campaign={campaignData} polls={polls} electionHistory={electionHistory} />;
+    return (
+      <>
+        <CandidatePageClient campaign={campaignData} polls={polls} electionHistory={electionHistory} />
+        <DebugToolbarGate />
+      </>
+    );
   }
 
   // 3. No campaign → try official by externalId
@@ -195,7 +201,12 @@ export default async function CandidatePage({ params }: PageProps) {
       },
     };
 
-    return <CandidatePageClient campaign={campaignData} polls={[]} electionHistory={electionHistory} />;
+    return (
+      <>
+        <CandidatePageClient campaign={campaignData} polls={[]} electionHistory={electionHistory} />
+        <DebugToolbarGate />
+      </>
+    );
   }
 
   notFound();
