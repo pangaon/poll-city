@@ -6,19 +6,20 @@ import prisma from "@/lib/db/prisma";
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
 }) : null;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
   if (!stripe || !endpointSecret) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Stripe not configured" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 
   try {
     const body = await request.text();
     const sig = headers().get("stripe-signature");
     if (!sig) {
-      return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 });
+      return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     let event: Stripe.Event;
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
     switch (event.type) {
@@ -124,9 +125,9 @@ export async function POST(request: NextRequest) {
         console.warn(`Unhandled event type ${event.type}`);
     }
 
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("Webhook error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
