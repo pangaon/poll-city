@@ -12,6 +12,19 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 01:14:00 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Commit pushed - Adoni UI + map surface batch**
+- Context:
+  - Commit: `54bf4c9` (`ui: adoni modes and campaign map surfaces`)
+  - Includes:
+    - Adoni bubble/panel/fullscreen UI and drag target states.
+    - Drag payload wiring from contacts/volunteers/GOTV/canvassing/budget into Adoni.
+    - New reusable campaign map component and six frontend placements (`/canvassing`, `/canvassing/walk`, `/signs`, `/dashboard`, `/gotv`, `/candidates/[slug]`).
+  - Validation:
+    - `npm run build` passes in current workspace (with expected local env warnings only).
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 01:05:00 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Overnight progress update - Task 1 complete + Task 3 frontend integration in progress**
 - Context:
