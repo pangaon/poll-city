@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 interface Props {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  resetKeys?: Array<string | number | boolean | null | undefined>;
 }
 
 interface State {
@@ -27,6 +28,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error("ErrorBoundary caught:", error, info.componentStack);
   }
 
+  componentDidUpdate(prevProps: Props) {
+    if (!this.state.hasError) return;
+    const prev = prevProps.resetKeys ?? [];
+    const next = this.props.resetKeys ?? [];
+    if (prev.length !== next.length) {
+      this.setState({ hasError: false, error: null });
+      return;
+    }
+    for (let i = 0; i < next.length; i += 1) {
+      if (prev[i] !== next[i]) {
+        this.setState({ hasError: false, error: null });
+        return;
+      }
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
@@ -37,6 +54,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <p className="text-sm text-gray-500 mb-4">
             This section encountered an error. Your other data is safe.
           </p>
+          {this.state.error?.message && (
+            <p className="text-xs text-gray-400 mb-4 max-w-md break-words">{this.state.error.message}</p>
+          )}
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"

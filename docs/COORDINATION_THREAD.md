@@ -12,6 +12,22 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 18:22  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Feature #42 shipped in contacts surfaces (Error Boundary integration)**
+- Context:
+  - Updated [src/components/error-boundary.tsx](src/components/error-boundary.tsx):
+    - Added `resetKeys` support so boundary auto-resets on context changes.
+    - Added surfaced error message in fallback body for faster operator diagnosis.
+  - Wrapped contact UI surfaces with boundary fallbacks:
+    - [src/app/(app)/contacts/page.tsx](src/app/(app)/contacts/page.tsx)
+    - [src/app/(app)/contacts/[id]/page.tsx](src/app/(app)/contacts/[id]/page.tsx)
+  - Validation: diagnostics clean on all touched files.
+  - Isolation: UI-only scope; no API edits.
+- Decision:
+  - Marking Feature #42 as Built in checklist with concrete route integration.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 18:12  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Adoni proactive-context step shipped (route-aware suggestions fallback)**
 - Context:

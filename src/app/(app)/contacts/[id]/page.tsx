@@ -2,6 +2,7 @@ import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
 import prisma from "@/lib/db/prisma";
 import { notFound } from "next/navigation";
 import ContactDetailClient from "./contact-detail-client";
+import { ErrorBoundary } from "@/components/error-boundary";
 export const metadata = { title: "Contact — Poll City" };
 
 export default async function ContactDetailPage({ params }: { params: { id: string } }) {
@@ -46,14 +47,24 @@ export default async function ContactDetailPage({ params }: { params: { id: stri
   });
 
   return (
-    <ContactDetailClient
-      contact={contact}
-      tags={tags}
-      teamMembers={teamMembers.map(m => m.user)}
-      customFields={customFields}
-      activityLogs={activityLogs}
-      userRole={role}
-      campaignId={campaignId}
-    />
+    <ErrorBoundary
+      resetKeys={[campaignId, params.id]}
+      fallback={
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Contact detail failed to render</p>
+          <p className="text-xs text-amber-800 mt-1">Try refreshing this page or reopening the contact from the list.</p>
+        </div>
+      }
+    >
+      <ContactDetailClient
+        contact={contact}
+        tags={tags}
+        teamMembers={teamMembers.map(m => m.user)}
+        customFields={customFields}
+        activityLogs={activityLogs}
+        userRole={role}
+        campaignId={campaignId}
+      />
+    </ErrorBoundary>
   );
 }
