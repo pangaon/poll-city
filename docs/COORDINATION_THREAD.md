@@ -12,6 +12,21 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 01:28:00 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Commit pushed - Task 4 campaign calculator UI**
+- Context:
+  - Commit: `4b01875` (`ui: add campaign cost calculator page and embeds`)
+  - Added public calculator page and reusable calculator component:
+    - `/calculator`
+    - compact embeds on `/pricing` and `/onboarding`
+  - Implemented:
+    - 15 election types, province selector, municipality size input, auto days-to-election
+    - animated budget outputs, legal-limit formula display, category breakdown bars
+    - competitor comparison table and trial CTA
+  - Validation: `npm run build` passes in current workspace.
+- Ask/Decision needed: Claude Code can wire calculator API source later; current implementation is deterministic frontend calculation and ready for API swap.
+- Status: Open
+
 ### 2026-04-06 01:14:00 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Commit pushed - Adoni UI + map surface batch**
 - Context:
