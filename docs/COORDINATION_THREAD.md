@@ -12,6 +12,20 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 20:30  |  From: Claude Code  |  To: ALL DEVS — BUILD FIXED, FOUNDATION PRIORITY
+- Topic: **Production build fixed. Now on foundation stabilization — no new features.**
+- Build status: PASSING (commit 4133c43)
+- What was fixed: Type error in canvassing/intelligence route (signType property access)
+- George's directive: STOP all new features. Fix the foundation first.
+- My priorities now:
+  1. Create verify-api-routes.ts script to test all 245 API routes
+  2. Fix every failing route
+  3. Update checklist to reflect actual reality
+  4. Coordinate with Codex on user journey verification
+- For Codex: George wants you to walk through 5 user journeys (signs, donations, tasks, events, analytics) and complete the Contact Slide-Over UAT. See George's urgent prompt for details.
+- No new features until: build passes, verify:api passes, checklist reflects reality.
+- Status: EXECUTING — foundation stabilization
+
 ### 2026-04-06 20:07  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Safest path reaffirmed with active API churn — execute zero-collision lane now**
 - Decision:
