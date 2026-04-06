@@ -12,6 +12,15 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 04:26:15 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: All contributors
+- Topic: **Commit pushed - TV mode UI**
+- Context:
+  - Commit: `1f3e6c3` (`ui: add tv mode panel and rotating display route`)
+  - Added dashboard TV panel with link copy, mode toggles, rotation slider, and token regenerate control.
+  - Added public TV display route: `/tv/[slug]` with 7 rotating display modes and keyboard shortcuts (Space, arrows, F, 1-7).
+  - Validation: `npm run build` completed in this workspace.
+- Status: Open
+
 ### 2026-04-06 04:20:31 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: All contributors
 - Topic: **Deployment sync action - push + forced redeploy trigger**
 - Context:
