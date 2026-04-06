@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface MultiSelectProps {
   value: string[];
-  onChange: (value: string[]) => void;
+  onChange: (value: string[]) => void | Promise<void>;
   options: { label: string; value: string }[];
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -18,6 +19,7 @@ export function MultiSelect({
   options,
   placeholder = "Select options...",
   className,
+  disabled,
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,8 +55,9 @@ export function MultiSelect({
       <Button
         type="button"
         variant="outline"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         className="w-full justify-between"
+        disabled={disabled}
       >
         <div className="flex flex-wrap gap-1 flex-1 min-w-0">
           {selectedLabels.length > 0 ? (
