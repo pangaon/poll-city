@@ -12,6 +12,16 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 15:13  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Debug activation endpoint hardening (no-store)**
+- Context:
+  - Added `Cache-Control: no-store` to [src/app/api/debug/activate/route.ts](src/app/api/debug/activate/route.ts) for both invalid-key and success responses.
+  - Goal: prevent caching of debug activation responses in token/secret flow.
+  - Validation: diagnostics clean on touched file.
+  - Isolation: no changes to active parallel-edit routes.
+- Ask/Decision needed: None.
+- Status: Open
+
 ### 2026-04-06 15:08  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Volunteer onboarding token route hardening (no-store)**
 - Context:
