@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Loader2 } from "lucide-react";
+import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Loader2, Bell, AlertTriangle, Megaphone } from "lucide-react";
 import { tierColor } from "@/lib/gotv/score";
 import dynamic from "next/dynamic";
 
@@ -10,7 +10,7 @@ interface Props {
   campaignId: string;
 }
 
-type Tab = "priority" | "strike" | "upload" | "command";
+type Tab = "priority" | "strike" | "upload" | "command" | "alerts";
 
 interface TieredContact {
   id: string;
@@ -236,6 +236,7 @@ export default function GotvClient({ campaignId }: Props) {
             { id: "strike", label: "Strike Off", icon: Check },
             { id: "upload", label: "Upload Voted", icon: Upload },
             { id: "command", label: "Election Day", icon: Radio },
+            { id: "alerts", label: "Rapid Alerts", icon: Bell },
           ] as const
         ).map((t) => {
           const Icon = t.icon;
@@ -259,6 +260,7 @@ export default function GotvClient({ campaignId }: Props) {
       {active === "strike" && <StrikeTab campaignId={campaignId} />}
       {active === "upload" && <UploadTab campaignId={campaignId} />}
       {active === "command" && <CommandTab campaignId={campaignId} />}
+      {active === "alerts" && <AlertsTab campaignId={campaignId} gapData={gapData} />}
     </div>
   );
 }
@@ -569,6 +571,270 @@ function CommandTab({ campaignId }: { campaignId: string }) {
           No Priority 1 contacts scored yet. Run canvassing and ID supporters first — their votes are what this dashboard tracks.
         </div>
       )}
+    </div>
+  );
+}
+
+type AlertTemplateKey =
+  | "p1_rescue"
+  | "low_poll_turnout"
+  | "redeploy_team"
+  | "all_hands"
+  | "legal_incident";
+
+function AlertsTab({ campaignId, gapData }: { campaignId: string; gapData: GapResponse | null }) {
+  const [commandData, setCommandData] = useState<CommandResponse | null>(null);
+  const [wardInput, setWardInput] = useState("");
+  const [template, setTemplate] = useState<AlertTemplateKey>("p1_rescue");
+  const [customMessage, setCustomMessage] = useState("");
+  const [sendStaffAlert, setSendStaffAlert] = useState(true);
+  const [sendPush, setSendPush] = useState(true);
+  const [sendSms, setSendSms] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/gotv/command?campaignId=${campaignId}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as CommandResponse;
+        if (mounted) setCommandData(data);
+      } catch {
+        // Best effort telemetry for alerts tab.
+      }
+    }
+
+    void load();
+    const id = window.setInterval(load, 45_000);
+    return () => {
+      mounted = false;
+      window.clearInterval(id);
+    };
+  }, [campaignId]);
+
+  const warnings = [
+    {
+      id: "gap-critical",
+      show: Boolean(gapData && gapData.gap > 0 && gapData.pacing.hoursRemaining <= 3),
+      title: "Critical final-hours gap",
+      detail: gapData
+        ? `${gapData.gap.toLocaleString()} votes still needed with ${gapData.pacing.hoursRemaining}h remaining. Immediate P1 rescue required.`
+        : "",
+      severity: "critical",
+      suggestedTemplate: "all_hands" as AlertTemplateKey,
+    },
+    {
+      id: "p1-not-moving",
+      show: Boolean(commandData && commandData.summary.p1VotedPct < 45 && commandData.summary.hoursToClose <= 5),
+      title: "Priority 1 turnout lag",
+      detail: commandData
+        ? `Only ${commandData.summary.p1VotedPct}% of Priority 1 supporters have voted. ${commandData.summary.outstandingP1.toLocaleString()} still outstanding.`
+        : "",
+      severity: "high",
+      suggestedTemplate: "p1_rescue" as AlertTemplateKey,
+    },
+    {
+      id: "poll-under-10",
+      show: Boolean(gapData && gapData.pacing.votesNeededPerHour >= 10),
+      title: "Low pull pace detected",
+      detail: gapData
+        ? `Required pace is ${gapData.pacing.votesNeededPerHour.toLocaleString()} votes/hour. Trigger poll-level support redeployment now.`
+        : "",
+      severity: "high",
+      suggestedTemplate: "low_poll_turnout" as AlertTemplateKey,
+    },
+  ].filter((w) => w.show);
+
+  function renderTemplate(kind: AlertTemplateKey) {
+    const zone = wardInput.trim() || "priority zone";
+    const outstanding = commandData?.summary.outstandingP1 ?? 0;
+    const gap = gapData?.gap ?? 0;
+    const pace = gapData?.pacing.votesNeededPerHour ?? 0;
+
+    switch (kind) {
+      case "p1_rescue":
+        return `P1 RESCUE: ${outstanding.toLocaleString()} top supporters still need to vote. Field + phone bank: contact list now. Zone: ${zone}.`;
+      case "low_poll_turnout":
+        return `POLL ALERT: Pull count in ${zone} is below threshold. If your poll is under 10 pulls this hour, switch to direct turnout chase immediately.`;
+      case "redeploy_team":
+        return `REDEPLOY NOW: Move available crews to ${zone}. We need +${gap.toLocaleString()} additional votes. Target pace: ${pace.toLocaleString()}/hour.`;
+      case "all_hands":
+        return `ALL HANDS DITCH SAVE: We need ${gap.toLocaleString()} more votes to hit threshold. Pause non-critical tasks and execute GOTV rescue in ${zone}.`;
+      case "legal_incident":
+        return `LEGAL ESCALATION: Issue reported at ${zone}. Send legal response contact and log incident details immediately.`;
+      default:
+        return "";
+    }
+  }
+
+  const message = customMessage.trim() || renderTemplate(template);
+
+  async function dispatchAlerts() {
+    if (!message.trim()) return;
+    setSending(true);
+    setLastResult(null);
+
+    const channels: string[] = [];
+    let sentCount = 0;
+
+    try {
+      if (sendStaffAlert) {
+        const staffRes = await fetch("/api/notifications/staff-alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            event: `gotv_${template}`,
+            message,
+          }),
+        });
+        if (staffRes.ok) {
+          channels.push("staff");
+          const payload = await staffRes.json().catch(() => null);
+          sentCount += Number(payload?.data?.notified ?? 0);
+        }
+      }
+
+      if (sendPush) {
+        const pushRes = await fetch("/api/notifications/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            title: "GOTV War Room Alert",
+            body: message,
+            filters: wardInput.trim() ? { ward: wardInput.trim() } : undefined,
+          }),
+        });
+        if (pushRes.ok) {
+          channels.push("push");
+          const payload = await pushRes.json().catch(() => null);
+          sentCount += Number(payload?.data?.sent ?? 0);
+        }
+      }
+
+      if (sendSms) {
+        const smsRes = await fetch("/api/communications/sms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            body: message,
+            supportLevels: ["strong_support", "leaning_support"],
+            wards: wardInput.trim() ? [wardInput.trim()] : undefined,
+            excludeDnc: true,
+            testOnly: false,
+          }),
+        });
+        if (smsRes.ok) {
+          channels.push("sms");
+          const payload = await smsRes.json().catch(() => null);
+          sentCount += Number(payload?.sent ?? 0);
+        }
+      }
+
+      setLastResult(
+        channels.length
+          ? `Sent via ${channels.join(", ")} to ${sentCount.toLocaleString()} recipients/log entries.`
+          : "No channel succeeded. Check permissions or channel configuration.",
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Megaphone className="w-5 h-5 text-red-700" />Rapid Election Alerts</h2>
+            <p className="text-sm text-slate-600 mt-1">Edge-case detection plus one-click dispatch for field teams, managers, and last-minute ditch saves.</p>
+          </div>
+          <span className="text-xs rounded-full bg-red-100 text-red-700 px-2.5 py-1 font-semibold">War Room</span>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {warnings.length === 0 ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">No critical warnings right now. Keep monitoring gap and hourly pace.</div>
+          ) : (
+            warnings.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => setTemplate(w.suggestedTemplate)}
+                className="w-full text-left rounded-xl border border-amber-300 bg-amber-50 p-3 hover:bg-amber-100"
+              >
+                <p className="font-semibold text-amber-900 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{w.title}</p>
+                <p className="text-sm text-amber-800 mt-0.5">{w.detail}</p>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
+        <p className="text-sm font-semibold text-slate-900 mb-2">Alert Template</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {([
+            ["p1_rescue", "P1 Rescue"],
+            ["low_poll_turnout", "Low Poll Pull"],
+            ["redeploy_team", "Redeploy Team"],
+            ["all_hands", "All Hands"],
+            ["legal_incident", "Legal Incident"],
+          ] as Array<[AlertTemplateKey, string]>).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTemplate(key)}
+              className={`h-9 px-3 rounded-full text-xs font-semibold border ${template === key ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <div className="md:col-span-2">
+            <label className="text-xs font-semibold text-slate-600">Message</label>
+            <textarea
+              rows={4}
+              value={customMessage || renderTemplate(template)}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-600">Target area or ward</label>
+            <input
+              value={wardInput}
+              onChange={(e) => setWardInput(e.target.value)}
+              placeholder="Ward 5, Poll 112"
+              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <div className="mt-3 space-y-2 text-sm">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={sendStaffAlert} onChange={(e) => setSendStaffAlert(e.target.checked)} />Staff alert</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={sendPush} onChange={(e) => setSendPush(e.target.checked)} />Push notification</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={sendSms} onChange={(e) => setSendSms(e.target.checked)} />SMS blast (supporters)</label>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-slate-500">Use this for scenarios like poll under 10 pulls, urgent redeploy, ditch save, or legal escalation at a poll.</p>
+          <button
+            onClick={dispatchAlerts}
+            disabled={sending || !message.trim()}
+            className="h-11 px-5 rounded-lg bg-red-700 text-white text-sm font-semibold hover:bg-red-800 disabled:opacity-50"
+          >
+            {sending ? "Sending..." : "Send Alert"}
+          </button>
+        </div>
+
+        {lastResult && <p className="mt-3 text-sm text-slate-700 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">{lastResult}</p>}
+      </div>
     </div>
   );
 }
