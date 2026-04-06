@@ -298,7 +298,7 @@ export default function CampaignMap({
   const containerHeight = typeof height === "number" ? `${height}px` : height;
 
   return (
-    <div className="relative z-0 overflow-hidden rounded-2xl border border-slate-200 bg-white" style={{ height: containerHeight }}>
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white" style={{ height: containerHeight, isolation: "isolate", zIndex: 0 }}>
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={13}
