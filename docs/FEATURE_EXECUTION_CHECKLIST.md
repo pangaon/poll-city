@@ -61,7 +61,7 @@ Dependency planning requirement before implementation starts:
 - [x] 41. Anonymous Polling  | status: API Complete (POST /api/polls/[id]/respond with receipt-based anonymity)  | commit: pre-existing  | report: Anonymous voting with receipt verification
 - [ ] 42. Error Boundary Component  | status: Pending (UI — GPT-Codex territory)  | commit: -  | report: -
 - [x] 43. Audit Logging  | status: API Complete (ActivityLog model used across all write operations)  | commit: pre-existing  | report: Campaign-scoped audit log on all mutations
-- [ ] 44. Marketing Landing + SEO  | status: Pending  | commit: -  | report: -
+- [x] 44. Marketing Landing + SEO  | status: Built (dynamic sitemap with candidate pages + official profiles, robots.txt, OG metadata on key pages)  | commit: pending  | report: SEO sitemap enhanced with dynamic candidate and official pages
 - [x] 45. Progressive Web App Install  | status: Built (manifest.json + sw.js + icons + shortcuts for Walk List and Quick Capture)  | commit: pre-existing  | report: PWA installable with standalone display and app shortcuts
 - [x] 46. User Profile Updates  | status: API Complete (PATCH /api/users/[id])  | commit: pre-existing  | report: User profile update endpoint
 - [x] 47. Membership Roles/Permissions  | status: Built (Enterprise RBAC with 55 perms, 12 roles, trust levels, custom roles, CampaignRole CRUD)  | commit: a09432c  | report: Full enterprise permissions system
