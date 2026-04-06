@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError2 = requirePermission(session!.user.role as string, "notifications:write");
+  if (permError2) return permError2;
 
   let body: {
     campaignId?: string;
@@ -85,6 +87,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError3 = requirePermission(session!.user.role as string, "notifications:write");
+  if (permError3) return permError3;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {

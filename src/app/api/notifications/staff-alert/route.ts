@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 
@@ -8,6 +8,8 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "notifications:write");
+  if (permError) return permError;
 
   let body: { campaignId?: string; contactId?: string; event?: string; message?: string };
   try {
