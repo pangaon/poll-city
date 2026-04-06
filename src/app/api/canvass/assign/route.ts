@@ -45,5 +45,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId: list.campaignId,
+      userId: session!.user.id,
+      action: "canvass_assigned",
+      entityType: "canvass_assignment",
+      entityId: assignment.id,
+      details: { targetUserId: parsed.data.userId, listId: parsed.data.canvassListId },
+    },
+  });
+
   return NextResponse.json({ data: assignment }, { status: 201 });
 }

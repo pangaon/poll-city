@@ -31,5 +31,15 @@ export async function POST(req: NextRequest) {
   const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId: parsed.data.campaignId } } });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const list = await prisma.canvassList.create({ data: parsed.data });
+  await prisma.activityLog.create({
+    data: {
+      campaignId: parsed.data.campaignId,
+      userId: session!.user.id,
+      action: "created",
+      entityType: "canvass_list",
+      entityId: list.id,
+      details: { name: parsed.data.name },
+    },
+  });
   return NextResponse.json({ data: list }, { status: 201 });
 }

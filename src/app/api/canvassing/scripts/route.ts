@@ -48,10 +48,21 @@ export async function POST(req: NextRequest) {
       name: body.name.trim(),
       scriptType: body.scriptType,
       openingLine: body.openingLine.trim(),
-      keyMessages: body.keyMessages.filter((m) => m.trim()).slice(0, 5),
+      keyMessages: body.keyMessages.filter((m: string) => m.trim()).slice(0, 5),
       issueResponses: body.issueResponses,
       closingAsk: body.closingAsk.trim(),
       literature: body.literature?.trim() || null,
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: body.campaignId,
+      userId: session!.user.id,
+      action: "created",
+      entityType: "canvassing_script",
+      entityId: script.id,
+      details: { name: script.name, type: script.scriptType },
     },
   });
 
