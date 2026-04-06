@@ -127,6 +127,8 @@ export default function AdoniButton() {
   const [muted, setMuted] = useState(false);
   const [campaignName, setCampaignName] = useState("Poll City Campaign");
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileKeyboardOpen, setMobileKeyboardOpen] = useState(false);
+  const [mobileScrollHidden, setMobileScrollHidden] = useState(false);
   const [dragState, setDragState] = useState<BubbleDragState>("idle");
   const [structured, setStructured] = useState<StructuredData>({ mode: "none" });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -241,6 +243,75 @@ export default function AdoniButton() {
     };
   }, [mode]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileKeyboardOpen(false);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const updateViewportKeyboard = () => {
+      if (!viewport) return;
+      const keyboardLikelyOpen = viewport.height < window.innerHeight * 0.78;
+      setMobileKeyboardOpen(keyboardLikelyOpen);
+    };
+
+    const onFocusIn = (ev: FocusEvent) => {
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+        setMobileKeyboardOpen(true);
+      }
+    };
+
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active) {
+          setMobileKeyboardOpen(false);
+          return;
+        }
+        const tag = active.tagName;
+        const stillTyping = tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
+        if (!stillTyping) setMobileKeyboardOpen(false);
+      }, 120);
+    };
+
+    viewport?.addEventListener("resize", updateViewportKeyboard);
+    window.addEventListener("focusin", onFocusIn);
+    window.addEventListener("focusout", onFocusOut);
+    updateViewportKeyboard();
+
+    return () => {
+      viewport?.removeEventListener("resize", updateViewportKeyboard);
+      window.removeEventListener("focusin", onFocusIn);
+      window.removeEventListener("focusout", onFocusOut);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || mode !== "bubble") {
+      setMobileScrollHidden(false);
+      return;
+    }
+
+    let timeoutId: number | null = null;
+    const onScroll = () => {
+      setMobileScrollHidden(true);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        setMobileScrollHidden(false);
+      }, 850);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [isMobile, mode]);
+
   function toggleMuted() {
     setMuted((prev) => {
       const next = !prev;
@@ -259,6 +330,11 @@ export default function AdoniButton() {
   );
 
   const unreadCount = useMemo(() => (suggestions.length > 0 ? Math.min(suggestions.length, 9) : 0), [suggestions]);
+  const isWalkListPath = useMemo(
+    () => pathname.includes("/canvassing/walk") || pathname === "/canvass" || pathname.startsWith("/canvass/"),
+    [pathname],
+  );
+  const showMobileBubble = !(isMobile && (mobileKeyboardOpen || mobileScrollHidden));
 
   async function send(text: string) {
     const userText = text.trim();
@@ -339,12 +415,14 @@ export default function AdoniButton() {
 
   return (
     <>
-      {mode === "bubble" && (
+      {mode === "bubble" && showMobileBubble && (
         <div
           className="fixed z-40"
           style={{
-            bottom: "calc(1.25rem + env(safe-area-inset-bottom))",
-            right: "1.25rem",
+            bottom: `calc(${isMobile ? "0.75rem" : "1.25rem"} + env(safe-area-inset-bottom))`,
+            right: isMobile ? "auto" : "1.25rem",
+            left: isMobile ? "50%" : "auto",
+            transform: isMobile ? "translateX(-50%)" : "none",
           }}
         >
           <button
@@ -358,9 +436,10 @@ export default function AdoniButton() {
             onDrop={handleDropToBubble}
             className="relative rounded-full overflow-hidden shadow-xl hover:shadow-2xl transition-all ring-2 ring-white/40 block"
             style={{
-              height: `${bubbleSize}px`,
-              width: `${bubbleSize}px`,
+              height: `${isMobile ? (isWalkListPath ? 12 : 48) : bubbleSize}px`,
+              width: `${isMobile ? (isWalkListPath ? 140 : 48) : bubbleSize}px`,
               transformOrigin: "bottom center",
+              borderRadius: isMobile && isWalkListPath ? "9999px" : "50%",
               boxShadow:
                 dragState === "drag-over"
                   ? "0 0 0 8px rgba(59,130,246,0.28), 0 18px 36px rgba(30,64,175,0.35)"
@@ -368,20 +447,28 @@ export default function AdoniButton() {
             }}
             aria-label="Ask Adoni"
           >
-            <span
-              className="absolute inset-0 rounded-full"
-              style={{
-                animation: "adoni-pulse-ring 1.8s ease-out infinite",
-                border: "2px solid rgba(220, 38, 38, 0.75)",
-              }}
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/adoni-bubble.png"
-              alt="Ask Adoni"
-              className="h-full w-full object-cover"
-              style={{ borderRadius: "50%" }}
-            />
+            {isMobile && isWalkListPath ? (
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-700 to-sky-500 flex items-center justify-center text-[10px] font-semibold tracking-wide text-white">
+                ADONI
+              </span>
+            ) : (
+              <>
+                <span
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    animation: "adoni-pulse-ring 1.8s ease-out infinite",
+                    border: "2px solid rgba(220, 38, 38, 0.75)",
+                  }}
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/adoni-bubble.png"
+                  alt="Ask Adoni"
+                  className="h-full w-full object-cover"
+                  style={{ borderRadius: "50%" }}
+                />
+              </>
+            )}
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 h-6 min-w-6 px-1 rounded-full bg-sky-500 text-white text-[11px] font-semibold flex items-center justify-center">
                 {unreadCount}
