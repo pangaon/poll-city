@@ -7,6 +7,7 @@ import {
   Clock, ArrowRight, Settings, GripVertical, X, DollarSign,
   MapPin, UserCheck, Target, Phone,
   PlusCircle, Send, BarChart2, Sunrise, Sunset, CloudSun, Trophy,
+  Monitor, Copy, RefreshCcw,
 } from "lucide-react";
 import { FunnelChart, Funnel, LabelList, PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { StatCard, Card, CardHeader, CardContent, Badge } from "@/components/ui";
@@ -142,7 +143,38 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   const [leaderboard, setLeaderboard] = useState<Array<{ name: string; score: number; doorKnocks: number }>>([]);
   const [signCityLeaderboard, setSignCityLeaderboard] = useState<Array<{ city: string; count: number }>>([]);
   const [tick, setTick] = useState(0);
+  const [showTvPanel, setShowTvPanel] = useState(false);
+  const [tvToken, setTvToken] = useState(() => Math.random().toString(36).slice(2, 10).toUpperCase());
+  const [tvRotationSec, setTvRotationSec] = useState(25);
+  const [tvModes, setTvModes] = useState<Record<string, boolean>>({
+    "war-room": true,
+    "gotv-tracker": true,
+    "volunteer-leaderboard": true,
+    "results-night": true,
+    "social-wall": true,
+    "fundraising-thermometer": true,
+    "election-day-ops": true,
+  });
+  const [tvDisplay, setTvDisplay] = useState({ showLogo: true, showNames: true, showTicker: true });
   const dragId = useRef<WidgetId | null>(null);
+
+  const tvSlug = useMemo(
+    () => campaign.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    [campaign.name],
+  );
+  const tvLink = useMemo(
+    () => `/tv/${tvSlug}?token=${tvToken}&rotation=${tvRotationSec}`,
+    [tvRotationSec, tvSlug, tvToken],
+  );
+
+  async function copyTvLink() {
+    const absolute = typeof window !== "undefined" ? `${window.location.origin}${tvLink}` : tvLink;
+    try {
+      await navigator.clipboard.writeText(absolute);
+    } catch {
+      // ignore clipboard failures
+    }
+  }
 
   // Load official mode preference
   useEffect(() => {
@@ -744,15 +776,6 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
-
-      <Card>
-        <CardHeader>
-          <h2 className="text-sm font-semibold text-gray-900">Campaign overview map</h2>
-        </CardHeader>
-        <CardContent>
-          <CampaignMap mode="dashboard" height={320} showControls />
-        </CardContent>
-      </Card>
             Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{campaign.name}</p>
@@ -778,8 +801,112 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
             <Settings className="w-4 h-4" />
             {customising ? "Done" : "Customise"}
           </button>
+          <button
+            onClick={() => setShowTvPanel(true)}
+            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            <Monitor className="w-4 h-4" />
+            TV Mode
+          </button>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-sm font-semibold text-gray-900">Campaign overview map</h2>
+        </CardHeader>
+        <CardContent>
+          <CampaignMap mode="dashboard" height={320} showControls />
+        </CardContent>
+      </Card>
+
+      {showTvPanel && (
+        <div className="fixed inset-0 z-50 bg-black/30">
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 p-5 overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">TV Mode</h2>
+              <button onClick={() => setShowTvPanel(false)} className="rounded-md p-1 hover:bg-gray-100 text-gray-500">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <a
+              href={tvLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+            >
+              Open TV Mode in new tab
+            </a>
+
+            <p className="mt-3 text-xs text-gray-500">Casting: Chromecast, AirPlay, HDMI, or Smart TV browser.</p>
+
+            <button
+              onClick={copyTvLink}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <Copy className="w-4 h-4" />
+              Copy TV link
+            </button>
+
+            <div className="mt-5 space-y-2">
+              <p className="text-sm font-semibold text-gray-900">Mode selection</p>
+              {Object.keys(tvModes).map((key) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                  <span>{key.replace(/-/g, " ")}</span>
+                  <input
+                    type="checkbox"
+                    checked={tvModes[key]}
+                    onChange={(e) => setTvModes((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-gray-900">Rotation speed: {tvRotationSec}s</p>
+              <input
+                type="range"
+                min={10}
+                max={90}
+                value={tvRotationSec}
+                onChange={(e) => setTvRotationSec(Number(e.target.value))}
+                className="mt-2 w-full"
+              />
+            </div>
+
+            <div className="mt-5 space-y-2">
+              <p className="text-sm font-semibold text-gray-900">Display options</p>
+              {[
+                ["showLogo", "Show logo"],
+                ["showNames", "Show names"],
+                ["showTicker", "Show activity ticker"],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                  <span>{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={tvDisplay[key as keyof typeof tvDisplay]}
+                    onChange={(e) => setTvDisplay((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3">
+              <p className="text-sm font-semibold text-red-900">Security</p>
+              <p className="mt-1 text-xs text-red-700">Token: {tvToken}</p>
+              <button
+                onClick={() => setTvToken(Math.random().toString(36).slice(2, 10).toUpperCase())}
+                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700"
+              >
+                <RefreshCcw className="w-3.5 h-3.5" />
+                Regenerate token
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Industry Standard Views</p>
