@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "volunteers:read");
+  if (permError) return permError;
 
   const body = await req.json().catch(() => null) as { campaignId?: string } | null;
   if (!body?.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
@@ -42,6 +44,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { shiftId_volunteerProfileId: { shiftId: shift.id, volunteerProfileId: profile.id } },
     update: { status: "signed_up", updatedAt: new Date() },
     create: { shiftId: shift.id, volunteerProfileId: profile.id, status: "signed_up" },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: body.campaignId,
+      userId: session!.user.id,
+      action: "created",
+      entityType: "volunteer_shift_signup",
+      entityId: signup.id,
+      details: { shiftId: shift.id },
+    },
   });
 
   return NextResponse.json({ data: signup });

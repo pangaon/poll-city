@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "volunteers:read");
+  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
@@ -43,6 +45,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+  const permError = requirePermission(session!.user.role as string, "volunteers:manage");
+  if (permError) return permError;
 
   const body = await req.json().catch(() => null) as {
     campaignId?: string;
@@ -82,6 +86,17 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: body.campaignId,
+      userId: session!.user.id,
+      action: "created",
+      entityType: "volunteer_group",
+      entityId: created.id,
+      details: { name: created.name },
+    },
+  });
 
   return NextResponse.json({ data: created }, { status: 201 });
 }
