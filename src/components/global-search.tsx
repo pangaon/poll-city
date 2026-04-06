@@ -170,7 +170,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   let runningIdx = -1;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-12 md:pt-20 px-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
 
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[70vh] flex flex-col animate-fade-in">

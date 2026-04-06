@@ -132,6 +132,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   const [customising, setCustomising] = useState(false);
   const [activePreset, setActivePreset] = useState("Overview");
   const [extraData, setExtraData] = useState({ donations: 0, signs: 0, doorsToday: 0, gotvPct: 0, callPct: 0 });
+  const [postElectionOutcome, setPostElectionOutcome] = useState<"won" | "lost" | null>(null);
   const [officialMode, setOfficialMode] = useState(false);
   const [volunteerCount, setVolunteerCount] = useState(0);
   const [weather, setWeather] = useState<{ temp: number; wind: number; code: number } | null>(null);
@@ -680,19 +681,43 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       {electionPassed && (
         <div
           className="rounded-2xl p-5 md:p-6 text-white shadow-lg"
-          style={{ background: "linear-gradient(135deg,#1E3A8A 0%,#7C3AED 100%)" }}
+          style={{ background: postElectionOutcome === "won" ? "linear-gradient(135deg,#059669 0%,#10b981 100%)" : postElectionOutcome === "lost" ? "linear-gradient(135deg,#1E3A8A 0%,#475569 100%)" : "linear-gradient(135deg,#1E3A8A 0%,#7C3AED 100%)" }}
         >
           <div className="flex items-start gap-4 flex-col md:flex-row">
             <div className="flex-1">
               <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-                Election complete · {daysSinceElection} day{daysSinceElection === 1 ? "" : "s"} ago
+                {postElectionOutcome === "won" ? "🎉 Congratulations — You won!" : postElectionOutcome === "lost" ? "Election complete — Thank you for running" : `Election complete · ${daysSinceElection} day${daysSinceElection === 1 ? "" : "s"} ago`}
               </p>
               <h2 className="text-xl md:text-2xl font-extrabold mt-1">
-                Thank your supporters, archive your campaign, or switch to Constituent Mode.
+                {postElectionOutcome === "won"
+                  ? "Switch to Constituent Mode — your community is counting on you."
+                  : postElectionOutcome === "lost"
+                    ? "You showed up. That matters. Thank your team and keep the relationships."
+                    : "How did it go?"}
               </h2>
-              <p className="text-sm text-blue-100 mt-1">
-                Send a wrap-up email, export your contact list, and keep your voter relationships alive.
-              </p>
+              {postElectionOutcome === null && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="h-11 px-5 rounded-lg bg-emerald-500 text-white font-bold hover:bg-emerald-400 active:scale-95 transition-transform"
+                    onClick={() => setPostElectionOutcome("won")}
+                  >
+                    We won!
+                  </button>
+                  <button
+                    className="h-11 px-5 rounded-lg bg-white/20 text-white font-bold hover:bg-white/30 active:scale-95 transition-transform"
+                    onClick={() => setPostElectionOutcome("lost")}
+                  >
+                    We didn&apos;t win
+                  </button>
+                </div>
+              )}
+              {postElectionOutcome && (
+                <p className="text-sm text-blue-100 mt-1">
+                  {postElectionOutcome === "won"
+                    ? "File your financial return within 120 days. Your voter database is now your constituent CRM."
+                    : "Export your contacts, send a thank-you, and file your return within 120 days."}
+                </p>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <button

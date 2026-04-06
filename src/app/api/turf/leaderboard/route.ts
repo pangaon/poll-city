@@ -22,15 +22,20 @@ export async function GET(req: NextRequest) {
 
   const memberUserIds = members.map((m) => m.user.id);
 
-  // Door knocks per canvasser (filter by team member IDs for this campaign)
+  // Door knocks per canvasser — get contactIds for campaign first, then group
+  const campaignContactIds = await prisma.contact.findMany({
+    where: { campaignId },
+    select: { id: true },
+  }).then((rows) => rows.map((r) => r.id));
+
   const doorKnocks = await prisma.interaction.groupBy({
     by: ["userId"],
     where: {
       userId: { in: memberUserIds },
       type: "door_knock",
-      contact: { campaignId },
+      contactId: { in: campaignContactIds },
     },
-    _count: { id: true },
+    _count: true,
   });
 
   // Turf stats per canvasser
@@ -49,16 +54,18 @@ export async function GET(req: NextRequest) {
     by: ["userId"],
     where: {
       userId: { in: memberUserIds },
-      contact: { campaignId },
+      contactId: { in: campaignContactIds },
       supportLevel: { not: null },
     },
-    _count: { id: true },
+    _count: true,
   });
 
   const leaderboard = members.map((m) => {
     const userId = m.user.id;
-    const doorKnockCount = doorKnocks.find((d) => d.userId === userId)?._count.id ?? 0;
-    const supportCount = supportUpdates.find((s) => s.userId === userId)?._count.id ?? 0;
+    const dk = doorKnocks.find((d) => d.userId === userId);
+    const doorKnockCount = typeof dk?._count === "number" ? dk._count : ((dk?._count as unknown as Record<string, number>)?._all ?? 0);
+    const su = supportUpdates.find((s) => s.userId === userId);
+    const supportCount = typeof su?._count === "number" ? su._count : ((su?._count as unknown as Record<string, number>)?._all ?? 0);
     const userTurfs = turfs.filter((t) => t.assignedUserId === userId);
     const completedTurfs = userTurfs.filter((t) => t.status === "completed").length;
     const totalTurfs = userTurfs.length;
