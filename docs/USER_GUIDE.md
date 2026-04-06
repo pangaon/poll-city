@@ -1,5 +1,17 @@
 # Poll City User Guide
 
+## v4.0.26 Volunteer Management Addendum — April 5, 2026
+
+### Volunteer Program Oversight (`/volunteers`)
+
+1. Open Volunteers to view active roster metrics, total logged hours, pending expense totals, upcoming shifts, and group coverage.
+2. Shift check-ins now credit volunteer hours automatically based on shift start/end windows.
+3. Volunteer expense workflow supports manager review transitions:
+   - Pending -> Approved or Rejected
+   - Approved -> Reimbursed
+4. Use Volunteer Expenses to submit and review receipts with status actions.
+5. All volunteer shift check-ins and expense status updates are now audit logged.
+
 ## v4.0.25 Walk App + GPS Addendum — April 5, 2026
 
 ### Household Completion Tracking (`/canvassing/walk`)

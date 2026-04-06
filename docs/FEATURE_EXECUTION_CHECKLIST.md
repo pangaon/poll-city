@@ -26,7 +26,7 @@ Dependency planning requirement before implementation starts:
 - [x] 6. Turf Builder  | status: Built & Verified (leaderboard campaign scoping fix + assignment/status audit logs + turf size guardrails)  | commit: pending  | report: Completed with safer turf creation limits and accountable field operations
 - [x] 7. Walk App + GPS  | status: Built & Verified (household visited tracking + campaign-scoped household visit API + offline queue support)  | commit: pending  | report: Completed with address-level completion tracking for field accountability
 - [x] 8. GOTV Priority + Upload  | status: Built & Verified (tabbed GOTV engine + tiers API + election-day command metrics)  | commit: pending  | report: Completed with campaign-scoped scoring, strike-off progress, and live command-center pacing
-- [ ] 9. Volunteer Management  | status: Pending  | commit: -  | report: -
+- [x] 9. Volunteer Management  | status: Built & Verified (shift-hour crediting + expense approval transitions + volunteer ops stats dashboard)  | commit: pending  | report: Completed with manager-grade oversight for volunteer labor and reimbursements
 - [ ] 10. Sign Tracking  | status: Pending  | commit: -  | report: -
 - [ ] 11. Donation Logging  | status: Pending  | commit: -  | report: -
 - [ ] 12. Task Management  | status: Pending  | commit: -  | report: -

@@ -15,6 +15,37 @@ Purpose: shared cross-developer status, handoffs, blockers, and dependency readi
 ## 2026-04-05  |  Contributor: GitHub Copilot
 
 ### Completed
+- Completed Feature 9 (Volunteer Management) with enterprise operations hardening.
+- Added volunteer stats API and dashboard cards (active roster, hours, expenses, shifts, groups).
+- Added shift check-in hour crediting to volunteer profiles with duplicate check-in guard.
+- Added manager expense status transitions (approve/reject/reimbursed) and audit logging.
+- Added audit logging for volunteer profile and expense writes.
+
+### Changed Files
+- src/app/api/volunteers/stats/route.ts
+- src/app/api/volunteers/expenses/[id]/route.ts
+- src/app/api/volunteers/shifts/[id]/checkin/route.ts
+- src/app/api/volunteers/route.ts
+- src/app/api/volunteers/expenses/route.ts
+- src/app/(app)/volunteers/volunteers-client.tsx
+- src/app/(app)/volunteers/expenses/volunteer-expenses-client.tsx
+- docs/CHANGELOG.md
+- docs/USER_GUIDE.md
+- src/app/(marketing)/marketing-client.tsx
+- docs/FEATURE_EXECUTION_CHECKLIST.md
+- FEATURE_MATRIX.md
+- docs/PROGRESS_LOG.md
+
+### Validation
+- Passed: `npx tsc --noEmit`.
+- Pending: full regression/build gate run before commit/push in this cycle.
+
+### Dependency Readiness
+- Ready now: no additional environment keys required for volunteer management hardening.
+
+## 2026-04-05  |  Contributor: GitHub Copilot
+
+### Completed
 - Completed Feature 7 (Walk App + GPS) with household-level visit tracking.
 - Added campaign-scoped household visit API and audit logging for visit status changes.
 - Added visited stat tile and visit toggles in walk list with offline queue behavior.

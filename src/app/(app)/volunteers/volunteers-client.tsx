@@ -21,6 +21,16 @@ interface VolunteerProfileRow {
 
 interface Props { campaignId: string; }
 
+interface VolunteerStats {
+  activeVolunteers: number;
+  totalHours: number;
+  hoursThisWeek: number;
+  pendingExpensesCount: number;
+  pendingExpensesTotal: number;
+  upcomingShifts: number;
+  activeGroups: number;
+}
+
 const pageSize = 25;
 
 export default function VolunteersClient({ campaignId }: Props) {
@@ -37,6 +47,7 @@ export default function VolunteersClient({ campaignId }: Props) {
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState<string[]>([]);
+  const [stats, setStats] = useState<VolunteerStats | null>(null);
 
   const loadVolunteers = useCallback(async () => {
     setLoading(true);
@@ -61,6 +72,20 @@ export default function VolunteersClient({ campaignId }: Props) {
 
   useEffect(() => { loadVolunteers(); }, [loadVolunteers]);
   useEffect(() => { setPage(1); }, [search, status, hasVehicle, skillsFilter, availabilityFilter]);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch(`/api/volunteers/stats?campaignId=${campaignId}`);
+        const payload = await res.json();
+        if (res.ok) setStats(payload.data ?? null);
+      } catch {
+        // keep UI usable if stats endpoint is unavailable
+      }
+    }
+
+    loadStats();
+  }, [campaignId, volunteers.length]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -123,6 +148,15 @@ export default function VolunteersClient({ campaignId }: Props) {
         description="Manage volunteer profiles, skills, availability, and activity."
         actions={<Button onClick={() => openEditor()}><Users className="w-4 h-4" />New volunteer</Button>}
       />
+
+      {stats && (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Card><CardContent className="py-4"><p className="text-xs text-gray-500">Active Volunteers</p><p className="text-2xl font-bold text-gray-900">{stats.activeVolunteers}</p></CardContent></Card>
+          <Card><CardContent className="py-4"><p className="text-xs text-gray-500">Total Hours Logged</p><p className="text-2xl font-bold text-gray-900">{stats.totalHours.toFixed(1)}</p><p className="text-xs text-gray-500 mt-1">{stats.hoursThisWeek.toFixed(1)} this week</p></CardContent></Card>
+          <Card><CardContent className="py-4"><p className="text-xs text-gray-500">Pending Expenses</p><p className="text-2xl font-bold text-gray-900">{stats.pendingExpensesCount}</p><p className="text-xs text-gray-500 mt-1">${stats.pendingExpensesTotal.toFixed(2)} pending</p></CardContent></Card>
+          <Card><CardContent className="py-4"><p className="text-xs text-gray-500">Ops Capacity</p><p className="text-2xl font-bold text-gray-900">{stats.upcomingShifts}</p><p className="text-xs text-gray-500 mt-1">{stats.activeGroups} active groups</p></CardContent></Card>
+        </div>
+      )}
 
       <Card>
         <CardContent>

@@ -1,5 +1,28 @@
 # Poll City Changelog
 
+## [4.0.26] - April 5, 2026 — VOLUNTEER MANAGEMENT HARDENING
+
+### Volunteer Operations (`/volunteers`)
+- Added volunteer operations stats API (`GET /api/volunteers/stats`) for active volunteers, total hours, weekly hours, pending expense totals, upcoming shifts, and group count.
+- Added volunteer dashboard stat cards to the volunteers page for immediate program visibility.
+
+### Shift Check-In (`/api/volunteers/shifts/[id]/checkin`)
+- Added campaign membership authorization on shift check-in.
+- Added shift-duration crediting to `VolunteerProfile.totalHours` during attended check-in.
+- Added idempotency guard to prevent duplicate check-in hour credit.
+- Added audit log entry (`volunteer_shift_checkin`) with credited hours and shift context.
+
+### Expense Workflow (`/volunteers/expenses`)
+- Added expense status transition API (`PATCH /api/volunteers/expenses/[id]`) with manager-role enforcement.
+- Added valid transition guardrails:
+  - `pending -> approved | rejected`
+  - `approved -> reimbursed`
+- Added expense review actions in UI (Approve, Reject, Mark Reimbursed).
+- Added audit logs for expense creation and status updates.
+
+### Outcome
+- Volunteer management now supports accountable hour tracking, manager-controlled expense approvals, and real-time program health metrics for campaign operations.
+
 ## [4.0.25] - April 5, 2026 — WALK APP HOUSEHOLD VISIT TRACKING
 
 ### Walk App + GPS (`/canvassing/walk`)

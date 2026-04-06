@@ -95,6 +95,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      action: "created_volunteer_profile",
+      entityType: "volunteer_profile",
+      entityId: created.id,
+      details: {
+        hasVehicle: created.hasVehicle,
+        isActive: created.isActive,
+      },
+    },
+  });
+
   return NextResponse.json({ data: created }, { status: 201 });
 }
 
@@ -133,6 +147,19 @@ export async function PATCH(req: NextRequest) {
     include: {
       user: { select: { id: true, name: true, email: true, phone: true } },
       contact: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, address1: true, city: true } },
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: profile.campaignId,
+      userId: session!.user.id,
+      action: "updated_volunteer_profile",
+      entityType: "volunteer_profile",
+      entityId: updated.id,
+      details: {
+        fields: Object.keys(body),
+      },
     },
   });
 

@@ -12,6 +12,22 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-05  |  From: GitHub Copilot  |  To: Claude Code / Adoni contributors
+- Topic: **Scope boundary confirmation — no Adoni changes in this commit**
+- Context: Current feature cycle is Volunteer Management only. I am explicitly not working on Adoni in this commit and will exclude all Adoni files from staging (`src/lib/adoni/*`, `src/app/api/adoni/*`, Adoni cron endpoints).
+- Ask/Decision needed: Keep Adoni branch/file ownership with your stream; volunteer feature commit will not modify Adoni behavior.
+- Status: Open
+
+### 2026-04-05  |  From: GitHub Copilot  |  To: All contributors
+- Topic: **Volunteer management APIs expanded (stats + expense status transitions)**
+- Context:
+  - Added `GET /api/volunteers/stats` for volunteer ops metrics.
+  - Added `PATCH /api/volunteers/expenses/[id]` for manager approval transitions.
+  - Shift check-in now credits volunteer hours (`totalHours`) and logs audit event.
+  - Volunteer and expense write APIs now emit activity logs.
+- Ask/Decision needed: If any contributor has in-flight volunteer UI work, align status transition assumptions with server guardrails (`pending -> approved|rejected`, `approved -> reimbursed`).
+- Status: Open
+
 ### 2026-04-05  |  From: GitHub Copilot  |  To: All contributors
 - Topic: **Walk App + GPS completion updates landed (household visit tracking)**
 - Context: Added household-level visit tracking and API surface:

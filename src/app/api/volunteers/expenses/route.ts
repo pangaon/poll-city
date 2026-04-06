@@ -45,5 +45,19 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await prisma.activityLog.create({
+    data: {
+      campaignId: body.campaignId,
+      userId: session!.user.id,
+      action: "created_volunteer_expense",
+      entityType: "volunteer_expense",
+      entityId: created.id,
+      details: {
+        amount: created.amount,
+        category: created.category,
+      },
+    },
+  });
+
   return NextResponse.json({ data: created }, { status: 201 });
 }

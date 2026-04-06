@@ -1,10 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+type ExpenseStatus = "pending" | "approved" | "rejected" | "reimbursed";
+
+interface ExpenseRow {
+  id: string;
+  amount: number;
+  category: string;
+  receiptUrl: string | null;
+  notes: string | null;
+  status: ExpenseStatus;
+  volunteerProfile?: {
+    user?: { name?: string | null } | null;
+    contact?: { firstName?: string | null; lastName?: string | null } | null;
+  } | null;
+}
+
+interface VolunteerProfileOption {
+  id: string;
+  user?: { name?: string | null } | null;
+  contact?: { firstName?: string | null; lastName?: string | null } | null;
+}
 
 export default function VolunteerExpensesClient({ campaignId }: { campaignId: string }) {
-  const [rows, setRows] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [rows, setRows] = useState<ExpenseRow[]>([]);
+  const [profiles, setProfiles] = useState<VolunteerProfileOption[]>([]);
   const [form, setForm] = useState({ volunteerProfileId: "", amount: 0, category: "", receiptUrl: "", notes: "" });
 
   async function load() {
@@ -21,12 +43,32 @@ export default function VolunteerExpensesClient({ campaignId }: { campaignId: st
   useEffect(() => { load(); }, [campaignId]);
 
   async function create() {
-    await fetch("/api/volunteers/expenses", {
+    const res = await fetch("/api/volunteers/expenses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ campaignId, ...form }),
     });
+    if (!res.ok) {
+      toast.error("Failed to submit expense");
+      return;
+    }
     setForm({ volunteerProfileId: "", amount: 0, category: "", receiptUrl: "", notes: "" });
+    toast.success("Expense submitted");
+    load();
+  }
+
+  async function updateStatus(id: string, status: ExpenseStatus) {
+    const res = await fetch(`/api/volunteers/expenses/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      toast.error(payload.error || "Failed to update expense status");
+      return;
+    }
+    toast.success(`Expense marked ${status}`);
     load();
   }
 
@@ -60,6 +102,17 @@ export default function VolunteerExpensesClient({ campaignId }: { campaignId: st
               <p className="text-sm text-gray-500">${row.amount.toFixed(2)} · {row.category} · {row.status}</p>
               {row.receiptUrl && <a className="text-sm text-blue-700" href={row.receiptUrl} target="_blank" rel="noreferrer">Receipt</a>}
               <p className="text-sm text-gray-700 mt-2">{row.notes}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {row.status === "pending" && (
+                  <>
+                    <button className="text-xs bg-emerald-600 text-white rounded-md px-2.5 py-1.5" onClick={() => updateStatus(row.id, "approved")}>Approve</button>
+                    <button className="text-xs bg-red-600 text-white rounded-md px-2.5 py-1.5" onClick={() => updateStatus(row.id, "rejected")}>Reject</button>
+                  </>
+                )}
+                {row.status === "approved" && (
+                  <button className="text-xs bg-blue-700 text-white rounded-md px-2.5 py-1.5" onClick={() => updateStatus(row.id, "reimbursed")}>Mark Reimbursed</button>
+                )}
+              </div>
             </div>
           );
         })}
