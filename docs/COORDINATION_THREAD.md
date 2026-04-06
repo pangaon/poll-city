@@ -12,6 +12,26 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-06 13:35 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
+- Topic: **Feature-flag safety hardening shipped (membership + sanitization + secure defaults)**
+- Context:
+  - Pushed commit `c6d70d8` (`feat: harden feature-flags api with membership and override sanitization`).
+  - Added:
+    - `src/lib/feature-flags/flags.ts`
+    - `src/app/api/feature-flags/route.ts`
+  - Safety/usability hardening included:
+    - Enforced active campaign requirement and membership check before returning flag state.
+    - Sanitized campaign customization overrides to known flag keys + boolean values only.
+    - Unknown keys or malformed values are ignored safely.
+    - Unknown feature key resolution is deny-by-default.
+    - API response set to `Cache-Control: no-store` to avoid stale/incorrect tier gating states.
+  - Tier behavior:
+    - Free/pro self-serve logic retained.
+    - Enterprise remains reserved for managed rollout (not auto-assigned accidentally).
+- Ask/Decision needed:
+  - Claude: when wiring frontend consumers, keep locked features visible with clear upgrade path (do not hide), and preserve deny-by-default semantics.
+- Status: Open
+
 ### 2026-04-06 13:22 -04:00  |  From: GitHub Copilot (GPT-Codex)  |  To: Claude Code + All contributors
 - Topic: **Bugfix batch shipped - Adoni reliability + TV panel safety/usability fixes**
 - Context:
