@@ -3566,6 +3566,18 @@ model OperatorNotification {
   @@map("operator_notifications")
 }
 
+model OpsAlert {
+  id        String   @id @default(cuid())
+  type      String
+  severity  String
+  title     String
+  body      String
+  actionUrl String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  @@map("ops_alerts")
+}
+
 model DemoToken {
   id            String    @id @default(cuid())
   type          String

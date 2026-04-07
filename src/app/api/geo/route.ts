@@ -16,6 +16,7 @@ import { rateLimit } from "@/lib/rate-limit";
 const POSTAL_CODE_REGEX = /^[A-Z]\d[A-Z]\d[A-Z]\d$/;
 const REPRESENT_BASE = "https://represent.opennorth.ca";
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
+const GEO_UPSTREAM_TIMEOUT_MS = 5_000;
 
 interface RepresentPerson {
   name?: string;
@@ -199,7 +200,7 @@ async function geocodeAddress(
       "User-Agent": "PollCity/1.0 (support@poll.city)",
       "Accept-Language": "en-CA,en;q=0.9",
     },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(GEO_UPSTREAM_TIMEOUT_MS),
   });
 
   if (!res.ok) return null;
@@ -229,7 +230,7 @@ function firstPhone(rep: RepresentPerson): string | null {
 }
 
 export async function GET(req: NextRequest) {
-  const limited = rateLimit(req);
+  const limited = await rateLimit(req);
   if (limited) return limited;
 
   const { searchParams } = new URL(req.url);
@@ -238,7 +239,11 @@ export async function GET(req: NextRequest) {
   const lat = searchParams.get("lat");
   const lng = searchParams.get("lng");
 
-  let inputType: "postalCode" | "address" | "coordinates";
+  let inputType: "postalCode" | "address" | "coordinates" = lat && lng
+    ? "coordinates"
+    : address
+      ? "address"
+      : "postalCode";
   let rawReps: RepresentPerson[] = [];
 
   try {
@@ -246,7 +251,7 @@ export async function GET(req: NextRequest) {
       inputType = "coordinates";
       const res = await fetch(
         `${REPRESENT_BASE}/representatives/?point=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&format=json`,
-        { signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json" } },
+        { signal: AbortSignal.timeout(GEO_UPSTREAM_TIMEOUT_MS), headers: { Accept: "application/json" } },
       );
       if (!res.ok) throw new Error(`Represent API ${res.status}`);
       const data = (await res.json()) as RepresentPointResponse;
@@ -262,7 +267,7 @@ export async function GET(req: NextRequest) {
       }
       const res = await fetch(
         `${REPRESENT_BASE}/postcodes/${cleaned}/?format=json`,
-        { signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json" } },
+        { signal: AbortSignal.timeout(GEO_UPSTREAM_TIMEOUT_MS), headers: { Accept: "application/json" } },
       );
       if (!res.ok) throw new Error(`Represent API ${res.status}`);
       const data = (await res.json()) as RepresentPostcodeResponse;
@@ -279,7 +284,7 @@ export async function GET(req: NextRequest) {
       }
       const res = await fetch(
         `${REPRESENT_BASE}/representatives/?point=${geo.lat},${geo.lon}&format=json`,
-        { signal: AbortSignal.timeout(10_000), headers: { Accept: "application/json" } },
+        { signal: AbortSignal.timeout(GEO_UPSTREAM_TIMEOUT_MS), headers: { Accept: "application/json" } },
       );
       if (!res.ok) throw new Error(`Represent API ${res.status}`);
       const data = (await res.json()) as RepresentPointResponse;
@@ -336,12 +341,12 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("[GEO] Lookup failed:", error);
-    return NextResponse.json(
-      {
-        error:
-          "Could not find representatives. Please try your full address including city.",
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({
+      representatives: [],
+      inputType,
+      cached: false,
+      unavailable: true,
+      message: "Representative lookup is temporarily unavailable. Please try again shortly.",
+    });
   }
 }

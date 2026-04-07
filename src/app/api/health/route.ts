@@ -39,6 +39,10 @@ export async function GET(_request: NextRequest) {
     checks.database = false;
   }
 
-  const allCriticalPass = checks.database && checks.envVars.nextauthSecret && checks.envVars.databaseUrl && checks.envVars.nextauthUrl;
+  const requireAuthVars = process.env.NODE_ENV === "production";
+  const allCriticalPass =
+    checks.database &&
+    checks.envVars.databaseUrl &&
+    (!requireAuthVars || (checks.envVars.nextauthSecret && checks.envVars.nextauthUrl));
   return NextResponse.json(checks, { status: allCriticalPass ? 200 : 503, headers: NO_STORE_HEADERS });
 }

@@ -33,54 +33,105 @@ export async function GET(req: NextRequest) {
     ...(municipality ? { district: { contains: municipality, mode: "insensitive" as const } } : {}),
   };
 
-  const [officialsBatch, total, provinceRows] = await Promise.all([
-    prisma.official.findMany({
-      where,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: pageSize + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: {
-        id: true,
-        name: true,
-        title: true,
-        level: true,
-        district: true,
-        province: true,
-        isClaimed: true,
-        isActive: true,
-        partyName: true,
-        party: true,
-        photoUrl: true,
-        twitter: true,
-        facebook: true,
-        instagram: true,
-        linkedIn: true,
-        website: true,
-        externalId: true,
-        email: true,
-        phone: true,
+  let officialsBatch: Array<{
+    id: string;
+    name: string;
+    title: string;
+    level: string;
+    district: string;
+    province: string | null;
+    isClaimed: boolean;
+    isActive: boolean;
+    partyName: string | null;
+    party: string | null;
+    photoUrl: string | null;
+    twitter: string | null;
+    facebook: string | null;
+    instagram: string | null;
+    linkedIn: string | null;
+    website: string | null;
+    externalId: string | null;
+    email: string | null;
+    phone: string | null;
+  }> = [];
+  let total = 0;
+  let provinceRows: Array<{ province: string | null }> = [];
+
+  try {
+    [officialsBatch, total, provinceRows] = await Promise.all([
+      prisma.official.findMany({
+        where,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: pageSize + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: {
+          id: true,
+          name: true,
+          title: true,
+          level: true,
+          district: true,
+          province: true,
+          isClaimed: true,
+          isActive: true,
+          partyName: true,
+          party: true,
+          photoUrl: true,
+          twitter: true,
+          facebook: true,
+          instagram: true,
+          linkedIn: true,
+          website: true,
+          externalId: true,
+          email: true,
+          phone: true,
+        },
+      }),
+      prisma.official.count({ where }),
+      prisma.official.findMany({
+        where: { province: { not: null } },
+        select: { province: true },
+        distinct: ["province"],
+        orderBy: { province: "asc" },
+      }),
+    ]);
+  } catch (error) {
+    console.error("[OFFICIALS] Directory query failed:", error);
+    return NextResponse.json(
+      {
+        officials: [],
+        total: 0,
+        pageSize,
+        hasMore: false,
+        nextCursor: null,
+        filterOptions: {
+          provinces: [],
+          levels: ["federal", "provincial", "municipal"],
+          roles: [],
+        },
+        unavailable: true,
       },
-    }),
-    prisma.official.count({ where }),
-    prisma.official.findMany({
-      where: { province: { not: null } },
-      select: { province: true },
-      distinct: ["province"],
-      orderBy: { province: "asc" },
-    }),
-  ]);
+      {
+        headers: { "Cache-Control": "no-store" },
+      }
+    );
+  }
 
   const hasMore = officialsBatch.length > pageSize;
   const officials = hasMore ? officialsBatch.slice(0, pageSize) : officialsBatch;
   const nextCursor = hasMore ? officials[officials.length - 1]?.id ?? null : null;
 
-  const campaignRows = officials.length
-    ? await prisma.campaign.findMany({
+  let campaignRows: Array<{ officialId: string | null; slug: string }> = [];
+  if (officials.length) {
+    try {
+      campaignRows = await prisma.campaign.findMany({
         where: { officialId: { in: officials.map((o) => o.id) } },
-        select: { officialId: true, slug: true, createdAt: true },
+        select: { officialId: true, slug: true },
         orderBy: { createdAt: "desc" },
-      })
-    : [];
+      });
+    } catch (error) {
+      console.error("[OFFICIALS] Campaign linkage query failed:", error);
+    }
+  }
 
   const campaignByOfficial = new Map<string, string>();
   for (const row of campaignRows) {
