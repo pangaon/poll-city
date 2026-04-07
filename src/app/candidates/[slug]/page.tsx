@@ -122,6 +122,33 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
       instagramHandle: true,
       customization: true,
       isPublic: true,
+      officialId: true,
+      official: {
+        select: {
+          isClaimed: true,
+          linkedIn: true,
+        },
+      },
+      _count: {
+        select: {
+          contacts: true,
+          volunteerProfiles: true,
+        },
+      },
+      polls: {
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          question: true,
+          totalResponses: true,
+          options: {
+            select: { id: true, text: true, _count: { select: { responses: true } } },
+            orderBy: { order: "asc" },
+          },
+        },
+      },
       events: {
         where: { isPublic: true, status: { in: ["scheduled", "live"] }, eventDate: { gte: new Date() } },
         orderBy: { eventDate: "asc" },
@@ -149,11 +176,38 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
 
   const customization = mapCustomization(campaign.customization);
 
+  // Fetch election history for this candidate
+  const candidateName = campaign.candidateName ?? campaign.name;
+  const electionHistory = await prisma.electionResult.findMany({
+    where: { candidateName: { equals: candidateName, mode: "insensitive" } },
+    orderBy: { electionDate: "desc" },
+    take: 10,
+    select: {
+      id: true,
+      electionDate: true,
+      electionType: true,
+      jurisdiction: true,
+      candidateName: true,
+      partyName: true,
+      votesReceived: true,
+      totalVotesCast: true,
+      percentage: true,
+      won: true,
+    },
+  });
+
+  // Count doors knocked from activity logs
+  const doorsKnockedCount = await prisma.activityLog.count({
+    where: { campaignId: campaign.id, action: { in: ["door_knock", "canvass_response"] } },
+  });
+
+  const activePoll = campaign.polls[0] ?? null;
+
   return {
     id: campaign.id,
     slug: campaign.slug,
     campaignName: campaign.name,
-    candidateName: campaign.candidateName ?? campaign.name,
+    candidateName,
     candidateTitle: campaign.candidateTitle ?? "Candidate",
     candidateBio: campaign.candidateBio,
     candidateEmail: campaign.candidateEmail,
@@ -163,12 +217,40 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
     electionDate: campaign.electionDate,
     jurisdiction: campaign.jurisdiction,
     logoUrl: campaign.logoUrl,
-    primaryColor: campaign.primaryColor ?? "#1a4782",
-    accentColor: campaign.accentColor ?? campaign.secondaryColor ?? "#d71920",
+    primaryColor: campaign.primaryColor ?? "#0A2342",
+    accentColor: campaign.accentColor ?? campaign.secondaryColor ?? "#1D9E75",
     websiteUrl: campaign.websiteUrl,
     twitterHandle: campaign.twitterHandle,
     facebookUrl: campaign.facebookUrl,
     instagramHandle: campaign.instagramHandle,
+    linkedInUrl: campaign.official?.linkedIn ?? null,
+    isVerified: campaign.official?.isClaimed ?? false,
+    supporterCount: campaign._count.contacts,
+    volunteerCount: campaign._count.volunteerProfiles,
+    doorsKnockedCount,
+    activePoll: activePoll
+      ? {
+          id: activePoll.id,
+          title: activePoll.question,
+          totalResponses: activePoll.totalResponses,
+          options: activePoll.options.map((o: { id: string; text: string; _count: { responses: number } }) => ({
+            id: o.id,
+            text: o.text,
+            votes: o._count.responses,
+          })),
+        }
+      : null,
+    electionHistory: electionHistory.map((r) => ({
+      id: r.id,
+      electionDate: r.electionDate,
+      electionType: r.electionType,
+      jurisdiction: r.jurisdiction,
+      partyName: r.partyName,
+      votesReceived: r.votesReceived,
+      totalVotesCast: r.totalVotesCast,
+      percentage: r.percentage,
+      won: r.won,
+    })),
     events: campaign.events.map((event) => ({
       id: event.id,
       name: event.name,
