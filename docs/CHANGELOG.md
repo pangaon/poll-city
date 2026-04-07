@@ -1,5 +1,95 @@
 # Poll City Changelog
 
+## [6.0.0] - April 8, 2026 — ARMY BUILD: ATLAS + MEDIA + SOCIAL + PARTY + SECURITY HARDENING
+
+### ATLAS Civic Intelligence Engine
+- AnonymousCivicActor model for privacy-preserving sentiment tracking
+- Signal collector (fire-and-forget, non-blocking)
+- Aggregation engine with k-anonymity threshold (100 actors minimum)
+- Exponential time-decay weighting (placeholder — real ATLAS in private repo)
+- 15-minute compute cron for approval ratings
+- Public approval API at /api/v1/approval/[slug]
+- Velocity tracking (approval score rate of change)
+
+### Media Suite
+- MediaOutlet model with API key authentication
+- TickerItem model with priority and expiry
+- SSE (Server-Sent Events) real-time ticker stream
+- Double-entry election results verification (two users must agree)
+- LiveResult model with isVerified flag
+- Embeddable ticker.js one-liner for media websites
+- Poll subscription system (push/email/phone)
+- Media outlet management API with embed code generation
+
+### Poll City Social Backend
+- CivicProfile model (postal code, ward, municipality, issues, notification prefs)
+- VoterPassport model (credits, badges, civic history)
+- CivicCredit system (13 action types, automatic badge thresholds)
+- Petition platform (create, sign, track milestones)
+- OfficialPromise accountability tracker
+- PromiseTracker follow system
+- Notification engine (6 event types, quiet hours, user preferences)
+
+### Party Enterprise Platform
+- PartyOrganization model with riding associations
+- PartyMember management
+- NominationRace with ranked ballot (instant-runoff voting)
+- PartyAGM with resolution voting
+- StaffAccessLog for enterprise audit trail
+- Ranked ballot algorithm implementation (IRV)
+
+### George Operator System
+- OpsAlert and DemoToken models
+- Vercel deploy webhook handler
+- Hourly health monitor cron
+- Demo token generator with prospect view tracking
+- Operator notification API
+
+### TV Mode Backend
+- Campaign TV fields (tvEnabled, tvToken, tvRotate, tvModes)
+- 4 data endpoints: stats, feed, volunteers, results
+- Token-based auth (no PII exposure)
+- 30-second ISR cache
+
+### Security Hardening
+- Field-level encryption middleware (AES-256-GCM on PII fields)
+- In-memory rate limiter with Upstash upgrade path
+- Account lockout (5 attempts = 15-minute lock)
+- Input sanitization (SQL injection, XSS, null bytes)
+- PIPEDA data retention cron (daily anonymization)
+- Fixed 2 critical IDOR vulnerabilities (voice broadcasts, campaign customization)
+- Fixed Vercel webhook authentication
+- Fixed phone banking session ownership check
+- Health endpoint no longer leaks service configuration
+- Narrowed /api/v1 middleware bypass to /api/v1/approval only
+- 20 route handlers got audit logging
+- 4 auth gaps fixed (sentiment, ward-boundary, adoni/train, help/feedback)
+
+### TypeScript Quality
+- Eliminated 66+ `as any` casts (36 session type + 30 Prisma enum)
+- Synced competing NextAuth type declarations
+- Proper SupportLevel/InteractionType enum imports
+
+### SEO
+- JSON-LD structured data (SoftwareApplication schema)
+- Enhanced metadata on all public pages
+- Social pages split to server components for metadata support
+- robots.txt blocks /api/, /dashboard/, /settings/
+- Canonical URLs to www.poll.city
+- Public polls added to sitemap
+- Keywords and enhanced OpenGraph/Twitter cards
+
+### Documentation
+- docs/MOBILE_APP_ARCHITECTURE.md — iOS/Android app plan
+- docs/FUTURE_ARCHITECTURE.md — 6-month technical roadmap
+- docs/STATUS_DASHBOARD.md — live project status
+- 3 audit reports (security, quality, SEO)
+- mobile/ directory with Expo scaffold
+
+### Infrastructure
+- 4 new Vercel crons (intelligence, health-monitor, data-retention)
+- Password reset UI page
+
 ## [5.0.0] - April 6, 2026 — ENTERPRISE PERMISSIONS + VOICE + ANALYTICS + NEWSLETTER
 
 ### Enterprise Permissions System
