@@ -1,12 +1,29 @@
 "use client";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapPin, Search, Filter, ChevronLeft, ChevronRight, Camera, Check, RotateCcw } from "lucide-react";
-import { Badge, Button, Card, CardContent, CardHeader, Checkbox, FormField, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  MapPin, Search, ChevronLeft, ChevronRight, Camera, Plus, Download,
+  ChevronUp, ChevronDown, ArrowUpDown, Package, Truck, CheckCircle2,
+  XCircle, Clock, AlertTriangle, Eye, List, Layers, Map as MapIcon,
+} from "lucide-react";
+import {
+  Badge, Button, Card, CardContent, CardHeader, CardTitle, FormField,
+  Input, Label, Modal, PageHeader, Select, StatCard, Textarea, EmptyState,
+} from "@/components/ui";
 import { toast } from "sonner";
-import { formatRelative } from "@/lib/utils";
 import dynamic from "next/dynamic";
 
-const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
+// ── Lazy map ─────────────────────────────────────────────────────────────────
+
+const SignsMapView = dynamic(() => import("./signs-map"), {
+  ssr: false,
+  loading: () => <ShimmerBlock className="h-[500px] w-full rounded-xl" />,
+});
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type SignStatus = "requested" | "scheduled" | "installed" | "removed" | "declined";
 
 interface SignRow {
   id: string;
@@ -16,238 +33,721 @@ interface SignRow {
   lat: number | null;
   lng: number | null;
   signType: string;
-  status: string;
+  status: SignStatus;
   assignedTeam: string | null;
   notes: string | null;
   requestedAt: string;
   installedAt: string | null;
   removedAt: string | null;
   photoUrl: string | null;
-  contact: { id: string; firstName: string; lastName: string; phone: string | null } | null;
+  quantity: number;
+  isOpponent: boolean;
+  contact: { id: string; firstName: string; lastName: string; phone: string | null; email?: string | null } | null;
 }
 
-interface Props { campaignId: string; }
+type SortField = "address1" | "status" | "signType" | "requestedAt" | "assignedTeam" | "quantity";
+type SortDir = "asc" | "desc";
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const STATUS_META: Record<SignStatus, { label: string; badge: "default" | "success" | "warning" | "danger" | "info" }> = {
+  requested: { label: "Requested", badge: "warning" },
+  scheduled: { label: "Scheduled", badge: "info" },
+  installed: { label: "Installed", badge: "success" },
+  removed:   { label: "Removed",   badge: "default" },
+  declined:  { label: "Declined",  badge: "danger" },
+};
+
+const SIGN_TYPES = [
+  { value: "standard", label: "Lawn Sign" },
+  { value: "large", label: "Large Sign" },
+  { value: "window", label: "Window Sign" },
+] as const;
 
 const pageSize = 25;
 
-export default function SignsClient({ campaignId }: Props) {
+// ── Shimmer skeleton ─────────────────────────────────────────────────────────
+
+function ShimmerBlock({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded ${className ?? "h-4 w-full"}`}
+      style={{
+        background: "linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)",
+        backgroundSize: "200% 100%",
+        animation: "shimmer 1.5s infinite",
+      }}
+    />
+  );
+}
+
+function TableSkeleton({ rows = 8 }: { rows?: number }) {
+  return (
+    <div className="space-y-3 p-4">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <ShimmerBlock className="h-5 w-1/4" />
+          <ShimmerBlock className="h-5 w-1/6" />
+          <ShimmerBlock className="h-5 w-1/6" />
+          <ShimmerBlock className="h-5 w-1/6" />
+          <ShimmerBlock className="h-5 w-1/6" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export default function SignsClient({ campaignId }: { campaignId: string }) {
   const [signs, setSigns] = useState<SignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [status, setStatus] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedSign, setSelectedSign] = useState<SignRow | null>(null);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [form, setForm] = useState({ status: "requested", assignedTeam: "", notes: "", photoUrl: "" });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  const [sortField, setSortField] = useState<SortField>("requestedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [activeView, setActiveView] = useState<"table" | "map" | "inventory">("table");
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showOpponentSpot, setShowOpponentSpot] = useState(false);
+  const [editingSign, setEditingSign] = useState<SignRow | null>(null);
+
+  // Debounce
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Fetch
   const loadSigns = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ campaignId, page: String(page), pageSize: String(pageSize) });
-      if (status !== "all") params.set("status", status);
-      if (search) params.set("search", search);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/signs?${params}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load sign requests");
+      if (!res.ok) throw new Error(data.error || "Failed to load signs");
       setSigns(data.data ?? []);
       setTotal(data.total ?? 0);
-    } catch (error) {
-      toast.error((error as Error).message || "Unable to load signs");
+    } catch (err) {
+      toast.error((err as Error).message || "Unable to load signs");
     } finally {
       setLoading(false);
     }
-  }, [campaignId, page, search, status]);
+  }, [campaignId, page, debouncedSearch, statusFilter]);
 
   useEffect(() => { loadSigns(); }, [loadSigns]);
-  useEffect(() => { setPage(1); }, [search, status]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
 
-  const statusCounts = useMemo(() => {
-    return signs.reduce((acc, sign) => {
-      acc[sign.status] = (acc[sign.status] ?? 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  // Update sign
+  const updateSign = useCallback(async (signId: string, data: Record<string, unknown>) => {
+    try {
+      const res = await fetch(`/api/signs?id=${signId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      const json = await res.json();
+      setSigns(prev => prev.map(s => s.id === signId ? { ...s, ...json.data } : s));
+      toast.success("Sign updated");
+    } catch {
+      toast.error("Failed to update sign");
+    }
+  }, []);
+
+  // Create via quick-capture
+  const createSign = useCallback(async (payload: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/signs/quick-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, campaignId }),
+      });
+      if (!res.ok) throw new Error("Create failed");
+      toast.success("Sign request created");
+      loadSigns();
+      return true;
+    } catch {
+      toast.error("Failed to create sign");
+      return false;
+    }
+  }, [campaignId, loadSigns]);
+
+  // Sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const sortedSigns = useMemo(() => {
+    const arr = [...signs];
+    arr.sort((a, b) => {
+      const av = a[sortField];
+      const bv = b[sortField];
+      let cmp = 0;
+      if (typeof av === "string" && typeof bv === "string") cmp = av.localeCompare(bv);
+      else if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else if (av == null && bv != null) cmp = 1;
+      else if (av != null && bv == null) cmp = -1;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [signs, sortField, sortDir]);
+
+  // Stats
+  const stats = useMemo(() => ({
+    requested: signs.filter(s => s.status === "requested").length,
+    scheduled: signs.filter(s => s.status === "scheduled").length,
+    installed: signs.filter(s => s.status === "installed").length,
+    removed: signs.filter(s => s.status === "removed").length,
+    opponent: signs.filter(s => s.isOpponent).length,
+    totalQty: signs.reduce((sum, s) => sum + (s.quantity ?? 1), 0),
+  }), [signs]);
+
+  // Inventory by type
+  const inventory = useMemo(() => {
+    const inv: Record<string, { requested: number; inField: number; removed: number; total: number }> = {};
+    SIGN_TYPES.forEach(t => { inv[t.value] = { requested: 0, inField: 0, removed: 0, total: 0 }; });
+    signs.forEach(s => {
+      const key = s.signType in inv ? s.signType : "standard";
+      const qty = s.quantity ?? 1;
+      inv[key].total += qty;
+      if (s.status === "installed") inv[key].inField += qty;
+      else if (s.status === "removed" || s.status === "declined") inv[key].removed += qty;
+      else inv[key].requested += qty;
+    });
+    return inv;
   }, [signs]);
+
+  // Distribution zones
+  const distributionZones = useMemo(() => {
+    const zones = new Map<string, { total: number; installed: number; requested: number; removed: number }>();
+    signs.forEach(s => {
+      const zone = s.city || "Unknown";
+      const z = zones.get(zone) || { total: 0, installed: 0, requested: 0, removed: 0 };
+      const qty = s.quantity ?? 1;
+      z.total += qty;
+      if (s.status === "installed") z.installed += qty;
+      if (s.status === "requested" || s.status === "scheduled") z.requested += qty;
+      if (s.status === "removed") z.removed += qty;
+      zones.set(zone, z);
+    });
+    return Array.from(zones.entries()).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.total - a.total);
+  }, [signs]);
+
+  // Export CSV
+  const exportCSV = () => {
+    if (signs.length === 0) { toast.error("No signs to export"); return; }
+    const headers = ["Address", "City", "Postal Code", "Type", "Status", "Assigned Team", "Contact", "Qty", "Requested", "Installed", "Removed", "Notes", "Opponent"];
+    const rows = sortedSigns.map(s => [
+      s.address1, s.city ?? "", s.postalCode ?? "", s.signType, s.status,
+      s.assignedTeam ?? "", s.contact ? `${s.contact.firstName} ${s.contact.lastName}`.trim() : "",
+      s.quantity ?? 1, s.requestedAt, s.installedAt ?? "", s.removedAt ?? "", s.notes ?? "",
+      s.isOpponent ? "Yes" : "No",
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `signs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Exported to CSV");
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function openEditModal(sign: SignRow) {
-    setSelectedSign(sign);
-    setForm({
-      status: sign.status,
-      assignedTeam: sign.assignedTeam ?? "",
-      notes: sign.notes ?? "",
-      photoUrl: sign.photoUrl ?? "",
-    });
-    setPhotoPreview(sign.photoUrl ?? null);
-    setOpenEdit(true);
-  }
-
-  async function handleSave() {
-    if (!selectedSign) return;
-    try {
-      const res = await fetch(`/api/signs?id=${selectedSign.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload.error || "Failed to update sign");
-      toast.success("Sign request updated");
-      setOpenEdit(false);
-      loadSigns();
-    } catch (error) {
-      toast.error((error as Error).message || "Save failed");
-    }
-  }
-
-  function handlePhotoFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setForm((state) => ({ ...state, photoUrl: result }));
-      setPhotoPreview(result);
-    };
-    reader.readAsDataURL(file);
-  }
-
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
+      {/* Shimmer keyframes */}
+      <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+
       <PageHeader
         title="Signs"
-        description="Track sign requests, assign teams, and manage installed or removed signs."
+        description="Track sign requests, installations, and removals across your campaign."
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <MotionButton variant="outline" size="sm" onClick={() => setShowQuickCapture(true)}>
+              <Camera className="w-4 h-4" /> Quick Capture
+            </MotionButton>
+            <MotionButton variant="outline" size="sm" onClick={() => setShowOpponentSpot(true)}>
+              <Eye className="w-4 h-4" /> Opponent Sign
+            </MotionButton>
+            <MotionButton variant="outline" size="sm" onClick={exportCSV}>
+              <Download className="w-4 h-4" /> Export
+            </MotionButton>
+            <MotionButton size="sm" onClick={() => setShowNewModal(true)} className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white">
+              <Plus className="w-4 h-4" /> New Request
+            </MotionButton>
+          </div>
+        }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-        <Card className="space-y-4">
-          <CardHeader><h2 className="text-sm font-semibold text-gray-900">Status overview</h2></CardHeader>
-          <CardContent className="space-y-3">
-            {Object.entries({ requested: statusCounts.requested ?? 0, scheduled: statusCounts.scheduled ?? 0, installed: statusCounts.installed ?? 0, removed: statusCounts.removed ?? 0 }).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between gap-3">
-                <div className="text-sm text-gray-700">{key.replace(/_/g, " ")}</div>
-                <Badge variant={key === "installed" ? "success" : key === "removed" ? "danger" : "default"}>{value}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search address, team, or contact" />
-              </div>
-              <Select value={status} onChange={(event) => setStatus(event.target.value)} className="max-w-[180px]">
-                <option value="all">All statuses</option>
-                <option value="requested">Requested</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="installed">Installed</option>
-                <option value="removed">Removed</option>
-              </Select>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="text-sm text-gray-500">Total signs</div>
-                <div className="mt-2 text-3xl font-semibold text-gray-900">{total}</div>
-              </div>
-              <div className="p-4 bg-slate-50 rounded-xl">
-                <div className="text-sm text-gray-500">Vehicles available</div>
-                <div className="mt-2 text-3xl font-semibold text-gray-900">{signs.filter((sign) => sign.assignedTeam).length}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Total Signs" value={total} icon={<MapPin className="w-5 h-5" />} color="blue" />
+        <StatCard label="Installed" value={stats.installed} icon={<CheckCircle2 className="w-5 h-5" />} color="green" />
+        <StatCard label="Pending" value={stats.requested + stats.scheduled} icon={<Clock className="w-5 h-5" />} color="amber" />
+        <StatCard label="Inventory" value={stats.totalQty} icon={<Package className="w-5 h-5" />} color="purple" change={`${stats.opponent} opponent spotted`} />
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="border-r border-gray-100 xl:border-r">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Sign locations</p>
-                <p className="text-xs text-gray-500">Interactive sign marker map.</p>
-              </div>
-            </div>
-            <div className="p-4">
-              <CampaignMap mode="signs" height={420} showControls />
-            </div>
+      {/* View tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(["table", "map", "inventory"] as const).map(v => (
+          <motion.button
+            key={v}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setActiveView(v)}
+            className={`inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
+              activeView === v ? "bg-[#0A2342] text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            {v === "table" && <List className="w-4 h-4" />}
+            {v === "map" && <MapIcon className="w-4 h-4" />}
+            {v === "inventory" && <Package className="w-4 h-4" />}
+            {v.charAt(0).toUpperCase() + v.slice(1)}
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Search + filter */}
+      <Card>
+        <div className="p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input className="pl-9 min-h-[44px]" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search address, team, contact..." />
           </div>
-          <div>
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Address</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">Contact</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Team</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Requested</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  Array.from({ length: 6 }).map((_, index) => (
-                    <tr key={index}>{Array.from({ length: 6 }).map((col, idx) => <td key={idx} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>)}</tr>
-                  ))
-                ) : signs.length === 0 ? (
-                  <tr><td colSpan={6} className="py-14 text-center text-sm text-gray-500">No sign requests found.</td></tr>
-                ) : signs.map((sign) => (
-                  <tr key={sign.id} className="hover:bg-blue-50/40 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{sign.address1}</td>
-                    <td className="px-4 py-3 hidden lg:table-cell text-gray-600">{sign.contact ? `${sign.contact.firstName} ${sign.contact.lastName}` : "—"}</td>
-                    <td className="px-4 py-3"><Badge variant={sign.status === "installed" ? "success" : sign.status === "removed" ? "danger" : "default"}>{sign.status}</Badge></td>
-                    <td className="px-4 py-3 text-gray-600">{sign.assignedTeam ?? "Unassigned"}</td>
-                    <td className="px-4 py-3 text-gray-500">{formatRelative(sign.requestedAt)}</td>
-                    <td className="px-4 py-3">
-                      <Button size="sm" variant="outline" onClick={() => openEditModal(sign)}>Edit</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="min-h-[44px] w-full sm:w-48">
+            <option value="all">All Statuses</option>
+            {(Object.keys(STATUS_META) as SignStatus[]).map(s => (
+              <option key={s} value={s}>{STATUS_META[s].label}</option>
+            ))}
+          </Select>
         </div>
       </Card>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total}</p>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="w-4 h-4" /></Button>
-          <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}><ChevronRight className="w-4 h-4" /></Button>
+      {/* ── Table view ── */}
+      {activeView === "table" && (
+        <Card>
+          {loading ? (
+            <TableSkeleton />
+          ) : signs.length === 0 ? (
+            <EmptyState
+              icon={<MapPin className="w-12 h-12" />}
+              title="No signs yet"
+              description="Create your first sign request to start tracking."
+              action={
+                <MotionButton onClick={() => setShowNewModal(true)} className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white">
+                  <Plus className="w-4 h-4" /> New Sign Request
+                </MotionButton>
+              }
+            />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                      {([
+                        ["address1", "Address"],
+                        ["status", "Status"],
+                        ["signType", "Type"],
+                        ["assignedTeam", "Team"],
+                        ["quantity", "Qty"],
+                        ["requestedAt", "Requested"],
+                      ] as [SortField, string][]).map(([field, label]) => (
+                        <th
+                          key={field}
+                          onClick={() => handleSort(field)}
+                          className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700 whitespace-nowrap"
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {label}
+                            {sortField === field
+                              ? (sortDir === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)
+                              : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                          </span>
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 text-left font-medium text-gray-500">Contact</th>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence mode="popLayout">
+                      {sortedSigns.map(sign => (
+                        <motion.tr
+                          key={sign.id}
+                          layout
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {sign.isOpponent && <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Opponent" />}
+                              <div>
+                                <p className="font-medium text-gray-900 truncate max-w-[220px]">{sign.address1}</p>
+                                {(sign.city || sign.postalCode) && (
+                                  <p className="text-xs text-gray-500">{[sign.city, sign.postalCode].filter(Boolean).join(", ")}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant={STATUS_META[sign.status]?.badge ?? "default"}>
+                              {STATUS_META[sign.status]?.label ?? sign.status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 capitalize">{sign.signType}</td>
+                          <td className="px-4 py-3 text-gray-600">{sign.assignedTeam || "—"}</td>
+                          <td className="px-4 py-3 text-gray-600">{sign.quantity ?? 1}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                            {new Date(sign.requestedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-xs">
+                            {sign.contact ? `${sign.contact.firstName} ${sign.contact.lastName}`.trim() || "—" : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {sign.status === "requested" && (
+                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "scheduled" })} className="text-blue-600">
+                                  <Truck className="w-3.5 h-3.5" />
+                                </MotionButton>
+                              )}
+                              {(sign.status === "requested" || sign.status === "scheduled") && (
+                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "installed" })} className="text-emerald-600">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                </MotionButton>
+                              )}
+                              {sign.status === "installed" && (
+                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "removed" })} className="text-gray-500">
+                                  <XCircle className="w-3.5 h-3.5" />
+                                </MotionButton>
+                              )}
+                              <MotionButton size="sm" variant="ghost" onClick={() => setEditingSign(sign)}>
+                                <Eye className="w-3.5 h-3.5" />
+                              </MotionButton>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                  <p className="text-sm text-gray-500">
+                    Showing {(page - 1) * pageSize + 1}&ndash;{Math.min(page * pageSize, total)} of {total}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="min-h-[44px]">
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="min-h-[44px]">
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* ── Map view ── */}
+      {activeView === "map" && (
+        <Card className="overflow-hidden">
+          <SignsMapView signs={signs} onStatusChange={updateSign} />
+        </Card>
+      )}
+
+      {/* ── Inventory view ── */}
+      {activeView === "inventory" && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Inventory by Type</CardTitle></CardHeader>
+            <CardContent>
+              {loading ? <TableSkeleton rows={3} /> : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {SIGN_TYPES.map(t => {
+                    const d = inventory[t.value];
+                    const pct = d.total > 0 ? Math.round((d.inField / d.total) * 100) : 0;
+                    return (
+                      <motion.div key={t.value} whileHover={{ scale: 1.02 }} className="p-4 border border-gray-200 rounded-xl">
+                        <h4 className="font-semibold text-gray-900 mb-3">{t.label}</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-medium">{d.total}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">In Field</span><span className="font-medium text-emerald-600">{d.inField}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Pending</span><span className="font-medium text-amber-600">{d.requested}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Removed</span><span className="font-medium text-gray-500">{d.removed}</span></div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mt-2">
+                            <div className="h-full bg-[#1D9E75] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="text-xs text-gray-400 text-right">{pct}% deployed</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Distribution Zones</CardTitle></CardHeader>
+            <CardContent>
+              {loading ? <TableSkeleton rows={4} /> : distributionZones.length === 0 ? (
+                <EmptyState icon={<Layers className="w-10 h-10" />} title="No zones" description="Signs will be grouped by city." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/50">
+                        <th className="px-4 py-2 text-left font-medium text-gray-500">Zone</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">Total</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">Installed</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">Pending</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">Removed</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-500">Coverage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {distributionZones.map(z => (
+                        <tr key={z.name} className="border-b border-gray-50 hover:bg-gray-50/50">
+                          <td className="px-4 py-2.5 font-medium text-gray-900">{z.name}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">{z.total}</td>
+                          <td className="px-4 py-2.5 text-right text-emerald-600">{z.installed}</td>
+                          <td className="px-4 py-2.5 text-right text-amber-600">{z.requested}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-500">{z.removed}</td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className="inline-flex items-center gap-2">
+                              <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-[#1D9E75] rounded-full" style={{ width: `${z.total > 0 ? Math.round((z.installed / z.total) * 100) : 0}%` }} />
+                              </div>
+                              <span className="text-xs text-gray-500">{z.total > 0 ? Math.round((z.installed / z.total) * 100) : 0}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modals */}
+      <NewSignModal open={showNewModal} onClose={() => setShowNewModal(false)} onCreate={createSign} />
+      <QuickCaptureModal open={showQuickCapture} onClose={() => setShowQuickCapture(false)} onCreate={createSign} />
+      <OpponentSpotModal open={showOpponentSpot} onClose={() => setShowOpponentSpot(false)} campaignId={campaignId} onCreated={loadSigns} />
+      {editingSign && <SignDetailModal sign={editingSign} onClose={() => setEditingSign(null)} onUpdate={updateSign} />}
+    </div>
+  );
+}
+
+// ── Spring button wrapper ────────────────────────────────────────────────────
+
+function MotionButton({ children, className, ...props }: React.ComponentProps<typeof Button>) {
+  return (
+    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} className="inline-flex">
+      <Button className={`min-h-[44px] ${className ?? ""}`} {...props}>{children}</Button>
+    </motion.div>
+  );
+}
+
+// ── New Sign Request Modal ───────────────────────────────────────────────────
+
+function NewSignModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (d: Record<string, unknown>) => Promise<boolean> }) {
+  const [address, setAddress] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [signType, setSignType] = useState("standard");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const reset = () => { setAddress(""); setFirstName(""); setLastName(""); setPhone(""); setSignType("standard"); setNotes(""); };
+
+  const handleSubmit = async () => {
+    if (!address.trim()) { toast.error("Address is required"); return; }
+    setSubmitting(true);
+    const ok = await onCreate({ address: address.trim(), firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), signType, notes: notes.trim() });
+    setSubmitting(false);
+    if (ok) { reset(); onClose(); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="New Sign Request" size="md">
+      <div className="space-y-4">
+        <div><Label required>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St" className="min-h-[44px]" /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>First Name</Label><Input value={firstName} onChange={e => setFirstName(e.target.value)} className="min-h-[44px]" /></div>
+          <div><Label>Last Name</Label><Input value={lastName} onChange={e => setLastName(e.target.value)} className="min-h-[44px]" /></div>
+        </div>
+        <div><Label>Phone</Label><Input value={phone} onChange={e => setPhone(e.target.value)} className="min-h-[44px]" /></div>
+        <div>
+          <Label>Sign Type</Label>
+          <Select value={signType} onChange={e => setSignType(e.target.value)} className="min-h-[44px]">
+            {SIGN_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </Select>
+        </div>
+        <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special instructions..." /></div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} className="min-h-[44px]">Cancel</Button>
+          <MotionButton onClick={handleSubmit} loading={submitting} className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white">Create Request</MotionButton>
         </div>
       </div>
+    </Modal>
+  );
+}
 
-      <Modal open={openEdit} onClose={() => setOpenEdit(false)} title={selectedSign ? "Edit sign request" : "Update sign"} size="lg">
-        <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Status">
-              <Select value={form.status} onChange={(event) => setForm((state) => ({ ...state, status: event.target.value }))}>
-                <option value="requested">Requested</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="installed">Installed</option>
-                <option value="removed">Removed</option>
-              </Select>
-            </FormField>
-            <FormField label="Assigned team">
-              <Input value={form.assignedTeam} onChange={(event) => setForm((state) => ({ ...state, assignedTeam: event.target.value }))} placeholder="Team name or route" />
-            </FormField>
-          </div>
-          <FormField label="Notes"><Textarea value={form.notes} onChange={(event) => setForm((state) => ({ ...state, notes: event.target.value }))} /></FormField>
-          <FormField label="Photo upload">
-            <input type="file" accept="image/*" onChange={handlePhotoFile} />
-            {photoPreview && <img src={photoPreview} alt="Sign photo preview" className="mt-3 h-36 rounded-xl object-cover border border-gray-200" />}
-          </FormField>
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-            <Button variant="secondary" onClick={() => setOpenEdit(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save changes</Button>
-          </div>
+// ── Quick Capture Modal ──────────────────────────────────────────────────────
+
+function QuickCaptureModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (d: Record<string, unknown>) => Promise<boolean> }) {
+  const [address, setAddress] = useState("");
+  const [signType, setSignType] = useState("standard");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!address.trim()) { toast.error("Address is required"); return; }
+    setSubmitting(true);
+    const ok = await onCreate({ address: address.trim(), signType, notes: notes.trim() || "Quick capture — installed in field" });
+    setSubmitting(false);
+    if (ok) { setAddress(""); setNotes(""); onClose(); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Quick Capture — Field Install" size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500">Mark a sign as installed in the field.</p>
+        <div><Label required>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St" className="min-h-[44px]" autoFocus /></div>
+        <div>
+          <Label>Sign Type</Label>
+          <Select value={signType} onChange={e => setSignType(e.target.value)} className="min-h-[44px]">
+            {SIGN_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </Select>
         </div>
-      </Modal>
+        <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" className="min-h-[44px]" /></div>
+        <MotionButton onClick={handleSubmit} loading={submitting} className="w-full bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white">
+          <Camera className="w-4 h-4" /> Capture Install
+        </MotionButton>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Opponent Sign Modal ──────────────────────────────────────────────────────
+
+function OpponentSpotModal({ open, onClose, campaignId, onCreated }: { open: boolean; onClose: () => void; campaignId: string; onCreated: () => void }) {
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!address.trim()) { toast.error("Address is required"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/signs/quick-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, address: address.trim(), signType: "standard", notes: `[OPPONENT] ${notes.trim()}`.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Opponent sign recorded");
+      setAddress(""); setNotes("");
+      onCreated();
+      onClose();
+    } catch {
+      toast.error("Failed to record opponent sign");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Spot Opponent Sign" size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500">Record the location of a competitor&apos;s sign.</p>
+        <div><Label required>Address / Location</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Corner of Main & 1st" className="min-h-[44px]" autoFocus /></div>
+        <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Candidate name, sign size..." className="min-h-[44px]" /></div>
+        <MotionButton onClick={handleSubmit} loading={submitting} className="w-full bg-red-600 hover:bg-red-700 text-white">
+          <AlertTriangle className="w-4 h-4" /> Record Opponent Sign
+        </MotionButton>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Sign Detail Modal ────────────────────────────────────────────────────────
+
+function SignDetailModal({ sign, onClose, onUpdate }: { sign: SignRow; onClose: () => void; onUpdate: (id: string, d: Record<string, unknown>) => Promise<void> }) {
+  const [status, setStatus] = useState(sign.status);
+  const [team, setTeam] = useState(sign.assignedTeam || "");
+  const [notes, setNotes] = useState(sign.notes || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onUpdate(sign.id, { status, assignedTeam: team, notes });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} title="Sign Details" size="md">
+      <div className="space-y-4">
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+          <Row label="Address" value={sign.address1} />
+          {sign.city && <Row label="City" value={sign.city} />}
+          {sign.postalCode && <Row label="Postal Code" value={sign.postalCode} />}
+          <Row label="Type" value={<span className="capitalize">{sign.signType}</span>} />
+          <Row label="Quantity" value={String(sign.quantity ?? 1)} />
+          {sign.contact && <Row label="Contact" value={`${sign.contact.firstName} ${sign.contact.lastName}`} />}
+          <Row label="Requested" value={new Date(sign.requestedAt).toLocaleDateString()} />
+          {sign.installedAt && <Row label="Installed" value={new Date(sign.installedAt).toLocaleDateString()} />}
+          {sign.removedAt && <Row label="Removed" value={new Date(sign.removedAt).toLocaleDateString()} />}
+          {sign.isOpponent && <Row label="Flag" value={<Badge variant="danger">Opponent</Badge>} />}
+        </div>
+        <FormField label="Status">
+          <Select value={status} onChange={e => setStatus(e.target.value as SignStatus)} className="min-h-[44px]">
+            {(Object.keys(STATUS_META) as SignStatus[]).map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+          </Select>
+        </FormField>
+        <FormField label="Assigned Team">
+          <Input value={team} onChange={e => setTeam(e.target.value)} placeholder="e.g. North Team" className="min-h-[44px]" />
+        </FormField>
+        <FormField label="Notes">
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} />
+        </FormField>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} className="min-h-[44px]">Cancel</Button>
+          <MotionButton onClick={handleSave} loading={saving} className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white">Save Changes</MotionButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-medium text-gray-900">{value}</span>
     </div>
   );
 }
