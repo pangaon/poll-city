@@ -23,6 +23,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     label: "Overview",
     icon: BarChart3,
     items: [
+      { href: "/command-center", icon: Activity, label: "Command Center" },
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/analytics", icon: BarChart3, label: "Analytics" },
       { href: "/reports", icon: FileText, label: "Reports" },
