@@ -17,29 +17,45 @@ import { useSession } from "next-auth/react";
 type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
 type NavSection = { id: string; label: string; icon: ComponentType<{ className?: string }>; items: NavItem[] };
 
-const CAMPAIGN_OPERATIONS_SECTION: NavSection = {
-  id: "campaign-operations",
-  label: "Campaign Operations",
-  icon: Target,
+const HEADQUARTERS_SECTION: NavSection = {
+  id: "headquarters",
+  label: "Headquarters",
+  icon: LayoutDashboard,
   items: [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/command-center", icon: Activity, label: "Command Center" },
-    { href: "/election-night", icon: Gauge, label: "Election Night" },
     { href: "/contacts", icon: Users, label: "Contacts" },
+    { href: "/volunteers", icon: Users, label: "Volunteers" },
+    { href: "/tasks", icon: CheckCircle2, label: "Tasks" },
+    { href: "/calendar", icon: Calendar, label: "Calendar" },
+  ],
+};
+
+const FIELD_OPS_SECTION: NavSection = {
+  id: "field-ops",
+  label: "Field Operations",
+  icon: Map,
+  items: [
     { href: "/canvassing", icon: Map, label: "Canvassing" },
     { href: "/canvassing/walk", icon: Map, label: "Walk List" },
     { href: "/gotv", icon: Target, label: "GOTV" },
-    { href: "/volunteers", icon: Users, label: "Volunteers" },
+    { href: "/election-night", icon: Gauge, label: "Election Night" },
     { href: "/signs", icon: Map, label: "Signs" },
     { href: "/events", icon: CalendarDays, label: "Events" },
-    { href: "/calendar", icon: Calendar, label: "Calendar" },
-    { href: "/tasks", icon: CheckCircle2, label: "Tasks" },
     { href: "/lookup", icon: Search, label: "Lookup" },
+    { href: "/polls", icon: BarChart3, label: "Polls" },
+  ],
+};
+
+const FINANCE_CONTENT_SECTION: NavSection = {
+  id: "finance-content",
+  label: "Finance & Content",
+  icon: DollarSign,
+  items: [
     { href: "/donations", icon: DollarSign, label: "Donations" },
     { href: "/budget", icon: DollarSign, label: "Budget" },
-    { href: "/print", icon: Printer, label: "Print" },
-    { href: "/polls", icon: BarChart3, label: "Polls" },
     { href: "/resources", icon: BookOpen, label: "Resources" },
+    { href: "/print", icon: Printer, label: "Print" },
   ],
 };
 
@@ -157,7 +173,9 @@ export default function Sidebar() {
     }
 
     return [
-      CAMPAIGN_OPERATIONS_SECTION,
+      HEADQUARTERS_SECTION,
+      FIELD_OPS_SECTION,
+      FINANCE_CONTENT_SECTION,
       COMMUNICATIONS_SECTION,
       ANALYTICS_SECTION,
       {
