@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Filter, Navigation, Phone, ChevronDown, ChevronUp,
-  Users, WifiOff, FileText, MoreHorizontal, X, Flag,
-  HandHelping, PhoneCall, Mail, Car, Undo2,
+  Users, WifiOff, FileText, MoreHorizontal, X,
+  Undo2, ToggleLeft, Type, List, ListChecks, Hash, Calendar,
 } from "lucide-react";
 import { SupportLevelBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -96,14 +96,47 @@ const RESULT_BUTTONS = [
 
 type ResultId = typeof RESULT_BUTTONS[number]["id"];
 
-/* ─── More options config ───────────────────────────────────────────────────── */
-const MORE_OPTIONS = [
-  { id: "sign_request",  label: "Sign Request",     icon: Flag,        field: "signRequested" },
-  { id: "volunteer",     label: "Wants to Volunteer", icon: HandHelping, field: "volunteerInterest" },
-  { id: "candidate_call",label: "Candidate Call",    icon: PhoneCall,   field: "followUpNeeded" },
-  { id: "email_list",    label: "Email List",        icon: Mail,        field: null },
-  { id: "ride_eday",     label: "Ride on E-Day",     icon: Car,         field: null },
-] as const;
+/* ─── Campaign field types ─────────────────────────────────────────────────── */
+
+interface CampaignFieldDef {
+  id: string;
+  key: string;
+  label: string;
+  fieldType: string; // "boolean" | "text" | "textarea" | "number" | "date" | "select" | "multiselect"
+  category: string;
+  options: string[];
+  isVisible: boolean;
+  showOnCard: boolean;
+  showOnList: boolean;
+  sortOrder: number;
+}
+
+/** Map built-in __keys to the Contact model boolean field they toggle */
+const BUILTIN_FIELD_MAP: Record<string, string> = {
+  __sign_requested: "signRequested",
+  __volunteer_interest: "volunteerInterest",
+  __follow_up: "followUpNeeded",
+};
+
+/** Icon per field type for the "More Options" panel */
+function fieldIcon(fieldType: string) {
+  switch (fieldType) {
+    case "boolean": return ToggleLeft;
+    case "text": case "textarea": return Type;
+    case "select": return List;
+    case "multiselect": return ListChecks;
+    case "number": return Hash;
+    case "date": return Calendar;
+    default: return Type;
+  }
+}
+
+/** Fallback fields if the campaign has no CampaignField records */
+const FALLBACK_FIELDS: CampaignFieldDef[] = [
+  { id: "fb_sign", key: "__sign_requested", label: "Sign Request", fieldType: "boolean", category: "canvassing", options: [], isVisible: true, showOnCard: true, showOnList: false, sortOrder: 0 },
+  { id: "fb_vol", key: "__volunteer_interest", label: "Wants to Volunteer", fieldType: "boolean", category: "canvassing", options: [], isVisible: true, showOnCard: true, showOnList: false, sortOrder: 1 },
+  { id: "fb_fu", key: "__follow_up", label: "Follow-up Needed", fieldType: "boolean", category: "canvassing", options: [], isVisible: true, showOnCard: true, showOnList: false, sortOrder: 2 },
+];
 
 /* ─── Grouping utility ──────────────────────────────────────────────────────── */
 
@@ -241,6 +274,25 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
   const [showMap, setShowMap] = useState(false);
   const rawContactsRef = useRef<Parameters<typeof groupContacts>[0]>([]);
   const { queue: undoQueue, addUndo, doUndo } = useUndoQueue();
+  const [campaignFields, setCampaignFields] = useState<CampaignFieldDef[]>([]);
+
+  /* Fetch campaign-configured fields once */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/campaign-fields?campaignId=${campaignId}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const all: CampaignFieldDef[] = json.data ?? [];
+        const canvassingFields = all.filter(
+          (f) => f.isVisible && f.showOnCard && f.category === "canvassing",
+        );
+        setCampaignFields(canvassingFields.length > 0 ? canvassingFields : FALLBACK_FIELDS);
+      } catch {
+        setCampaignFields(FALLBACK_FIELDS);
+      }
+    })();
+  }, [campaignId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -394,29 +446,17 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
     }
   }
 
-  /* ── More options handler ── */
-  async function handleMoreOption(hh: Household, optionId: string) {
+  /* ── More options handler (dynamic campaign fields) ── */
+  async function handleMoreOption(hh: Household, fieldKey: string, value: unknown = true) {
     const isOnline = navigator.onLine;
+    const field = campaignFields.find((f) => f.key === fieldKey);
+    const label = field?.label ?? fieldKey;
+
     for (const p of hh.people) {
-      const body: Record<string, unknown> = {};
-      const opt = MORE_OPTIONS.find((o) => o.id === optionId);
-      if (opt?.field) {
-        body[opt.field] = true;
-      }
-      if (optionId === "email_list" || optionId === "ride_eday") {
-        // Log as interaction note
-        const noteText = optionId === "email_list" ? "Wants to be on email list" : "Wants ride on Election Day";
-        try {
-          if (isOnline) {
-            await fetch("/api/interactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contactId: p.id, type: "note", notes: noteText }) });
-          } else {
-            throw new Error("offline");
-          }
-        } catch {
-          await queueViaServiceWorker({ url: "/api/interactions", method: "POST", body: { contactId: p.id, type: "note", notes: noteText }, label: `${noteText}: ${p.firstName}` });
-        }
-      }
-      if (Object.keys(body).length > 0) {
+      // Built-in field — toggle a Contact boolean
+      const builtinProp = BUILTIN_FIELD_MAP[fieldKey];
+      if (builtinProp) {
+        const body = { [builtinProp]: value };
         try {
           if (isOnline) {
             await fetch(`/api/contacts/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -424,11 +464,24 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
             throw new Error("offline");
           }
         } catch {
-          await queueViaServiceWorker({ url: `/api/contacts/${p.id}`, method: "PATCH", body, label: `Flag: ${p.firstName}` });
+          await queueViaServiceWorker({ url: `/api/contacts/${p.id}`, method: "PATCH", body, label: `${label}: ${p.firstName}` });
         }
+        continue;
+      }
+
+      // Custom field — save via customFields payload on the contact PATCH
+      const customBody = { customFields: { [fieldKey]: value } };
+      try {
+        if (isOnline) {
+          await fetch(`/api/contacts/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(customBody) });
+        } else {
+          throw new Error("offline");
+        }
+      } catch {
+        await queueViaServiceWorker({ url: `/api/contacts/${p.id}`, method: "PATCH", body: customBody, label: `${label}: ${p.firstName}` });
       }
     }
-    toast.success(`${MORE_OPTIONS.find((o) => o.id === optionId)?.label} recorded`);
+    toast.success(`${label} recorded`);
   }
 
   function toggleExpand(key: string) {
@@ -637,8 +690,9 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
                 isExpanded={expanded.has(hh.key)}
                 onToggle={() => toggleExpand(hh.key)}
                 onResult={(result) => handleResult(hh, result)}
-                onMoreOption={(optId) => handleMoreOption(hh, optId)}
+                onMoreOption={(fieldKey, value) => handleMoreOption(hh, fieldKey, value)}
                 onPersonUpdate={load}
+                campaignFields={campaignFields}
               />
             </motion.div>
           ))
@@ -659,16 +713,19 @@ function HouseholdRow({
   onResult,
   onMoreOption,
   onPersonUpdate,
+  campaignFields,
 }: {
   household: Household;
   isExpanded: boolean;
   onToggle: () => void;
   onResult: (result: ResultId) => void;
-  onMoreOption: (optionId: string) => void;
+  onMoreOption: (fieldKey: string, value?: unknown) => void;
   onPersonUpdate: () => void;
+  campaignFields: CampaignFieldDef[];
 }) {
   const [showScript, setShowScript] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [fieldInputs, setFieldInputs] = useState<Record<string, unknown>>({});
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(hh.address + " " + hh.city)}`;
 
   return (
@@ -779,7 +836,7 @@ function HouseholdRow({
         )}
       </AnimatePresence>
 
-      {/* ── More options panel ── */}
+      {/* ── More options panel (dynamic campaign fields) ── */}
       <AnimatePresence>
         {showMore && (
           <motion.div
@@ -789,23 +846,178 @@ function HouseholdRow({
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 border-t border-gray-100 pt-3">
-              <div className="grid grid-cols-2 gap-2">
-                {MORE_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  return (
-                    <motion.button
-                      key={opt.id}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => { onMoreOption(opt.id); setShowMore(false); }}
-                      className="flex items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 min-h-[44px] transition-colors"
+            <div className="px-3 pb-3 border-t border-gray-100 pt-3 space-y-2">
+              {/* Boolean fields — render as tap-to-toggle buttons in a grid */}
+              {campaignFields.filter((f) => f.fieldType === "boolean").length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {campaignFields
+                    .filter((f) => f.fieldType === "boolean")
+                    .map((field) => {
+                      const Icon = fieldIcon(field.fieldType);
+                      return (
+                        <motion.button
+                          key={field.key}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => { onMoreOption(field.key, true); setShowMore(false); }}
+                          className="flex items-center gap-2 px-3 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl text-sm font-medium text-gray-700 min-h-[56px] transition-colors"
+                        >
+                          <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          {field.label}
+                        </motion.button>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* Text / textarea fields */}
+              {campaignFields
+                .filter((f) => f.fieldType === "text" || f.fieldType === "textarea")
+                .map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{field.label}</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={String(fieldInputs[field.key] ?? "")}
+                        onChange={(e) => setFieldInputs((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        placeholder={field.label}
+                        className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const val = fieldInputs[field.key];
+                          if (val) { onMoreOption(field.key, val); setFieldInputs((prev) => ({ ...prev, [field.key]: "" })); setShowMore(false); }
+                        }}
+                        className="px-4 py-2.5 bg-[#0A2342] text-white rounded-xl text-sm font-bold min-h-[56px] min-w-[56px]"
+                      >
+                        Save
+                      </motion.button>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Select fields — single select dropdown */}
+              {campaignFields
+                .filter((f) => f.fieldType === "select")
+                .map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{field.label}</label>
+                    <select
+                      value={String(fieldInputs[field.key] ?? "")}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) { onMoreOption(field.key, val); setShowMore(false); }
+                      }}
+                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
                     >
-                      <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      {opt.label}
-                    </motion.button>
+                      <option value="">Select {field.label}...</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+
+              {/* Multiselect fields — tap to toggle each option */}
+              {campaignFields
+                .filter((f) => f.fieldType === "multiselect")
+                .map((field) => {
+                  const selected = (fieldInputs[field.key] as string[] | undefined) ?? [];
+                  return (
+                    <div key={field.key} className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{field.label}</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {field.options.map((opt) => {
+                          const isOn = selected.includes(opt);
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() => {
+                                const next = isOn ? selected.filter((s) => s !== opt) : [...selected, opt];
+                                setFieldInputs((prev) => ({ ...prev, [field.key]: next }));
+                              }}
+                              className={cn(
+                                "px-3 py-2 rounded-xl text-xs font-medium min-h-[44px] transition-colors",
+                                isOn ? "bg-[#0A2342] text-white" : "bg-gray-100 text-gray-700",
+                              )}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selected.length > 0 && (
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => { onMoreOption(field.key, selected); setFieldInputs((prev) => ({ ...prev, [field.key]: [] })); setShowMore(false); }}
+                          className="w-full py-2.5 bg-[#1D9E75] text-white rounded-xl text-sm font-bold min-h-[56px]"
+                        >
+                          Save {field.label}
+                        </motion.button>
+                      )}
+                    </div>
                   );
                 })}
-              </div>
+
+              {/* Number fields */}
+              {campaignFields
+                .filter((f) => f.fieldType === "number")
+                .map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{field.label}</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={String(fieldInputs[field.key] ?? "")}
+                        onChange={(e) => setFieldInputs((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        placeholder={field.label}
+                        className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const val = fieldInputs[field.key];
+                          if (val !== undefined && val !== "") { onMoreOption(field.key, Number(val)); setFieldInputs((prev) => ({ ...prev, [field.key]: "" })); setShowMore(false); }
+                        }}
+                        className="px-4 py-2.5 bg-[#0A2342] text-white rounded-xl text-sm font-bold min-h-[56px] min-w-[56px]"
+                      >
+                        Save
+                      </motion.button>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Date fields */}
+              {campaignFields
+                .filter((f) => f.fieldType === "date")
+                .map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{field.label}</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={String(fieldInputs[field.key] ?? "")}
+                        onChange={(e) => setFieldInputs((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[56px]"
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const val = fieldInputs[field.key];
+                          if (val) { onMoreOption(field.key, val); setFieldInputs((prev) => ({ ...prev, [field.key]: "" })); setShowMore(false); }
+                        }}
+                        className="px-4 py-2.5 bg-[#0A2342] text-white rounded-xl text-sm font-bold min-h-[56px] min-w-[56px]"
+                      >
+                        Save
+                      </motion.button>
+                    </div>
+                  </div>
+                ))}
+
+              {campaignFields.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">No additional fields configured for this campaign.</p>
+              )}
             </div>
           </motion.div>
         )}
@@ -815,7 +1027,7 @@ function HouseholdRow({
       {isExpanded && (
         <div className="border-t border-gray-100 divide-y divide-gray-50">
           {hh.people.map((person) => (
-            <PersonRow key={person.id} person={person} onUpdate={onPersonUpdate} />
+            <PersonRow key={person.id} person={person} onUpdate={onPersonUpdate} campaignFields={campaignFields} />
           ))}
         </div>
       )}
@@ -827,7 +1039,7 @@ function HouseholdRow({
    Person Row
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function PersonRow({ person: p, onUpdate }: { person: Person; onUpdate: () => void }) {
+function PersonRow({ person: p, onUpdate, campaignFields }: { person: Person; onUpdate: () => void; campaignFields: CampaignFieldDef[] }) {
   const [support, setSupport] = useState(p.supportLevel);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -902,9 +1114,16 @@ function PersonRow({ person: p, onUpdate }: { person: Person; onUpdate: () => vo
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <SupportLevelBadge level={support} />
-              {p.followUpNeeded && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded-full">Follow-up</span>}
-              {p.signRequested && <span className="text-xs bg-orange-100 text-orange-700 px-1.5 rounded-full">Sign</span>}
-              {p.volunteerInterest && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 rounded-full">Vol</span>}
+              {/* Dynamic badges from campaign fields */}
+              {campaignFields.some((f) => f.key === "__follow_up") && p.followUpNeeded && (
+                <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded-full">Follow-up</span>
+              )}
+              {campaignFields.some((f) => f.key === "__sign_requested") && p.signRequested && (
+                <span className="text-xs bg-orange-100 text-orange-700 px-1.5 rounded-full">Sign</span>
+              )}
+              {campaignFields.some((f) => f.key === "__volunteer_interest") && p.volunteerInterest && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 rounded-full">Vol</span>
+              )}
             </div>
           </div>
         </div>
