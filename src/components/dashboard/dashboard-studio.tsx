@@ -6,13 +6,17 @@ import {
   Activity,
   DollarSign,
   Eye,
+  EyeOff,
   LayoutDashboard,
   MapPin,
   Moon,
   Phone,
+  PlusCircle,
+  Settings,
   Shield,
   Users,
   Vote,
+  X,
   Zap,
 } from "lucide-react";
 import {
@@ -62,11 +66,105 @@ const MODES: { id: DashboardMode; label: string; icon: React.ComponentType<{ cla
 ];
 
 /* ── Types ─────────────────────────────────────────── */
+type CampaignType = "municipal" | "provincial" | "federal" | "by_election" | "other";
+
 type DashboardStudioProps = {
   campaignId: string;
   campaignName: string;
+  campaignLogoUrl?: string;
+  campaignType?: CampaignType;
   popoutWidgetId?: string | null;
   isPopout?: boolean;
+};
+
+/* ── Widget definitions for customize panel ───────── */
+type StudioWidgetId = "gap" | "stat-cards" | "activity" | "canvassers" | "turf" | "walk-list" | "call-stats"
+  | "donation-total" | "donation-chart" | "top-donors" | "recent-donations" | "spending"
+  | "gotv-countdown" | "voted-counter" | "p1p4-breakdown" | "support-pie" | "priority-calls"
+  | "war-numbers" | "war-gap" | "war-grid" | "war-ticker"
+  | "election-polls" | "election-result" | "election-countdown";
+
+interface StudioWidget {
+  id: StudioWidgetId;
+  label: string;
+  mode: DashboardMode;
+  relevance: CampaignType[];
+}
+
+const ALL_STUDIO_WIDGETS: StudioWidget[] = [
+  { id: "gap", label: "The Gap", mode: "overview", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "stat-cards", label: "Stat Cards (Supporters, Doors, Volunteers, Signs)", mode: "overview", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "activity", label: "Recent Activity Feed", mode: "overview", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "canvassers", label: "Canvasser Summary", mode: "field-ops", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "turf", label: "Turf Completion", mode: "field-ops", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "walk-list", label: "Walk List Progress", mode: "field-ops", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "call-stats", label: "Call List Stats", mode: "field-ops", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "donation-total", label: "Donation Total", mode: "finance", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "donation-chart", label: "Donation Trend Chart", mode: "finance", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "top-donors", label: "Top Donors", mode: "finance", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "recent-donations", label: "Recent Donations", mode: "finance", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
+  { id: "spending", label: "Spending vs Limit", mode: "finance", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "gotv-countdown", label: "Election Countdown", mode: "gotv", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "voted-counter", label: "Supporters Voted Counter", mode: "gotv", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "p1p4-breakdown", label: "P1-P4 Breakdown Cards", mode: "gotv", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "support-pie", label: "Support Breakdown Pie", mode: "gotv", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "priority-calls", label: "Priority Call List", mode: "gotv", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "war-numbers", label: "War Room Numbers", mode: "war-room", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "war-gap", label: "War Room Gap Display", mode: "war-room", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "war-grid", label: "War Room Mini Grid", mode: "war-room", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "war-ticker", label: "Live Activity Ticker", mode: "war-room", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "election-polls", label: "Polls Reporting", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "election-result", label: "Election Results", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "election-countdown", label: "Election Day Counter", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
+];
+
+/* ── Preferences type ─────────────────────────────── */
+interface DashboardPreferences {
+  defaultMode: DashboardMode;
+  hiddenWidgets: StudioWidgetId[];
+}
+
+const DEFAULT_PREFS: DashboardPreferences = { defaultMode: "overview", hiddenWidgets: [] };
+const PREFS_LS_KEY = "pc-dash-prefs";
+
+function loadPrefsFromLS(campaignId: string): DashboardPreferences {
+  try {
+    const raw = localStorage.getItem(`${PREFS_LS_KEY}-${campaignId}`);
+    if (raw) return JSON.parse(raw) as DashboardPreferences;
+  } catch { /* ignore */ }
+  return DEFAULT_PREFS;
+}
+
+function savePrefsToLS(campaignId: string, prefs: DashboardPreferences) {
+  try { localStorage.setItem(`${PREFS_LS_KEY}-${campaignId}`, JSON.stringify(prefs)); } catch { /* ignore */ }
+}
+
+/* ── Empty-state config per widget ────────────────── */
+const EMPTY_STATE_CONFIG: Record<string, { message: string; action: string; href: string }> = {
+  "gap": { message: "No supporter data yet — start by adding your first contacts", action: "Import contacts", href: "/contacts/import" },
+  "stat-cards": { message: "Your stats will appear as data comes in", action: "Add your first supporter", href: "/contacts/new" },
+  "activity": { message: "No recent activity yet — your team's actions will show here", action: "Invite a volunteer", href: "/volunteers" },
+  "canvassers": { message: "No canvasser activity yet — set up your first turf", action: "Set up canvassing", href: "/canvassing" },
+  "turf": { message: "No turfs created yet — divide your area into walkable turfs", action: "Create a turf", href: "/canvassing" },
+  "walk-list": { message: "No walk lists assigned yet — create turfs and assign volunteers", action: "Set up canvassing", href: "/canvassing" },
+  "call-stats": { message: "No calls made yet — set up your phone bank", action: "Start calling", href: "/phone-bank" },
+  "donation-total": { message: "No donations yet — share your fundraising page", action: "Log first donation", href: "/finance/donations/new" },
+  "donation-chart": { message: "Donation trends will appear after your first contributions", action: "Log first donation", href: "/finance/donations/new" },
+  "top-donors": { message: "Your top donors will appear here", action: "Log first donation", href: "/finance/donations/new" },
+  "recent-donations": { message: "No recent donations to show", action: "Log first donation", href: "/finance/donations/new" },
+  "spending": { message: "Track spending against your campaign limit", action: "Log an expense", href: "/finance" },
+  "gotv-countdown": { message: "Election countdown is active", action: "View GOTV plan", href: "/gotv" },
+  "voted-counter": { message: "No supporters have voted yet — start identifying supporters", action: "Import contacts", href: "/contacts/import" },
+  "p1p4-breakdown": { message: "No support levels recorded yet — start canvassing", action: "Set up canvassing", href: "/canvassing" },
+  "support-pie": { message: "Support breakdown will appear after canvassing", action: "Set up canvassing", href: "/canvassing" },
+  "priority-calls": { message: "No priority calls needed yet", action: "Start calling", href: "/phone-bank" },
+  "war-numbers": { message: "War room numbers populate from live campaign data", action: "Import contacts", href: "/contacts/import" },
+  "war-gap": { message: "The gap will appear once you have voter data", action: "Import contacts", href: "/contacts/import" },
+  "war-grid": { message: "Mini grid populates from live data", action: "Import contacts", href: "/contacts/import" },
+  "war-ticker": { message: "Live activity will stream here as your team works", action: "Invite a volunteer", href: "/volunteers" },
+  "election-polls": { message: "Poll results will appear on election night", action: "View election setup", href: "/election-night" },
+  "election-result": { message: "Results will stream in on election night", action: "View election setup", href: "/election-night" },
+  "election-countdown": { message: "Counting down to election day", action: "View GOTV plan", href: "/gotv" },
 };
 
 type DashboardData = {
@@ -203,17 +301,73 @@ const FALLBACK: DashboardData = {
 };
 
 /* ── Main component ────────────────────────────────── */
-export default function DashboardStudio({ campaignId, campaignName }: DashboardStudioProps) {
-  const [mode, setMode] = useState<DashboardMode>(() => {
-    if (typeof window === "undefined") return "overview";
-    return (localStorage.getItem(`pc-dash-mode-${campaignId}`) as DashboardMode) || "overview";
-  });
+export default function DashboardStudio({ campaignId, campaignName, campaignLogoUrl, campaignType = "municipal" }: DashboardStudioProps) {
+  const [prefs, setPrefs] = useState<DashboardPreferences>(DEFAULT_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
+  /* Load preferences: try API, fallback to localStorage */
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPrefs() {
+      try {
+        const res = await fetch(`/api/campaigns/current`);
+        if (res.ok) {
+          const json = await res.json();
+          const stored = json?.customization?.dashboardPreferences;
+          if (stored && !cancelled) {
+            const p: DashboardPreferences = {
+              defaultMode: stored.defaultMode ?? "overview",
+              hiddenWidgets: Array.isArray(stored.hiddenWidgets) ? stored.hiddenWidgets : [],
+            };
+            setPrefs(p);
+            savePrefsToLS(campaignId, p);
+            setPrefsLoaded(true);
+            return;
+          }
+        }
+      } catch { /* API unavailable */ }
+      if (!cancelled) {
+        setPrefs(loadPrefsFromLS(campaignId));
+        setPrefsLoaded(true);
+      }
+    }
+    loadPrefs();
+    return () => { cancelled = true; };
+  }, [campaignId]);
+
+  const [mode, setMode] = useState<DashboardMode>("overview");
   const [data, setData] = useState<DashboardData>(FALLBACK);
   const [loading, setLoading] = useState(true);
+
+  /* Set mode from prefs once loaded */
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    const stored = typeof window !== "undefined" ? localStorage.getItem(`pc-dash-mode-${campaignId}`) as DashboardMode | null : null;
+    setMode(stored ?? prefs.defaultMode);
+  }, [prefsLoaded, campaignId, prefs.defaultMode]);
 
   const switchMode = useCallback((m: DashboardMode) => {
     setMode(m);
     localStorage.setItem(`pc-dash-mode-${campaignId}`, m);
+  }, [campaignId]);
+
+  const isWidgetHidden = useCallback((id: StudioWidgetId) => prefs.hiddenWidgets.includes(id), [prefs.hiddenWidgets]);
+
+  /* Save preferences: API + localStorage */
+  const savePreferences = useCallback(async (newPrefs: DashboardPreferences) => {
+    setPrefs(newPrefs);
+    savePrefsToLS(campaignId, newPrefs);
+    setSavingPrefs(true);
+    try {
+      await fetch(`/api/campaigns/current`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dashboardPreferences: newPrefs }),
+      });
+    } catch { /* offline — localStorage already saved */ }
+    setSavingPrefs(false);
   }, [campaignId]);
 
   /* Data fetching */
@@ -308,24 +462,59 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
         : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
       }>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className={isDark ? "text-2xl font-black text-white" : "text-2xl font-black text-slate-900"}>
-              {campaignName} Dashboard
-            </h1>
-            <p className={isDark ? "text-sm text-slate-400" : "text-sm text-slate-500"}>
-              {daysUntilElection()} days to election day
-            </p>
+          <div className="flex items-center gap-3">
+            {/* Campaign Logo */}
+            {campaignLogoUrl ? (
+              <img
+                src={campaignLogoUrl}
+                alt={`${campaignName} logo`}
+                className="h-10 w-10 rounded-lg object-cover shadow-sm"
+              />
+            ) : (
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-black text-white"
+                style={{ backgroundColor: NAVY }}
+              >
+                {campaignName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 className={isDark ? "text-2xl font-black text-white" : "text-2xl font-black text-slate-900"}>
+                {campaignName}
+              </h1>
+              <p className={isDark ? "text-sm text-slate-400" : "text-sm text-slate-500"}>
+                {daysUntilElection()} days to election day
+              </p>
+            </div>
           </div>
-          {/* Mobile dropdown */}
-          <select
-            value={mode}
-            onChange={(e) => switchMode(e.target.value as DashboardMode)}
-            className="block rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:hidden"
-          >
-            {MODES.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            {/* Customize button */}
+            <motion.button
+              type="button"
+              onClick={() => setShowCustomize(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={springTap}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                isDark
+                  ? "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                  : "border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Customize
+            </motion.button>
+            {/* Mobile dropdown */}
+            <select
+              value={mode}
+              onChange={(e) => switchMode(e.target.value as DashboardMode)}
+              className="block rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:hidden"
+            >
+              {MODES.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         {/* Desktop tabs */}
         <div className="mt-3 hidden gap-1 overflow-x-auto sm:flex">
@@ -359,6 +548,19 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
         </div>
       </div>
 
+      {/* Customize Panel (Slide-over) */}
+      <AnimatePresence>
+        {showCustomize && (
+          <CustomizePanel
+            prefs={prefs}
+            campaignType={campaignType}
+            saving={savingPrefs}
+            onSave={savePreferences}
+            onClose={() => setShowCustomize(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Loading skeleton */}
       {loading ? (
         <div className="space-y-3">
@@ -376,12 +578,12 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
             exit={{ opacity: 0, y: -12 }}
             transition={springEnter}
           >
-            {mode === "overview" && <OverviewMode data={data} dark={false} />}
-            {mode === "field-ops" && <FieldOpsMode data={data} />}
-            {mode === "finance" && <FinanceMode data={data} />}
-            {mode === "gotv" && <GOTVMode data={data} />}
-            {mode === "war-room" && <WarRoomMode data={data} />}
-            {mode === "election-night" && <ElectionNightMode data={data} />}
+            {mode === "overview" && <OverviewMode data={data} dark={false} hidden={isWidgetHidden} />}
+            {mode === "field-ops" && <FieldOpsMode data={data} hidden={isWidgetHidden} />}
+            {mode === "finance" && <FinanceMode data={data} hidden={isWidgetHidden} />}
+            {mode === "gotv" && <GOTVMode data={data} hidden={isWidgetHidden} />}
+            {mode === "war-room" && <WarRoomMode data={data} hidden={isWidgetHidden} />}
+            {mode === "election-night" && <ElectionNightMode data={data} hidden={isWidgetHidden} />}
           </motion.div>
         </AnimatePresence>
       )}
@@ -392,9 +594,10 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
 /* ════════════════════════════════════════════════════════
    MODE 1: OVERVIEW
    ════════════════════════════════════════════════════════ */
-function OverviewMode({ data, dark }: { data: DashboardData; dark: boolean }) {
+function OverviewMode({ data, dark, hidden }: { data: DashboardData; dark: boolean; hidden: (id: StudioWidgetId) => boolean }) {
   const days = daysUntilElection();
   const greeting = getGreeting();
+  const hasNoData = data.confirmedSupporters === FALLBACK.confirmedSupporters && data.doorsToday === FALLBACK.doorsToday;
 
   return (
     <div className="space-y-4">
@@ -412,41 +615,49 @@ function OverviewMode({ data, dark }: { data: DashboardData; dark: boolean }) {
       </motion.div>
 
       {/* The Gap — hero */}
-      <GapWidget value={data.gap} supportersVoted={data.supportersVoted} confirmed={data.confirmedSupporters} />
+      {!hidden("gap") && (
+        hasNoData ? <WarmEmptyState widgetId="gap" /> : <GapWidget value={data.gap} supportersVoted={data.supportersVoted} confirmed={data.confirmedSupporters} />
+      )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Supporters" value={data.confirmedSupporters} icon={Users} color={GREEN} />
-        <StatCard label="Doors Today" value={data.doorsToday} icon={MapPin} color={NAVY} />
-        <StatCard label="Volunteers Active" value={data.volunteersActive} icon={Zap} color={AMBER} />
-        <StatCard label="Sign Requests" value={data.signRequestsPending} icon={Activity} color={RED} />
-      </div>
+      {!hidden("stat-cards") && (
+        hasNoData ? <WarmEmptyState widgetId="stat-cards" /> : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatCard label="Supporters" value={data.confirmedSupporters} icon={Users} color={GREEN} />
+            <StatCard label="Doors Today" value={data.doorsToday} icon={MapPin} color={NAVY} />
+            <StatCard label="Volunteers Active" value={data.volunteersActive} icon={Zap} color={AMBER} />
+            <StatCard label="Sign Requests" value={data.signRequestsPending} icon={Activity} color={RED} />
+          </div>
+        )
+      )}
 
       {/* Recent Activity */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Recent Activity</h3>
-        <div className="space-y-2">
-          {data.recentActivity.length === 0 ? (
-            <EmptyState text="No recent activity yet" />
-          ) : (
-            data.recentActivity.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ ...springEnter, delay: i * 0.05 }}
-                className="flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2"
-              >
-                <ActivityIcon type={item.type} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-800">{item.text}</p>
-                  <p className="text-[11px] text-slate-400">{item.time}</p>
-                </div>
-              </motion.div>
-            ))
-          )}
+      {!hidden("activity") && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Recent Activity</h3>
+          <div className="space-y-2">
+            {data.recentActivity.length === 0 ? (
+              <WarmEmptyState widgetId="activity" />
+            ) : (
+              data.recentActivity.map((item, i) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...springEnter, delay: i * 0.05 }}
+                  className="flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2"
+                >
+                  <ActivityIcon type={item.type} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-800">{item.text}</p>
+                    <p className="text-[11px] text-slate-400">{item.time}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -454,13 +665,13 @@ function OverviewMode({ data, dark }: { data: DashboardData; dark: boolean }) {
 /* ════════════════════════════════════════════════════════
    MODE 2: FIELD OPS
    ════════════════════════════════════════════════════════ */
-function FieldOpsMode({ data }: { data: DashboardData }) {
+function FieldOpsMode({ data, hidden }: { data: DashboardData; hidden: (id: StudioWidgetId) => boolean }) {
   return (
     <div className="space-y-4">
       {/* Canvasser Summary */}
-      <Card title="Canvasser Activity Summary">
+      {!hidden("canvassers") && <Card title="Canvasser Activity Summary">
         {data.canvassersSummary.length === 0 ? (
-          <EmptyState text="No canvasser activity yet" />
+          <WarmEmptyState widgetId="canvassers" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -491,12 +702,12 @@ function FieldOpsMode({ data }: { data: DashboardData }) {
             </table>
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* Turf Completion */}
-      <Card title="Turf Completion">
+      {!hidden("turf") && <Card title="Turf Completion">
         {data.turfCompletion.length === 0 ? (
-          <EmptyState text="No turf data yet" />
+          <WarmEmptyState widgetId="turf" />
         ) : (
           <div className="space-y-3">
             {data.turfCompletion.map((turf, i) => (
@@ -525,13 +736,13 @@ function FieldOpsMode({ data }: { data: DashboardData }) {
             ))}
           </div>
         )}
-      </Card>
+      </Card>}
 
-      {/* Walk List Progress */}
+      {/* Walk List Progress & Call Stats */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Walk List Progress">
+        {!hidden("walk-list") && <Card title="Walk List Progress">
           {data.walkListProgress.length === 0 ? (
-            <EmptyState text="No walk lists assigned yet" />
+            <WarmEmptyState widgetId="walk-list" />
           ) : (
             <div className="space-y-3">
               {data.walkListProgress.map((row) => {
@@ -556,36 +767,40 @@ function FieldOpsMode({ data }: { data: DashboardData }) {
               })}
             </div>
           )}
-        </Card>
+        </Card>}
 
         {/* Call List Stats */}
-        <Card title="Call List Stats">
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <AnimatedNumber value={data.callListStats.total} className="text-2xl font-black text-slate-900" />
-                <p className="text-[11px] font-semibold text-slate-500">Total</p>
+        {!hidden("call-stats") && <Card title="Call List Stats">
+          {data.callListStats.total === 0 ? (
+            <WarmEmptyState widgetId="call-stats" />
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <AnimatedNumber value={data.callListStats.total} className="text-2xl font-black text-slate-900" />
+                  <p className="text-[11px] font-semibold text-slate-500">Total</p>
+                </div>
+                <div>
+                  <AnimatedNumber value={data.callListStats.completed} className="text-2xl font-black" style={{ color: GREEN }} />
+                  <p className="text-[11px] font-semibold text-slate-500">Completed</p>
+                </div>
+                <div>
+                  <AnimatedNumber value={data.callListStats.reached} className="text-2xl font-black" style={{ color: NAVY }} />
+                  <p className="text-[11px] font-semibold text-slate-500">Reached</p>
+                </div>
               </div>
-              <div>
-                <AnimatedNumber value={data.callListStats.completed} className="text-2xl font-black" style={{ color: GREEN }} />
-                <p className="text-[11px] font-semibold text-slate-500">Completed</p>
-              </div>
-              <div>
-                <AnimatedNumber value={data.callListStats.reached} className="text-2xl font-black" style={{ color: NAVY }} />
-                <p className="text-[11px] font-semibold text-slate-500">Reached</p>
+              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: GREEN }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round((data.callListStats.completed / Math.max(1, data.callListStats.total)) * 100)}%` }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                />
               </div>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: GREEN }}
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.round((data.callListStats.completed / Math.max(1, data.callListStats.total)) * 100)}%` }}
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              />
-            </div>
-          </div>
-        </Card>
+          )}
+        </Card>}
       </div>
     </div>
   );
@@ -594,30 +809,34 @@ function FieldOpsMode({ data }: { data: DashboardData }) {
 /* ════════════════════════════════════════════════════════
    MODE 3: FINANCE
    ════════════════════════════════════════════════════════ */
-function FinanceMode({ data }: { data: DashboardData }) {
+function FinanceMode({ data, hidden }: { data: DashboardData; hidden: (id: StudioWidgetId) => boolean }) {
   const spendPct = Math.round((data.currentSpending / Math.max(1, data.spendingLimit)) * 100);
   const overBudget = spendPct >= 80;
 
   return (
     <div className="space-y-4">
       {/* Donation Total */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={springEnter}
-        className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm"
-      >
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Total Raised</p>
-        <AnimatedNumber
-          value={data.donationTotal}
-          className="mt-1 text-5xl font-black md:text-6xl"
-          style={{ color: GREEN }}
-          format={(v) => `$${v.toLocaleString()}`}
-        />
-      </motion.div>
+      {!hidden("donation-total") && (
+        data.donationTotal === 0 ? <WarmEmptyState widgetId="donation-total" /> : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={springEnter}
+            className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm"
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Total Raised</p>
+            <AnimatedNumber
+              value={data.donationTotal}
+              className="mt-1 text-5xl font-black md:text-6xl"
+              style={{ color: GREEN }}
+              format={(v) => `$${v.toLocaleString()}`}
+            />
+          </motion.div>
+        )
+      )}
 
       {/* Donation Chart */}
-      <Card title="Donation Trend (Weekly)">
+      {!hidden("donation-chart") && <Card title="Donation Trend (Weekly)">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data.donationChart}>
@@ -632,13 +851,13 @@ function FinanceMode({ data }: { data: DashboardData }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </Card>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Top Donors */}
-        <Card title="Top Donors">
+        {!hidden("top-donors") && <Card title="Top Donors">
           {data.topDonors.length === 0 ? (
-            <EmptyState text="No donations yet" />
+            <WarmEmptyState widgetId="top-donors" />
           ) : (
             <div className="space-y-2">
               {data.topDonors.map((donor, i) => (
@@ -660,12 +879,12 @@ function FinanceMode({ data }: { data: DashboardData }) {
               ))}
             </div>
           )}
-        </Card>
+        </Card>}
 
         {/* Recent Donations */}
-        <Card title="Recent Donations">
+        {!hidden("recent-donations") && <Card title="Recent Donations">
           {data.recentDonations.length === 0 ? (
-            <EmptyState text="No recent donations" />
+            <WarmEmptyState widgetId="recent-donations" />
           ) : (
             <div className="space-y-2">
               {data.recentDonations.map((d, i) => (
@@ -685,11 +904,11 @@ function FinanceMode({ data }: { data: DashboardData }) {
               ))}
             </div>
           )}
-        </Card>
+        </Card>}
       </div>
 
       {/* Spending vs Limit */}
-      <Card title="Spending vs Limit">
+      {!hidden("spending") && <Card title="Spending vs Limit">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-600">
@@ -717,7 +936,7 @@ function FinanceMode({ data }: { data: DashboardData }) {
             </motion.p>
           )}
         </div>
-      </Card>
+      </Card>}
     </div>
   );
 }
@@ -725,7 +944,7 @@ function FinanceMode({ data }: { data: DashboardData }) {
 /* ════════════════════════════════════════════════════════
    MODE 4: GOTV
    ════════════════════════════════════════════════════════ */
-function GOTVMode({ data }: { data: DashboardData }) {
+function GOTVMode({ data, hidden }: { data: DashboardData; hidden: (id: StudioWidgetId) => boolean }) {
   const days = daysUntilElection();
   const votedPct = Math.round((data.totalVoted / Math.max(1, data.totalSupporters)) * 100);
   const pieData = [
@@ -738,7 +957,7 @@ function GOTVMode({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-4">
       {/* Election Countdown */}
-      <motion.div
+      {!hidden("gotv-countdown") && <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={springEnter}
@@ -748,51 +967,59 @@ function GOTVMode({ data }: { data: DashboardData }) {
         <p className="text-xs font-bold uppercase tracking-widest text-slate-300">Election Day Countdown</p>
         <AnimatedNumber value={days} className="mt-1 text-6xl font-black md:text-7xl" />
         <p className="mt-1 text-sm font-semibold text-slate-300">days remaining</p>
-      </motion.div>
+      </motion.div>}
 
       {/* Giant Voted Counter + Progress */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-center text-xs font-bold uppercase tracking-wide text-slate-500">Supporters Voted</p>
-        <div className="mt-2 text-center">
-          <AnimatedNumber
-            value={data.totalVoted}
-            className="text-5xl font-black md:text-6xl"
-            style={{ color: GREEN }}
-          />
-          <span className="ml-2 text-xl font-semibold text-slate-400">/ {data.totalSupporters.toLocaleString()}</span>
-        </div>
-        <div className="mx-auto mt-4 max-w-md">
-          <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ backgroundColor: GREEN }}
-              initial={{ width: 0 }}
-              animate={{ width: `${votedPct}%` }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            />
+      {!hidden("voted-counter") && (
+        data.totalVoted === 0 && data.totalSupporters === 0 ? <WarmEmptyState widgetId="voted-counter" /> : (
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-center text-xs font-bold uppercase tracking-wide text-slate-500">Supporters Voted</p>
+            <div className="mt-2 text-center">
+              <AnimatedNumber
+                value={data.totalVoted}
+                className="text-5xl font-black md:text-6xl"
+                style={{ color: GREEN }}
+              />
+              <span className="ml-2 text-xl font-semibold text-slate-400">/ {data.totalSupporters.toLocaleString()}</span>
+            </div>
+            <div className="mx-auto mt-4 max-w-md">
+              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: GREEN }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${votedPct}%` }}
+                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                />
+              </div>
+              <p className="mt-1 text-center text-xs font-bold text-slate-500">{votedPct}% turned out</p>
+            </div>
           </div>
-          <p className="mt-1 text-center text-xs font-bold text-slate-500">{votedPct}% turned out</p>
-        </div>
-      </div>
+        )
+      )}
 
       {/* P1-P4 Breakdown */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {pieData.map((seg) => (
-          <motion.div
-            key={seg.name}
-            whileHover={{ scale: 1.03, y: -2 }}
-            transition={springTap}
-            className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm"
-          >
-            <div className="mx-auto mb-2 h-3 w-3 rounded-full" style={{ backgroundColor: seg.color }} />
-            <AnimatedNumber value={seg.value} className="text-2xl font-black text-slate-900" />
-            <p className="mt-1 text-[11px] font-semibold text-slate-500">{seg.name}</p>
-          </motion.div>
-        ))}
-      </div>
+      {!hidden("p1p4-breakdown") && (
+        data.p1Count === 0 && data.p2Count === 0 ? <WarmEmptyState widgetId="p1p4-breakdown" /> : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {pieData.map((seg) => (
+              <motion.div
+                key={seg.name}
+                whileHover={{ scale: 1.03, y: -2 }}
+                transition={springTap}
+                className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm"
+              >
+                <div className="mx-auto mb-2 h-3 w-3 rounded-full" style={{ backgroundColor: seg.color }} />
+                <AnimatedNumber value={seg.value} className="text-2xl font-black text-slate-900" />
+                <p className="mt-1 text-[11px] font-semibold text-slate-500">{seg.name}</p>
+              </motion.div>
+            ))}
+          </div>
+        )
+      )}
 
       {/* Pie Chart */}
-      <Card title="Support Breakdown">
+      {!hidden("support-pie") && <Card title="Support Breakdown">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -817,12 +1044,12 @@ function GOTVMode({ data }: { data: DashboardData }) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </Card>}
 
       {/* Priority Call List */}
-      <Card title="Priority Call List">
+      {!hidden("priority-calls") && <Card title="Priority Call List">
         {data.priorityCallList.length === 0 ? (
-          <EmptyState text="No priority calls needed" />
+          <WarmEmptyState widgetId="priority-calls" />
         ) : (
           <div className="space-y-2">
             {data.priorityCallList.map((call, i) => (
@@ -850,7 +1077,7 @@ function GOTVMode({ data }: { data: DashboardData }) {
             ))}
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }
@@ -858,7 +1085,7 @@ function GOTVMode({ data }: { data: DashboardData }) {
 /* ════════════════════════════════════════════════════════
    MODE 5: WAR ROOM (Dark #0A1628)
    ════════════════════════════════════════════════════════ */
-function WarRoomMode({ data }: { data: DashboardData }) {
+function WarRoomMode({ data, hidden }: { data: DashboardData; hidden: (id: StudioWidgetId) => boolean }) {
   const [ticker, setTicker] = useState<ActivityItem[]>(data.recentActivity);
 
   useEffect(() => {
@@ -868,15 +1095,15 @@ function WarRoomMode({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-4">
       {/* Critical numbers row */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {!hidden("war-numbers") && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <WarCard label="The Gap" value={data.gap} color={data.gap > 500 ? RED : data.gap >= 100 ? AMBER : GREEN} />
         <WarCard label="Voted" value={data.totalVoted} color={GREEN} />
         <WarCard label="Volunteers Active" value={data.volunteersActive} color={AMBER} />
         <WarCard label="Doors Today" value={data.doorsToday} color="#3B82F6" />
-      </div>
+      </div>}
 
       {/* Giant gap display */}
-      <motion.div
+      {!hidden("war-gap") && <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={springEnter}
@@ -900,26 +1127,28 @@ function WarRoomMode({ data }: { data: DashboardData }) {
             />
           </div>
         </div>
-      </motion.div>
+      </motion.div>}
 
       {/* All numbers at once */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      {!hidden("war-grid") && <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <WarMini label="P1" value={data.p1Count} />
         <WarMini label="P2" value={data.p2Count} />
         <WarMini label="P3" value={data.p3Count} />
         <WarMini label="P4" value={data.p4Count} />
         <WarMini label="Signs Pending" value={data.signRequestsPending} />
         <WarMini label="Days Left" value={daysUntilElection()} />
-      </div>
+      </div>}
 
       {/* Activity ticker */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3">
+      {!hidden("war-ticker") && <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3">
         <div className="mb-2 flex items-center gap-2">
           <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Live Activity</p>
         </div>
         <div className="space-y-1">
-          {ticker.map((item, i) => (
+          {ticker.length === 0 ? (
+            <p className="py-4 text-center text-xs text-slate-500">Live activity will stream here as your team works</p>
+          ) : ticker.map((item, i) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, x: 20 }}
@@ -932,7 +1161,7 @@ function WarRoomMode({ data }: { data: DashboardData }) {
             </motion.div>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -940,7 +1169,7 @@ function WarRoomMode({ data }: { data: DashboardData }) {
 /* ════════════════════════════════════════════════════════
    MODE 6: ELECTION NIGHT (Dark CNN-style)
    ════════════════════════════════════════════════════════ */
-function ElectionNightMode({ data }: { data: DashboardData }) {
+function ElectionNightMode({ data, hidden }: { data: DashboardData; hidden: (id: StudioWidgetId) => boolean }) {
   const total = data.candidateVotes + data.opponentVotes;
   const candPct = total > 0 ? Math.round((data.candidateVotes / total) * 100) : 0;
   const oppPct = total > 0 ? 100 - candPct : 0;
@@ -949,7 +1178,7 @@ function ElectionNightMode({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-4">
       {/* Polls reporting */}
-      <motion.div
+      {!hidden("election-polls") && <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
@@ -961,10 +1190,10 @@ function ElectionNightMode({ data }: { data: DashboardData }) {
         <span className="text-sm font-bold text-slate-300">
           <span className="text-white">{data.pollsReporting}</span> of <span className="text-white">{data.totalPolls}</span> polls reporting
         </span>
-      </motion.div>
+      </motion.div>}
 
       {/* Main result */}
-      <motion.div
+      {!hidden("election-result") && <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={springEnter}
@@ -1025,7 +1254,7 @@ function ElectionNightMode({ data }: { data: DashboardData }) {
             votes
           </p>
         </div>
-      </motion.div>
+      </motion.div>}
 
       {/* Poll results table */}
       {data.pollResults.length > 0 && (
@@ -1066,12 +1295,190 @@ function ElectionNightMode({ data }: { data: DashboardData }) {
       )}
 
       {/* Election countdown */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+      {!hidden("election-countdown") && <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
           {daysUntilElection() === 0 ? "ELECTION DAY" : `${daysUntilElection()} DAYS TO GO`}
         </p>
-      </div>
+      </div>}
     </div>
+  );
+}
+
+/* ── Customize Panel (Slide-over) ─────────────────── */
+function CustomizePanel({
+  prefs,
+  campaignType,
+  saving,
+  onSave,
+  onClose,
+}: {
+  prefs: DashboardPreferences;
+  campaignType: CampaignType;
+  saving: boolean;
+  onSave: (p: DashboardPreferences) => void;
+  onClose: () => void;
+}) {
+  const [localPrefs, setLocalPrefs] = useState<DashboardPreferences>({ ...prefs });
+
+  const toggleWidget = (id: StudioWidgetId) => {
+    setLocalPrefs((p) => ({
+      ...p,
+      hiddenWidgets: p.hiddenWidgets.includes(id)
+        ? p.hiddenWidgets.filter((w) => w !== id)
+        : [...p.hiddenWidgets, id],
+    }));
+  };
+
+  const widgetsByMode = MODES.map((m) => ({
+    mode: m,
+    widgets: ALL_STUDIO_WIDGETS.filter((w) => w.mode === m.id),
+  }));
+
+  const campaignTypeLabel: Record<CampaignType, string> = {
+    municipal: "Municipal",
+    provincial: "Provincial",
+    federal: "Federal",
+    by_election: "By-Election",
+    other: "Other",
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex justify-end"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl"
+        style={{ minWidth: 320 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Customize Dashboard</h2>
+            <p className="text-xs text-slate-500">
+              Campaign type: <span className="font-bold" style={{ color: GREEN }}>{campaignTypeLabel[campaignType]}</span>
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-6 p-5">
+          {/* Default Mode */}
+          <div>
+            <label className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">Default Mode</label>
+            <select
+              value={localPrefs.defaultMode}
+              onChange={(e) => setLocalPrefs((p) => ({ ...p, defaultMode: e.target.value as DashboardMode }))}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700"
+            >
+              {MODES.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-slate-400">This mode will load when you open the dashboard</p>
+          </div>
+
+          {/* Widgets by mode */}
+          {widgetsByMode.map(({ mode, widgets }) => {
+            const ModeIcon = mode.icon;
+            return (
+              <div key={mode.id}>
+                <div className="mb-2 flex items-center gap-2">
+                  <ModeIcon className="h-4 w-4 text-slate-400" />
+                  <h3 className="text-xs font-black uppercase tracking-wide text-slate-500">{mode.label} Widgets</h3>
+                </div>
+                <div className="space-y-1">
+                  {widgets.map((w) => {
+                    const isRelevant = w.relevance.includes(campaignType);
+                    const isHidden = localPrefs.hiddenWidgets.includes(w.id);
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => toggleWidget(w.id)}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-colors ${
+                          isHidden
+                            ? "bg-slate-50 text-slate-400"
+                            : "bg-slate-100 text-slate-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isHidden ? <EyeOff className="h-3.5 w-3.5 text-slate-300" /> : <Eye className="h-3.5 w-3.5" style={{ color: GREEN }} />}
+                          <span className="font-semibold">{w.label}</span>
+                          {!isRelevant && (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">
+                              Not typical for {campaignTypeLabel[campaignType]}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-bold ${isHidden ? "text-slate-300" : "text-slate-500"}`}>
+                          {isHidden ? "OFF" : "ON"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Save button */}
+        <div className="sticky bottom-0 border-t border-slate-200 bg-white px-5 py-4">
+          <motion.button
+            type="button"
+            onClick={() => { onSave(localPrefs); onClose(); }}
+            disabled={saving}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={springTap}
+            className="w-full rounded-lg py-3 text-sm font-black text-white transition-colors disabled:opacity-50"
+            style={{ backgroundColor: NAVY }}
+          >
+            {saving ? "Saving..." : "Save Preferences"}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── Warm Empty State with Action ─────────────────── */
+function WarmEmptyState({ widgetId }: { widgetId: string }) {
+  const config = EMPTY_STATE_CONFIG[widgetId];
+  if (!config) return <EmptyState text="No data yet" />;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={springEnter}
+      className="rounded-xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 text-center"
+    >
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+        <PlusCircle className="h-5 w-5 text-slate-400" />
+      </div>
+      <p className="text-sm font-semibold text-slate-600">{config.message}</p>
+      <a
+        href={config.href}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold text-white transition-colors hover:opacity-90"
+        style={{ backgroundColor: GREEN }}
+      >
+        <PlusCircle className="h-3.5 w-3.5" />
+        {config.action}
+      </a>
+    </motion.div>
   );
 }
 
