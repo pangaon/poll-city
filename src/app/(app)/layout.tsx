@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/helpers";
 import Sidebar from "@/components/layout/sidebar";
 import TopBar from "@/components/layout/topbar";
 import { AppShellClient } from "@/components/app-shell-client";
-import AdoniButton from "@/components/ai/adoni";
+import { AdoniChat } from "@/components/adoni";
 import MobileNav from "@/components/layout/mobile-nav";
 import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
 
@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </main>
           <MobileNav />
         </div>
-        <AdoniButton />
+        <AdoniChat />
         <DebugToolbarGate />
       </div>
     </AppShellClient>
