@@ -395,7 +395,7 @@ export default function SignsClient({ campaignId }: { campaignId: string }) {
                         >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              {sign.isOpponent && <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" title="Opponent" />}
+                              {sign.isOpponent && <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
                               <div>
                                 <p className="font-medium text-gray-900 truncate max-w-[220px]">{sign.address1}</p>
                                 {(sign.city || sign.postalCode) && (
