@@ -1,14 +1,8 @@
 /**
  * Walk List screen — today's doors to knock.
  *
- * Fetches contacts from /api/contacts, displays them as an ordered list
- * grouped by street address. Tap a contact to navigate to the Door screen.
- * Pull-to-refresh to re-fetch from the server.
- *
- * Design principles (from MOBILE_APP_ARCHITECTURE.md):
- *   - One hand, one thumb: 56px+ touch targets
- *   - Offline first: contacts cached in AsyncStorage
- *   - Sub-100ms interactions
+ * Ordered contacts with support badges, progress indicator, and offline
+ * indicator. Pull-to-refresh. 56px+ touch targets.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -27,21 +21,26 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../lib/auth";
 import { fetchContacts } from "../../lib/api";
 import { getQueueStats } from "../../lib/sync";
+import { OfflineIndicator } from "../../components/offline-indicator";
 import type { Contact } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BRAND_BLUE = "#1e40af";
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const AMBER = "#EF9F27";
+const RED = "#E24B4A";
+
 const CACHE_KEY = "@poll_city_walk_list";
 
 const SUPPORT_COLORS: Record<string, string> = {
-  strong_support: "#16a34a",
-  leaning_support: "#65a30d",
-  undecided: "#ca8a04",
-  leaning_opposition: "#ea580c",
-  strong_opposition: "#dc2626",
+  strong_support: GREEN,
+  leaning_support: "#6BBF8A",
+  undecided: AMBER,
+  leaning_opposition: "#E8764B",
+  strong_opposition: RED,
   unknown: "#94a3b8",
 };
 
@@ -59,7 +58,7 @@ const SUPPORT_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export default function WalkListScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -78,7 +77,6 @@ export default function WalkListScreen() {
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as { ids: string[]; date: string };
-          // Reset if it's a new day
           const today = new Date().toISOString().split("T")[0];
           if (parsed.date === today) {
             setVisitedIds(new Set(parsed.ids));
@@ -91,7 +89,7 @@ export default function WalkListScreen() {
   }, []);
 
   const markVisited = useCallback(
-    async (contactId: string) => {
+    (contactId: string) => {
       setVisitedIds((prev) => {
         const next = new Set(prev);
         next.add(contactId);
@@ -117,10 +115,8 @@ export default function WalkListScreen() {
       try {
         const result = await fetchContacts(campaignId, { pageSize: "200" });
         setContacts(result.data);
-        // Cache for offline
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
       } catch {
-        // Try loading from cache
         const cached = await AsyncStorage.getItem(CACHE_KEY);
         if (cached) {
           setContacts(JSON.parse(cached) as Contact[]);
@@ -165,6 +161,8 @@ export default function WalkListScreen() {
   // Stats
   const totalDoors = contacts.length;
   const doorsVisited = contacts.filter((c) => visitedIds.has(c.id)).length;
+  const progressPct =
+    totalDoors > 0 ? Math.round((doorsVisited / totalDoors) * 100) : 0;
 
   // Render
   const renderContact = useCallback(
@@ -229,7 +227,7 @@ export default function WalkListScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.centered} edges={["bottom"]}>
-        <ActivityIndicator size="large" color={BRAND_BLUE} />
+        <ActivityIndicator size="large" color={NAVY} />
         <Text style={styles.loadingText}>Loading walk list...</Text>
       </SafeAreaView>
     );
@@ -237,6 +235,8 @@ export default function WalkListScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
+      <OfflineIndicator />
+
       {/* Progress header */}
       <View style={styles.progressHeader}>
         <View style={styles.progressStats}>
@@ -244,7 +244,9 @@ export default function WalkListScreen() {
             {doorsVisited}
             <Text style={styles.progressSlash}> / {totalDoors}</Text>
           </Text>
-          <Text style={styles.progressLabel}>doors visited</Text>
+          <Text style={styles.progressLabel}>
+            doors visited ({progressPct}%)
+          </Text>
         </View>
 
         {syncPending > 0 && (
@@ -270,12 +272,7 @@ export default function WalkListScreen() {
         <View
           style={[
             styles.progressBarFill,
-            {
-              width:
-                totalDoors > 0
-                  ? `${Math.round((doorsVisited / totalDoors) * 100)}%`
-                  : "0%",
-            },
+            { width: `${progressPct}%` as unknown as number },
           ]}
         />
       </View>
@@ -297,7 +294,7 @@ export default function WalkListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadContacts(true)}
-            tintColor={BRAND_BLUE}
+            tintColor={NAVY}
           />
         }
         ListEmptyComponent={
@@ -350,7 +347,7 @@ const styles = StyleSheet.create({
   progressNumber: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#0f172a",
+    color: NAVY,
   },
   progressSlash: {
     fontSize: 18,
@@ -375,11 +372,11 @@ const styles = StyleSheet.create({
     color: "#92400e",
   },
   endShiftButton: {
-    backgroundColor: "#ef4444",
+    backgroundColor: RED,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    minHeight: 44,
+    minHeight: 56,
     justifyContent: "center",
   },
   endShiftText: {
@@ -395,7 +392,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: 4,
-    backgroundColor: "#16a34a",
+    backgroundColor: GREEN,
   },
 
   // Error
@@ -443,7 +440,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#eff6ff",
+    backgroundColor: "#E8EDF4",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -454,10 +451,10 @@ const styles = StyleSheet.create({
   sequenceText: {
     fontSize: 14,
     fontWeight: "700",
-    color: BRAND_BLUE,
+    color: NAVY,
   },
   sequenceTextVisited: {
-    color: "#16a34a",
+    color: GREEN,
     fontSize: 18,
   },
 

@@ -1,16 +1,16 @@
 /**
  * Door screen — record an interaction at a single door.
  *
- * Large one-thumb-friendly buttons for support level, plus notes,
- * "not home" shortcut, and optional fields. POSTs to /api/interactions
- * via the offline sync queue so it works without connectivity.
+ * 6 result buttons at 56px height:
+ *   Not Home (gray), Supporter (green), Leaning (light green),
+ *   Undecided (amber), Against (red), Refused (dark red)
  *
- * Touch targets are 56px+ per MOBILE_APP_ARCHITECTURE.md.
+ * Notes field, 10-second undo after submission.
+ * Touch targets are 56px+ per spec. Offline-first via sync queue.
  */
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { enqueue } from "../../../lib/sync";
+import { OfflineIndicator } from "../../../components/offline-indicator";
 import type {
   Contact,
   CreateInteractionPayload,
@@ -32,45 +33,66 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const BRAND_BLUE = "#1e40af";
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const LIGHT_GREEN = "#6BBF8A";
+const AMBER = "#EF9F27";
+const RED = "#E24B4A";
+const DARK_RED = "#8B1A1A";
+const GRAY = "#6B7280";
 
-interface SupportOption {
+const UNDO_SECONDS = 10;
+
+interface ResultOption {
+  key: string;
   level: SupportLevel;
   label: string;
   color: string;
   pressedColor: string;
 }
 
-const SUPPORT_OPTIONS: SupportOption[] = [
+const RESULT_OPTIONS: ResultOption[] = [
   {
-    level: "strong_support",
-    label: "Strong Support",
-    color: "#16a34a",
-    pressedColor: "#15803d",
+    key: "not_home",
+    level: "unknown",
+    label: "Not Home",
+    color: GRAY,
+    pressedColor: "#4B5563",
   },
   {
+    key: "supporter",
+    level: "strong_support",
+    label: "Supporter",
+    color: GREEN,
+    pressedColor: "#167A5C",
+  },
+  {
+    key: "leaning",
     level: "leaning_support",
     label: "Leaning",
-    color: "#65a30d",
-    pressedColor: "#4d7c0f",
+    color: LIGHT_GREEN,
+    pressedColor: "#4FA46E",
   },
   {
+    key: "undecided",
     level: "undecided",
     label: "Undecided",
-    color: "#ca8a04",
-    pressedColor: "#a16207",
+    color: AMBER,
+    pressedColor: "#D08B1F",
   },
   {
-    level: "leaning_opposition",
-    label: "Lean Opp",
-    color: "#ea580c",
-    pressedColor: "#c2410c",
-  },
-  {
+    key: "against",
     level: "strong_opposition",
-    label: "Opposed",
-    color: "#dc2626",
-    pressedColor: "#b91c1c",
+    label: "Against",
+    color: RED,
+    pressedColor: "#C13A39",
+  },
+  {
+    key: "refused",
+    level: "leaning_opposition",
+    label: "Refused",
+    color: DARK_RED,
+    pressedColor: "#6B1111",
   },
 ];
 
@@ -95,86 +117,76 @@ export default function DoorScreen() {
 
   const contactId = params.id;
 
-  const [selectedSupport, setSelectedSupport] = useState<SupportLevel | null>(
-    null,
-  );
+  const [selectedResult, setSelectedResult] = useState<ResultOption | null>(null);
   const [notes, setNotes] = useState("");
-  const [signRequested, setSignRequested] = useState(false);
-  const [volunteerInterest, setVolunteerInterest] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [undoCountdown, setUndoCountdown] = useState(0);
+  const undoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const didEnqueueRef = useRef(false);
 
-  // Record a support-level interaction
-  const recordSupport = useCallback(
-    async (level: SupportLevel) => {
-      setSelectedSupport(level);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    },
-    [],
-  );
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearInterval(undoTimerRef.current);
+    };
+  }, []);
 
-  // Submit the full interaction
-  const submitInteraction = useCallback(
-    async (notHomeOverride = false) => {
-      if (!contactId) return;
-      if (submitted) return;
+  // When countdown reaches 0 after submission, actually enqueue and navigate
+  useEffect(() => {
+    if (submitted && undoCountdown <= 0 && !didEnqueueRef.current) {
+      didEnqueueRef.current = true;
+      if (undoTimerRef.current) clearInterval(undoTimerRef.current);
 
       const payload: CreateInteractionPayload = {
         contactId,
         type: "door_knock",
-        supportLevel: notHomeOverride ? "unknown" : (selectedSupport ?? "unknown"),
-        notes: notHomeOverride ? "Not home" : notes.trim() || undefined,
-        signRequested,
-        volunteerInterest,
+        supportLevel: selectedResult?.level ?? "unknown",
+        notes:
+          selectedResult?.key === "not_home"
+            ? "Not home"
+            : notes.trim() || undefined,
       };
 
-      setSubmitted(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // Queue for offline sync — this writes locally first
-      await enqueue("/api/interactions", "POST", payload);
-
-      // Navigate back to walk list
+      enqueue("/api/interactions", "POST", payload).catch(() => {});
       router.back();
+    }
+  }, [submitted, undoCountdown, contactId, selectedResult, notes, router]);
+
+  // Select a result and start the undo countdown
+  const handleResult = useCallback(
+    (option: ResultOption) => {
+      if (submitted) return;
+
+      setSelectedResult(option);
+      setSubmitted(true);
+      setUndoCountdown(UNDO_SECONDS);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Start countdown
+      undoTimerRef.current = setInterval(() => {
+        setUndoCountdown((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     },
-    [contactId, selectedSupport, notes, signRequested, volunteerInterest, submitted, router],
+    [submitted],
   );
 
-  // "Not Home" shortcut
-  const handleNotHome = useCallback(() => {
-    submitInteraction(true);
-  }, [submitInteraction]);
-
-  // "Do Not Contact" requires confirmation
-  const handleDoNotContact = useCallback(() => {
-    Alert.alert(
-      "Mark as Do Not Contact?",
-      "This voter will be removed from future walk lists.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          style: "destructive",
-          onPress: async () => {
-            const payload: CreateInteractionPayload = {
-              contactId,
-              type: "door_knock",
-              supportLevel: "unknown",
-              notes: "Do Not Contact",
-            };
-            setSubmitted(true);
-            Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Warning,
-            );
-            await enqueue("/api/interactions", "POST", payload);
-            router.back();
-          },
-        },
-      ],
-    );
-  }, [contactId, router]);
+  // Undo: cancel the submission
+  const handleUndo = useCallback(() => {
+    if (undoTimerRef.current) clearInterval(undoTimerRef.current);
+    setSubmitted(false);
+    setSelectedResult(null);
+    setUndoCountdown(0);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
+      <OfflineIndicator />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -203,7 +215,7 @@ export default function DoorScreen() {
           </View>
         </View>
 
-        {/* Previous support level, if any */}
+        {/* Previous support level */}
         {contact && contact.supportLevel !== "unknown" && (
           <View style={styles.previousSupport}>
             <Text style={styles.previousSupportText}>
@@ -212,132 +224,59 @@ export default function DoorScreen() {
           </View>
         )}
 
-        {/* Support level buttons — the core canvassing UI */}
-        <Text style={styles.sectionTitle}>How do they feel?</Text>
-        <View style={styles.supportGrid}>
-          {SUPPORT_OPTIONS.map((option) => (
+        {/* Undo banner */}
+        {submitted && undoCountdown > 0 && (
+          <View style={styles.undoBanner}>
+            <Text style={styles.undoText}>
+              Saved: {selectedResult?.label} ({undoCountdown}s)
+            </Text>
             <Pressable
-              key={option.level}
-              style={({ pressed }) => [
-                styles.supportButton,
-                {
-                  backgroundColor:
-                    selectedSupport === option.level
-                      ? option.pressedColor
-                      : pressed
-                        ? option.pressedColor
-                        : option.color,
-                },
-                selectedSupport === option.level && styles.supportButtonSelected,
-              ]}
-              onPress={() => recordSupport(option.level)}
+              style={styles.undoButton}
+              onPress={handleUndo}
               accessibilityRole="button"
-              accessibilityLabel={option.label}
-              accessibilityState={{ selected: selectedSupport === option.level }}
+              accessibilityLabel="Undo"
             >
-              <Text style={styles.supportButtonText}>{option.label}</Text>
+              <Text style={styles.undoButtonText}>Undo</Text>
             </Pressable>
-          ))}
-        </View>
+          </View>
+        )}
 
-        {/* Not Home — large, easy target */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.notHomeButton,
-            pressed && styles.notHomeButtonPressed,
-          ]}
-          onPress={handleNotHome}
-          disabled={submitted}
-          accessibilityRole="button"
-          accessibilityLabel="Not home"
-        >
-          <Text style={styles.notHomeButtonText}>Not Home</Text>
-        </Pressable>
+        {/* 6 Result buttons */}
+        {!submitted && (
+          <>
+            <Text style={styles.sectionTitle}>Result</Text>
+            <View style={styles.resultGrid}>
+              {RESULT_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.key}
+                  style={({ pressed }) => [
+                    styles.resultButton,
+                    { backgroundColor: pressed ? option.pressedColor : option.color },
+                  ]}
+                  onPress={() => handleResult(option)}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.label}
+                >
+                  <Text style={styles.resultButtonText}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </View>
 
-        {/* Notes */}
-        <Text style={styles.sectionTitle}>Notes</Text>
-        <TextInput
-          style={styles.notesInput}
-          placeholder="Anything the next canvasser should know..."
-          placeholderTextColor="#94a3b8"
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-          value={notes}
-          onChangeText={setNotes}
-          accessibilityLabel="Interaction notes"
-        />
-
-        {/* Toggle options */}
-        <View style={styles.toggleRow}>
-          <Pressable
-            style={[
-              styles.toggleButton,
-              signRequested && styles.toggleButtonActive,
-            ]}
-            onPress={() => setSignRequested((v) => !v)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: signRequested }}
-            accessibilityLabel="Wants a lawn sign"
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                signRequested && styles.toggleTextActive,
-              ]}
-            >
-              Wants Sign
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.toggleButton,
-              volunteerInterest && styles.toggleButtonActive,
-            ]}
-            onPress={() => setVolunteerInterest((v) => !v)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: volunteerInterest }}
-            accessibilityLabel="Interested in volunteering"
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                volunteerInterest && styles.toggleTextActive,
-              ]}
-            >
-              Will Volunteer
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Submit */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.submitButton,
-            pressed && styles.submitButtonPressed,
-            (!selectedSupport || submitted) && styles.submitButtonDisabled,
-          ]}
-          onPress={() => submitInteraction(false)}
-          disabled={!selectedSupport || submitted}
-          accessibilityRole="button"
-          accessibilityLabel="Save and continue to next door"
-        >
-          <Text style={styles.submitButtonText}>
-            {submitted ? "Saved" : "Save & Next Door"}
-          </Text>
-        </Pressable>
-
-        {/* Do Not Contact */}
-        <Pressable
-          style={styles.dncButton}
-          onPress={handleDoNotContact}
-          disabled={submitted}
-          accessibilityRole="button"
-          accessibilityLabel="Mark as do not contact"
-        >
-          <Text style={styles.dncButtonText}>Do Not Contact</Text>
-        </Pressable>
+            {/* Notes */}
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Anything the next canvasser should know..."
+              placeholderTextColor="#94a3b8"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              value={notes}
+              onChangeText={setNotes}
+              accessibilityLabel="Interaction notes"
+            />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -378,7 +317,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
@@ -394,7 +333,7 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#0f172a",
+    color: NAVY,
   },
   contactAddress: {
     fontSize: 14,
@@ -409,7 +348,7 @@ const styles = StyleSheet.create({
 
   // Previous support
   previousSupport: {
-    backgroundColor: "#eff6ff",
+    backgroundColor: "#E8EDF4",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -417,7 +356,7 @@ const styles = StyleSheet.create({
   },
   previousSupportText: {
     fontSize: 13,
-    color: BRAND_BLUE,
+    color: NAVY,
     fontWeight: "600",
   },
 
@@ -430,52 +369,49 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Support buttons — BIG one-thumb targets
-  supportGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  // Result buttons — 6 big buttons, 56px height
+  resultGrid: {
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  supportButton: {
-    flexBasis: "48%",
-    flexGrow: 1,
-    minHeight: 56,
+  resultButton: {
+    height: 56,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
   },
-  supportButtonSelected: {
-    borderWidth: 3,
-    borderColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  supportButtonText: {
+  resultButtonText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
 
-  // Not Home button
-  notHomeButton: {
-    minHeight: 56,
-    backgroundColor: "#64748b",
-    borderRadius: 12,
+  // Undo banner
+  undoBanner: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    backgroundColor: NAVY,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
-  notHomeButtonPressed: {
-    backgroundColor: "#475569",
-  },
-  notHomeButtonText: {
+  undoText: {
+    flex: 1,
     color: "#ffffff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  undoButton: {
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  undoButtonText: {
+    color: NAVY,
+    fontSize: 15,
     fontWeight: "700",
   },
 
@@ -490,68 +426,5 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     minHeight: 80,
     marginBottom: 16,
-  },
-
-  // Toggle buttons
-  toggleRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
-  },
-  toggleButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#cbd5e1",
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-  },
-  toggleButtonActive: {
-    borderColor: BRAND_BLUE,
-    backgroundColor: "#eff6ff",
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#64748b",
-  },
-  toggleTextActive: {
-    color: BRAND_BLUE,
-  },
-
-  // Submit button
-  submitButton: {
-    minHeight: 56,
-    backgroundColor: BRAND_BLUE,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  submitButtonPressed: {
-    opacity: 0.85,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  // Do Not Contact
-  dncButton: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dncButtonText: {
-    color: "#dc2626",
-    fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -2,25 +2,30 @@
  * App group layout — the authenticated section with a stack navigator.
  *
  * Screens:
- *   - walk-list   (default)
- *   - door/[id]   (door interaction)
+ *   - campaigns    (campaign select)
+ *   - walk-list    (today's doors)
+ *   - door/[id]    (door interaction)
  *   - shift-summary
  */
 
 import React from "react";
 import { Stack } from "expo-router";
 
-const BRAND_BLUE = "#1e40af";
+const NAVY = "#0A2342";
 
 export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: BRAND_BLUE },
+        headerStyle: { backgroundColor: NAVY },
         headerTintColor: "#ffffff",
         headerTitleStyle: { fontWeight: "700" },
       }}
     >
+      <Stack.Screen
+        name="campaigns"
+        options={{ title: "Campaigns" }}
+      />
       <Stack.Screen
         name="walk-list"
         options={{ title: "Walk List" }}

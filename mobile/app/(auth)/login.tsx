@@ -1,6 +1,7 @@
 /**
  * Login screen — email + password authentication.
  *
+ * Poll City navy branding (#0A2342), 56px touch targets.
  * Hits POST /api/auth/mobile/token on the Poll City backend.
  * Stores JWT in expo-secure-store via the auth context.
  */
@@ -20,9 +21,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../lib/auth";
 import { ApiError } from "../../lib/api";
 
-const BRAND_BLUE = "#1e40af";
-const BRAND_LIGHT = "#dbeafe";
-const ERROR_RED = "#dc2626";
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const ERROR_RED = "#E24B4A";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 28,
     fontWeight: "800",
-    color: BRAND_BLUE,
+    color: NAVY,
   },
   tagline: {
     fontSize: 16,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     height: 56,
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: NAVY,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",

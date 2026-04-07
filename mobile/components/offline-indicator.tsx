@@ -30,7 +30,7 @@ export function OfflineIndicator() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#EF9F27",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

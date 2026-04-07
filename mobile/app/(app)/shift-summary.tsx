@@ -1,10 +1,7 @@
 /**
- * Shift Summary screen — end-of-shift celebration for canvassers.
+ * Shift Summary screen — end-of-shift stats and celebration.
  *
- * "Celebrate the wins publicly. Debrief after every shift."
- *
- * Shows doors knocked, supporters found, conversion rate, leaderboard
- * rank, and a personalised encouragement message from the server.
+ * Shows doors knocked, support breakdown, duration, and End Shift button.
  * Falls back to local stats if offline.
  */
 
@@ -23,13 +20,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../lib/auth";
 import { fetchShiftSummary } from "../../lib/api";
 import { getQueueStats } from "../../lib/sync";
+import { OfflineIndicator } from "../../components/offline-indicator";
 import type { ShiftSummary } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BRAND_BLUE = "#1e40af";
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const AMBER = "#EF9F27";
+const RED = "#E24B4A";
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -48,7 +49,6 @@ export default function ShiftSummaryScreen() {
 
   useEffect(() => {
     (async () => {
-      // Check sync queue
       const stats = await getQueueStats();
       setPendingSync(stats.total);
 
@@ -62,7 +62,7 @@ export default function ShiftSummaryScreen() {
         const data = await fetchShiftSummary(campaignId);
         setSummary(data);
       } catch {
-        // Build a local fallback from visited doors today
+        // Build local fallback from visited doors today
         const raw = await AsyncStorage.getItem("@poll_city_visited_today");
         if (raw) {
           try {
@@ -107,7 +107,7 @@ export default function ShiftSummaryScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.centered} edges={["bottom"]}>
-        <ActivityIndicator size="large" color={BRAND_BLUE} />
+        <ActivityIndicator size="large" color={NAVY} />
         <Text style={styles.loadingText}>Loading your shift results...</Text>
       </SafeAreaView>
     );
@@ -130,8 +130,17 @@ export default function ShiftSummaryScreen() {
 
   const s = summary!;
 
+  // Format duration
+  const durationText =
+    s.shift.minutesOnShift > 0
+      ? s.shift.minutesOnShift >= 60
+        ? `${Math.floor(s.shift.minutesOnShift / 60)}h ${s.shift.minutesOnShift % 60}m`
+        : `${s.shift.minutesOnShift}m`
+      : "--";
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
+      <OfflineIndicator />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -146,17 +155,17 @@ export default function ShiftSummaryScreen() {
           <Text style={styles.heroLabel}>doors this shift</Text>
         </View>
 
-        {/* Stat grid */}
+        {/* Support breakdown */}
         <View style={styles.statsGrid}>
           <StatCard
             value={String(s.shift.supportersFound)}
-            label="Supporters Found"
-            color="#16a34a"
+            label="Supporters"
+            color={GREEN}
           />
           <StatCard
             value={`${s.shift.conversionRate}%`}
-            label="Conversion Rate"
-            color="#ca8a04"
+            label="Conversion"
+            color={AMBER}
           />
           <StatCard
             value={
@@ -165,15 +174,11 @@ export default function ShiftSummaryScreen() {
                 : "--"
             }
             label="Doors / Hour"
-            color={BRAND_BLUE}
+            color={NAVY}
           />
           <StatCard
-            value={
-              s.shift.minutesOnShift > 0
-                ? `${s.shift.minutesOnShift}m`
-                : "--"
-            }
-            label="Time on Shift"
+            value={durationText}
+            label="Duration"
             color="#7c3aed"
           />
         </View>
@@ -234,26 +239,30 @@ export default function ShiftSummaryScreen() {
           </View>
         )}
 
-        {/* Actions */}
+        {/* End Shift — primary action */}
         <Pressable
           style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.primaryButtonPressed,
+            styles.endShiftButton,
+            pressed && styles.endShiftButtonPressed,
+          ]}
+          onPress={signOut}
+          accessibilityRole="button"
+          accessibilityLabel="End shift and sign out"
+        >
+          <Text style={styles.endShiftButtonText}>End Shift</Text>
+        </Pressable>
+
+        {/* Continue */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.continueButton,
+            pressed && styles.continueButtonPressed,
           ]}
           onPress={() => router.replace("/(app)/walk-list")}
           accessibilityRole="button"
           accessibilityLabel="Start another shift"
         >
-          <Text style={styles.primaryButtonText}>Start Another Shift</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={signOut}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-        >
-          <Text style={styles.secondaryButtonText}>Sign Out</Text>
+          <Text style={styles.continueButtonText}>Continue Canvassing</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -341,10 +350,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: NAVY,
     borderRadius: 10,
     paddingHorizontal: 24,
     paddingVertical: 12,
+    minHeight: 56,
+    justifyContent: "center",
   },
   backButtonText: {
     color: "#ffffff",
@@ -364,7 +375,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#0f172a",
+    color: NAVY,
     textAlign: "center",
     marginBottom: 8,
   },
@@ -385,7 +396,7 @@ const styles = StyleSheet.create({
   heroNumber: {
     fontSize: 72,
     fontWeight: "900",
-    color: BRAND_BLUE,
+    color: NAVY,
     lineHeight: 80,
   },
   heroLabel: {
@@ -431,7 +442,7 @@ const styles = StyleSheet.create({
   allTimeNumber: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#0f172a",
+    color: NAVY,
   },
   allTimeLabel: {
     fontSize: 12,
@@ -484,31 +495,39 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // Buttons
-  primaryButton: {
+  // End Shift button
+  endShiftButton: {
     minHeight: 56,
-    backgroundColor: BRAND_BLUE,
+    backgroundColor: RED,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
-  primaryButtonPressed: {
+  endShiftButtonPressed: {
     opacity: 0.85,
   },
-  primaryButtonText: {
+  endShiftButtonText: {
     color: "#ffffff",
     fontSize: 18,
     fontWeight: "700",
   },
-  secondaryButton: {
-    minHeight: 44,
+
+  // Continue button
+  continueButton: {
+    minHeight: 56,
+    backgroundColor: NAVY,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 12,
   },
-  secondaryButtonText: {
-    color: "#64748b",
-    fontSize: 15,
+  continueButtonPressed: {
+    opacity: 0.85,
+  },
+  continueButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
     fontWeight: "600",
   },
 });
