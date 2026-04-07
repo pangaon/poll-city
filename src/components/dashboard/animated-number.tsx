@@ -7,10 +7,12 @@ export default function AnimatedNumber({
   value,
   className,
   format,
+  style,
 }: {
   value: number;
   className?: string;
   format?: (value: number) => string;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const previous = useRef(value);
@@ -33,7 +35,7 @@ export default function AnimatedNumber({
   }, [value, format]);
 
   return (
-    <span ref={ref} className={className}>
+    <span ref={ref} className={className} style={style}>
       {format ? format(value) : value.toLocaleString()}
     </span>
   );
