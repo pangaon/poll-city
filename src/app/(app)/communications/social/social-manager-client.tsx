@@ -1,8 +1,46 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Share2, Plus, Send, Clock, CheckCircle2, XCircle, AlertCircle,
+  MessageCircle, Loader2, Globe, Trash2, ChevronDown,
+} from "lucide-react";
 
-const PLATFORMS = ["x", "facebook", "instagram", "linkedin", "tiktok", "youtube", "threads", "bluesky"];
+const PLATFORMS = ["x", "facebook", "instagram", "linkedin", "tiktok", "youtube", "threads", "bluesky"] as const;
+
+const CHAR_LIMITS: Record<string, number> = {
+  x: 280,
+  facebook: 63206,
+  instagram: 2200,
+  linkedin: 3000,
+  tiktok: 2200,
+  youtube: 5000,
+  threads: 500,
+  bluesky: 300,
+};
+
+const PLATFORM_COLORS: Record<string, string> = {
+  x: "#000000",
+  facebook: "#1877F2",
+  instagram: "#E4405F",
+  linkedin: "#0A66C2",
+  tiktok: "#000000",
+  youtube: "#FF0000",
+  threads: "#000000",
+  bluesky: "#0085FF",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100" },
+  pending_approval: { label: "Pending", color: "text-amber-700", bg: "bg-amber-100" },
+  approved: { label: "Approved", color: "text-blue-700", bg: "bg-blue-100" },
+  scheduled: { label: "Scheduled", color: "text-purple-700", bg: "bg-purple-100" },
+  publishing: { label: "Publishing", color: "text-indigo-700", bg: "bg-indigo-100" },
+  published: { label: "Published", color: "text-[#1D9E75]", bg: "bg-[#1D9E75]/10" },
+  failed: { label: "Failed", color: "text-red-700", bg: "bg-red-100" },
+  cancelled: { label: "Cancelled", color: "text-slate-500", bg: "bg-slate-100" },
+};
 
 type SocialAccount = {
   id: string;
@@ -16,9 +54,12 @@ type SocialPost = {
   title: string | null;
   content: string;
   status: string;
+  targetPlatforms: string[];
   scheduledFor: string | null;
+  publishedAt: string | null;
   createdAt: string;
   socialAccount: SocialAccount | null;
+  author: { id: string; name: string | null } | null;
 };
 
 type SocialMention = {
@@ -26,101 +67,160 @@ type SocialMention = {
   platform: string;
   content: string;
   authorHandle: string | null;
+  authorName: string | null;
+  url: string | null;
   mentionedAt: string;
   needsResponse: boolean;
   sentiment: string;
 };
 
+const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
+
+function ShimmerBlock({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] ${className ?? "h-16 w-full"}`}
+    />
+  );
+}
+
+function SentimentDot({ sentiment }: { sentiment: string }) {
+  const colors: Record<string, string> = {
+    positive: "bg-emerald-500",
+    neutral: "bg-slate-400",
+    negative: "bg-red-500",
+    mixed: "bg-amber-500",
+    unknown: "bg-slate-300",
+  };
+  return (
+    <span
+      className={`inline-block w-2 h-2 rounded-full ${colors[sentiment] ?? colors.unknown}`}
+      title={sentiment}
+    />
+  );
+}
+
 export default function SocialManagerClient({ campaignId }: { campaignId: string }) {
+  const [activeTab, setActiveTab] = useState<"posts" | "accounts" | "mentions">("posts");
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [mentions, setMentions] = useState<SocialMention[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // account form
   const [accountForm, setAccountForm] = useState({ platform: "x", handle: "", displayName: "" });
+  const [addingAccount, setAddingAccount] = useState(false);
+
+  // post form
+  const [showComposer, setShowComposer] = useState(false);
   const [postForm, setPostForm] = useState({
     socialAccountId: "",
     title: "",
     content: "",
     scheduledFor: "",
-    status: "draft",
+    status: "draft" as string,
     targetPlatforms: [] as string[],
   });
+  const [creatingPost, setCreatingPost] = useState(false);
 
+  const [postFilter, setPostFilter] = useState<string>("all");
   const [busy, setBusy] = useState(false);
 
-  const publishQueue = useMemo(
-    () => posts.filter((post) => ["scheduled", "approved", "pending_approval"].includes(post.status)),
-    [posts]
+  // character limit based on selected platforms
+  const activeCharLimit = useMemo(() => {
+    if (postForm.targetPlatforms.length === 0) return 5000;
+    return Math.min(
+      ...postForm.targetPlatforms.map((p) => CHAR_LIMITS[p] ?? 5000)
+    );
+  }, [postForm.targetPlatforms]);
+
+  const filteredPosts = useMemo(() => {
+    if (postFilter === "all") return posts;
+    return posts.filter((p) => p.status === postFilter);
+  }, [posts, postFilter]);
+
+  const unrespondedMentions = useMemo(
+    () => mentions.filter((m) => m.needsResponse),
+    [mentions]
   );
 
   async function loadAll() {
-    const [accountRes, postRes, mentionRes] = await Promise.all([
-      fetch(`/api/communications/social/accounts?campaignId=${campaignId}`),
-      fetch(`/api/communications/social/posts?campaignId=${campaignId}`),
-      fetch(`/api/communications/social/mentions?campaignId=${campaignId}`),
-    ]);
-
-    const accountData = await accountRes.json();
-    const postData = await postRes.json();
-    const mentionData = await mentionRes.json();
-
-    setAccounts(accountData.data ?? []);
-    setPosts(postData.data ?? []);
-    setMentions(mentionData.data ?? []);
-
-    if (!postForm.socialAccountId && accountData.data?.[0]?.id) {
-      setPostForm((current) => ({ ...current, socialAccountId: accountData.data[0].id }));
+    setLoading(true);
+    try {
+      const [accountRes, postRes, mentionRes] = await Promise.all([
+        fetch(`/api/communications/social/accounts?campaignId=${campaignId}`),
+        fetch(`/api/communications/social/posts?campaignId=${campaignId}`),
+        fetch(`/api/communications/social/mentions?campaignId=${campaignId}`),
+      ]);
+      const [accountData, postData, mentionData] = await Promise.all([
+        accountRes.json(),
+        postRes.json(),
+        mentionRes.json(),
+      ]);
+      setAccounts(accountData.data ?? []);
+      setPosts(postData.data ?? []);
+      setMentions(mentionData.data ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
 
   async function addAccount() {
-    setBusy(true);
+    if (!accountForm.handle.trim()) return;
+    setAddingAccount(true);
     try {
-      await fetch("/api/communications/social/accounts", {
+      const res = await fetch("/api/communications/social/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId, ...accountForm }),
       });
-      setAccountForm({ platform: "x", handle: "", displayName: "" });
-      await loadAll();
+      if (res.ok) {
+        setAccountForm({ platform: "x", handle: "", displayName: "" });
+        await loadAll();
+      }
     } finally {
-      setBusy(false);
+      setAddingAccount(false);
     }
   }
 
   async function createPost() {
     if (!postForm.content.trim()) return;
-
-    setBusy(true);
+    setCreatingPost(true);
     try {
-      await fetch("/api/communications/social/posts", {
+      const res = await fetch("/api/communications/social/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignId,
           socialAccountId: postForm.socialAccountId || undefined,
-          title: postForm.title,
+          title: postForm.title || undefined,
           content: postForm.content,
           scheduledFor: postForm.scheduledFor || undefined,
           status: postForm.status,
           targetPlatforms: postForm.targetPlatforms,
         }),
       });
-      setPostForm({
-        socialAccountId: accounts[0]?.id || "",
-        title: "",
-        content: "",
-        scheduledFor: "",
-        status: "draft",
-        targetPlatforms: [],
-      });
-      await loadAll();
+      if (res.ok) {
+        setPostForm({
+          socialAccountId: accounts[0]?.id || "",
+          title: "",
+          content: "",
+          scheduledFor: "",
+          status: "draft",
+          targetPlatforms: [],
+        });
+        setShowComposer(false);
+        await loadAll();
+      }
     } finally {
-      setBusy(false);
+      setCreatingPost(false);
     }
   }
 
@@ -153,157 +253,601 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
   }
 
   function toggleTargetPlatform(platform: string) {
-    setPostForm((current) => ({
-      ...current,
-      targetPlatforms: current.targetPlatforms.includes(platform)
-        ? current.targetPlatforms.filter((item) => item !== platform)
-        : [...current.targetPlatforms, platform],
+    setPostForm((c) => ({
+      ...c,
+      targetPlatforms: c.targetPlatforms.includes(platform)
+        ? c.targetPlatforms.filter((p) => p !== platform)
+        : [...c.targetPlatforms, platform],
     }));
   }
 
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 space-y-4">
+        {[1, 2, 3, 4].map((i) => (
+          <ShimmerBlock key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">Social Media Manager</h1>
-        <p className="text-sm text-slate-600 mt-1">Manage channels, queue posts, approvals, and mention response workflows.</p>
-      </header>
+    <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 pb-[env(safe-area-inset-bottom)]">
+      <motion.header
+        className="mb-5"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={spring}
+      >
+        <h1 className="text-2xl md:text-3xl font-bold text-[#0A2342] flex items-center gap-2">
+          <Share2 className="w-7 h-7 text-[#1D9E75]" /> Social Media Manager
+        </h1>
+        <p className="text-sm text-slate-600 mt-1">
+          Manage accounts, compose posts with platform limits, approval workflows,
+          and monitor mentions.
+        </p>
+      </motion.header>
 
-      <section className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Connected Accounts</h2>
-        <div className="grid md:grid-cols-3 gap-2">
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={accountForm.platform}
-            onChange={(e) => setAccountForm((current) => ({ ...current, platform: e.target.value }))}
+      {/* tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6">
+        {(
+          [
+            { key: "posts" as const, label: "Posts", icon: Send },
+            { key: "accounts" as const, label: "Accounts", icon: Globe },
+            { key: "mentions" as const, label: `Mentions${unrespondedMentions.length > 0 ? ` (${unrespondedMentions.length})` : ""}`, icon: MessageCircle },
+          ] as const
+        ).map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`flex-1 py-2.5 px-3 text-sm font-medium rounded-md transition-colors min-h-[44px] flex items-center justify-center gap-1.5 ${
+                activeTab === t.key
+                  ? "bg-white text-[#0A2342] shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icon className="w-4 h-4" /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <AnimatePresence mode="wait">
+        {/* ──── POSTS TAB ──── */}
+        {activeTab === "posts" && (
+          <motion.div
+            key="posts"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={spring}
+            className="space-y-4"
           >
-            {PLATFORMS.map((platform) => (
-              <option key={platform} value={platform}>{platform}</option>
-            ))}
-          </select>
-          <input
-            className="border rounded-lg px-3 py-2"
-            placeholder="@handle"
-            value={accountForm.handle}
-            onChange={(e) => setAccountForm((current) => ({ ...current, handle: e.target.value }))}
-          />
-          <input
-            className="border rounded-lg px-3 py-2"
-            placeholder="Display name"
-            value={accountForm.displayName}
-            onChange={(e) => setAccountForm((current) => ({ ...current, displayName: e.target.value }))}
-          />
-        </div>
-        <button disabled={busy} onClick={addAccount} className="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-60">
-          Add Account
-        </button>
-        <div className="grid md:grid-cols-2 gap-3">
-          {accounts.map((account) => (
-            <div key={account.id} className="border rounded-lg p-3">
-              <p className="text-sm font-semibold text-slate-900">{account.platform.toUpperCase()} · {account.handle}</p>
-              <p className="text-xs text-slate-600">{account.displayName || "No display name"}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Create Post</h2>
-        <div className="grid md:grid-cols-2 gap-2">
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={postForm.socialAccountId}
-            onChange={(e) => setPostForm((current) => ({ ...current, socialAccountId: e.target.value }))}
-          >
-            <option value="">No linked account</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>{account.platform.toUpperCase()} · {account.handle}</option>
-            ))}
-          </select>
-          <select
-            className="border rounded-lg px-3 py-2"
-            value={postForm.status}
-            onChange={(e) => setPostForm((current) => ({ ...current, status: e.target.value }))}
-          >
-            <option value="draft">Draft</option>
-            <option value="pending_approval">Pending Approval</option>
-            <option value="approved">Approved</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="published">Published</option>
-          </select>
-          <input
-            className="border rounded-lg px-3 py-2"
-            placeholder="Post title"
-            value={postForm.title}
-            onChange={(e) => setPostForm((current) => ({ ...current, title: e.target.value }))}
-          />
-          <input
-            className="border rounded-lg px-3 py-2"
-            type="datetime-local"
-            value={postForm.scheduledFor}
-            onChange={(e) => setPostForm((current) => ({ ...current, scheduledFor: e.target.value }))}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {PLATFORMS.map((platform) => (
-            <label key={platform} className="text-xs border rounded-lg px-2 py-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={postForm.targetPlatforms.includes(platform)}
-                onChange={() => toggleTargetPlatform(platform)}
-              />
-              {platform}
-            </label>
-          ))}
-        </div>
-
-        <textarea
-          className="border rounded-lg px-3 py-2 w-full min-h-24"
-          placeholder="Write your post"
-          value={postForm.content}
-          onChange={(e) => setPostForm((current) => ({ ...current, content: e.target.value }))}
-        />
-
-        <button disabled={busy} onClick={createPost} className="bg-blue-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-60">
-          Save Post
-        </button>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Publishing Queue ({publishQueue.length})</h2>
-        <div className="space-y-2">
-          {posts.map((post) => (
-            <div key={post.id} className="border rounded-lg p-3">
-              <p className="text-sm font-semibold text-slate-900">{post.title || "Untitled post"}</p>
-              <p className="text-xs text-slate-600">{post.status} · {post.socialAccount ? `${post.socialAccount.platform.toUpperCase()} ${post.socialAccount.handle}` : "No account"}</p>
-              <p className="text-sm text-slate-700 mt-2">{post.content}</p>
-              <div className="flex gap-2 mt-3">
-                <button className="text-xs border rounded px-2 py-1" onClick={() => updatePostStatus(post.id, "approved")}>Approve</button>
-                <button className="text-xs border rounded px-2 py-1" onClick={() => updatePostStatus(post.id, "scheduled")}>Schedule</button>
-                <button className="text-xs border rounded px-2 py-1" onClick={() => updatePostStatus(post.id, "published")}>Mark Published</button>
-                <button className="text-xs border rounded px-2 py-1" onClick={() => updatePostStatus(post.id, "failed")}>Mark Failed</button>
+            {/* new post button */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2 overflow-x-auto">
+                {["all", "draft", "pending_approval", "scheduled", "published"].map(
+                  (f) => (
+                    <button
+                      key={f}
+                      onClick={() => setPostFilter(f)}
+                      className={`shrink-0 min-h-[36px] px-3 text-xs font-semibold rounded-full border transition-colors ${
+                        postFilter === f
+                          ? "bg-[#0A2342] text-white border-[#0A2342]"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-[#1D9E75]"
+                      }`}
+                    >
+                      {f === "all"
+                        ? "All"
+                        : f === "pending_approval"
+                          ? "Pending"
+                          : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  )
+                )}
               </div>
+              <button
+                onClick={() => setShowComposer(!showComposer)}
+                className="min-h-[44px] px-4 rounded-lg bg-[#1D9E75] text-white font-semibold text-sm hover:bg-[#1D9E75]/90 flex items-center gap-1.5 transition-colors shrink-0 ml-3"
+              >
+                <Plus className="w-4 h-4" /> New Post
+              </button>
             </div>
-          ))}
-        </div>
-      </section>
 
-      <section className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Mentions Requiring Response</h2>
-        <div className="space-y-2">
-          {mentions.filter((mention) => mention.needsResponse).map((mention) => (
-            <div key={mention.id} className="border rounded-lg p-3">
-              <p className="text-xs text-slate-600">{mention.platform.toUpperCase()} · {mention.authorHandle || "Unknown"} · {new Date(mention.mentionedAt).toLocaleString()}</p>
-              <p className="text-sm text-slate-900 mt-1">{mention.content}</p>
-              <p className="text-xs text-slate-600 mt-1">Sentiment: {mention.sentiment}</p>
-              <button className="text-xs border rounded px-2 py-1 mt-2" onClick={() => resolveMention(mention.id)}>Mark Responded</button>
-            </div>
-          ))}
-          {mentions.filter((mention) => mention.needsResponse).length === 0 && (
-            <p className="text-sm text-slate-600">No unresolved mentions.</p>
-          )}
-        </div>
-      </section>
+            {/* composer */}
+            <AnimatePresence>
+              {showComposer && (
+                <motion.section
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
+                >
+                  <div className="p-4 md:p-5 space-y-4">
+                    <h2 className="font-bold text-[#0A2342] text-sm uppercase tracking-wide">
+                      Compose Post
+                    </h2>
+
+                    {/* linked account + status */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-xs font-semibold text-slate-600">
+                          Account
+                        </span>
+                        <select
+                          className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                          value={postForm.socialAccountId}
+                          onChange={(e) =>
+                            setPostForm((c) => ({
+                              ...c,
+                              socialAccountId: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">No linked account</option>
+                          {accounts.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.platform.toUpperCase()} &middot; {a.handle}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-slate-600">
+                          Status
+                        </span>
+                        <select
+                          className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                          value={postForm.status}
+                          onChange={(e) =>
+                            setPostForm((c) => ({ ...c, status: e.target.value }))
+                          }
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="pending_approval">Submit for Approval</option>
+                          <option value="scheduled">Scheduled</option>
+                          <option value="published">Published</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {/* target platforms */}
+                    <div>
+                      <span className="text-xs font-semibold text-slate-600 block mb-1.5">
+                        Target Platforms
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {PLATFORMS.map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => toggleTargetPlatform(p)}
+                            className={`min-h-[36px] px-3 text-xs font-semibold rounded-full border transition-all ${
+                              postForm.targetPlatforms.includes(p)
+                                ? "text-white border-transparent"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                            }`}
+                            style={{
+                              backgroundColor: postForm.targetPlatforms.includes(p)
+                                ? PLATFORM_COLORS[p]
+                                : undefined,
+                            }}
+                          >
+                            {p}
+                            {postForm.targetPlatforms.includes(p) && (
+                              <span className="ml-1 text-[10px] opacity-80">
+                                {CHAR_LIMITS[p].toLocaleString()}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* title */}
+                    <input
+                      className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                      placeholder="Post title (optional)"
+                      value={postForm.title}
+                      onChange={(e) =>
+                        setPostForm((c) => ({ ...c, title: e.target.value }))
+                      }
+                    />
+
+                    {/* content */}
+                    <div>
+                      <textarea
+                        className="w-full min-h-[120px] px-3 py-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                        placeholder="Write your post..."
+                        value={postForm.content}
+                        onChange={(e) =>
+                          setPostForm((c) => ({ ...c, content: e.target.value }))
+                        }
+                        maxLength={activeCharLimit}
+                      />
+                      <div className="flex items-center justify-between mt-1">
+                        {postForm.targetPlatforms.length > 0 && (
+                          <p className="text-xs text-slate-500">
+                            Limit:{" "}
+                            {postForm.targetPlatforms
+                              .map((p) => `${p} ${CHAR_LIMITS[p]}`)
+                              .join(", ")}
+                          </p>
+                        )}
+                        <p
+                          className={`text-xs font-semibold tabular-nums ml-auto ${
+                            postForm.content.length > activeCharLimit * 0.9
+                              ? "text-red-600"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {postForm.content.length.toLocaleString()}/
+                          {activeCharLimit.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* schedule */}
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Schedule (optional)
+                      </span>
+                      <input
+                        type="datetime-local"
+                        className="mt-1 w-full max-w-xs min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                        value={postForm.scheduledFor}
+                        onChange={(e) =>
+                          setPostForm((c) => ({
+                            ...c,
+                            scheduledFor: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={createPost}
+                        disabled={creatingPost || !postForm.content.trim()}
+                        className="min-h-[44px] px-5 rounded-lg bg-[#0A2342] text-white font-semibold text-sm hover:bg-[#0A2342]/90 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                      >
+                        {creatingPost ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        Save Post
+                      </button>
+                      <button
+                        onClick={() => setShowComposer(false)}
+                        className="min-h-[44px] px-4 rounded-lg border-2 border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* posts list */}
+            {filteredPosts.length === 0 ? (
+              <div className="text-center py-20">
+                <Send className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-lg font-bold text-slate-700">No posts yet</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Create your first social media post above.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredPosts.map((post) => {
+                  const statusCfg = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.draft;
+                  return (
+                    <motion.div
+                      key={post.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white rounded-xl border border-slate-200 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.color}`}
+                            >
+                              {statusCfg.label}
+                            </span>
+                            {post.targetPlatforms?.map((p) => (
+                              <span
+                                key={p}
+                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-white"
+                                style={{ backgroundColor: PLATFORM_COLORS[p] ?? "#666" }}
+                              >
+                                {p}
+                              </span>
+                            ))}
+                            {post.socialAccount && (
+                              <span className="text-[10px] text-slate-500">
+                                {post.socialAccount.handle}
+                              </span>
+                            )}
+                          </div>
+                          {post.title && (
+                            <p className="font-semibold text-[#0A2342] text-sm">
+                              {post.title}
+                            </p>
+                          )}
+                          <p className="text-sm text-slate-700 mt-1 line-clamp-3">
+                            {post.content}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-2">
+                            {post.scheduledFor
+                              ? `Scheduled: ${new Date(post.scheduledFor).toLocaleString()}`
+                              : post.publishedAt
+                                ? `Published: ${new Date(post.publishedAt).toLocaleString()}`
+                                : `Created: ${new Date(post.createdAt).toLocaleString()}`}
+                            {post.author?.name && ` by ${post.author.name}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* actions */}
+                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
+                        {post.status === "draft" && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              updatePostStatus(post.id, "pending_approval")
+                            }
+                            className="min-h-[36px] px-3 text-xs font-semibold rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors flex items-center gap-1"
+                          >
+                            <AlertCircle className="w-3 h-3" /> Submit for Approval
+                          </button>
+                        )}
+                        {post.status === "pending_approval" && (
+                          <button
+                            disabled={busy}
+                            onClick={() => updatePostStatus(post.id, "approved")}
+                            className="min-h-[36px] px-3 text-xs font-semibold rounded-lg border border-[#1D9E75] text-[#1D9E75] hover:bg-[#1D9E75]/5 transition-colors flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3 h-3" /> Approve
+                          </button>
+                        )}
+                        {["draft", "approved", "pending_approval"].includes(
+                          post.status
+                        ) && (
+                          <button
+                            disabled={busy}
+                            onClick={() => updatePostStatus(post.id, "scheduled")}
+                            className="min-h-[36px] px-3 text-xs font-semibold rounded-lg border border-purple-300 text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-1"
+                          >
+                            <Clock className="w-3 h-3" /> Schedule
+                          </button>
+                        )}
+                        {["scheduled", "approved"].includes(post.status) && (
+                          <button
+                            disabled={busy}
+                            onClick={() => updatePostStatus(post.id, "published")}
+                            className="min-h-[36px] px-3 text-xs font-semibold rounded-lg bg-[#1D9E75] text-white hover:bg-[#1D9E75]/90 transition-colors flex items-center gap-1"
+                          >
+                            <Send className="w-3 h-3" /> Publish
+                          </button>
+                        )}
+                        {!["published", "cancelled", "failed"].includes(
+                          post.status
+                        ) && (
+                          <button
+                            disabled={busy}
+                            onClick={() => updatePostStatus(post.id, "cancelled")}
+                            className="min-h-[36px] px-3 text-xs font-semibold rounded-lg border border-slate-300 text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-1"
+                          >
+                            <XCircle className="w-3 h-3" /> Cancel
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ──── ACCOUNTS TAB ──── */}
+        {activeTab === "accounts" && (
+          <motion.div
+            key="accounts"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={spring}
+            className="space-y-4"
+          >
+            {/* add form */}
+            <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 space-y-3">
+              <h2 className="font-bold text-[#0A2342] text-sm uppercase tracking-wide">
+                Connect Account
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <select
+                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                  value={accountForm.platform}
+                  onChange={(e) =>
+                    setAccountForm((c) => ({ ...c, platform: e.target.value }))
+                  }
+                >
+                  {PLATFORMS.map((p) => (
+                    <option key={p} value={p}>
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                  placeholder="@handle"
+                  value={accountForm.handle}
+                  onChange={(e) =>
+                    setAccountForm((c) => ({ ...c, handle: e.target.value }))
+                  }
+                />
+                <input
+                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                  placeholder="Display name"
+                  value={accountForm.displayName}
+                  onChange={(e) =>
+                    setAccountForm((c) => ({ ...c, displayName: e.target.value }))
+                  }
+                />
+              </div>
+              <button
+                disabled={addingAccount || !accountForm.handle.trim()}
+                onClick={addAccount}
+                className="min-h-[44px] px-5 rounded-lg bg-[#0A2342] text-white font-semibold text-sm hover:bg-[#0A2342]/90 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+              >
+                {addingAccount ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                Add Account
+              </button>
+            </section>
+
+            {/* accounts list */}
+            {accounts.length === 0 ? (
+              <div className="text-center py-20">
+                <Globe className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-lg font-bold text-slate-700">
+                  No accounts connected
+                </p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Add your first social media account above.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {accounts.map((a) => (
+                  <motion.div
+                    key={a.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-xl border border-slate-200 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{
+                          backgroundColor: PLATFORM_COLORS[a.platform] ?? "#666",
+                        }}
+                      >
+                        {a.platform.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#0A2342] text-sm truncate">
+                          {a.handle}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {a.platform.charAt(0).toUpperCase() + a.platform.slice(1)}
+                          {a.displayName && ` -- ${a.displayName}`}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ──── MENTIONS TAB ──── */}
+        {activeTab === "mentions" && (
+          <motion.div
+            key="mentions"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={spring}
+            className="space-y-4"
+          >
+            {mentions.length === 0 ? (
+              <div className="text-center py-20">
+                <MessageCircle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-lg font-bold text-slate-700">No mentions yet</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Mentions from social platforms will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {mentions.map((m) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`bg-white rounded-xl border p-4 ${
+                      m.needsResponse
+                        ? "border-amber-200 bg-amber-50/30"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                            style={{
+                              backgroundColor:
+                                PLATFORM_COLORS[m.platform] ?? "#666",
+                            }}
+                          >
+                            {m.platform}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {m.authorHandle ?? m.authorName ?? "Unknown"}
+                          </span>
+                          <SentimentDot sentiment={m.sentiment} />
+                          <span className="text-[10px] text-slate-400">
+                            {m.sentiment}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-700">{m.content}</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {new Date(m.mentionedAt).toLocaleString()}
+                          {m.url && (
+                            <>
+                              {" "}
+                              &middot;{" "}
+                              <a
+                                href={m.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#1D9E75] hover:underline"
+                              >
+                                View
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      {m.needsResponse && (
+                        <button
+                          disabled={busy}
+                          onClick={() => resolveMention(m.id)}
+                          className="min-h-[36px] px-3 text-xs font-semibold rounded-lg bg-[#1D9E75] text-white hover:bg-[#1D9E75]/90 transition-colors flex items-center gap-1 shrink-0"
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Responded
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
