@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { GlobalSearch } from "@/components/global-search";
 import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
@@ -12,6 +12,15 @@ import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
 export function AppShellClient({ children }: { children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  useEffect(() => {
+    function openSearch() {
+      setSearchOpen(true);
+    }
+
+    window.addEventListener("pollcity:open-search", openSearch as EventListener);
+    return () => window.removeEventListener("pollcity:open-search", openSearch as EventListener);
+  }, []);
 
   useKeyboardShortcuts({
     onOpenSearch: () => setSearchOpen(true),

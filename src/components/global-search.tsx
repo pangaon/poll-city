@@ -185,7 +185,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               setSelectedIdx(0);
             }}
             onKeyDown={onKeyDown}
-            placeholder="Search contacts, volunteers, officials, polls, help…"
+            placeholder="Search contacts, volunteers, officials, polls, help..."
             className="flex-1 text-base bg-transparent outline-none placeholder-gray-400"
             autoComplete="off"
           />
@@ -227,7 +227,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
           )}
 
           {query.trim() && loading && (
-            <div className="p-6 text-center text-sm text-gray-500">Searching…</div>
+            <div className="p-6 text-center text-sm text-gray-500">Searching...</div>
           )}
 
           {query.trim() && !loading && combinedResults.length === 0 && (
@@ -277,8 +277,8 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         {/* Footer */}
         <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-gray-50 rounded-b-2xl">
           <div className="flex items-center gap-3">
-            <span><kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono">↑↓</kbd> navigate</span>
-            <span><kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono">↵</kbd> open</span>
+            <span><kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono">up/down</kbd> navigate</span>
+            <span><kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono">enter</kbd> open</span>
             <span><kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono">esc</kbd> close</span>
           </div>
           <span className="text-gray-400">Poll City Search</span>

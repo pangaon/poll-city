@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -777,7 +778,7 @@ export default function AdoniChat() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={bubbleSpring}
-            className="fixed z-[9999] rounded-full shadow-xl hover:shadow-2xl focus:outline-none"
+            className="fixed z-[9999] overflow-hidden rounded-full shadow-xl hover:shadow-2xl focus:outline-none"
             style={{
               bottom: 80,
               right: 20,
@@ -789,7 +790,13 @@ export default function AdoniChat() {
             }}
             aria-label="Open Adoni chat"
           >
-            <span className="text-white text-2xl font-bold select-none">A</span>
+            <Image
+              src="/images/adoni-bubble.png"
+              alt=""
+              width={60}
+              height={60}
+              className="h-full w-full object-cover"
+            />
             {hasSuggestion && (
               <span
                 className="absolute inset-0 rounded-full"

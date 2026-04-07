@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
-import { TaskPriority, TaskStatus } from "@prisma/client";
+import { executeAction } from "@/lib/operations/action-engine";
 
 /** GET — Available volunteers for dispatch dropdown */
 export async function GET(req: NextRequest) {
@@ -62,39 +62,21 @@ export async function POST(req: NextRequest) {
     select: { name: true, email: true },
   });
 
-  // Create a task for the dispatch
-  const task = await prisma.task.create({
-    data: {
-      campaignId,
-      title: `GOTV Dispatch: ${action ?? "Cover"} ${precinctId}`,
-      assignedToId: volunteerId,
-      createdById: session!.user.id,
-      priority: TaskPriority.urgent,
-      status: TaskStatus.pending,
-      dueDate: new Date(),
+  const actionResult = await executeAction(
+    "gotv.dispatch_volunteer",
+    {
+      precinctId,
+      volunteerId,
+      dispatchAction: action,
     },
-  });
-
-  await prisma.activityLog.create({
-    data: {
-      campaignId,
-      userId: session!.user.id,
-      action: "gotv_dispatch",
-      entityType: "Task",
-      entityId: task.id,
-      details: {
-        precinctId,
-        volunteerId,
-        volunteerName: volunteer?.name ?? volunteer?.email,
-        action: action ?? "Cover precinct",
-      },
-    },
-  });
+    { campaignId, actorUserId: session!.user.id },
+  );
 
   return NextResponse.json({
     ok: true,
+    action: actionResult.action,
     dispatch: {
-      taskId: task.id,
+      taskId: String(actionResult.details.taskId ?? ""),
       precinctId,
       volunteer: { id: volunteerId, name: volunteer?.name ?? "Volunteer" },
     },

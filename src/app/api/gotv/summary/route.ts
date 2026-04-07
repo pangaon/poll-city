@@ -8,9 +8,9 @@
  * This is polled every 30 seconds on election day.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
@@ -28,75 +28,12 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // All queries in parallel for speed
-  const [
-    totalContacts,
-    confirmedSupporters,
-    supportersVoted,
-    totalVoted,
-    p1Count,
-    p2Count,
-    p3Count,
-    p4Count,
-    votedToday,
-  ] = await Promise.all([
-    prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({
-      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
-    }),
-    prisma.contact.count({
-      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
-    }),
-    prisma.contact.count({ where: { campaignId, voted: true } }),
-    // P1: gotvScore not available as a column — use support level + voted history as proxy
-    // P1 = strong_support (most reliable)
-    prisma.contact.count({
-      where: { campaignId, supportLevel: SupportLevel.strong_support, voted: false },
-    }),
-    // P2 = leaning_support
-    prisma.contact.count({
-      where: { campaignId, supportLevel: SupportLevel.leaning_support, voted: false },
-    }),
-    // P3 = undecided (persuadable)
-    prisma.contact.count({
-      where: { campaignId, supportLevel: SupportLevel.undecided, voted: false },
-    }),
-    // P4 = leaning_opposition (low priority)
-    prisma.contact.count({
-      where: { campaignId, supportLevel: SupportLevel.leaning_opposition, voted: false },
-    }),
-    // Voted today
-    prisma.contact.count({
-      where: {
-        campaignId,
-        voted: true,
-        votedAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
-    }),
-  ]);
-
-  // Win threshold: 35% of total electors need to vote for you
-  const winThreshold = Math.ceil(totalContacts * 0.35);
-  const gap = Math.max(0, winThreshold - supportersVoted);
-  const percentComplete = confirmedSupporters > 0
-    ? Math.round((supportersVoted / confirmedSupporters) * 100)
-    : 0;
+  const metrics = await getGotvSummaryMetrics(campaignId);
 
   const duration = Date.now() - start;
 
   return NextResponse.json({
-    confirmedSupporters,
-    supportersVoted,
-    gap,
-    winThreshold,
-    p1Count,
-    p2Count,
-    p3Count,
-    p4Count,
-    votedToday,
-    percentComplete,
-    totalContacts,
-    totalVoted,
+    ...metrics,
     duration,
   }, {
     headers: { "Cache-Control": "no-store" },

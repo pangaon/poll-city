@@ -1,6 +1,6 @@
 "use client";
 import { signOut } from "next-auth/react";
-import { LogOut, User, ChevronDown, Menu } from "lucide-react";
+import { LogOut, ChevronDown, Menu, Search } from "lucide-react";
 import { useState } from "react";
 
 type Role = "SUPER_ADMIN" | "ADMIN" | "CAMPAIGN_MANAGER" | "VOLUNTEER" | string;
@@ -27,13 +27,17 @@ export default function TopBar({ user }: TopBarProps) {
   const [open, setOpen] = useState(false);
   const initials = user.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() ?? "??";
 
+  function openSearch() {
+    window.dispatchEvent(new CustomEvent("pollcity:open-search"));
+  }
+
   function openMobileMenu() {
     window.dispatchEvent(new CustomEvent("pollcity:open-mobile-menu"));
   }
 
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0">
-      <div className="flex-1">
+      <div className="flex-1 flex items-center gap-2">
         <button
           type="button"
           onClick={openMobileMenu}
@@ -41,6 +45,16 @@ export default function TopBar({ user }: TopBarProps) {
           aria-label="Open mobile menu"
         >
           <Menu className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={openSearch}
+          className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+          aria-label="Open global search"
+        >
+          <Search className="w-4 h-4" />
+          <span className="hidden sm:inline text-sm font-medium">Search</span>
+          <span className="hidden lg:inline text-xs text-gray-500">Ctrl+K</span>
         </button>
       </div>
       <div className="relative">

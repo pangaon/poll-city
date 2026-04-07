@@ -12,7 +12,7 @@ import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:import");
+  const permError = requirePermission(session!.user.role as string, "import:write");
   if (permError) return permError;
 
   const limited = await enforceLimit(req, "import", session!.user.id);

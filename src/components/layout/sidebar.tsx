@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge
+  Inbox, Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -17,93 +17,74 @@ import { useSession } from "next-auth/react";
 type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
 type NavSection = { id: string; label: string; icon: ComponentType<{ className?: string }>; items: NavItem[] };
 
-const SIDEBAR_SECTIONS: NavSection[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: BarChart3,
-    items: [
-      { href: "/command-center", icon: Activity, label: "Command Center" },
-      { href: "/election-night", icon: Gauge, label: "Election Night" },
-      { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { href: "/analytics", icon: BarChart3, label: "Analytics" },
-      { href: "/reports", icon: FileText, label: "Reports" },
-      { href: "/alerts", icon: Bell, label: "Alerts" },
-    ],
-  },
-  {
-    id: "contacts-field",
-    label: "Contacts & Field",
-    icon: Users,
-    items: [
-      { href: "/contacts", icon: Users, label: "Contacts" },
-      { href: "/canvassing", icon: Map, label: "Canvassing" },
-      { href: "/canvassing/walk", icon: Map, label: "Walk List" },
-      { href: "/gotv", icon: Target, label: "GOTV" },
-      { href: "/lookup", icon: Search, label: "Lookup" },
-    ],
-  },
-  {
-    id: "communications",
-    label: "Communications",
-    icon: Mail,
-    items: [
-      { href: "/communications/email", icon: Mail, label: "Email Campaigns" },
-      { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text" },
-      { href: "/communications/social", icon: Globe, label: "Social Media" },
-      { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox" },
-      { href: "/communications/ai-assistant", icon: Bot, label: "AI Assistant" },
-      { href: "/communications/monitoring", icon: Activity, label: "Monitoring" },
-      { href: "/communications/advertising", icon: Megaphone, label: "Advertising" },
-    ],
-  },
-  {
-    id: "campaign-ops",
-    label: "Campaign Ops",
-    icon: Target,
-    items: [
-      { href: "/volunteers", icon: Users, label: "Volunteers" },
-      { href: "/signs", icon: Map, label: "Signs" },
-      { href: "/donations", icon: DollarSign, label: "Donations" },
-      { href: "/events", icon: CalendarDays, label: "Events" },
-      { href: "/calendar", icon: Calendar, label: "Calendar" },
-      { href: "/budget", icon: DollarSign, label: "Budget" },
-      { href: "/print", icon: Printer, label: "Print" },
-      { href: "/polls", icon: BarChart3, label: "Polls" },
-    ],
-  },
-  {
-    id: "intelligence",
-    label: "Intelligence",
-    icon: Shield,
-    items: [
-      { href: "/officials", icon: Landmark, label: "Officials" },
-      { href: "/media", icon: Globe, label: "Media" },
-      { href: "/coalitions", icon: Globe, label: "Coalitions" },
-      { href: "/intelligence", icon: Shield, label: "Opponent Intel" },
-    ],
-  },
-  {
-    id: "resources",
-    label: "Resources",
-    icon: BookOpen,
-    items: [{ href: "/resources", icon: BookOpen, label: "Resources" }],
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    items: [
-      { href: "/settings", icon: Settings, label: "Settings" },
-      { href: "/settings/brand", icon: Palette, label: "Brand Kit" },
-      { href: "/settings/team", icon: Users, label: "Team" },
-      { href: "/settings/security", icon: Lock, label: "Security" },
-      { href: "/billing", icon: CreditCard, label: "Billing" },
-      { href: "/import-export", icon: Upload, label: "Import/Export" },
-      { href: "/help", icon: HelpCircle, label: "Help" },
-    ],
-  },
-];
+const CAMPAIGN_OPERATIONS_SECTION: NavSection = {
+  id: "campaign-operations",
+  label: "Campaign Operations",
+  icon: Target,
+  items: [
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/command-center", icon: Activity, label: "Command Center" },
+    { href: "/election-night", icon: Gauge, label: "Election Night" },
+    { href: "/contacts", icon: Users, label: "Contacts" },
+    { href: "/canvassing", icon: Map, label: "Canvassing" },
+    { href: "/canvassing/walk", icon: Map, label: "Walk List" },
+    { href: "/gotv", icon: Target, label: "GOTV" },
+    { href: "/volunteers", icon: Users, label: "Volunteers" },
+    { href: "/signs", icon: Map, label: "Signs" },
+    { href: "/events", icon: CalendarDays, label: "Events" },
+    { href: "/calendar", icon: Calendar, label: "Calendar" },
+    { href: "/tasks", icon: CheckCircle2, label: "Tasks" },
+    { href: "/lookup", icon: Search, label: "Lookup" },
+    { href: "/donations", icon: DollarSign, label: "Donations" },
+    { href: "/budget", icon: DollarSign, label: "Budget" },
+    { href: "/print", icon: Printer, label: "Print" },
+    { href: "/polls", icon: BarChart3, label: "Polls" },
+    { href: "/resources", icon: BookOpen, label: "Resources" },
+  ],
+};
+
+const COMMUNICATIONS_SECTION: NavSection = {
+  id: "communications",
+  label: "Communications",
+  icon: Mail,
+  items: [
+    { href: "/communications/email", icon: Mail, label: "Email Campaigns" },
+    { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text" },
+    { href: "/communications/social", icon: Globe, label: "Social Media" },
+    { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox" },
+    { href: "/ai-assist", icon: Bot, label: "AI Assistant" },
+    { href: "/alerts", icon: Bell, label: "Alerts" },
+  ],
+};
+
+const ANALYTICS_SECTION: NavSection = {
+  id: "analytics",
+  label: "Analytics",
+  icon: BarChart3,
+  items: [
+    { href: "/analytics", icon: BarChart3, label: "Analytics" },
+    { href: "/reports", icon: FileText, label: "Reports" },
+    { href: "/officials", icon: Landmark, label: "Officials" },
+    { href: "/media", icon: Globe, label: "Media" },
+    { href: "/coalitions", icon: Globe, label: "Coalitions" },
+    { href: "/intelligence", icon: Shield, label: "Opponent Intel" },
+  ],
+};
+
+const SETTINGS_ADMIN_SECTION: NavSection = {
+  id: "settings-admin",
+  label: "Settings & Admin",
+  icon: Settings,
+  items: [
+    { href: "/settings", icon: Settings, label: "Settings" },
+    { href: "/settings/brand", icon: Palette, label: "Brand Kit" },
+    { href: "/settings/team", icon: Users, label: "Team" },
+    { href: "/settings/security", icon: Lock, label: "Security" },
+    { href: "/billing", icon: CreditCard, label: "Billing" },
+    { href: "/import-export", icon: Upload, label: "Import/Export" },
+    { href: "/help", icon: HelpCircle, label: "Help" },
+  ],
+};
 
 const STORAGE_KEY = "poll-city:sidebar-collapsed-sections";
 
@@ -161,37 +142,29 @@ export default function Sidebar() {
   const sidebarSections = useMemo(() => {
     if (isCanvasserOnly) return CANVASSER_SECTIONS;
     if (isFinanceOnly) return FINANCE_SECTIONS;
-    if (!isAdmin) return SIDEBAR_SECTIONS;
+    const settingsItems = [...SETTINGS_ADMIN_SECTION.items];
 
-    const base = [
-      ...SIDEBAR_SECTIONS,
-      {
-        id: "operations",
-        label: "Operations",
-        icon: Shield,
-        items: [
-          { href: "/ops/videos", icon: CalendarDays, label: "Videos & Docs" },
-          { href: "/ops/verify", icon: CheckCircle2, label: "Verify Features" },
-          { href: "/ops/security", icon: Shield, label: "Security Monitor" },
-        ],
-      },
-    ];
-
-    if (isSuperAdmin) {
-      base.push({
-        id: "admin",
-        label: "Admin",
-        icon: Shield,
-        items: [
-          { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" },
-          { href: "/settings/team", icon: Users, label: "Team Management" },
-          { href: "/calendar", icon: CalendarDays, label: "Campaign Calendar" },
-          { href: "/ops/security", icon: Lock, label: "Security" },
-        ],
-      });
+    if (isAdmin) {
+      settingsItems.push(
+        { href: "/ops/videos", icon: CalendarDays, label: "Videos & Docs" },
+        { href: "/ops/verify", icon: CheckCircle2, label: "Verify Features" },
+        { href: "/ops/security", icon: Shield, label: "Security Monitor" }
+      );
     }
 
-    return base;
+    if (isSuperAdmin) {
+      settingsItems.push({ href: "/settings/permissions", icon: Shield, label: "Permission Control Center" });
+    }
+
+    return [
+      CAMPAIGN_OPERATIONS_SECTION,
+      COMMUNICATIONS_SECTION,
+      ANALYTICS_SECTION,
+      {
+        ...SETTINGS_ADMIN_SECTION,
+        items: settingsItems,
+      },
+    ];
   }, [isAdmin, isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
 
   useEffect(() => {

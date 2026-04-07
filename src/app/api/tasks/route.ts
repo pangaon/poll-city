@@ -4,6 +4,7 @@ import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { createTaskSchema } from "@/lib/validators";
 import { parsePagination, paginate } from "@/lib/utils";
 import { TaskStatus } from "@prisma/client";
+import { createBackboneTask } from "@/lib/operations/task-backbone";
 
 /** GET /api/tasks */
 export async function GET(req: NextRequest) {
@@ -71,27 +72,17 @@ export async function POST(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const task = await prisma.task.create({
-    data: {
-      ...data,
-      createdById: session!.user.id,
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
-    },
-    include: {
-      assignedTo: { select: { id: true, name: true } },
-      contact: { select: { id: true, firstName: true, lastName: true } },
-    },
-  });
-
-  await prisma.activityLog.create({
-    data: {
-      campaignId: data.campaignId,
-      userId: session!.user.id,
-      action: "created_task",
-      entityType: "task",
-      entityId: task.id,
-      details: { title: data.title },
-    },
+  const task = await createBackboneTask({
+    campaignId: data.campaignId,
+    actorUserId: session!.user.id,
+    title: data.title,
+    description: data.description ?? null,
+    assignedToId: data.assignedToId ?? null,
+    contactId: data.contactId ?? null,
+    status: data.status,
+    priority: data.priority,
+    dueDate: data.dueDate ? new Date(data.dueDate) : null,
+    sourceAction: "tasks.api_create",
   });
 
   return NextResponse.json({ data: task }, { status: 201 });

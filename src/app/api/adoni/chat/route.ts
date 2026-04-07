@@ -14,6 +14,39 @@ type ContentBlock =
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string };
 
+type IncomingChatBody = {
+  page?: string;
+  messages?: Array<{ role?: unknown; content?: unknown }>;
+  history?: Array<{ role?: unknown; content?: unknown }>;
+  message?: unknown;
+};
+
+function normalizeIncomingMessages(body: IncomingChatBody): ChatMessage[] {
+  const rawMessages = Array.isArray(body.messages)
+    ? body.messages
+    : Array.isArray(body.history)
+      ? body.history
+      : [];
+
+  const normalized = rawMessages.reduce<ChatMessage[]>((acc, item) => {
+    if (!item || typeof item.content !== "string") return acc;
+    const role = item.role === "assistant" ? "assistant" : item.role === "user" ? "user" : null;
+    if (!role) return acc;
+    acc.push({ role, content: item.content });
+    return acc;
+  }, []);
+
+  const explicitMessage = typeof body.message === "string" ? body.message.trim() : "";
+  if (explicitMessage) {
+    const lastUserMessage = [...normalized].reverse().find((msg) => msg.role === "user");
+    if (!lastUserMessage || String(lastUserMessage.content).trim() !== explicitMessage) {
+      normalized.push({ role: "user", content: explicitMessage });
+    }
+  }
+
+  return normalized;
+}
+
 function streamText(text: string): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     start(controller) {
@@ -119,16 +152,16 @@ export async function POST(req: NextRequest) {
   const limited = await enforceLimit(req, "adoni", session?.user?.id);
   if (limited) return limited;
 
-  let body: { page?: string; messages?: ChatMessage[] };
+  let body: IncomingChatBody;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const messages = (body.messages ?? []).filter((m) => m?.role && typeof m.content === "string");
+  const messages = normalizeIncomingMessages(body);
   if (messages.length === 0) {
-    return NextResponse.json({ error: "messages are required" }, { status: 400 });
+    return NextResponse.json({ error: "messages, history, or message is required" }, { status: 400 });
   }
 
   const page = body.page ?? "unknown";

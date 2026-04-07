@@ -16,13 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
-
-const TIER_MAP: Record<string, string[]> = {
-  P1: ["strong_support"],
-  P2: ["leaning_support"],
-  P3: ["undecided"],
-  P4: ["leaning_opposition", "strong_opposition"],
-};
+import { getGotvPriorityList } from "@/lib/operations/metrics-truth";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -42,43 +36,21 @@ export async function GET(req: NextRequest) {
   const tier = sp.get("tier")?.toUpperCase() ?? "P1";
   const page = Math.max(1, Number(sp.get("page") || "1"));
   const limit = Math.min(200, Math.max(1, Number(sp.get("limit") || "50")));
-  const skip = (page - 1) * limit;
 
-  const supportLevels = TIER_MAP[tier] ?? TIER_MAP.P1;
-
-  const where = {
+  const result = await getGotvPriorityList(
     campaignId,
-    supportLevel: { in: supportLevels as any[] },
-    voted: false,
-    isDeceased: false,
-  };
-
-  const [contacts, total] = await Promise.all([
-    prisma.contact.findMany({
-      where,
-      orderBy: [{ lastContactedAt: "asc" }, { lastName: "asc" }],
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        address1: true,
-        phone: true,
-        supportLevel: true,
-        lastContactedAt: true,
-        voted: true,
-      },
-    }),
-    prisma.contact.count({ where }),
-  ]);
-
-  return NextResponse.json({
-    tier,
-    contacts,
-    total,
+    (["P1", "P2", "P3", "P4"].includes(tier) ? tier : "P1") as "P1" | "P2" | "P3" | "P4",
     page,
     limit,
-    pages: Math.ceil(total / limit),
+  );
+
+  return NextResponse.json({
+    tier: result.tier,
+    data: result.contacts,
+    contacts: result.contacts,
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    pages: result.pages,
   });
 }

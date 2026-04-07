@@ -2,19 +2,93 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Map, Bell, Menu } from "lucide-react";
+import { Home, Map, Menu, Search, Users, X } from "lucide-react";
 import { useState } from "react";
 
 const ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/contacts", label: "Contacts", icon: Users },
-  { href: "/canvassing/walk", label: "Canvass", icon: Map },
-  { href: "/notifications", label: "Alerts", icon: Bell },
+  { type: "route", href: "/dashboard", label: "Dashboard", icon: Home },
+  { type: "route", href: "/contacts", label: "Contacts", icon: Users },
+  { type: "action", action: "search", label: "Search", icon: Search },
+  { type: "route", href: "/canvassing/walk", label: "Walk List", icon: Map },
+] as const;
+
+const SECTIONS = [
+  {
+    title: "Overview",
+    items: [
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/analytics", label: "Analytics" },
+      { href: "/reports", label: "Reports" },
+      { href: "/alerts", label: "Alerts" },
+    ],
+  },
+  {
+    title: "Contacts & Field",
+    items: [
+      { href: "/contacts", label: "Contacts" },
+      { href: "/canvassing", label: "Canvassing" },
+      { href: "/canvassing/walk", label: "Walk List" },
+      { href: "/gotv", label: "GOTV" },
+      { href: "/lookup", label: "Lookup" },
+    ],
+  },
+  {
+    title: "Communications",
+    items: [
+      { href: "/communications/email", label: "Email Campaigns" },
+      { href: "/communications/sms", label: "SMS & Text" },
+      { href: "/communications/social", label: "Social Media" },
+      { href: "/communications/inbox", label: "Unified Inbox" },
+      { href: "/ai-assist", label: "AI Assist" },
+    ],
+  },
+  {
+    title: "Campaign Ops",
+    items: [
+      { href: "/volunteers", label: "Volunteers" },
+      { href: "/signs", label: "Signs" },
+      { href: "/donations", label: "Donations" },
+      { href: "/events", label: "Events" },
+      { href: "/calendar", label: "Calendar" },
+      { href: "/budget", label: "Budget" },
+      { href: "/print", label: "Print" },
+      { href: "/polls", label: "Polls" },
+    ],
+  },
+  {
+    title: "Intelligence",
+    items: [
+      { href: "/officials", label: "Officials" },
+      { href: "/media", label: "Media" },
+      { href: "/coalitions", label: "Coalitions" },
+      { href: "/intelligence", label: "Opponent Intel" },
+    ],
+  },
+  {
+    title: "Resources",
+    items: [{ href: "/resources", label: "Resources" }],
+  },
+  {
+    title: "Settings",
+    items: [
+      { href: "/settings", label: "Settings" },
+      { href: "/settings/brand", label: "Brand Kit" },
+      { href: "/settings/team", label: "Team" },
+      { href: "/settings/security", label: "Security" },
+      { href: "/billing", label: "Billing" },
+      { href: "/import-export", label: "Import/Export" },
+      { href: "/help", label: "Help Center" },
+    ],
+  },
 ] as const;
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  function openSearch() {
+    window.dispatchEvent(new CustomEvent("pollcity:open-search"));
+  }
 
   return (
     <>
@@ -25,19 +99,33 @@ export function MobileBottomNav() {
       >
         <div className="flex items-stretch justify-around" style={{ height: 60 }}>
           {ITEMS.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             const Icon = item.icon;
+            if (item.type === "route") {
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] transition-colors ${
+                    isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-[10px] font-semibold">{item.label}</span>
+                </Link>
+              );
+            }
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] transition-colors ${
-                  isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
-                }`}
+              <button
+                key={item.action}
+                onClick={openSearch}
+                aria-label="Open search"
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-gray-500 hover:text-gray-900 transition-colors"
               >
-                <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-semibold">{item.label}</span>
-              </Link>
+              </button>
             );
           })}
           <button
@@ -51,78 +139,15 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {/* Spacer to prevent content from being hidden behind fixed nav */}
       <div className="md:hidden" style={{ height: "calc(60px + env(safe-area-inset-bottom))" }} aria-hidden />
 
-      {/* More sheet */}
-      {moreOpen && <MoreSheet onClose={() => setMoreOpen(false)} />}
+      {moreOpen && <MoreSheet onClose={() => setMoreOpen(false)} onOpenSearch={openSearch} />}
     </>
   );
 }
 
-/** Slide-up sheet showing the full sidebar navigation on mobile. */
-function MoreSheet({ onClose }: { onClose: () => void }) {
+function MoreSheet({ onClose, onOpenSearch }: { onClose: () => void; onOpenSearch: () => void }) {
   const pathname = usePathname();
-
-  const SECTIONS = [
-    {
-      title: "Campaign",
-      items: [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/contacts", label: "Contacts" },
-        { href: "/volunteers", label: "Volunteers" },
-        { href: "/volunteers/groups", label: "Volunteer Groups" },
-        { href: "/volunteers/shifts", label: "Volunteer Shifts" },
-        { href: "/tasks", label: "Tasks" },
-      ],
-    },
-    {
-      title: "Field",
-      items: [
-        { href: "/canvassing/walk", label: "Walk App" },
-        { href: "/canvassing/turf-builder", label: "Turf Builder" },
-        { href: "/canvassing/scripts", label: "Scripts" },
-        { href: "/gotv", label: "GOTV" },
-        { href: "/signs", label: "Signs" },
-        { href: "/lookup", label: "Address Lookup" },
-        { href: "/capture", label: "Quick Capture" },
-      ],
-    },
-    {
-      title: "Engagement",
-      items: [
-        { href: "/polls", label: "Polls" },
-        { href: "/notifications", label: "Notifications" },
-        { href: "/call-list", label: "Call List" },
-        { href: "/donations", label: "Donations" },
-        { href: "/budget", label: "Budget" },
-      ],
-    },
-    {
-      title: "Intelligence",
-      items: [
-        { href: "/analytics", label: "Analytics" },
-        { href: "/officials", label: "Officials" },
-        { href: "/ai-assist", label: "AI Assist" },
-        { href: "/reports", label: "Reports" },
-      ],
-    },
-    {
-      title: "Print",
-      items: [{ href: "/print", label: "Print Marketplace" }],
-    },
-    {
-      title: "Settings",
-      items: [
-        { href: "/settings", label: "Settings" },
-        { href: "/settings/team", label: "Team" },
-        { href: "/settings/fields", label: "Custom Fields" },
-        { href: "/settings/public-page", label: "Page Builder" },
-        { href: "/billing", label: "Billing" },
-        { href: "/help", label: "Help Center" },
-      ],
-    },
-  ];
 
   return (
     <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
@@ -133,13 +158,22 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
       >
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-3 flex items-center justify-between rounded-t-3xl">
           <h2 className="font-bold text-gray-900">Menu</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close menu"
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 min-w-[44px] min-h-[44px]"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onOpenSearch}
+              aria-label="Open search"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Close menu"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <div className="p-3 space-y-4">
           {SECTIONS.map((section) => (
@@ -149,7 +183,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => {
-                  const isActive = pathname === item.href;
+                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   return (
                     <Link
                       key={item.href}

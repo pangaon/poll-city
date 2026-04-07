@@ -8,6 +8,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { executeAction } from "@/lib/operations/action-engine";
+import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -33,37 +35,13 @@ export async function POST(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  if (contact.voted) {
-    return NextResponse.json({ ok: true, alreadyVoted: true, contact: { id: contact.id, name: `${contact.firstName} ${contact.lastName}` } });
-  }
+  const result = await executeAction(
+    "gotv.mark_voted",
+    { contactId },
+    { campaignId: contact.campaignId, actorUserId: session!.user.id },
+  );
 
-  // Single fast update — no joins
-  await prisma.contact.update({
-    where: { id: contactId },
-    data: { voted: true, votedAt: new Date() },
-  });
-
-  // Calculate new gap in parallel with audit log
-  const [supportersVoted, totalContacts] = await Promise.all([
-    prisma.contact.count({
-      where: { campaignId: contact.campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
-    }),
-    prisma.contact.count({ where: { campaignId: contact.campaignId } }),
-    // Audit log — fire and forget
-    prisma.activityLog.create({
-      data: {
-        campaignId: contact.campaignId,
-        userId: session!.user.id,
-        action: "gotv_mark_voted",
-        entityType: "Contact",
-        entityId: contactId,
-        details: { name: `${contact.firstName} ${contact.lastName}` },
-      },
-    }).catch(() => {}),
-  ]);
-
-  const winThreshold = Math.ceil(totalContacts * 0.35);
-  const gap = Math.max(0, winThreshold - supportersVoted);
+  const metrics = await getGotvSummaryMetrics(contact.campaignId);
 
   const duration = Date.now() - start;
   if (duration > 200) {
@@ -71,11 +49,14 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    ok: true,
+    ok: result.ok,
+    action: result.action,
+    alreadyVoted: Boolean(result.details.alreadyVoted),
     contact: { id: contact.id, name: `${contact.firstName} ${contact.lastName}` },
-    gap,
-    supportersVoted,
-    winThreshold,
+    gap: metrics.gap,
+    supportersVoted: metrics.supportersVoted,
+    winThreshold: metrics.winThreshold,
+    drillThrough: metrics.drillThrough,
     duration,
   }, { headers: { "Cache-Control": "no-store" } });
 }

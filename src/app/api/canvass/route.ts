@@ -12,11 +12,30 @@ export async function GET(req: NextRequest) {
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
   const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId } } });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const scope = req.nextUrl.searchParams.get("scope") ?? "all";
+  const isVolunteer = session!.user.role === "VOLUNTEER";
+
+  const where: Record<string, unknown> = { campaignId };
+
+  // Volunteers only see lists explicitly sent to them.
+  if (isVolunteer || scope === "assigned") {
+    where.assignments = { some: { userId: session!.user.id } };
+  } else if (scope === "unassigned") {
+    where.assignments = { none: {} };
+  } else if (scope === "sent") {
+    where.assignments = { some: {} };
+  }
+
   const lists = await prisma.canvassList.findMany({
-    where: { campaignId }, orderBy: { createdAt: "desc" },
+    where,
+    orderBy: { createdAt: "desc" },
     include: { assignments: { include: { user: { select: { id: true, name: true } } } } },
   });
-  return NextResponse.json({ data: lists });
+  return NextResponse.json({
+    data: lists,
+    visibility: isVolunteer ? "assigned_only" : "all",
+    scopeApplied: isVolunteer ? "assigned" : scope,
+  });
 }
 
 export async function POST(req: NextRequest) {

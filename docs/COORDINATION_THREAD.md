@@ -92,6 +92,24 @@ strong_support | leaning_support | undecided | leaning_opposition | strong_oppos
 
 ## THREAD LOG
 
+### 2026-04-07 | ORCHESTRATOR: Full Strike Team Deployed — All 8 Remaining Issues
+- **ROLE**: Orchestrator (Claude Opus 4.6)
+- **TASK**: Resolve ALL 8 known remaining issues in parallel
+- **CONTEXT**: George authorized full deployment. 8 dedicated agents spawned, one per issue.
+- **AGENTS DEPLOYED**:
+  - **BOT-RBAC**: Issue #1 — RBAC convergence (legacy ROLE_PERMISSIONS → enterprise CampaignRole)
+  - **BOT-COMPONENTS**: Issue #2 — StatCard/MetricCard/AnimatedCounter consolidation
+  - **BOT-RATELIMIT**: Issue #3 — Export route rate limiting
+  - **BOT-TV**: Issue #4 — TV mode wired to real APIs (replace hardcoded demo data)
+  - **BOT-ENIGHT**: Issue #5 — Election night name mismatch fix
+  - **BOT-DASHBOARD**: Issue #6 — Dashboard-studio stale fallback values
+  - **BOT-CLEANUP**: Issue #7 — Dead code removal (orphan dashboard-client.tsx)
+  - **BOT-ADONI**: Issue #8 — Adoni panel auto-fetch on open
+  - **BOT-COMMAND**: Issue #9 (NEW) — Command Center enterprise action surface overhaul
+- **PROTOCOL**: Each agent works in isolated worktree. Orchestrator reviews all diffs before merge. No schema conflicts. Build must pass.
+- **NEW DIRECTIVE**: COMMAND SURFACE RULE — Any page called Command Center, Operations, Alerts, GOTV, or Dashboard must not be merely informational. Critical metrics and alerts must support direct action, drill-through, or Adoni execution. No passive command surfaces.
+- **STATUS**: 🔴 ALL IN PROGRESS
+
 ### 2026-04-07 | ORCHESTRATOR: Thread Consolidation
 - **ROLE**: Orchestrator
 - **TASK**: Consolidate 3 coordination threads into 1
@@ -1299,3 +1317,16 @@ George action needed: Run `npx prisma db push` to deploy schema, set env vars (D
 - Ask/Decision needed: Confirm all contributors will post Open/Resolved items here for overlapping files.
 - Status: Open
 - Resolution: -
+
+### Entry — 2026-04-07 — Field Ops + Dynamic Fields Audit
+- **ROLE**: Orchestrator
+- **TASK**: Fix critical field operations gaps + audit dynamic field system
+- **CONTEXT**: User identified that walk list has no sign request action (volunteer at the door can't request a lawn sign). User also flagged that dynamic fields must flow through entire system — each campaign is its own universe with its own fields, dashboards, configuration. Duplicate coordination files (COORDINATION_THREAD_LIVE.md, AGENT-COORDINATION-THREAD.md, AGENT1_REPORT.md, AGENT2_REPORT.md) have been deleted. This file is the SINGLE source of truth.
+- **DECISIONS**:
+  1. Add sign request action to walk list canvassing flow
+  2. Audit dynamic field propagation across all surfaces
+  3. Find and fix any false iOS/native app references
+  4. Audit campaign isolation + per-campaign customization
+- **IMPACT**: Walk list, signs API, contacts, canvassing, dynamic fields, campaign settings
+- **DEPENDENCIES**: Sign model schema, CampaignField model, walk-shell.tsx, signs API
+- **NEXT REQUIRED ACTIONS**: Implement sign request in walk list, report dynamic field gaps, clean up false mobile claims

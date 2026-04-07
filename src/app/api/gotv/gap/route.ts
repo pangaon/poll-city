@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
-import { SupportLevel } from "@prisma/client";
+import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
@@ -24,59 +24,40 @@ export async function GET(req: NextRequest) {
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
-  // Fast parallel queries — no joins
-  const [campaign, totalSupporters, supportersVoted, totalVoted, totalContacts] = await Promise.all([
-    prisma.campaign.findUnique({
-      where: { id: campaignId },
-      select: { electionDate: true, spendingLimit: true },
-    }),
-    prisma.contact.count({
-      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
-    }),
-    prisma.contact.count({
-      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
-    }),
-    prisma.contact.count({ where: { campaignId, voted: true } }),
-    prisma.contact.count({ where: { campaignId } }),
-  ]);
+  // Campaign settings still loaded here so future threshold tuning remains possible.
+  await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { electionDate: true, spendingLimit: true },
+  });
 
-  // Win threshold estimation:
-  // Historical municipal turnout: ~35-40% in Ontario
-  // Competitive adjustment: assume you need 51% of voters to win
-  // Win threshold = totalContacts * 0.38 (turnout) * 0.51 (win margin)
-  // This is configurable — campaign can set their own threshold
-  const estimatedTurnout = 0.38;
-  const winMargin = 0.51;
-  const winThreshold = Math.ceil(totalContacts * estimatedTurnout * winMargin);
-
-  const gap = Math.max(0, winThreshold - supportersVoted);
-  const supportersRemaining = totalSupporters - supportersVoted;
+  const metrics = await getGotvSummaryMetrics(campaignId);
+  const supportersRemaining = metrics.confirmedSupporters - metrics.supportersVoted;
 
   // Hourly pacing (if election day)
   const now = new Date();
-  const pollsOpen = 10; // 10am
   const pollsClose = 20; // 8pm
   const currentHour = now.getHours();
   const hoursRemaining = Math.max(0, pollsClose - currentHour);
-  const pacingTarget = hoursRemaining > 0 ? Math.ceil(gap / hoursRemaining) : gap;
+  const pacingTarget = hoursRemaining > 0 ? Math.ceil(metrics.gap / hoursRemaining) : metrics.gap;
 
   const duration = Date.now() - start;
 
   return NextResponse.json({
-    gap,
-    winThreshold,
-    supportersVoted,
-    totalSupporters,
+    gap: metrics.gap,
+    winThreshold: metrics.winThreshold,
+    supportersVoted: metrics.supportersVoted,
+    totalSupporters: metrics.confirmedSupporters,
     supportersRemaining,
-    totalVoted,
-    totalContacts,
-    turnoutPct: totalContacts > 0 ? Math.round((totalVoted / totalContacts) * 100) : 0,
-    supporterTurnoutPct: totalSupporters > 0 ? Math.round((supportersVoted / totalSupporters) * 100) : 0,
+    totalVoted: metrics.totalVoted,
+    totalContacts: metrics.totalContacts,
+    turnoutPct: metrics.totalContacts > 0 ? Math.round((metrics.totalVoted / metrics.totalContacts) * 100) : 0,
+    supporterTurnoutPct: metrics.confirmedSupporters > 0 ? Math.round((metrics.supportersVoted / metrics.confirmedSupporters) * 100) : 0,
     pacing: {
       hoursRemaining,
       votesNeededPerHour: pacingTarget,
-      onTrack: supportersVoted >= (winThreshold - gap),
+      onTrack: metrics.supportersVoted >= (metrics.winThreshold - metrics.gap),
     },
+    drillThrough: metrics.drillThrough,
     duration,
   }, {
     headers: { "Cache-Control": "no-store" },

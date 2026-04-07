@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Filter, Navigation, Phone, ChevronDown, ChevronUp,
   Users, WifiOff, FileText, MoreHorizontal, X,
-  Undo2, ToggleLeft, Type, List, ListChecks, Hash, Calendar,
+  ToggleLeft, Type, List, ListChecks, Hash, Calendar,
 } from "lucide-react";
 import { SupportLevelBadge } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -196,54 +196,7 @@ function groupContacts(
 
 /* ─── Undo Timer Hook ───────────────────────────────────────────────────────── */
 
-interface UndoEntry {
-  id: string;
-  householdKey: string;
-  label: string;
-  undoFn: () => void;
-  timeLeft: number;
-}
 
-function useUndoQueue() {
-  const [queue, setQueue] = useState<UndoEntry[]>([]);
-  const timers = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
-
-  const addUndo = useCallback((entry: Omit<UndoEntry, "timeLeft">) => {
-    setQueue((prev) => [...prev.filter((e) => e.id !== entry.id), { ...entry, timeLeft: 10 }]);
-    const interval = setInterval(() => {
-      setQueue((prev) => {
-        const updated = prev.map((e) =>
-          e.id === entry.id ? { ...e, timeLeft: e.timeLeft - 1 } : e
-        );
-        const item = updated.find((e) => e.id === entry.id);
-        if (item && item.timeLeft <= 0) {
-          clearInterval(timers.current.get(entry.id));
-          timers.current.delete(entry.id);
-          return updated.filter((e) => e.id !== entry.id);
-        }
-        return updated;
-      });
-    }, 1000);
-    if (timers.current.has(entry.id)) clearInterval(timers.current.get(entry.id));
-    timers.current.set(entry.id, interval);
-  }, []);
-
-  const doUndo = useCallback((id: string) => {
-    setQueue((prev) => {
-      const entry = prev.find((e) => e.id === id);
-      if (entry) {
-        entry.undoFn();
-        if (timers.current.has(id)) {
-          clearInterval(timers.current.get(id));
-          timers.current.delete(id);
-        }
-      }
-      return prev.filter((e) => e.id !== id);
-    });
-  }, []);
-
-  return { queue, addUndo, doUndo };
-}
 
 /* ─── Shimmer Skeleton ──────────────────────────────────────────────────────── */
 
@@ -273,7 +226,7 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
   const [pendingSync, setPendingSync] = useState(0);
   const [showMap, setShowMap] = useState(false);
   const rawContactsRef = useRef<Parameters<typeof groupContacts>[0]>([]);
-  const { queue: undoQueue, addUndo, doUndo } = useUndoQueue();
+  
   const [campaignFields, setCampaignFields] = useState<CampaignFieldDef[]>([]);
 
   /* Fetch campaign-configured fields once */
@@ -386,25 +339,8 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
           ),
         );
       }
-    }
-
-    // Add undo entry
-    addUndo({
-      id: `${hh.key}-${Date.now()}`,
-      householdKey: hh.key,
-      label: `${hh.address} - ${RESULT_BUTTONS.find((b) => b.id === result)?.label}`,
-      undoFn: () => {
-        setHouseholds((prev) =>
-          prev.map((h) =>
-            h.key === hh.key
-              ? { ...h, notHome: prevState.notHome, visited: prevState.visited, people: prevState.people }
-              : h,
-          ),
-        );
-        toast("Undone");
-      },
-    });
-
+    }
+    // Action is applied immediately without countdown.
     // Persist
     for (const p of hh.people) {
       const interactionBody: Record<string, unknown> = {
@@ -567,50 +503,7 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* Undo bar */}
-      <AnimatePresence>
-        {undoQueue.length > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="fixed bottom-20 left-4 right-4 z-50 space-y-2"
-          >
-            {undoQueue.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-3 bg-gray-900 text-white rounded-2xl px-4 py-3 shadow-2xl">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{entry.label}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative w-8 h-8">
-                    <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
-                      <circle cx="16" cy="16" r="14" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-                      <circle
-                        cx="16" cy="16" r="14"
-                        fill="none" stroke="white" strokeWidth="2"
-                        strokeDasharray={`${(entry.timeLeft / 10) * 88} 88`}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{entry.timeLeft}</span>
-                  </div>
-                  <button
-                    onClick={() => doUndo(entry.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-gray-900 rounded-xl text-sm font-bold min-h-[44px] active:scale-95 transition-transform"
-                  >
-                    <Undo2 className="w-4 h-4" /> Undo
-                  </button>
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Offline banner */}
+      </AnimatePresence>`n      {/* Offline banner */}
       <OfflineIndicator onSyncComplete={load} />
       {fromCache && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 text-xs text-amber-800">
@@ -1192,3 +1085,5 @@ function PersonRow({ person: p, onUpdate, campaignFields }: { person: Person; on
     </div>
   );
 }
+
+
