@@ -21,7 +21,7 @@ const TIER_MAP: Record<string, string[]> = {
   P1: ["strong_support"],
   P2: ["leaning_support"],
   P3: ["undecided"],
-  P4: ["leaning_against"],
+  P4: ["leaning_opposition", "strong_opposition"],
 };
 
 export async function GET(req: NextRequest) {

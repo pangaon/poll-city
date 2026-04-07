@@ -20,7 +20,7 @@ export const createVoiceBroadcastSchema = z.object({
 export const phoneBankResultSchema = z.object({
   contactId: z.string().min(1, "contactId is required"),
   result: z.enum(["answered", "not_home", "busy", "voicemail", "refused", "wrong_number"]),
-  supportLevel: z.enum(["strong_support", "leaning_support", "undecided", "leaning_against", "against"]).nullish(),
+  supportLevel: z.enum(["strong_support", "leaning_support", "undecided", "leaning_opposition", "strong_opposition", "unknown"]).nullish(),
   notes: z.string().max(1000).nullish(),
   duration: z.number().int().min(0).nullish(),
 });

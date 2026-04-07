@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const bulkUpdateSchema = z.object({
   contactIds: z.array(z.string().min(1)).min(1, "At least one contact required").max(5000, "Maximum 5000 contacts per batch"),
-  supportLevel: z.enum(["strong_support", "leaning_support", "undecided", "leaning_against", "against", "unknown"]),
+  supportLevel: z.enum(["strong_support", "leaning_support", "undecided", "leaning_opposition", "strong_opposition", "unknown"]),
   campaignId: z.string().min(1, "campaignId is required"),
 });
 

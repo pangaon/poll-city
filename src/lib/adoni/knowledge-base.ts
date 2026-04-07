@@ -167,6 +167,7 @@ export function buildAdoniSystemPrompt(context: {
   supporterCount: number;
   volunteerCount: number;
   undecidedCount: number;
+  unknownCount: number;
   doorsKnocked: number;
   signsDeployed: number;
   donationsCount: number;
@@ -206,7 +207,7 @@ export function buildAdoniSystemPrompt(context: {
               : "";
 
   const supportRate = c.contactCount > 0 ? Math.round((c.supporterCount / c.contactCount) * 100) : 0;
-  const idRate = c.contactCount > 0 ? Math.round(((c.supporterCount + c.undecidedCount) / c.contactCount) * 100) : 0;
+  const idRate = c.contactCount > 0 ? Math.round(((c.contactCount - c.unknownCount) / c.contactCount) * 100) : 0;
 
   const STYLE_RULES = `RESPONSE STYLE — READ THIS FIRST, IT OVERRIDES EVERYTHING:
 

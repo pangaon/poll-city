@@ -2,7 +2,7 @@
 //
 // Algorithm:
 //   Base:                 50
-//   Support level:        +35 strong / +20 leaning / 0 undecided / -20 leaning_against / -35 strong_against
+//   Support level:        +35 strong / +20 leaning / 0 undecided / -20 leaning_opposition / -35 strong_opposition
 //   Voting history:       +40 max (10 pts per prior election voted, max 4)
 //   Engagement:           +5 donated, +5 volunteered, +3 event, +2 sign request
 //   Recency bonus:        +5 contacted in last 7 days, +3 last 30 days

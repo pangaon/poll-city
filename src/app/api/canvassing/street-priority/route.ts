@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   const supporters = contacts.filter((c) => (c.supportLevel as string) === "strong_support" || (c.supportLevel as string) === "leaning_support").length;
   const undecided = contacts.filter((c) => (c.supportLevel as string) === "undecided").length;
-  const against = contacts.filter((c) => (c.supportLevel as string) === "against" || (c.supportLevel as string) === "leaning_against").length;
+  const against = contacts.filter((c) => (c.supportLevel as string) === "strong_opposition" || (c.supportLevel as string) === "leaning_opposition").length;
   const unknown = contacts.filter((c) => (c.supportLevel as string) === "unknown").length;
   const notContacted = contacts.filter((c) => !c.lastContactedAt).length;
   const notHome = contacts.filter((c) => c.notHome).length;

@@ -10,7 +10,7 @@
  * This is what George shows to clients.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, SupportLevel } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -75,7 +75,7 @@ async function main() {
   console.log(`📋 Campaign: ${campaign.name} (${campaign.id})`);
 
   // Find admin user
-  const admin = await prisma.user.findFirst({ where: { role: "SUPER_ADMIN" } });
+  const admin = await prisma.user.findFirst({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } } });
   if (!admin) {
     console.log("❌ No admin user found.");
     return;
@@ -92,8 +92,8 @@ async function main() {
     ...Array(1500).fill("strong_support"),
     ...Array(750).fill("leaning_support"),
     ...Array(1000).fill("undecided"),
-    ...Array(500).fill("leaning_against"),
-    ...Array(250).fill("against"),
+    ...Array(500).fill("leaning_opposition"),
+    ...Array(250).fill("strong_opposition"),
     ...Array(1000).fill("unknown"),
   ];
 
@@ -119,7 +119,7 @@ async function main() {
       municipalPoll: `Poll ${rand(1, 60)}`,
       phone: hasPhone ? phone() : null,
       email: hasEmail ? email(first, last) : null,
-      supportLevel: support as any,
+      supportLevel: support as SupportLevel,
       lastContactedAt: contacted ? randDate(60) : null,
       notHome: !contacted && Math.random() < 0.3,
       signRequested: support === "strong_support" && Math.random() < 0.3,

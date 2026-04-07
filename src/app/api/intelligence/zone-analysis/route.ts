@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       const supporters = zc.filter((c) => (c.supportLevel as string) === "strong_support" || (c.supportLevel as string) === "leaning_support").length;
       const undecided = zc.filter((c) => (c.supportLevel as string) === "undecided").length;
       const unknown = zc.filter((c) => (c.supportLevel as string) === "unknown").length;
-      const against = zc.filter((c) => (c.supportLevel as string) === "against" || (c.supportLevel as string) === "leaning_against").length;
+      const against = zc.filter((c) => (c.supportLevel as string) === "strong_opposition" || (c.supportLevel as string) === "leaning_opposition").length;
       const contacted = zc.filter((c) => c.lastContactedAt).length;
       const notHome = zc.filter((c) => c.notHome).length;
       const voted = zc.filter((c) => c.voted).length;

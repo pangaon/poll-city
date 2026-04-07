@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       level === "strong_support" ? segments.strongSupporters :
       level === "leaning_support" ? segments.leaningSupporters :
       level === "undecided" ? segments.persuadable :
-      level === "against" || level === "leaning_against" ? segments.opposition :
+      level === "strong_opposition" || level === "leaning_opposition" ? segments.opposition :
       segments.unknown;
 
     seg.count++;

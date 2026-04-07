@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     updates.ivrResponses = existingResponses;
 
     // Map IVR digits to support levels (configurable per broadcast)
-    const supportMap: Record<string, string> = { "1": "strong_support", "2": "leaning_support", "3": "undecided", "4": "leaning_against", "5": "against" };
+    const supportMap: Record<string, string> = { "1": "strong_support", "2": "leaning_support", "3": "undecided", "4": "leaning_opposition", "5": "strong_opposition" };
     if (supportMap[digits]) {
       updates.supportLevel = supportMap[digits];
       // Update the contact's support level in real time

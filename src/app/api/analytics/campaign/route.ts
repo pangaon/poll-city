@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
   for (const s of supportBreakdown) support[s.supportLevel] = s._count;
 
   const supporters = (support["strong_support"] ?? 0) + (support["leaning_support"] ?? 0);
-  const against = (support["leaning_against"] ?? 0) + (support["against"] ?? 0);
+  const against = (support["leaning_opposition"] ?? 0) + (support["strong_opposition"] ?? 0);
   const undecided = support["undecided"] ?? 0;
   const unknown = support["unknown"] ?? 0;
   const supportRate = totalContacts > 0 ? Math.round((supporters / totalContacts) * 100) : 0;

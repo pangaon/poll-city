@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
   const hasAnalytics = perms.includes("*") || perms.some((p) => p.startsWith("analytics:"));
   const hasFinance = perms.includes("*") || perms.some((p) => p.startsWith("donations:") || p.startsWith("budget:"));
 
-  const [campaign, contactCount, supporterCount, undecidedCount, volunteerCount, doorsKnocked, signsDeployed, donationsCount, donationsTotal] = await Promise.all([
+  const [campaign, contactCount, supporterCount, undecidedCount, unknownCount, volunteerCount, doorsKnocked, signsDeployed, donationsCount, donationsTotal] = await Promise.all([
     cid
       ? prisma.campaign.findUnique({
           where: { id: cid },
@@ -174,6 +174,11 @@ export async function POST(req: NextRequest) {
     cid && hasAnalytics
       ? prisma.contact.count({
           where: { campaignId: cid, supportLevel: "undecided" as never },
+        })
+      : Promise.resolve(0),
+    cid && hasAnalytics
+      ? prisma.contact.count({
+          where: { campaignId: cid, supportLevel: "unknown" as never },
         })
       : Promise.resolve(0),
     cid ? prisma.volunteerProfile.count({ where: { campaignId: cid } }) : Promise.resolve(0),
@@ -201,6 +206,7 @@ export async function POST(req: NextRequest) {
     contactCount,
     supporterCount,
     undecidedCount,
+    unknownCount,
     volunteerCount,
     doorsKnocked,
     signsDeployed,

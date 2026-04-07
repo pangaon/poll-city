@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
+import { computeGotvScore } from "@/lib/gotv/score";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "gotv:read");
@@ -20,11 +21,27 @@ export async function GET(req: NextRequest) {
     prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
   ]);
 
-  // P1-P4 tier breakdown (based on contact support + contacted status)
-  const p1 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.strong_support } });
-  const p2 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.leaning_support } });
-  const p3 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.undecided } });
-  const p4 = await prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.leaning_opposition, SupportLevel.strong_opposition] } } });
+  // P1-P4 tier breakdown using the real GOTV scoring engine
+  const contacts = await prisma.contact.findMany({
+    where: { campaignId },
+    select: {
+      supportLevel: true,
+      gotvStatus: true,
+      signRequested: true,
+      volunteerInterest: true,
+      lastContactedAt: true,
+      voted: true,
+    },
+  });
+  const tierCounts = { p1: 0, p2: 0, p3: 0, p4: 0 };
+  for (const contact of contacts) {
+    const { tier } = computeGotvScore(contact);
+    if (tier === 1) tierCounts.p1++;
+    else if (tier === 2) tierCounts.p2++;
+    else if (tier === 3) tierCounts.p3++;
+    else tierCounts.p4++;
+  }
+  const { p1, p2, p3, p4 } = tierCounts;
 
   const turnoutRate = totalContacts > 0 ? Math.round((totalVoted / totalContacts) * 100) : 0;
   const supporterTurnoutRate = totalSupporters > 0 ? Math.round((supporterVoted / totalSupporters) * 100) : 0;
