@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { createFormSchema } from "@/lib/validators/forms";
 import { getTemplate } from "@/lib/forms/templates";
+import { audit } from "@/lib/audit";
 
 function slugify(name: string): string {
   return name
@@ -87,6 +88,14 @@ export async function POST(req: NextRequest) {
     const created = await prisma.form.findUnique({
       where: { id: form.id },
       include: { fields: { orderBy: { order: "asc" } }, _count: { select: { submissions: true } } },
+    });
+
+    await audit(prisma, 'form.create', {
+      campaignId,
+      userId: session!.user.id,
+      entityId: form.id,
+      entityType: 'Form',
+      ip: req.headers.get('x-forwarded-for'),
     });
 
     return NextResponse.json(created, { status: 201 });

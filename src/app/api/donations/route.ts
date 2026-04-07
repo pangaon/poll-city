@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { parsePagination } from "@/lib/utils";
+import { audit } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -86,6 +87,14 @@ export async function PATCH(req: NextRequest) {
       contact: { select: { id: true, firstName: true, lastName: true } },
       recordedBy: { select: { id: true, name: true, email: true } },
     },
+  });
+
+  await audit(prisma, 'donation.update', {
+    campaignId: donation.campaignId,
+    userId: session!.user.id,
+    entityId: donationId,
+    entityType: 'Donation',
+    ip: req.headers.get('x-forwarded-for'),
   });
 
   return NextResponse.json({ data: updated });

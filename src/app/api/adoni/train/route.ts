@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, state });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { error } = await apiAuth(req);
+  if (error) return error;
   return NextResponse.json({ ok: true, state: getAdoniTrainState() });
 }

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
+import { apiAuth } from "@/lib/auth/helpers";
 
 export async function GET(req: NextRequest) {
+  const { error } = await apiAuth(req);
+  if (error) return error;
+
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
   const slug = sp.get("slug");

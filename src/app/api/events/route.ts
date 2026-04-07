@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { EventStatus, EventVisibility } from "@prisma/client";
+import { audit } from "@/lib/audit";
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -151,6 +152,14 @@ export async function POST(req: NextRequest) {
       lng: typeof body.lng === "number" ? body.lng : null,
     },
     include: { rsvps: true },
+  });
+
+  await audit(prisma, 'event.create', {
+    campaignId: body.campaignId,
+    userId: session!.user.id,
+    entityId: created.id,
+    entityType: 'Event',
+    ip: req.headers.get('x-forwarded-for'),
   });
 
   return NextResponse.json({ data: created }, { status: 201 });

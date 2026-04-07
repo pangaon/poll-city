@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { Role } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const inviteSchema = z.object({
   campaignId: z.string().min(1),
@@ -93,6 +94,15 @@ export async function POST(req: NextRequest) {
     } else {
       console.log("[team/invite] RESEND_API_KEY not set — email skipped for", email);
     }
+
+    await audit(prisma, 'team.invite', {
+      campaignId,
+      userId: session!.user.id,
+      entityId: user.id,
+      entityType: 'Membership',
+      ip: req.headers.get('x-forwarded-for'),
+      details: { invitedEmail: email, role },
+    });
 
     return NextResponse.json({ data: { invited: true, userId: user.id } });
   } catch (e) {

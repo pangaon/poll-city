@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { audit } from "@/lib/audit";
 
 type Ctx = { params: { id: string } };
 
@@ -83,6 +84,14 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       },
     });
 
+    await audit(prisma, 'form.update', {
+      campaignId,
+      userId: session!.user.id,
+      entityId: params.id,
+      entityType: 'Form',
+      ip: req.headers.get('x-forwarded-for'),
+    });
+
     return NextResponse.json(form);
   } catch (err: any) {
     console.error("[PUT /api/forms/[id]]", err);
@@ -103,5 +112,14 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   }
 
   await prisma.form.delete({ where: { id: params.id } });
+
+  await audit(prisma, 'form.delete', {
+    campaignId,
+    userId: session!.user.id,
+    entityId: params.id,
+    entityType: 'Form',
+    ip: req.headers.get('x-forwarded-for'),
+  });
+
   return NextResponse.json({ ok: true });
 }

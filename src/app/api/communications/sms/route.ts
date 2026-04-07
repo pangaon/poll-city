@@ -4,6 +4,7 @@ import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { loadBrandKit } from "@/lib/brand/brand-kit";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -132,6 +133,15 @@ export async function POST(req: NextRequest) {
       audience: { supportLevels, wards, tagIds, excludeDnc, testOnly },
     },
   }).catch(() => {});
+
+  await audit(prisma, 'sms.send', {
+    campaignId,
+    userId: session!.user.id,
+    entityId: campaignId,
+    entityType: 'SmsBlast',
+    ip: req.headers.get('x-forwarded-for'),
+    details: { audienceSize: recipients.length, sent, failed },
+  });
 
   return NextResponse.json({ sent, failed, audienceSize: recipients.length, twilioConfigured: hasTwilio });
 }

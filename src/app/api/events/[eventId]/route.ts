@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import type { Prisma } from "@prisma/client";
 import { EventStatus, EventVisibility } from "@prisma/client";
+import { audit } from "@/lib/audit";
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -133,6 +134,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
     include: { rsvps: true, reminders: true },
   });
 
+  await audit(prisma, 'event.update', {
+    campaignId: event.campaignId,
+    userId: session!.user.id,
+    entityId: params.eventId,
+    entityType: 'Event',
+    ip: req.headers.get('x-forwarded-for'),
+  });
+
   return NextResponse.json({ data: updated });
 }
 
@@ -149,5 +158,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { eventId: 
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await prisma.event.delete({ where: { id: params.eventId } });
+
+  await audit(prisma, 'event.delete', {
+    campaignId: event.campaignId,
+    userId: session!.user.id,
+    entityId: params.eventId,
+    entityType: 'Event',
+    ip: req.headers.get('x-forwarded-for'),
+  });
+
   return NextResponse.json({ ok: true });
 }

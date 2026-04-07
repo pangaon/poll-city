@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { audit } from "@/lib/audit";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       skipDuplicates: true,
     });
   }
+
+  await audit(prisma, body.remove ? 'volunteerGroup.removeMembers' : 'volunteerGroup.addMembers', {
+    campaignId: group.campaignId,
+    userId: session!.user.id,
+    entityId: group.id,
+    entityType: 'VolunteerGroup',
+    ip: req.headers.get('x-forwarded-for'),
+    details: { memberCount: body.volunteerProfileIds.length },
+  });
 
   return NextResponse.json({ data: { success: true } });
 }

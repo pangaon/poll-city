@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { parsePagination, paginate } from "@/lib/utils";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const createPollSchema = z.object({
   question: z.string().min(5).max(500),
@@ -127,6 +128,16 @@ export async function POST(req: NextRequest) {
     },
     include: { options: true },
   });
+
+  if (parsed.data.campaignId) {
+    await audit(prisma, 'poll.create', {
+      campaignId: parsed.data.campaignId,
+      userId: session!.user.id,
+      entityId: poll.id,
+      entityType: 'Poll',
+      ip: req.headers.get('x-forwarded-for'),
+    });
+  }
 
   return NextResponse.json({ data: poll }, { status: 201 });
 }

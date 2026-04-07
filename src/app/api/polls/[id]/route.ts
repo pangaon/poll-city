@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { audit } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -60,6 +61,14 @@ export async function PATCH(req: NextRequest) {
     where: { id: pollId },
     data: updateData,
     include: { options: { orderBy: { order: "asc" } } },
+  });
+
+  await audit(prisma, 'poll.update', {
+    campaignId: poll.campaignId,
+    userId: session!.user.id,
+    entityId: pollId,
+    entityType: 'Poll',
+    ip: req.headers.get('x-forwarded-for'),
   });
 
   return NextResponse.json({ data: updated });

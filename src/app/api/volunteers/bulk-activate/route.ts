@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { audit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -36,6 +37,17 @@ export async function POST(req: NextRequest) {
       where: { id: { in: ids } },
       data: { isActive: true },
     });
+
+    if (campaignIds[0]) {
+      await audit(prisma, 'volunteer.bulkActivate', {
+        campaignId: campaignIds[0],
+        userId: session!.user.id,
+        entityId: campaignIds[0],
+        entityType: 'VolunteerProfile',
+        ip: req.headers.get('x-forwarded-for'),
+        details: { count: ids.length },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

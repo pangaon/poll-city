@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { updateTaskSchema } from "@/lib/validators";
+import { audit } from "@/lib/audit";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
@@ -36,6 +37,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     },
   });
 
+  await audit(prisma, 'task.update', {
+    campaignId: task.campaignId,
+    userId: session!.user.id,
+    entityId: params.id,
+    entityType: 'Task',
+    ip: req.headers.get('x-forwarded-for'),
+  });
+
   return NextResponse.json({ data: updated });
 }
 
@@ -54,5 +63,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await prisma.task.delete({ where: { id: params.id } });
+
+  await audit(prisma, 'task.delete', {
+    campaignId: task.campaignId,
+    userId: session!.user.id,
+    entityId: params.id,
+    entityType: 'Task',
+    ip: req.headers.get('x-forwarded-for'),
+  });
+
   return NextResponse.json({ message: "Task deleted" });
 }

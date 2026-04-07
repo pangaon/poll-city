@@ -3,6 +3,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const ASSIGNABLE_ROLES: Role[] = [
   Role.ADMIN,
@@ -58,6 +59,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       where: { id: params.id },
       data: { role: role as Role },
     });
+
+    await audit(prisma, 'team.updateRole', {
+      campaignId,
+      userId: session!.user.id,
+      entityId: params.id,
+      entityType: 'Membership',
+      ip: req.headers.get('x-forwarded-for'),
+      details: { targetUserId: target.userId, newRole: role },
+    });
+
     return NextResponse.json({ data: updated });
   } catch (e) {
     console.error("[team/patch]", e);
@@ -85,6 +96,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   try {
     await prisma.membership.delete({ where: { id: params.id } });
+
+    await audit(prisma, 'team.remove', {
+      campaignId,
+      userId: session!.user.id,
+      entityId: params.id,
+      entityType: 'Membership',
+      ip: req.headers.get('x-forwarded-for'),
+      details: { removedUserId: target.userId },
+    });
+
     return NextResponse.json({ data: { removed: true } });
   } catch (e) {
     console.error("[team/delete]", e);

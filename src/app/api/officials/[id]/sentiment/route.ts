@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { apiPublicRateLimit } from "@/lib/security/rate-limit";
 import { addSentimentSignal, type SignalType } from "@/lib/sentiment/approval-engine";
 import { z } from "zod";
 
@@ -17,6 +18,12 @@ const schema = z.object({
  * Rate-limited to prevent vote-stuffing (form tier: 5/hour/IP).
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { success } = await apiPublicRateLimit(ip);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const limited = await rateLimit(req, "form");
   if (limited) return limited;
 
