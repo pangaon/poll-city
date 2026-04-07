@@ -1,53 +1,67 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { AnimatePresence, animate, motion } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertTriangle,
-  BarChart3,
-  CalendarClock,
-  Expand,
-  Filter,
-  GripVertical,
-  ListTodo,
-  Maximize2,
-  Minimize2,
-  MonitorUp,
-  Shrink,
-  Sparkles,
-  Trophy,
+  Activity,
+  DollarSign,
+  Eye,
+  LayoutDashboard,
+  MapPin,
+  Moon,
+  Phone,
+  Shield,
+  Users,
+  Vote,
+  Zap,
 } from "lucide-react";
-import AnimatedNumber from "./animated-number";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import AnimatedNumber from "@/components/dashboard/animated-number";
 
-const LiveInsightMap = dynamic(() => import("./live-insight-map"), { ssr: false });
+/* ── Brand colours ─────────────────────────────────── */
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const AMBER = "#EF9F27";
+const RED = "#E24B4A";
+const WAR_BG = "#0A1628";
 
-const CHANNEL = "poll-city";
-const BRAND_NAVY = "#0A2342";
-const MILESTONES = [100, 200, 500, 1000, 2000];
+/* ── Election date ─────────────────────────────────── */
+const ELECTION_DATE = new Date("2026-10-26T00:00:00");
 
-type WidgetLayout = {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  visible: boolean;
-  fullScreen: boolean;
-  poppedOut: boolean;
-  pinned: boolean;
-};
+function daysUntilElection(): number {
+  const now = new Date();
+  const diff = ELECTION_DATE.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
 
-type DashboardLayout = {
-  widgets: WidgetLayout[];
-  columns: number;
-  theme: "light" | "dark" | "auto";
-  density: "compact" | "comfortable" | "spacious";
-};
+/* ── Spring transition presets ─────────────────────── */
+const springTap = { type: "spring" as const, stiffness: 400, damping: 30 };
+const springEnter = { type: "spring" as const, stiffness: 300, damping: 20 };
 
+/* ── Mode definitions ──────────────────────────────── */
+type DashboardMode = "overview" | "field-ops" | "finance" | "gotv" | "war-room" | "election-night";
+
+const MODES: { id: DashboardMode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "field-ops", label: "Field Ops", icon: MapPin },
+  { id: "finance", label: "Finance", icon: DollarSign },
+  { id: "gotv", label: "GOTV", icon: Vote },
+  { id: "war-room", label: "War Room", icon: Shield },
+  { id: "election-night", label: "Election Night", icon: Moon },
+];
+
+/* ── Types ─────────────────────────────────────────── */
 type DashboardStudioProps = {
   campaignId: string;
   campaignName: string;
@@ -55,787 +69,1109 @@ type DashboardStudioProps = {
   isPopout?: boolean;
 };
 
-type DataState = {
-  healthScore: number;
-  grade: string;
+type DashboardData = {
   gap: number;
   supportersVoted: number;
   confirmedSupporters: number;
-  winProbability: number;
-  supporterTurnout: number;
-  doorsWoWChange: number;
-  volunteerTopPerformer: string;
-  volunteerTopScore: number;
-};
-
-type VolunteerRow = {
-  userId: string;
-  name: string;
-  doorsTotal: number;
-  doorsThisWeek: number;
-  conversionRate: number;
-};
-
-type PriorityItem = {
-  action: string;
-  why: string;
-  link: string;
-};
-
-type UpcomingEventItem = {
-  id: string;
-  name: string;
-  date: string;
-  location: string | null;
-};
-
-type WidgetDataState = {
-  leaderboard: VolunteerRow[];
-  priorities: PriorityItem[];
-  upcomingEvents: UpcomingEventItem[];
-  overdueTasks: number;
-  doorsThisWeek: number;
-  doorsLastWeek: number;
+  doorsToday: number;
+  volunteersActive: number;
+  signRequestsPending: number;
+  recentActivity: ActivityItem[];
+  /* Field Ops */
+  canvassersSummary: CanvasserSummary[];
+  turfCompletion: TurfRow[];
+  walkListProgress: WalkListRow[];
+  callListStats: { total: number; completed: number; reached: number };
+  /* Finance */
+  donationTotal: number;
+  spendingLimit: number;
+  currentSpending: number;
+  donationChart: ChartPoint[];
+  topDonors: DonorRow[];
+  recentDonations: DonationItem[];
+  /* GOTV */
   p1Count: number;
   p2Count: number;
   p3Count: number;
   p4Count: number;
+  totalVoted: number;
+  totalSupporters: number;
+  priorityCallList: CallItem[];
+  /* Election Night */
+  candidateVotes: number;
+  opponentVotes: number;
+  candidateName: string;
+  opponentName: string;
+  pollsReporting: number;
+  totalPolls: number;
+  pollResults: PollResult[];
 };
 
-const FALLBACK_DATA: DataState = {
-  healthScore: 64,
-  grade: "B",
+type ActivityItem = { id: string; text: string; time: string; type: "door" | "call" | "donation" | "signup" };
+type CanvasserSummary = { name: string; doors: number; ids: number; commits: number };
+type TurfRow = { name: string; percent: number };
+type WalkListRow = { volunteer: string; assigned: number; completed: number };
+type ChartPoint = { label: string; amount: number };
+type DonorRow = { name: string; total: number };
+type DonationItem = { id: string; name: string; amount: number; time: string };
+type CallItem = { name: string; phone: string; priority: "P1" | "P2" };
+type PollResult = { pollId: string; candidate: number; opponent: number; reporting: boolean };
+
+const FALLBACK: DashboardData = {
   gap: 312,
   supportersVoted: 2334,
   confirmedSupporters: 4280,
-  winProbability: 58,
-  supporterTurnout: 55,
-  doorsWoWChange: 8,
-  volunteerTopPerformer: "Campaign Team",
-  volunteerTopScore: 73,
+  doorsToday: 87,
+  volunteersActive: 14,
+  signRequestsPending: 6,
+  recentActivity: [
+    { id: "1", text: "Jane K. knocked 12 doors on Elm St", time: "2m ago", type: "door" },
+    { id: "2", text: "Mike T. completed call list batch 4", time: "8m ago", type: "call" },
+    { id: "3", text: "$250 donation from Sarah L.", time: "15m ago", type: "donation" },
+    { id: "4", text: "New volunteer signup: Alex R.", time: "22m ago", type: "signup" },
+    { id: "5", text: "Turf 7 completed — 94% contact rate", time: "35m ago", type: "door" },
+  ],
+  canvassersSummary: [
+    { name: "Jane K.", doors: 48, ids: 32, commits: 18 },
+    { name: "Mike T.", doors: 35, ids: 22, commits: 12 },
+    { name: "Alex R.", doors: 29, ids: 20, commits: 15 },
+    { name: "Sarah L.", doors: 22, ids: 14, commits: 8 },
+  ],
+  turfCompletion: [
+    { name: "Turf 1 — Elm St", percent: 94 },
+    { name: "Turf 2 — Oak Ave", percent: 78 },
+    { name: "Turf 3 — Maple Dr", percent: 62 },
+    { name: "Turf 4 — Pine Rd", percent: 45 },
+    { name: "Turf 5 — Cedar Ln", percent: 31 },
+  ],
+  walkListProgress: [
+    { volunteer: "Jane K.", assigned: 60, completed: 48 },
+    { volunteer: "Mike T.", assigned: 50, completed: 35 },
+    { volunteer: "Alex R.", assigned: 40, completed: 29 },
+  ],
+  callListStats: { total: 500, completed: 312, reached: 198 },
+  donationTotal: 47850,
+  spendingLimit: 75000,
+  currentSpending: 38200,
+  donationChart: [
+    { label: "Mon", amount: 2400 },
+    { label: "Tue", amount: 3100 },
+    { label: "Wed", amount: 1800 },
+    { label: "Thu", amount: 4200 },
+    { label: "Fri", amount: 3600 },
+    { label: "Sat", amount: 5800 },
+    { label: "Sun", amount: 2900 },
+  ],
+  topDonors: [
+    { name: "Sarah L.", total: 1500 },
+    { name: "David M.", total: 1200 },
+    { name: "Karen W.", total: 1000 },
+    { name: "James P.", total: 800 },
+    { name: "Lisa C.", total: 750 },
+  ],
+  recentDonations: [
+    { id: "d1", name: "Sarah L.", amount: 250, time: "15m ago" },
+    { id: "d2", name: "Anonymous", amount: 100, time: "1h ago" },
+    { id: "d3", name: "David M.", amount: 500, time: "2h ago" },
+    { id: "d4", name: "Karen W.", amount: 75, time: "3h ago" },
+  ],
+  p1Count: 1842,
+  p2Count: 1120,
+  p3Count: 680,
+  p4Count: 320,
+  totalVoted: 2334,
+  totalSupporters: 4280,
+  priorityCallList: [
+    { name: "Margaret S.", phone: "(416) 555-0142", priority: "P1" },
+    { name: "Robert J.", phone: "(416) 555-0198", priority: "P1" },
+    { name: "Patricia D.", phone: "(416) 555-0231", priority: "P1" },
+    { name: "William B.", phone: "(416) 555-0317", priority: "P2" },
+    { name: "Linda F.", phone: "(416) 555-0428", priority: "P2" },
+  ],
+  candidateVotes: 4218,
+  opponentVotes: 3906,
+  candidateName: "Our Candidate",
+  opponentName: "Opponent",
+  pollsReporting: 34,
+  totalPolls: 52,
+  pollResults: [],
 };
 
-export default function DashboardStudio({ campaignId, campaignName, popoutWidgetId, isPopout }: DashboardStudioProps) {
-  const [layout, setLayout] = useState<DashboardLayout | null>(null);
-  const [data, setData] = useState<DataState>(FALLBACK_DATA);
-  const [fullScreenWidget, setFullScreenWidget] = useState<string | null>(null);
-  const [projectionDark, setProjectionDark] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
-  const [latestMilestone, setLatestMilestone] = useState<number | null>(null);
-  const [widgetData, setWidgetData] = useState<WidgetDataState>({
-    leaderboard: [],
-    priorities: [],
-    upcomingEvents: [],
-    overdueTasks: 0,
-    doorsThisWeek: 0,
-    doorsLastWeek: 0,
-    p1Count: 0,
-    p2Count: 0,
-    p3Count: 0,
-    p4Count: 0,
+/* ── Main component ────────────────────────────────── */
+export default function DashboardStudio({ campaignId, campaignName }: DashboardStudioProps) {
+  const [mode, setMode] = useState<DashboardMode>(() => {
+    if (typeof window === "undefined") return "overview";
+    return (localStorage.getItem(`pc-dash-mode-${campaignId}`) as DashboardMode) || "overview";
   });
-  const previousSupporters = useRef(FALLBACK_DATA.supportersVoted);
+  const [data, setData] = useState<DashboardData>(FALLBACK);
+  const [loading, setLoading] = useState(true);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = (event) => {
-      if (event.data?.type === "live:update" && event.data?.campaignId === campaignId) {
-        setData(event.data.payload as DataState);
-      }
-      if (event.data?.type === "layout:update" && event.data?.campaignId === campaignId) {
-        setLayout(event.data.layout as DashboardLayout);
-      }
-    };
-    return () => channel.close();
+  const switchMode = useCallback((m: DashboardMode) => {
+    setMode(m);
+    localStorage.setItem(`pc-dash-mode-${campaignId}`, m);
   }, [campaignId]);
 
+  /* Data fetching */
   useEffect(() => {
-    async function loadLayout() {
-      const response = await fetch(`/api/dashboard/layout?campaignId=${campaignId}`, { cache: "no-store" });
-      if (!response.ok) return;
-      const payload = await response.json();
-      setLayout(payload.layout as DashboardLayout);
+    let cancelled = false;
+    async function pull() {
+      try {
+        const [health, gotv, election, morning, volunteers] = await Promise.all([
+          fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/election-night/live?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/briefing/morning?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        ]);
+        if (cancelled) return;
+
+        setData((prev) => ({
+          ...prev,
+          gap: gotv?.gap ?? election?.gap ?? prev.gap,
+          supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? prev.supportersVoted,
+          confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? prev.confirmedSupporters,
+          doorsToday: morning?.trends?.doorsToday ?? prev.doorsToday,
+          volunteersActive: volunteers?.active ?? prev.volunteersActive,
+          p1Count: gotv?.p1Count ?? prev.p1Count,
+          p2Count: gotv?.p2Count ?? prev.p2Count,
+          p3Count: gotv?.p3Count ?? prev.p3Count,
+          p4Count: gotv?.p4Count ?? prev.p4Count,
+          totalVoted: gotv?.supportersVoted ?? prev.totalVoted,
+          totalSupporters: gotv?.confirmedSupporters ?? prev.totalSupporters,
+          candidateVotes: election?.candidateVotes ?? prev.candidateVotes,
+          opponentVotes: election?.opponentVotes ?? prev.opponentVotes,
+          pollsReporting: election?.pollsReporting ?? prev.pollsReporting,
+          totalPolls: election?.totalPolls ?? prev.totalPolls,
+        }));
+      } catch {
+        /* keep fallback data */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    loadLayout();
+    pull();
+    const timer = setInterval(pull, 10000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, [campaignId]);
 
-  useEffect(() => {
-    async function pullData() {
-      const [health, gotv, election, morning, volunteers] = await Promise.all([
-        fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-        fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-        fetch(`/api/election-night/live?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-        fetch(`/api/briefing/morning?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-        fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-      ]);
-
-      const volunteerRows = (volunteers?.leaderboard ?? volunteers?.data ?? []) as VolunteerRow[];
-      const topVolunteer = volunteerRows[0];
-      const next: DataState = {
-        healthScore: health?.healthScore ?? FALLBACK_DATA.healthScore,
-        grade: health?.grade ?? FALLBACK_DATA.grade,
-        gap: gotv?.gap ?? election?.gap ?? FALLBACK_DATA.gap,
-        supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? FALLBACK_DATA.supportersVoted,
-        confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? FALLBACK_DATA.confirmedSupporters,
-        winProbability: election?.winProbability ?? FALLBACK_DATA.winProbability,
-        supporterTurnout: gotv?.percentComplete ?? election?.supporterTurnout ?? FALLBACK_DATA.supporterTurnout,
-        doorsWoWChange: morning?.trends?.doorsWoWChange ?? FALLBACK_DATA.doorsWoWChange,
-        volunteerTopPerformer: topVolunteer?.name ?? FALLBACK_DATA.volunteerTopPerformer,
-        volunteerTopScore: topVolunteer?.doorsTotal ?? FALLBACK_DATA.volunteerTopScore,
-      };
-
-      const hitMilestone = MILESTONES.find(
-        (m) => previousSupporters.current < m && next.supportersVoted >= m,
-      );
-      if (hitMilestone) {
-        setLatestMilestone(hitMilestone);
-        setCelebrating(true);
-        window.setTimeout(() => setCelebrating(false), 1200);
-      }
-      previousSupporters.current = next.supportersVoted;
-
-      setData(next);
-      setWidgetData({
-        leaderboard: volunteerRows.slice(0, 5),
-        priorities: (morning?.priorities ?? []).slice(0, 3),
-        upcomingEvents: (morning?.upcomingEvents ?? []).slice(0, 3),
-        overdueTasks: Number(morning?.overdueTasks ?? 0),
-        doorsThisWeek: Number(morning?.trends?.doorsThisWeek ?? 0),
-        doorsLastWeek: Number(morning?.trends?.doorsLastWeek ?? 0),
-        p1Count: Number(gotv?.p1Count ?? 0),
-        p2Count: Number(gotv?.p2Count ?? 0),
-        p3Count: Number(gotv?.p3Count ?? 0),
-        p4Count: Number(gotv?.p4Count ?? 0),
-      });
-      const channel = new BroadcastChannel(CHANNEL);
-      channel.postMessage({ type: "live:update", campaignId, payload: next });
-      channel.close();
-    }
-
-    pullData();
-    const timer = setInterval(pullData, 10000);
-    return () => clearInterval(timer);
-  }, [campaignId]);
-
-  useEffect(() => {
-    if (!layout) return;
-    const timer = setTimeout(async () => {
-      await fetch(`/api/dashboard/layout?campaignId=${campaignId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, layout }),
-      });
-      const channel = new BroadcastChannel(CHANNEL);
-      channel.postMessage({ type: "layout:update", campaignId, layout });
-      channel.close();
-    }, 220);
-    return () => clearTimeout(timer);
-  }, [layout, campaignId]);
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || !layout || active.id === over.id) return;
-    const from = layout.widgets.findIndex((w) => w.id === active.id);
-    const to = layout.widgets.findIndex((w) => w.id === over.id);
-    if (from < 0 || to < 0) return;
-    setLayout((current) => current ? { ...current, widgets: arrayMove(current.widgets, from, to) } : current);
-  }
-
-  function setWidgetWidth(id: string, delta: number) {
-    setLayout((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        widgets: current.widgets.map((w) =>
-          w.id === id ? { ...w, w: Math.max(2, Math.min(12, w.w + delta)) } : w,
-        ),
-      };
-    });
-  }
-
-  function popOutWidget(id: string) {
-    const url = `/widgets/${encodeURIComponent(id)}?campaignId=${encodeURIComponent(campaignId)}`;
-    window.open(url, id, "width=860,height=640,resizable=yes");
-    const channel = new BroadcastChannel(CHANNEL);
-    channel.postMessage({ type: "init", campaignId, state: data, layout });
-    channel.close();
-    setLayout((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        widgets: current.widgets.map((w) =>
-          w.id === id ? { ...w, poppedOut: true } : w,
-        ),
-      };
-    });
-  }
-
-  const orderedWidgets = useMemo(() => layout?.widgets.filter((w) => w.visible) ?? [], [layout]);
-  const displayWidgets = useMemo(() => {
-    if (!popoutWidgetId) return orderedWidgets;
-    return orderedWidgets.filter((w) => w.id === popoutWidgetId);
-  }, [orderedWidgets, popoutWidgetId]);
-
-  if (!layout) {
-    return (
-      <div className="space-y-3">
-        <Skeleton height={76} />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Skeleton height={92} />
-          <Skeleton height={92} />
-          <Skeleton height={92} />
-          <Skeleton height={92} />
-        </div>
-        <Skeleton height={320} />
-      </div>
-    );
-  }
-
-  if (displayWidgets.length === 0) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
-          <Sparkles className="mx-auto h-10 w-10 text-slate-400" />
-        </motion.div>
-        <h2 className="mt-3 text-xl font-black text-slate-900">Your dashboard is empty</h2>
-        <p className="mt-1 text-sm text-slate-500">Bring widgets back and shape this board for your campaign style.</p>
-        <motion.button
-          whileHover={{ scale: 1.02, y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          type="button"
-          onClick={() => setLayout((current) => current ? { ...current, widgets: current.widgets.map((w) => ({ ...w, visible: true })) } : current)}
-          className="mt-4 rounded-md border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700"
-        >
-          Restore Widgets
-        </motion.button>
-        <p className="mt-2 text-xs text-slate-400">Ask Adoni for a layout suggestion.</p>
-      </div>
-    );
-  }
+  const isDark = mode === "war-room" || mode === "election-night";
 
   return (
-    <div className={projectionDark ? "space-y-4 bg-slate-950 p-3 text-slate-100" : "space-y-4"}>
-      {!isPopout && (
-        <div className={projectionDark ? "rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-sm" : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h1 className={projectionDark ? "text-2xl font-black text-white" : "text-2xl font-black text-slate-900"}>{campaignName} Dashboard Studio</h1>
-              <p className={projectionDark ? "text-sm text-slate-300" : "text-sm text-slate-500"}>Drag, resize, fullscreen, pop-out, and project across multiple screens.</p>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              type="button"
-              onClick={() => setProjectionDark((v) => !v)}
-              className={projectionDark ? "rounded-md border border-cyan-300/40 bg-cyan-400/15 px-3 py-2 text-xs font-bold text-cyan-100" : "rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700"}
-            >
-              {projectionDark ? "Projection Dark: ON" : "Projection Dark: OFF"}
-            </motion.button>
+    <div
+      className={isDark ? "min-h-screen rounded-xl p-4" : "space-y-4"}
+      style={isDark ? { background: mode === "war-room" ? WAR_BG : "#0D1117", color: "#F0F6FC" } : undefined}
+    >
+      {/* Header & Mode Tabs */}
+      <div className={isDark
+        ? "rounded-xl border border-slate-700 bg-white/5 p-4"
+        : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      }>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className={isDark ? "text-2xl font-black text-white" : "text-2xl font-black text-slate-900"}>
+              {campaignName} Dashboard
+            </h1>
+            <p className={isDark ? "text-sm text-slate-400" : "text-sm text-slate-500"}>
+              {daysUntilElection()} days to election day
+            </p>
           </div>
+          {/* Mobile dropdown */}
+          <select
+            value={mode}
+            onChange={(e) => switchMode(e.target.value as DashboardMode)}
+            className="block rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:hidden"
+          >
+            {MODES.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
         </div>
-      )}
+        {/* Desktop tabs */}
+        <div className="mt-3 hidden gap-1 overflow-x-auto sm:flex">
+          {MODES.map((m) => {
+            const Icon = m.icon;
+            const active = mode === m.id;
+            return (
+              <motion.button
+                key={m.id}
+                type="button"
+                onClick={() => switchMode(m.id)}
+                whileHover={{ scale: 1.03, y: -1 }}
+                whileTap={{ scale: 0.97 }}
+                transition={springTap}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                  active
+                    ? isDark
+                      ? "bg-white/10 text-white"
+                      : "text-white"
+                    : isDark
+                      ? "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+                style={active && !isDark ? { backgroundColor: NAVY } : undefined}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {m.label}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* Loading skeleton */}
+      {loading ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => <Shimmer key={i} height={100} dark={isDark} />)}
+          </div>
+          <Shimmer height={300} dark={isDark} />
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={springEnter}
+          >
+            {mode === "overview" && <OverviewMode data={data} dark={false} />}
+            {mode === "field-ops" && <FieldOpsMode data={data} />}
+            {mode === "finance" && <FinanceMode data={data} />}
+            {mode === "gotv" && <GOTVMode data={data} />}
+            {mode === "war-room" && <WarRoomMode data={data} />}
+            {mode === "election-night" && <ElectionNightMode data={data} />}
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MODE 1: OVERVIEW
+   ════════════════════════════════════════════════════════ */
+function OverviewMode({ data, dark }: { data: DashboardData; dark: boolean }) {
+  const days = daysUntilElection();
+  const greeting = getGreeting();
+
+  return (
+    <div className="space-y-4">
+      {/* Greeting */}
       <motion.div
-        animate={celebrating ? { y: [0, -12, -8, -10, 0] } : { y: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className={projectionDark ? "grid grid-cols-2 gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-4" : "grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-4"}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={springEnter}
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
       >
-        <MomentumBox title="The Gap" value={data.gap} dark={projectionDark} />
-        <MomentumBox title="Supporters Voted" value={data.supportersVoted} dark={projectionDark} />
-        <MomentumBox title="Turnout" value={data.supporterTurnout} dark={projectionDark} suffix="%" />
-        <MomentumBox title="Win Probability" value={data.winProbability} dark={projectionDark} suffix="%" />
+        <p className="text-lg font-bold text-slate-900">{greeting}</p>
+        <p className="mt-1 text-sm text-slate-500">
+          <span className="font-black text-[#0A2342]">{days}</span> days until Election Day — October 26, 2026
+        </p>
       </motion.div>
 
-      {latestMilestone && celebrating && (
-        <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
-          Milestone hit: {latestMilestone.toLocaleString()} supporters voted.
-        </div>
-      )}
+      {/* The Gap — hero */}
+      <GapWidget value={data.gap} supportersVoted={data.supportersVoted} confirmed={data.confirmedSupporters} />
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={displayWidgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-12 gap-3">
-            {displayWidgets.map((widget) => (
-              <SortableWidget
-                key={widget.id}
-                widget={widget}
-                fullScreenWidget={fullScreenWidget}
-                onFullScreen={(id) => setFullScreenWidget((current) => (current === id ? null : id))}
-                onPopOut={popOutWidget}
-                onResize={setWidgetWidth}
-                dark={projectionDark}
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard label="Supporters" value={data.confirmedSupporters} icon={Users} color={GREEN} />
+        <StatCard label="Doors Today" value={data.doorsToday} icon={MapPin} color={NAVY} />
+        <StatCard label="Volunteers Active" value={data.volunteersActive} icon={Zap} color={AMBER} />
+        <StatCard label="Sign Requests" value={data.signRequestsPending} icon={Activity} color={RED} />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Recent Activity</h3>
+        <div className="space-y-2">
+          {data.recentActivity.length === 0 ? (
+            <EmptyState text="No recent activity yet" />
+          ) : (
+            data.recentActivity.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...springEnter, delay: i * 0.05 }}
+                className="flex items-start gap-3 rounded-lg bg-slate-50 px-3 py-2"
               >
-                <WidgetBody
-                  id={widget.id}
-                  campaignId={campaignId}
-                  data={data}
-                  widgetData={widgetData}
-                  fullscreen={fullScreenWidget === widget.id}
-                />
-              </SortableWidget>
+                <ActivityIcon type={item.type} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-800">{item.text}</p>
+                  <p className="text-[11px] text-slate-400">{item.time}</p>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MODE 2: FIELD OPS
+   ════════════════════════════════════════════════════════ */
+function FieldOpsMode({ data }: { data: DashboardData }) {
+  return (
+    <div className="space-y-4">
+      {/* Canvasser Summary */}
+      <Card title="Canvasser Activity Summary">
+        {data.canvassersSummary.length === 0 ? (
+          <EmptyState text="No canvasser activity yet" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-slate-500">
+                  <th className="py-2 pr-4 font-semibold">Canvasser</th>
+                  <th className="py-2 pr-4 font-semibold">Doors</th>
+                  <th className="py-2 pr-4 font-semibold">IDs</th>
+                  <th className="py-2 font-semibold">Commits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.canvassersSummary.map((row, i) => (
+                  <motion.tr
+                    key={row.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ ...springEnter, delay: i * 0.05 }}
+                    className="border-b border-slate-50"
+                  >
+                    <td className="py-2 pr-4 font-bold text-slate-800">{row.name}</td>
+                    <td className="py-2 pr-4 font-semibold text-slate-600">{row.doors}</td>
+                    <td className="py-2 pr-4 font-semibold text-slate-600">{row.ids}</td>
+                    <td className="py-2 font-semibold" style={{ color: GREEN }}>{row.commits}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Turf Completion */}
+      <Card title="Turf Completion">
+        {data.turfCompletion.length === 0 ? (
+          <EmptyState text="No turf data yet" />
+        ) : (
+          <div className="space-y-3">
+            {data.turfCompletion.map((turf, i) => (
+              <motion.div
+                key={turf.name}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...springEnter, delay: i * 0.04 }}
+              >
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700">{turf.name}</span>
+                  <span className="font-bold" style={{ color: turf.percent >= 80 ? GREEN : turf.percent >= 50 ? AMBER : RED }}>
+                    {turf.percent}%
+                  </span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: turf.percent >= 80 ? GREEN : turf.percent >= 50 ? AMBER : RED }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${turf.percent}%` }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20, delay: i * 0.05 }}
+                  />
+                </div>
+              </motion.div>
             ))}
           </div>
-        </SortableContext>
-      </DndContext>
-
-      <AnimatePresence>
-        {fullScreenWidget && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] overflow-auto bg-slate-950 p-6"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-black text-white">Widget Full Screen: {fullScreenWidget}</h2>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                type="button"
-                onClick={() => setFullScreenWidget(null)}
-                className="rounded-md border border-slate-500 px-3 py-1.5 text-xs font-semibold text-slate-100"
-              >
-                Exit Full Screen
-              </motion.button>
-            </div>
-            <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-              <WidgetBody id={fullScreenWidget} campaignId={campaignId} data={data} widgetData={widgetData} fullscreen />
-            </div>
-          </motion.div>
         )}
-      </AnimatePresence>
-    </div>
-  );
-}
+      </Card>
 
-function SortableWidget({
-  widget,
-  children,
-  onResize,
-  onPopOut,
-  onFullScreen,
-  fullScreenWidget,
-  dark,
-}: {
-  widget: WidgetLayout;
-  children: React.ReactNode;
-  onResize: (id: string, delta: number) => void;
-  onPopOut: (id: string) => void;
-  onFullScreen: (id: string) => void;
-  fullScreenWidget: string | null;
-  dark: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: widget.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    gridColumn: `span ${Math.max(2, Math.min(12, widget.w))}`,
-  } as React.CSSProperties;
+      {/* Walk List Progress */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card title="Walk List Progress">
+          {data.walkListProgress.length === 0 ? (
+            <EmptyState text="No walk lists assigned yet" />
+          ) : (
+            <div className="space-y-3">
+              {data.walkListProgress.map((row) => {
+                const pct = Math.round((row.completed / Math.max(1, row.assigned)) * 100);
+                return (
+                  <div key={row.volunteer}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800">{row.volunteer}</span>
+                      <span className="text-slate-500">{row.completed}/{row.assigned}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: NAVY }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
 
-  function beginResize(event: React.MouseEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startW = widget.w;
-
-    function onMove(moveEvent: MouseEvent) {
-      const deltaPx = moveEvent.clientX - startX;
-      const nextW = Math.max(2, Math.min(12, Math.round(startW + deltaPx / 120)));
-      onResize(widget.id, nextW - widget.w);
-    }
-
-    function onUp() {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    }
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }
-
-  return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      layout
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18 }}
-      className={dark ? "relative rounded-xl border border-slate-700 bg-slate-900 shadow-sm" : "relative rounded-xl border border-slate-200 bg-white shadow-sm"}
-    >
-      <header className={dark ? "flex items-center justify-between border-b border-slate-700 px-2 py-1.5" : "flex items-center justify-between border-b border-slate-100 px-2 py-1.5"}>
-        <div className={dark ? "flex items-center gap-1 text-xs font-semibold text-slate-300" : "flex items-center gap-1 text-xs font-semibold text-slate-600"}>
-          <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} {...attributes} {...listeners}>
-            <GripVertical className="h-3.5 w-3.5" />
-          </motion.button>
-          {widget.id}
-        </div>
-        <div className="flex items-center gap-1">
-          <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onResize(widget.id, -1)}><Minimize2 className="h-3.5 w-3.5" /></motion.button>
-          <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onResize(widget.id, +1)}><Maximize2 className="h-3.5 w-3.5" /></motion.button>
-          <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onPopOut(widget.id)}><MonitorUp className="h-3.5 w-3.5" /></motion.button>
-          <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onFullScreen(widget.id)}>
-            {fullScreenWidget === widget.id ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
-          </motion.button>
-        </div>
-      </header>
-      <div className="p-3">{children}</div>
-      <div role="button" aria-label="Resize widget" onMouseDown={beginResize} className="absolute bottom-1 right-1 h-3.5 w-3.5 cursor-ew-resize rounded-sm border border-slate-300 bg-slate-100" />
-    </motion.div>
-  );
-}
-
-function WidgetBody({
-  id,
-  campaignId,
-  data,
-  widgetData,
-  fullscreen,
-}: {
-  id: string;
-  campaignId: string;
-  data: DataState;
-  widgetData: WidgetDataState;
-  fullscreen?: boolean;
-}) {
-  if (id === "map") return <LiveInsightMap campaignId={campaignId} />;
-
-  if (id === "the-gap") {
-    const valueColor = data.gap > 500 ? "#E24B4A" : data.gap >= 100 ? "#EF9F27" : "#1D9E75";
-    return (
-      <div className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: data.gap === 0 ? "#1D9E75" : BRAND_NAVY }}>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-200">The Gap</p>
-        <motion.div
-          key={data.gap}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          className="mt-2"
-        >
-          <AnimatedNumber
-            value={data.gap}
-            className={fullscreen ? "text-[200px] font-black leading-none" : "text-[72px] font-black leading-none"}
-            format={(v) => v.toLocaleString()}
-          />
-        </motion.div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20">
-          <motion.div
-            className="h-full"
-            style={{ backgroundColor: valueColor }}
-            initial={false}
-            animate={{ width: `${Math.max(0, Math.min(100, (data.supportersVoted / Math.max(1, data.confirmedSupporters)) * 100))}%` }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
-          />
-        </div>
-        {data.gap === 0 && <ConfettiInline />}
-      </div>
-    );
-  }
-
-  if (id === "supporters" || id === "supporters-voted") {
-    return (
-      <div className="rounded-lg bg-slate-50 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supporters Voted</p>
-        <AnimatedNumber value={data.supportersVoted} className="text-4xl font-black text-slate-900" />
-      </div>
-    );
-  }
-
-  if (id === "health-score") {
-    return (
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Health Score</p>
-        <AnimatedNumber value={data.healthScore} className="text-4xl font-black text-slate-900" />
-        <p className="text-sm font-semibold text-slate-600">Grade {data.grade}</p>
-      </div>
-    );
-  }
-
-  if (id === "quick-actions") {
-    return (
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: "Call P1", href: "/gotv" },
-          { label: "Smart Plan", href: `/api/canvassing/smart-plan?campaignId=${campaignId}&volunteers=4` },
-          { label: "Election Night", href: "/election-night" },
-          { label: "Briefing", href: "/briefing" },
-        ].map((btn) => (
-          <motion.a
-            key={btn.label}
-            href={btn.href}
-            whileHover={{ scale: 1.02, y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-700"
-          >
-            {btn.label}
-          </motion.a>
-        ))}
-      </div>
-    );
-  }
-
-  if (id === "win-probability") {
-    return (
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Win Probability</p>
-        <AnimatedNumber value={data.winProbability} className="text-4xl font-black text-slate-900" format={(v) => `${v}%`} />
-      </div>
-    );
-  }
-
-  if (id === "support-rate") {
-    return (
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter Turnout</p>
-        <AnimatedNumber value={data.supporterTurnout} className="text-4xl font-black text-slate-900" format={(v) => `${v}%`} />
-      </div>
-    );
-  }
-
-  if (id === "canvassing-pace") {
-    const weekGoal = 250;
-    const lastWeekGoal = 250;
-    const weekPct = Math.max(0, Math.min(100, Math.round((widgetData.doorsThisWeek / Math.max(1, weekGoal)) * 100)));
-    const lastWeekPct = Math.max(0, Math.min(100, Math.round((widgetData.doorsLastWeek / Math.max(1, lastWeekGoal)) * 100)));
-
-    if (widgetData.doorsThisWeek <= 0 && widgetData.doorsLastWeek <= 0) {
-      return <WidgetEmptyState icon={BarChart3} title="No canvassing pace yet" actionLabel="Open Canvassing" actionHref="/canvassing" />;
-    }
-
-    return (
-      <div className="space-y-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Canvassing Pace</p>
-          <p className="text-sm font-semibold text-slate-700">Weekly progress toward door targets</p>
-        </div>
-        <ProgressRow label="This Week" current={widgetData.doorsThisWeek} goal={weekGoal} percent={weekPct} tone="emerald" />
-        <ProgressRow label="Last Week" current={widgetData.doorsLastWeek} goal={lastWeekGoal} percent={lastWeekPct} tone="sky" />
-      </div>
-    );
-  }
-
-  if (id === "leaderboard") {
-    if (widgetData.leaderboard.length === 0) {
-      return <WidgetEmptyState icon={Trophy} title="No volunteer leaderboard yet" actionLabel="Invite Volunteers" actionHref="/volunteers" />;
-    }
-
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Top 5 Volunteers</p>
-        {widgetData.leaderboard.map((row, index) => (
-          <div key={row.userId} className="grid grid-cols-[18px_1fr_auto_auto] items-center gap-2 rounded-md bg-slate-50 px-2 py-1.5 text-xs">
-            <span className="font-black text-slate-400">{index + 1}</span>
-            <span className="truncate font-semibold text-slate-800">{row.name}</span>
-            <span className="font-semibold text-slate-600">{row.doorsTotal} doors</span>
-            <span className="font-semibold text-emerald-700">{row.conversionRate}%</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (id === "support-funnel") {
-    const funnelRows = [
-      { label: "P1 Strong", value: widgetData.p1Count, tone: "bg-emerald-500" },
-      { label: "P2 Leaning", value: widgetData.p2Count, tone: "bg-sky-500" },
-      { label: "P3 Undecided", value: widgetData.p3Count, tone: "bg-amber-500" },
-      { label: "P4 Against", value: widgetData.p4Count, tone: "bg-rose-500" },
-    ];
-    const total = funnelRows.reduce((sum, row) => sum + row.value, 0);
-
-    if (total === 0) {
-      return <WidgetEmptyState icon={Filter} title="No support funnel data yet" actionLabel="Open GOTV" actionHref="/gotv" />;
-    }
-
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter Count Breakdown</p>
-        {funnelRows.map((row) => {
-          const widthPct = Math.max(6, Math.round((row.value / Math.max(1, total)) * 100));
-          return (
-            <div key={row.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700">{row.label}</span>
-                <span className="font-semibold text-slate-500">{row.value.toLocaleString()}</span>
+        {/* Call List Stats */}
+        <Card title="Call List Stats">
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <AnimatedNumber value={data.callListStats.total} className="text-2xl font-black text-slate-900" />
+                <p className="text-[11px] font-semibold text-slate-500">Total</p>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className={`h-full ${row.tone}`} style={{ width: `${widthPct}%` }} />
+              <div>
+                <AnimatedNumber value={data.callListStats.completed} className="text-2xl font-black" style={{ color: GREEN }} />
+                <p className="text-[11px] font-semibold text-slate-500">Completed</p>
+              </div>
+              <div>
+                <AnimatedNumber value={data.callListStats.reached} className="text-2xl font-black" style={{ color: NAVY }} />
+                <p className="text-[11px] font-semibold text-slate-500">Reached</p>
               </div>
             </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (id === "priorities") {
-    if (widgetData.priorities.length === 0) {
-      return <WidgetEmptyState icon={ListTodo} title="No priorities for today" actionLabel="Open Briefing" actionHref="/briefing" />;
-    }
-
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Today's Top 3 Actions</p>
-        {widgetData.priorities.slice(0, 3).map((item, idx) => (
-          <a key={`${item.action}-${idx}`} href={item.link || "/briefing"} className="block rounded-md border border-slate-200 bg-slate-50 px-2 py-2">
-            <p className="text-xs font-black text-slate-900">{idx + 1}. {item.action}</p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-600">{item.why}</p>
-          </a>
-        ))}
-      </div>
-    );
-  }
-
-  if (id === "upcoming-events") {
-    if (widgetData.upcomingEvents.length === 0) {
-      return <WidgetEmptyState icon={CalendarClock} title="No upcoming events" actionLabel="Create Event" actionHref="/events" />;
-    }
-
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Next 3 Events</p>
-        {widgetData.upcomingEvents.slice(0, 3).map((event) => (
-          <div key={event.id} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2">
-            <p className="truncate text-xs font-black text-slate-900">{event.name}</p>
-            <p className="text-[11px] text-slate-600">{new Date(event.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</p>
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: GREEN }}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.round((data.callListStats.completed / Math.max(1, data.callListStats.total)) * 100)}%` }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              />
+            </div>
           </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MODE 3: FINANCE
+   ════════════════════════════════════════════════════════ */
+function FinanceMode({ data }: { data: DashboardData }) {
+  const spendPct = Math.round((data.currentSpending / Math.max(1, data.spendingLimit)) * 100);
+  const overBudget = spendPct >= 80;
+
+  return (
+    <div className="space-y-4">
+      {/* Donation Total */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={springEnter}
+        className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm"
+      >
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Total Raised</p>
+        <AnimatedNumber
+          value={data.donationTotal}
+          className="mt-1 text-5xl font-black md:text-6xl"
+          style={{ color: GREEN }}
+          format={(v) => `$${v.toLocaleString()}`}
+        />
+      </motion.div>
+
+      {/* Donation Chart */}
+      <Card title="Donation Trend (Weekly)">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.donationChart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748B" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748B" }} tickFormatter={(v: number) => `$${v}`} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
+                formatter={(value: number) => [`$${value.toLocaleString()}`, "Amount"]}
+              />
+              <Bar dataKey="amount" fill={GREEN} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Top Donors */}
+        <Card title="Top Donors">
+          {data.topDonors.length === 0 ? (
+            <EmptyState text="No donations yet" />
+          ) : (
+            <div className="space-y-2">
+              {data.topDonors.map((donor, i) => (
+                <motion.div
+                  key={donor.name}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...springEnter, delay: i * 0.05 }}
+                  className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: NAVY }}>
+                      {i + 1}
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">{donor.name}</span>
+                  </div>
+                  <span className="text-xs font-black" style={{ color: GREEN }}>${donor.total.toLocaleString()}</span>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Recent Donations */}
+        <Card title="Recent Donations">
+          {data.recentDonations.length === 0 ? (
+            <EmptyState text="No recent donations" />
+          ) : (
+            <div className="space-y-2">
+              {data.recentDonations.map((d, i) => (
+                <motion.div
+                  key={d.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...springEnter, delay: i * 0.05 }}
+                  className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">{d.name}</p>
+                    <p className="text-[11px] text-slate-400">{d.time}</p>
+                  </div>
+                  <span className="text-sm font-black" style={{ color: GREEN }}>${d.amount}</span>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Spending vs Limit */}
+      <Card title="Spending vs Limit">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-600">
+              ${data.currentSpending.toLocaleString()} of ${data.spendingLimit.toLocaleString()}
+            </span>
+            <span className="font-black" style={{ color: overBudget ? RED : GREEN }}>{spendPct}%</span>
+          </div>
+          <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: overBudget ? RED : GREEN }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, spendPct)}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            />
+          </div>
+          {overBudget && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs font-bold"
+              style={{ color: RED }}
+            >
+              Warning: Approaching spending limit
+            </motion.p>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MODE 4: GOTV
+   ════════════════════════════════════════════════════════ */
+function GOTVMode({ data }: { data: DashboardData }) {
+  const days = daysUntilElection();
+  const votedPct = Math.round((data.totalVoted / Math.max(1, data.totalSupporters)) * 100);
+  const pieData = [
+    { name: "P1 Strong", value: data.p1Count, color: GREEN },
+    { name: "P2 Leaning", value: data.p2Count, color: "#3B82F6" },
+    { name: "P3 Undecided", value: data.p3Count, color: AMBER },
+    { name: "P4 Against", value: data.p4Count, color: RED },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Election Countdown */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={springEnter}
+        className="rounded-xl p-6 text-center text-white"
+        style={{ background: NAVY }}
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-300">Election Day Countdown</p>
+        <AnimatedNumber value={days} className="mt-1 text-6xl font-black md:text-7xl" />
+        <p className="mt-1 text-sm font-semibold text-slate-300">days remaining</p>
+      </motion.div>
+
+      {/* Giant Voted Counter + Progress */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-center text-xs font-bold uppercase tracking-wide text-slate-500">Supporters Voted</p>
+        <div className="mt-2 text-center">
+          <AnimatedNumber
+            value={data.totalVoted}
+            className="text-5xl font-black md:text-6xl"
+            style={{ color: GREEN }}
+          />
+          <span className="ml-2 text-xl font-semibold text-slate-400">/ {data.totalSupporters.toLocaleString()}</span>
+        </div>
+        <div className="mx-auto mt-4 max-w-md">
+          <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: GREEN }}
+              initial={{ width: 0 }}
+              animate={{ width: `${votedPct}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            />
+          </div>
+          <p className="mt-1 text-center text-xs font-bold text-slate-500">{votedPct}% turned out</p>
+        </div>
+      </div>
+
+      {/* P1-P4 Breakdown */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {pieData.map((seg) => (
+          <motion.div
+            key={seg.name}
+            whileHover={{ scale: 1.03, y: -2 }}
+            transition={springTap}
+            className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm"
+          >
+            <div className="mx-auto mb-2 h-3 w-3 rounded-full" style={{ backgroundColor: seg.color }} />
+            <AnimatedNumber value={seg.value} className="text-2xl font-black text-slate-900" />
+            <p className="mt-1 text-[11px] font-semibold text-slate-500">{seg.name}</p>
+          </motion.div>
         ))}
       </div>
-    );
-  }
 
-  if (id === "overdue-tasks") {
-    if (widgetData.overdueTasks <= 0) {
-      return <WidgetEmptyState icon={AlertTriangle} title="No overdue tasks" actionLabel="Open Tasks" actionHref="/tasks" />;
-    }
+      {/* Pie Chart */}
+      <Card title="Support Breakdown">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                innerRadius={50}
+                paddingAngle={2}
+              >
+                {pieData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
+                formatter={(value: number) => [value.toLocaleString(), ""]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
-    return (
-      <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Overdue Tasks</p>
-        <AnimatedNumber value={widgetData.overdueTasks} className="text-4xl font-black text-amber-800" />
-        <a href="/tasks" className="inline-flex rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-800">Review past due tasks</a>
-      </div>
-    );
-  }
-
-  return <WidgetEmptyState icon={Sparkles} title={`${id} has no content yet`} actionLabel="Open Briefing" actionHref="/briefing" />;
-}
-
-function ProgressRow({
-  label,
-  current,
-  goal,
-  percent,
-  tone,
-}: {
-  label: string;
-  current: number;
-  goal: number;
-  percent: number;
-  tone: "emerald" | "sky";
-}) {
-  const barTone = tone === "emerald" ? "bg-emerald-500" : "bg-sky-500";
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-slate-700">{label}</span>
-        <span className="font-semibold text-slate-600">{current.toLocaleString()} / {goal.toLocaleString()}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full ${barTone}`} style={{ width: `${percent}%` }} />
-      </div>
+      {/* Priority Call List */}
+      <Card title="Priority Call List">
+        {data.priorityCallList.length === 0 ? (
+          <EmptyState text="No priority calls needed" />
+        ) : (
+          <div className="space-y-2">
+            {data.priorityCallList.map((call, i) => (
+              <motion.div
+                key={`${call.name}-${i}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...springEnter, delay: i * 0.04 }}
+                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[10px] font-black text-white"
+                    style={{ backgroundColor: call.priority === "P1" ? GREEN : "#3B82F6" }}
+                  >
+                    {call.priority}
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">{call.name}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Phone className="h-3 w-3" />
+                  {call.phone}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
-function WidgetEmptyState({
-  icon: Icon,
-  title,
-  actionLabel,
-  actionHref,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  actionLabel: string;
-  actionHref: string;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
-      <Icon className="mx-auto h-5 w-5 text-slate-400" />
-      <h3 className="mt-1 text-sm font-bold text-slate-800">{title}</h3>
-      <a href={actionHref} className="mt-2 inline-flex rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
-        {actionLabel}
-      </a>
-    </div>
-  );
-}
-
-function MomentumBox({ title, value, dark, suffix }: { title: string; value: number; dark: boolean; suffix?: string }) {
-  const boxRef = useRef<HTMLDivElement | null>(null);
-  const prev = useRef(value);
+/* ════════════════════════════════════════════════════════
+   MODE 5: WAR ROOM (Dark #0A1628)
+   ════════════════════════════════════════════════════════ */
+function WarRoomMode({ data }: { data: DashboardData }) {
+  const [ticker, setTicker] = useState<ActivityItem[]>(data.recentActivity);
 
   useEffect(() => {
-    const hit = MILESTONES.some((m) => prev.current < m && value >= m);
-    if (hit && boxRef.current) {
-      const controls = animate(boxRef.current, { y: [0, -12, -8, -10, 0] }, { duration: 0.7, ease: "easeOut" });
-      return () => controls.stop();
-    }
-    prev.current = value;
-    return undefined;
-  }, [value]);
+    setTicker(data.recentActivity);
+  }, [data.recentActivity]);
 
   return (
+    <div className="space-y-4">
+      {/* Critical numbers row */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <WarCard label="The Gap" value={data.gap} color={data.gap > 500 ? RED : data.gap >= 100 ? AMBER : GREEN} />
+        <WarCard label="Voted" value={data.totalVoted} color={GREEN} />
+        <WarCard label="Volunteers Active" value={data.volunteersActive} color={AMBER} />
+        <WarCard label="Doors Today" value={data.doorsToday} color="#3B82F6" />
+      </div>
+
+      {/* Giant gap display */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={springEnter}
+        className="rounded-xl border border-white/10 p-8 text-center"
+        style={{ background: "linear-gradient(135deg, #0A2342 0%, #0A1628 100%)" }}
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">THE GAP</p>
+        <AnimatedNumber
+          value={data.gap}
+          className="text-[72px] font-black leading-none md:text-[96px]"
+          style={{ color: data.gap > 500 ? RED : data.gap >= 100 ? AMBER : GREEN }}
+        />
+        <div className="mx-auto mt-4 max-w-sm">
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: GREEN }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, Math.round((data.totalVoted / Math.max(1, data.totalSupporters)) * 100))}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* All numbers at once */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <WarMini label="P1" value={data.p1Count} />
+        <WarMini label="P2" value={data.p2Count} />
+        <WarMini label="P3" value={data.p3Count} />
+        <WarMini label="P4" value={data.p4Count} />
+        <WarMini label="Signs Pending" value={data.signRequestsPending} />
+        <WarMini label="Days Left" value={daysUntilElection()} />
+      </div>
+
+      {/* Activity ticker */}
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Live Activity</p>
+        </div>
+        <div className="space-y-1">
+          {ticker.map((item, i) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ ...springEnter, delay: i * 0.05 }}
+              className="flex items-center gap-2 text-xs"
+            >
+              <span className="text-slate-500">{item.time}</span>
+              <span className="text-slate-300">{item.text}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MODE 6: ELECTION NIGHT (Dark CNN-style)
+   ════════════════════════════════════════════════════════ */
+function ElectionNightMode({ data }: { data: DashboardData }) {
+  const total = data.candidateVotes + data.opponentVotes;
+  const candPct = total > 0 ? Math.round((data.candidateVotes / total) * 100) : 0;
+  const oppPct = total > 0 ? 100 - candPct : 0;
+  const leading = data.candidateVotes >= data.opponentVotes;
+
+  return (
+    <div className="space-y-4">
+      {/* Polls reporting */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-400">LIVE</span>
+        </div>
+        <span className="text-sm font-bold text-slate-300">
+          <span className="text-white">{data.pollsReporting}</span> of <span className="text-white">{data.totalPolls}</span> polls reporting
+        </span>
+      </motion.div>
+
+      {/* Main result */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={springEnter}
+        className="overflow-hidden rounded-xl border border-white/10"
+        style={{ background: "linear-gradient(135deg, #0D1117 0%, #161B22 100%)" }}
+      >
+        <div className="p-6">
+          {/* Candidate vs Opponent */}
+          <div className="grid grid-cols-2 gap-8 text-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{data.candidateName}</p>
+              <AnimatedNumber
+                value={data.candidateVotes}
+                className="mt-1 text-4xl font-black md:text-5xl"
+                style={{ color: leading ? GREEN : "#6B7280" }}
+              />
+              <p className="mt-1 text-2xl font-black" style={{ color: leading ? GREEN : "#6B7280" }}>{candPct}%</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{data.opponentName}</p>
+              <AnimatedNumber
+                value={data.opponentVotes}
+                className="mt-1 text-4xl font-black md:text-5xl"
+                style={{ color: !leading ? RED : "#6B7280" }}
+              />
+              <p className="mt-1 text-2xl font-black" style={{ color: !leading ? RED : "#6B7280" }}>{oppPct}%</p>
+            </div>
+          </div>
+
+          {/* Bar comparison */}
+          <div className="mt-6 flex h-8 overflow-hidden rounded-full">
+            <motion.div
+              className="flex items-center justify-center text-xs font-black text-white"
+              style={{ backgroundColor: GREEN }}
+              initial={{ width: "50%" }}
+              animate={{ width: `${candPct}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            >
+              {candPct > 10 && `${candPct}%`}
+            </motion.div>
+            <motion.div
+              className="flex items-center justify-center text-xs font-black text-white"
+              style={{ backgroundColor: RED }}
+              initial={{ width: "50%" }}
+              animate={{ width: `${oppPct}%` }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            >
+              {oppPct > 10 && `${oppPct}%`}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Vote difference */}
+        <div className="border-t border-white/10 bg-white/5 px-6 py-3 text-center">
+          <p className="text-xs text-slate-400">
+            {leading ? data.candidateName : data.opponentName} leads by{" "}
+            <span className="font-black text-white">{Math.abs(data.candidateVotes - data.opponentVotes).toLocaleString()}</span>{" "}
+            votes
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Poll results table */}
+      {data.pollResults.length > 0 && (
+        <Card title="Poll-by-Poll Results" dark>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-slate-400">
+                  <th className="py-2 pr-4 font-semibold">Poll</th>
+                  <th className="py-2 pr-4 font-semibold">{data.candidateName}</th>
+                  <th className="py-2 pr-4 font-semibold">{data.opponentName}</th>
+                  <th className="py-2 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.pollResults.map((poll) => (
+                  <tr key={poll.pollId} className="border-b border-white/5">
+                    <td className="py-2 pr-4 font-bold text-slate-300">{poll.pollId}</td>
+                    <td className="py-2 pr-4 font-semibold" style={{ color: poll.candidate > poll.opponent ? GREEN : "#6B7280" }}>
+                      {poll.candidate}
+                    </td>
+                    <td className="py-2 pr-4 font-semibold" style={{ color: poll.opponent > poll.candidate ? RED : "#6B7280" }}>
+                      {poll.opponent}
+                    </td>
+                    <td className="py-2">
+                      {poll.reporting ? (
+                        <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-[10px] font-bold text-green-400">Reported</span>
+                      ) : (
+                        <span className="rounded bg-slate-500/20 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">Pending</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Election countdown */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+          {daysUntilElection() === 0 ? "ELECTION DAY" : `${daysUntilElection()} DAYS TO GO`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Shared sub-components ─────────────────────────── */
+
+function GapWidget({ value, supportersVoted, confirmed }: { value: number; supportersVoted: number; confirmed: number }) {
+  const valueColor = value > 500 ? RED : value >= 100 ? AMBER : GREEN;
+  return (
     <motion.div
-      ref={boxRef}
-      whileHover={{ scale: 1.02, y: -1 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      className={dark ? "rounded-lg border border-slate-700 bg-slate-800 p-3" : "rounded-lg border border-slate-200 bg-slate-50 p-3"}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={springEnter}
+      className="relative overflow-hidden rounded-xl p-6 text-white"
+      style={{ background: value === 0 ? GREEN : NAVY }}
     >
-      <p className={dark ? "text-[11px] font-semibold uppercase tracking-wide text-slate-300" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{title}</p>
-      <AnimatedNumber value={value} className={dark ? "mt-1 text-3xl font-black text-white" : "mt-1 text-3xl font-black text-slate-900"} format={(v) => `${v.toLocaleString()}${suffix ?? ""}`} />
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-300">The Gap</p>
+      <motion.div
+        key={value}
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+      >
+        <AnimatedNumber
+          value={value}
+          className="text-[72px] font-black leading-none"
+          format={(v) => v.toLocaleString()}
+        />
+      </motion.div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/20">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: valueColor }}
+          initial={false}
+          animate={{ width: `${Math.max(0, Math.min(100, (supportersVoted / Math.max(1, confirmed)) * 100))}%` }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        />
+      </div>
+      <p className="mt-1 text-xs text-slate-300">
+        {supportersVoted.toLocaleString()} voted of {confirmed.toLocaleString()} supporters
+      </p>
     </motion.div>
   );
 }
 
-function Skeleton({ height }: { height: number }) {
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      transition={springTap}
+      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+    >
+      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}15` }}>
+        <Icon className="h-4 w-4" style={{ color }} />
+      </div>
+      <AnimatedNumber value={value} className="text-2xl font-black text-slate-900" />
+      <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{label}</p>
+    </motion.div>
+  );
+}
+
+function Card({ title, children, dark }: { title: string; children: React.ReactNode; dark?: boolean }) {
+  return (
+    <div className={dark
+      ? "rounded-xl border border-white/10 bg-white/5 p-4"
+      : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+    }>
+      <h3 className={dark
+        ? "mb-3 text-sm font-black uppercase tracking-wide text-slate-400"
+        : "mb-3 text-sm font-black uppercase tracking-wide text-slate-500"
+      }>
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function WarCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      transition={springTap}
+      className="rounded-xl border border-white/10 bg-white/5 p-4 text-center"
+    >
+      <AnimatedNumber value={value} className="text-3xl font-black" style={{ color }} />
+      <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+    </motion.div>
+  );
+}
+
+function WarMini({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-center">
+      <AnimatedNumber value={value} className="text-xl font-black text-white" />
+      <p className="mt-0.5 text-[10px] font-semibold text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
+  const map = {
+    door: { icon: MapPin, color: NAVY },
+    call: { icon: Phone, color: GREEN },
+    donation: { icon: DollarSign, color: AMBER },
+    signup: { icon: Users, color: "#3B82F6" },
+  };
+  const { icon: Icon, color } = map[type];
+  return (
+    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${color}15` }}>
+      <Icon className="h-3 w-3" style={{ color }} />
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+      <Eye className="mx-auto h-6 w-6 text-slate-300" />
+      <p className="mt-2 text-xs font-semibold text-slate-400">{text}</p>
+    </div>
+  );
+}
+
+function Shimmer({ height, dark }: { height: number; dark: boolean }) {
   return (
     <div
       style={{ height }}
-      className="w-full rounded-lg bg-[linear-gradient(90deg,#f1f5f9_25%,#e2e8f0_50%,#f1f5f9_75%)] bg-[length:200%_100%] animate-[shimmer_1.5s_linear_infinite]"
+      className={`w-full rounded-xl ${
+        dark
+          ? "bg-[linear-gradient(90deg,rgba(255,255,255,0.03)_25%,rgba(255,255,255,0.06)_50%,rgba(255,255,255,0.03)_75%)]"
+          : "bg-[linear-gradient(90deg,#f1f5f9_25%,#e2e8f0_50%,#f1f5f9_75%)]"
+      } bg-[length:200%_100%] animate-[shimmer_1.5s_linear_infinite]`}
     />
   );
 }
 
-function ConfettiInline() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 14 }).map((_, i) => (
-        <span
-          key={i}
-          className="absolute h-1.5 w-1.5 rounded-full bg-white/80"
-          style={{
-            left: `${(i * 7) % 100}%`,
-            top: "-8px",
-            animation: `confettiDrop ${0.9 + (i % 5) * 0.25}s ease-in forwards`,
-            animationDelay: `${(i % 6) * 0.06}s`,
-          }}
-        />
-      ))}
-      <style jsx>{`
-        @keyframes shimmer {
-          from { background-position: 200% 0; }
-          to { background-position: -200% 0; }
-        }
-        @keyframes confettiDrop {
-          0% { transform: translateY(0) scale(1); opacity: 1; }
-          100% { transform: translateY(140px) scale(0.8); opacity: 0; }
-        }
-      `}</style>
-    </div>
-  );
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
