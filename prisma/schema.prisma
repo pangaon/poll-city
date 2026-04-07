@@ -2515,6 +2515,19 @@ model CampaignDocument {
 // APPROVAL & SENTIMENT (Poll City Live Approval Rating Engine)
 // ─────────────────────────────────────────────────────────────────────────────
 
+model AnonymousCivicActor {
+  id              String   @id @default(cuid())
+  deviceId        String   @unique
+  provinceCode    String?
+  ageRange        String?
+  languagePref    String   @default("en")
+  priorVotingHistory String?
+  createdAt       DateTime @default(now())
+
+  @@index([provinceCode])
+  @@map("anonymous_civic_actors")
+}
+
 // Live approval rating for every elected official.
 // Score calculated from weighted sentiment signals. Range 0-100 (display) and -100..+100 (net).
 model ApprovalRating {
@@ -2526,6 +2539,9 @@ model ApprovalRating {
   positiveCount Int      @default(0)
   negativeCount Int      @default(0)
   neutralCount  Int      @default(0)
+  marginOfError Float    @default(3.5)
+  velocity      Float    @default(0)
+  demographicBreakdown Json?
   updatedAt     DateTime @updatedAt
 
   official Official          @relation(fields: [officialId], references: [id], onDelete: Cascade)
