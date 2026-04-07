@@ -465,6 +465,7 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
   onCreated: () => void;
 }) {
   const MAX_TURF_STOPS = 500;
+  const LARGE_TURF_WARNING = 400;
   const RECOMMENDED_MAX_STOPS = 180;
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState("");
@@ -693,14 +694,40 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
             </div>
           ) : (
             <>
-              {previewContacts.length > RECOMMENDED_MAX_STOPS && (
+              {previewContacts.length > RECOMMENDED_MAX_STOPS && previewContacts.length <= LARGE_TURF_WARNING && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold">Large turf warning</p>
+                      <p className="text-sm font-semibold">Large turf</p>
                       <p className="text-xs mt-0.5">
                         This turf has {previewContacts.length} stops. Recommended max is {RECOMMENDED_MAX_STOPS} for a manageable shift.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {previewContacts.length > LARGE_TURF_WARNING && previewContacts.length <= MAX_TURF_STOPS && (
+                <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-900">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500" />
+                    <div>
+                      <p className="text-sm font-semibold">Very large turf warning</p>
+                      <p className="text-xs mt-0.5">
+                        This turf has {previewContacts.length} stops, exceeding the recommended {LARGE_TURF_WARNING} stop limit. Consider splitting into smaller turfs for better canvasser efficiency. Hard cap is {MAX_TURF_STOPS}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {previewContacts.length > MAX_TURF_STOPS && (
+                <div className="rounded-xl border border-red-400 bg-red-100 px-4 py-3 text-red-900">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
+                    <div>
+                      <p className="text-sm font-semibold">Turf exceeds maximum</p>
+                      <p className="text-xs mt-0.5">
+                        {previewContacts.length} stops exceeds the hard cap of {MAX_TURF_STOPS}. Narrow your filters to reduce the turf size.
                       </p>
                     </div>
                   </div>
