@@ -64,10 +64,8 @@ const COMMUNICATIONS_SECTION: NavSection = {
   label: "Communications",
   icon: Mail,
   items: [
-    { href: "/communications/email", icon: Mail, label: "Email Campaigns" },
-    { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text" },
+    { href: "/communications", icon: Mail, label: "Communications" },
     { href: "/communications/social", icon: Globe, label: "Social Media" },
-    { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox" },
     { href: "/ai-assist", icon: Bot, label: "AI Assistant" },
     { href: "/alerts", icon: Bell, label: "Alerts" },
   ],

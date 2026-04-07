@@ -41,9 +41,7 @@ const MORE_GROUPS = [
   {
     title: "Communications",
     items: [
-      { href: "/communications/inbox", label: "Unified Inbox" },
-      { href: "/communications/email", label: "Email Campaigns" },
-      { href: "/communications/sms", label: "SMS & Text" },
+      { href: "/communications", label: "Communications" },
       { href: "/communications/social", label: "Social Media" },
       { href: "/ai-assist", label: "AI Assistant" },
     ],
