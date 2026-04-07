@@ -49,6 +49,8 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/store",
   "/api/v1",
+  "/api/ticker",
+  "/api/results",
 ];
 
 function isPublicPath(path: string) {

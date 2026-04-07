@@ -3214,3 +3214,74 @@ model FormSubmission {
   @@index([formId, completedAt])
   @@map("form_submissions")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIA SUITE — outlets, ticker, live results, poll subscriptions
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MediaOutlet {
+  id          String      @id @default(cuid())
+  name        String
+  domain      String?
+  apiKey      String      @unique @default(cuid())
+  plan        String      @default("COMMUNITY")
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  tickerItems TickerItem[]
+  liveResults LiveResult[]
+
+  @@map("media_outlets")
+}
+
+model TickerItem {
+  id            String      @id @default(cuid())
+  mediaOutletId String?
+  mediaOutlet   MediaOutlet? @relation(fields: [mediaOutletId], references: [id])
+  text          String
+  url           String?
+  type          String      @default("GENERAL")
+  priority      Int         @default(5)
+  isActive      Boolean     @default(true)
+  expiresAt     DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([mediaOutletId, isActive])
+  @@map("ticker_items")
+}
+
+model LiveResult {
+  id              String      @id @default(cuid())
+  mediaOutletId   String?
+  mediaOutlet     MediaOutlet? @relation(fields: [mediaOutletId], references: [id])
+  province        String
+  municipality    String
+  ward            String?
+  office          String
+  candidateName   String
+  party           String?
+  votes           Int
+  percentReporting Float     @default(0)
+  isLeading       Boolean    @default(false)
+  isCalled        Boolean    @default(false)
+  entryOneUserId  String?
+  entryTwoUserId  String?
+  isVerified      Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([province, municipality])
+  @@index([isVerified])
+  @@map("live_results")
+}
+
+model PollSubscriber {
+  id        String   @id @default(cuid())
+  pollId    String
+  pushToken String?
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  @@index([pollId])
+  @@map("poll_subscribers")
+}
