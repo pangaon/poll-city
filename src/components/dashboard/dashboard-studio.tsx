@@ -33,6 +33,7 @@ type DashboardStudioProps = {
   campaignId: string;
   campaignName: string;
   popoutWidgetId?: string | null;
+  isPopout?: boolean;
 };
 
 type DataState = {
@@ -42,6 +43,10 @@ type DataState = {
   supportersVoted: number;
   confirmedSupporters: number;
   winProbability: number;
+  supporterTurnout: number;
+  doorsWoWChange: number;
+  volunteerTopPerformer: string;
+  volunteerTopScore: number;
 };
 
 const FALLBACK_DATA: DataState = {
@@ -51,6 +56,10 @@ const FALLBACK_DATA: DataState = {
   supportersVoted: 2334,
   confirmedSupporters: 4280,
   winProbability: 58,
+  supporterTurnout: 55,
+  doorsWoWChange: 8,
+  volunteerTopPerformer: "Campaign Team",
+  volunteerTopScore: 73,
 };
 
 function milestone(value: number) {
@@ -61,11 +70,12 @@ function milestone(value: number) {
   return 0;
 }
 
-export default function DashboardStudio({ campaignId, campaignName, popoutWidgetId }: DashboardStudioProps) {
+export default function DashboardStudio({ campaignId, campaignName, popoutWidgetId, isPopout }: DashboardStudioProps) {
   const [layout, setLayout] = useState<DashboardLayout | null>(null);
   const [data, setData] = useState<DataState>(FALLBACK_DATA);
   const [fullScreenWidget, setFullScreenWidget] = useState<string | null>(null);
   const [milestoneValue, setMilestoneValue] = useState(0);
+  const [projectionDark, setProjectionDark] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -91,11 +101,15 @@ export default function DashboardStudio({ campaignId, campaignName, popoutWidget
 
   useEffect(() => {
     async function pullData() {
-      const [health, gotv, election] = await Promise.all([
+      const [health, gotv, election, morning, volunteers] = await Promise.all([
         fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
         fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
         fetch(`/api/election-night/live?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/briefing/morning?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
       ]);
+
+      const topVolunteer = (volunteers?.leaderboard ?? volunteers?.data ?? [])[0];
 
       const next = {
         healthScore: health?.healthScore ?? FALLBACK_DATA.healthScore,
@@ -104,6 +118,10 @@ export default function DashboardStudio({ campaignId, campaignName, popoutWidget
         supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? FALLBACK_DATA.supportersVoted,
         confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? FALLBACK_DATA.confirmedSupporters,
         winProbability: election?.winProbability ?? FALLBACK_DATA.winProbability,
+        supporterTurnout: gotv?.percentComplete ?? election?.supporterTurnout ?? FALLBACK_DATA.supporterTurnout,
+        doorsWoWChange: morning?.trends?.doorsWoWChange ?? FALLBACK_DATA.doorsWoWChange,
+        volunteerTopPerformer: topVolunteer?.name ?? FALLBACK_DATA.volunteerTopPerformer,
+        volunteerTopScore: topVolunteer?.score ?? FALLBACK_DATA.volunteerTopScore,
       };
 
       setData(next);
@@ -173,11 +191,37 @@ export default function DashboardStudio({ campaignId, campaignName, popoutWidget
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-900">{campaignName} Dashboard Studio</h1>
-        <p className="text-sm text-slate-500">Drag, resize, fullscreen, and pop-out widgets for multi-screen war room setup.</p>
-      </div>
+    <div className={projectionDark ? "space-y-4 bg-slate-950 p-3 text-slate-100" : "space-y-4"}>
+      {!isPopout && (
+        <div className={projectionDark ? "rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-sm" : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className={projectionDark ? "text-2xl font-black text-white" : "text-2xl font-black text-slate-900"}>{campaignName} Dashboard Studio</h1>
+              <p className={projectionDark ? "text-sm text-slate-300" : "text-sm text-slate-500"}>Drag, resize, fullscreen, and pop-out widgets for multi-screen war room setup.</p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.96 }}
+              type="button"
+              onClick={() => setProjectionDark((v) => !v)}
+              className={projectionDark ? "rounded-md border border-cyan-300/40 bg-cyan-400/15 px-3 py-2 text-xs font-bold text-cyan-100" : "rounded-md border border-slate-300 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700"}
+            >
+              {projectionDark ? "Projection Dark: ON" : "Projection Dark: OFF"}
+            </motion.button>
+          </div>
+        </div>
+      )}
+
+      <motion.div
+        animate={milestoneValue > 0 ? { y: [0, -8, 0] } : { y: 0 }}
+        transition={{ type: "spring", stiffness: 280, damping: 16 }}
+        className={projectionDark ? "grid grid-cols-2 gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 md:grid-cols-4" : "grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-4"}
+      >
+        <MomentumBox title="The Gap" value={data.gap.toLocaleString()} dark={projectionDark} />
+        <MomentumBox title="Supporters Voted" value={data.supportersVoted.toLocaleString()} dark={projectionDark} />
+        <MomentumBox title="Turnout" value={`${data.supporterTurnout}%`} dark={projectionDark} />
+        <MomentumBox title="Win Probability" value={`${data.winProbability}%`} dark={projectionDark} />
+      </motion.div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={displayWidgets.map((w) => w.id)} strategy={rectSortingStrategy}>
@@ -190,6 +234,7 @@ export default function DashboardStudio({ campaignId, campaignName, popoutWidget
                 onFullScreen={(id) => setFullScreenWidget((current) => current === id ? null : id)}
                 onPopOut={popOutWidget}
                 onResize={setWidgetWidth}
+                dark={projectionDark}
               >
                 <WidgetBody id={widget.id} campaignId={campaignId} data={data} milestoneValue={milestoneValue} />
               </SortableWidget>
@@ -233,6 +278,7 @@ function SortableWidget({
   onPopOut,
   onFullScreen,
   fullScreenWidget,
+  dark,
 }: {
   widget: WidgetLayout;
   children: React.ReactNode;
@@ -240,6 +286,7 @@ function SortableWidget({
   onPopOut: (id: string) => void;
   onFullScreen: (id: string) => void;
   fullScreenWidget: string | null;
+  dark: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: widget.id });
   const style = {
@@ -248,6 +295,26 @@ function SortableWidget({
     gridColumn: `span ${Math.max(2, Math.min(12, widget.w))}`,
   } as React.CSSProperties;
 
+  function beginResize(event: React.MouseEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startW = widget.w;
+
+    function onMove(moveEvent: MouseEvent) {
+      const deltaPx = moveEvent.clientX - startX;
+      const nextW = Math.max(2, Math.min(12, Math.round(startW + deltaPx / 120)));
+      onResize(widget.id, nextW - startW);
+    }
+
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
   return (
     <motion.div
       ref={setNodeRef}
@@ -255,25 +322,31 @@ function SortableWidget({
       layout
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.995 }}
-      className="rounded-xl border border-slate-200 bg-white shadow-sm"
+      className={dark ? "relative rounded-xl border border-slate-700 bg-slate-900 shadow-sm" : "relative rounded-xl border border-slate-200 bg-white shadow-sm"}
     >
-      <header className="flex items-center justify-between border-b border-slate-100 px-2 py-1.5">
-        <div className="flex items-center gap-1 text-xs font-semibold text-slate-600">
-          <button type="button" className="rounded p-1 hover:bg-slate-100" {...attributes} {...listeners}>
+      <header className={dark ? "flex items-center justify-between border-b border-slate-700 px-2 py-1.5" : "flex items-center justify-between border-b border-slate-100 px-2 py-1.5"}>
+        <div className={dark ? "flex items-center gap-1 text-xs font-semibold text-slate-300" : "flex items-center gap-1 text-xs font-semibold text-slate-600"}>
+          <button type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} {...attributes} {...listeners}>
             <GripVertical className="h-3.5 w-3.5" />
           </button>
           {widget.id}
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" className="rounded p-1 hover:bg-slate-100" onClick={() => onResize(widget.id, -1)}><Minimize2 className="h-3.5 w-3.5" /></button>
-          <button type="button" className="rounded p-1 hover:bg-slate-100" onClick={() => onResize(widget.id, +1)}><Maximize2 className="h-3.5 w-3.5" /></button>
-          <button type="button" className="rounded p-1 hover:bg-slate-100" onClick={() => onPopOut(widget.id)}><MonitorUp className="h-3.5 w-3.5" /></button>
-          <button type="button" className="rounded p-1 hover:bg-slate-100" onClick={() => onFullScreen(widget.id)}>
+          <button type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onResize(widget.id, -1)}><Minimize2 className="h-3.5 w-3.5" /></button>
+          <button type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onResize(widget.id, +1)}><Maximize2 className="h-3.5 w-3.5" /></button>
+          <button type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onPopOut(widget.id)}><MonitorUp className="h-3.5 w-3.5" /></button>
+          <button type="button" className={dark ? "rounded p-1 hover:bg-slate-800" : "rounded p-1 hover:bg-slate-100"} onClick={() => onFullScreen(widget.id)}>
             {fullScreenWidget === widget.id ? <Shrink className="h-3.5 w-3.5" /> : <Expand className="h-3.5 w-3.5" />}
           </button>
         </div>
       </header>
       <div className="p-3">{children}</div>
+      <div
+        role="button"
+        aria-label="Resize widget"
+        onMouseDown={beginResize}
+        className="absolute bottom-1 right-1 h-3.5 w-3.5 cursor-ew-resize rounded-sm border border-slate-300 bg-slate-100"
+      />
     </motion.div>
   );
 }
@@ -338,10 +411,56 @@ function WidgetBody({ id, campaignId, data, milestoneValue, fullscreen }: { id: 
       </div>
     );
   }
+  if (id === "win-probability") {
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Win Probability</p>
+        <p className="text-4xl font-black text-slate-900">{data.winProbability}%</p>
+      </div>
+    );
+  }
+  if (id === "support-rate") {
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter Turnout</p>
+        <p className="text-4xl font-black text-slate-900">{data.supporterTurnout}%</p>
+      </div>
+    );
+  }
+  if (id === "canvassing-pace") {
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Canvassing Pace</p>
+        <p className={`text-4xl font-black ${data.doorsWoWChange >= 0 ? "text-emerald-600" : "text-red-600"}`}>{data.doorsWoWChange >= 0 ? "+" : ""}{data.doorsWoWChange}%</p>
+      </div>
+    );
+  }
+  if (id === "leaderboard") {
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Top Volunteer</p>
+        <p className="text-lg font-black text-slate-900">{data.volunteerTopPerformer}</p>
+        <p className="text-sm font-semibold text-slate-600">Score {data.volunteerTopScore}</p>
+      </div>
+    );
+  }
   return (
     <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
       <p className="font-semibold">{id}</p>
       <p className="text-xs text-slate-500">Widget active. Drag, resize, fullscreen, or pop out.</p>
     </div>
+  );
+}
+
+function MomentumBox({ title, value, dark }: { title: string; value: string; dark: boolean }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={dark ? "rounded-lg border border-slate-700 bg-slate-800 p-3" : "rounded-lg border border-slate-200 bg-slate-50 p-3"}
+    >
+      <p className={dark ? "text-[11px] font-semibold uppercase tracking-wide text-slate-300" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{title}</p>
+      <p className={dark ? "mt-1 text-3xl font-black text-white" : "mt-1 text-3xl font-black text-slate-900"}>{value}</p>
+    </motion.div>
   );
 }

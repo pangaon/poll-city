@@ -10,7 +10,7 @@ export default function DashboardWidgetPopoutPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 p-3">
-      <DashboardStudio campaignId={campaignId} campaignName="Widget Popout" popoutWidgetId={widget} />
+      <DashboardStudio campaignId={campaignId} campaignName="Widget Popout" popoutWidgetId={widget} isPopout />
     </div>
   );
 }
