@@ -11,14 +11,21 @@ import {
 import { toast } from "sonner";
 
 const SPECIALTIES = [
-  { id: "door_hanger", label: "Door Hangers" },
   { id: "lawn_sign", label: "Lawn Signs" },
+  { id: "door_hanger", label: "Door Hangers" },
   { id: "flyer", label: "Flyers" },
   { id: "palm_card", label: "Palm Cards" },
-  { id: "mailer_postcard", label: "Mailers / Postcards" },
+  { id: "mailer_postcard", label: "Postcards" },
+  { id: "bumper_sticker", label: "Bumper Stickers" },
+  { id: "button_pin", label: "Buttons" },
+  { id: "t_shirt", label: "T-Shirts" },
+  { id: "hat", label: "Hats" },
+  { id: "tote_bag", label: "Tote Bags" },
   { id: "banner", label: "Banners" },
-  { id: "button_pin", label: "Buttons / Pins" },
-  { id: "window_sign", label: "Window Signs" },
+  { id: "window_sign", label: "Window Clings" },
+  { id: "yard_stake", label: "Yard Stakes" },
+  { id: "table_cover", label: "Table Covers" },
+  { id: "lanyard", label: "Lanyards" },
 ];
 
 const PROVINCES = [

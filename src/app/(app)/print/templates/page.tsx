@@ -10,11 +10,21 @@ const PRICING: Record<string, { label: string; fromCad: number; turnaround: stri
   flyer: { label: "Flyers", fromCad: 0.09, turnaround: "3-5 days" },
   "palm-card": { label: "Palm Cards", fromCad: 0.18, turnaround: "3-5 days" },
   postcard: { label: "Postcards", fromCad: 0.22, turnaround: "3-5 days" },
+  "mailer-postcard": { label: "Postcards", fromCad: 0.22, turnaround: "3-5 days" },
+  "bumper-sticker": { label: "Bumper Stickers", fromCad: 1.90, turnaround: "5-7 days" },
   button: { label: "Buttons", fromCad: 0.89, turnaround: "5-7 days" },
+  "button-pin": { label: "Buttons", fromCad: 0.89, turnaround: "5-7 days" },
   sticker: { label: "Stickers", fromCad: 0.39, turnaround: "3-5 days" },
+  "t-shirt": { label: "T-Shirts", fromCad: 14.99, turnaround: "7-10 days" },
   shirt: { label: "T-Shirts", fromCad: 14.99, turnaround: "7-10 days" },
-  tote: { label: "Tote Bags", fromCad: 11.99, turnaround: "7-10 days" },
   hat: { label: "Hats", fromCad: 18.99, turnaround: "7-10 days" },
+  "tote-bag": { label: "Tote Bags", fromCad: 11.99, turnaround: "7-10 days" },
+  tote: { label: "Tote Bags", fromCad: 11.99, turnaround: "7-10 days" },
+  banner: { label: "Banners", fromCad: 45.00, turnaround: "7-14 days" },
+  "window-sign": { label: "Window Clings", fromCad: 4.50, turnaround: "5-7 days" },
+  "yard-stake": { label: "Yard Stakes", fromCad: 3.50, turnaround: "5-7 days" },
+  "table-cover": { label: "Table Covers", fromCad: 89.00, turnaround: "7-10 days" },
+  lanyard: { label: "Lanyards", fromCad: 2.50, turnaround: "7-10 days" },
 };
 
 export default async function PrintTemplatesPage() {
