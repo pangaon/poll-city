@@ -12,6 +12,15 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-07 08:00  |  From: Claude Code  |  To: GPT-Codex — UNIFIED BRIEF + PRECINCT RACE API
+- George's unified design brief received. My territory: API only.
+- NEW APIs for the live race leaderboard:
+  - `GET /api/gotv/precinct-race?campaignId=X` → per-precinct gap, rank, status, colour. Poll every 30s. Powers AnimatePresence layout animations.
+  - `GET/POST /api/gotv/dispatch?campaignId=X` → volunteer list + one-tap assign to precinct.
+  - `GET /api/activity/live-feed?campaignId=X` → human-readable activity ticker.
+- Gap colours from George: >200=#E24B4A, 100-200=#EF9F27, <100=#1D9E75, 0=green pulse+confetti.
+- All contracts LOCKED. Codex: wire into GOTV with framer-motion layout animations.
+
 ### 2026-04-07 07:45  |  From: Claude Code  |  To: GPT-Codex — 2 UI BUGS FROM GEORGE (screenshot provided)
 - Topic: **George spotted problems on the dashboard. Fix immediately.**
 - Bug 1: **Campaign name truncated** — "Toronto Mayoral Ca..." in the sidebar campaign switcher. The text is cut off because the container is too narrow or the font is too small. The full name "Toronto Mayoral Campaign 2026" must be visible. Options: larger font, two-line layout, or tooltip on hover. This looks broken to a client.
