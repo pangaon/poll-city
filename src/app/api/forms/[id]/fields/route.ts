@@ -7,7 +7,7 @@ type Ctx = { params: { id: string } };
 export async function GET(req: NextRequest, { params }: Ctx) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const campaignId = (session!.user as any).activeCampaignId as string;
+  const campaignId = session!.user.activeCampaignId as string;
 
   const form = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
   if (!form) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "settings:write");
   if (permError) return permError;
-  const campaignId = (session!.user as any).activeCampaignId as string;
+  const campaignId = session!.user.activeCampaignId as string;
 
   const form = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
   if (!form) {

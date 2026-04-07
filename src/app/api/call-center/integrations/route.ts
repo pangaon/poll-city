@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "settings:read");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const integrations = await prisma.callCenterIntegration.findMany({
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "settings:write");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const body = await req.json();
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   await prisma.activityLog.create({
     data: {
       campaignId,
-      userId: (session.user as any).id,
+      userId: session.user.id,
       action: "call_center_integration_created",
       entityType: "CallCenterIntegration",
       entityId: integration.id,

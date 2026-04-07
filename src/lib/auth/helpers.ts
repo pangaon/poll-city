@@ -11,7 +11,7 @@ export async function getSession() {
 
 export async function requireAuth() {
   const session = await getSession();
-  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) {
+  if (!session?.user || session.user.invalidSession) {
     return null;
   }
   return session;
@@ -19,7 +19,7 @@ export async function requireAuth() {
 
 export async function requireRole(allowedRoles: Role[]) {
   const session = await getSession();
-  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) return null;
+  if (!session?.user || session.user.invalidSession) return null;
   if (!allowedRoles.includes(session.user.role as Role)) return null;
   return session;
 }
@@ -107,7 +107,7 @@ export async function apiAuth(
   allowedRoles?: Role[]
 ): Promise<{ session: Awaited<ReturnType<typeof getSession>>; error?: NextResponse }> {
   const session = await getSession();
-  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) {
+  if (!session?.user || session.user.invalidSession) {
     return {
       session: null,
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -140,7 +140,7 @@ export async function apiAuthWithPermission(
   requiredPermission?: Permission,
 ): Promise<AuthWithPermissions> {
   const session = await getSession();
-  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) {
+  if (!session?.user || session.user.invalidSession) {
     return {
       session: session as any,
       resolved: { permissions: [], trustLevel: 1, roleSlug: "none", roleName: "None", campaignRoleId: null },
@@ -148,7 +148,7 @@ export async function apiAuthWithPermission(
     };
   }
 
-  const activeCampaignId = (session.user as any).activeCampaignId as string | null;
+  const activeCampaignId = session.user.activeCampaignId as string | null;
   if (!activeCampaignId) {
     return {
       session,

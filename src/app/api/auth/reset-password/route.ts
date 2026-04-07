@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
@@ -21,10 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Password validation failed", details: policy.errors }, { status: 400, headers: NO_STORE_HEADERS });
     }
 
+    const tokenHash = createHash("sha256").update(token).digest("hex");
     const users = await prisma.$queryRaw<Array<{ id: string; email: string; name: string | null; passwordResetExpiry: Date | null }>>`
       SELECT "id", "email", "name", "passwordResetExpiry"
       FROM "users"
-      WHERE "passwordResetToken" = ${token}
+      WHERE "passwordResetToken" = ${tokenHash}
       LIMIT 1
     `;
 

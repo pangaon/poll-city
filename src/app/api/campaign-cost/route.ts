@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "budget:read");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const [campaign, contactCount, signCount, printJobCount, eventCount, donationTotal, expenseTotal] = await Promise.all([

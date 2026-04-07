@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "settings:read");
   if (permError) return permError;
-  const campaignId = (session!.user as any).activeCampaignId as string;
+  const campaignId = session!.user.activeCampaignId as string;
 
   const forms = await prisma.form.findMany({
     where: { campaignId },
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "settings:write");
   if (permError) return permError;
-  const campaignId = (session!.user as any).activeCampaignId as string;
+  const campaignId = session!.user.activeCampaignId as string;
 
   try {
     const body = await req.json();

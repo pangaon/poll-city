@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "analytics:read");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   // Support by ward

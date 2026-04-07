@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "email:read");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const status = req.nextUrl.searchParams.get("status") ?? "active";
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "contacts:import");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
 
   const { subscribers } = await req.json();

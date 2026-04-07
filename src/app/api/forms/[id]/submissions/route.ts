@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "settings:read");
   if (permError) return permError;
-  const campaignId = (session!.user as any).activeCampaignId as string;
+  const campaignId = session!.user.activeCampaignId as string;
 
   const form = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
   if (!form) {

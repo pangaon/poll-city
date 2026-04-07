@@ -10,6 +10,8 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role: Role;
+      activeCampaignId: string | null;
+      invalidSession?: boolean;
     };
   }
 }
@@ -18,6 +20,11 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    activeCampaignId: string | null;
+    sessionVersion?: number;
+    invalidSession?: boolean;
+    requires2FA?: boolean;
+    twoFactorVerified?: boolean;
   }
 }
 

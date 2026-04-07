@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "team:manage");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   const { searchParams } = new URL(req.url);
   const limit = Math.min(Number(searchParams.get("limit") || "50"), 100);
   const offset = Number(searchParams.get("offset") || "0");

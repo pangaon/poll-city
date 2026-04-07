@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
@@ -10,10 +11,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
     const users = await prisma.$queryRaw<Array<{ email: string; passwordResetExpiry: Date | null }>>`
       SELECT "email", "passwordResetExpiry"
       FROM "users"
-      WHERE "passwordResetToken" = ${token}
+      WHERE "passwordResetToken" = ${tokenHash}
       LIMIT 1
     `;
 

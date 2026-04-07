@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const { session, resolved, error } = await apiAuthWithPermission(req, "team:read");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   const roles = await prisma.campaignRole.findMany({
     where: { campaignId },
     orderBy: { priority: "asc" },
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const { session, resolved, error } = await apiAuthWithPermission(req, "team:manage");
   if (error) return error;
 
-  const campaignId = (session.user as any).activeCampaignId as string;
+  const campaignId = session.user.activeCampaignId as string;
   const body = await req.json();
   const parsed = createRoleSchema.safeParse(body);
   if (!parsed.success) {
