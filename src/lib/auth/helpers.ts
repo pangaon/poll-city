@@ -142,7 +142,7 @@ export async function apiAuthWithPermission(
   const session = await getSession();
   if (!session?.user || session.user.invalidSession) {
     return {
-      session: session as any,
+      session: session as unknown as AuthWithPermissions["session"],
       resolved: { permissions: [], trustLevel: 1, roleSlug: "none", roleName: "None", campaignRoleId: null },
       error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };

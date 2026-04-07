@@ -37,7 +37,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className: cn(base, variants[variant], sizes[size], className),
         disabled: disabled || loading,
         ...props,
-      } as any);
+      } as React.HTMLAttributes<HTMLElement>);
     }
 
     return (

@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -42,8 +43,8 @@ export async function GET(req: NextRequest) {
     totalSpent,
   ] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { not: "unknown" as any } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { not: SupportLevel.unknown } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
     prisma.interaction.count({
       where: { contact: { campaignId }, createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     }),

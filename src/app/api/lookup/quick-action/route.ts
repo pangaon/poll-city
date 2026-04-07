@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
       userId: session!.user.id,
       type: "field_encounter",
       notes: interactionNote,
-      supportLevel: typeof updates.supportLevel === "string" ? (updates.supportLevel as any) : undefined,
+      supportLevel: typeof updates.supportLevel === "string" ? (updates.supportLevel as SupportLevel) : undefined,
       latitude: body.latitude,
       longitude: body.longitude,
     })),
