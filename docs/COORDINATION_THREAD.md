@@ -12,6 +12,14 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 
 ---
 
+### 2026-04-07 — Agent 1 complete
+- Audited all API routes for missing session validation
+- Report: docs/AGENT1_REPORT.md
+
+### 2026-04-07 — Agent 2 complete
+- TypeScript check: ✅ zero errors
+- Report: docs/AGENT2_REPORT.md
+
 ### 2026-04-07 22:00  |  SESSION START — Claude Code (Session 2)
 - Build status: PASSING (verified)
 - Task 0: DONE — build green, party-colours already resolved

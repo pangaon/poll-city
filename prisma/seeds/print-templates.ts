@@ -163,6 +163,13 @@ const SEEDS: Seed[] = [
   { slug: "postcard-gotv", name: "Postcard — GOTV Reminder", category: "postcard", width: 6, height: 4, htmlTemplate: POSTCARD_GOTV, sortOrder: 60 },
   { slug: "button-2-25", name: "Button 2.25\"", category: "button", width: 2.25, height: 2.25, htmlTemplate: BUTTON_2_25, sortOrder: 70 },
   { slug: "bumper-sticker", name: "Bumper Sticker 11×3", category: "sticker", width: 11, height: 3, htmlTemplate: BUMPER_STICKER, sortOrder: 80 },
+  { slug: "lawn-sign-18x24-modern", name: "Lawn Sign 18×24 Modern", category: "lawn-sign", width: 18, height: 24, htmlTemplate: CLASSIC_LAWN_SIGN, sortOrder: 15 },
+  { slug: "door-hanger-survey", name: "Door Hanger — Survey", category: "door-hanger", width: 4.25, height: 11, htmlTemplate: DOOR_HANGER_ISSUE, sortOrder: 35 },
+  { slug: "flyer-event", name: "Flyer 8.5×11 — Event", category: "flyer", width: 8.5, height: 11, htmlTemplate: FLYER_PLATFORM, sortOrder: 45 },
+  { slug: "postcard-thank-you", name: "Postcard — Thank You", category: "postcard", width: 6, height: 4.25, htmlTemplate: POSTCARD_GOTV, sortOrder: 65 },
+  { slug: "t-shirt", name: "T-Shirt", category: "shirt", width: 12, height: 16, htmlTemplate: PALM_CARD, isPremium: true, sortOrder: 90 },
+  { slug: "tote-bag", name: "Tote Bag", category: "tote", width: 14, height: 16, htmlTemplate: PALM_CARD, isPremium: true, sortOrder: 100 },
+  { slug: "window-cling", name: "Window Cling", category: "sticker", width: 8, height: 8, htmlTemplate: BUTTON_2_25, sortOrder: 110 },
 ];
 
 async function main() {

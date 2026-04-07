@@ -444,6 +444,12 @@ model Campaign {
   facebookUrl            String?
   instagramHandle        String?
   brandKitComplete       Boolean      @default(false)
+  // TV Mode
+  tvEnabled              Boolean      @default(false)
+  tvToken                String?      @unique @default(cuid())
+  tvRotate               Boolean      @default(true)
+  tvRotateSec            Int          @default(30)
+  tvModes                String[]
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 
@@ -3398,4 +3404,177 @@ model PromiseTracker {
   createdAt DateTime        @default(now())
   @@unique([promiseId, userId])
   @@map("promise_trackers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARTY ENTERPRISE — organization hierarchy, nominations, AGM voting
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PartyOrganization {
+  id              String   @id @default(cuid())
+  name            String
+  shortName       String
+  level           String
+  province        String?
+  apiKey          String   @unique @default(cuid())
+  plan            String   @default("RIDING")
+  dataRetentionDays Int    @default(365)
+  createdAt       DateTime @default(now())
+  ridingAssociations RidingAssociation[]
+  members         PartyMember[]
+  agms            PartyAGM[]
+  @@map("party_organizations")
+}
+
+model RidingAssociation {
+  id           String           @id @default(cuid())
+  partyId      String
+  party        PartyOrganization @relation(fields: [partyId], references: [id])
+  ridingName   String
+  ridingCode   String
+  province     String
+  president    String?
+  email        String?
+  members      PartyMember[]
+  nominations  NominationRace[]
+  createdAt    DateTime         @default(now())
+  @@index([partyId])
+  @@map("riding_associations")
+}
+
+model PartyMember {
+  id              String           @id @default(cuid())
+  partyId         String
+  party           PartyOrganization @relation(fields: [partyId], references: [id])
+  ridingId        String?
+  riding          RidingAssociation? @relation(fields: [ridingId], references: [id])
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  memberSince     DateTime?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  @@index([partyId])
+  @@index([ridingId])
+  @@map("party_members")
+}
+
+model NominationRace {
+  id          String   @id @default(cuid())
+  ridingId    String
+  riding      RidingAssociation @relation(fields: [ridingId], references: [id])
+  office      String
+  electionDate DateTime?
+  nominationDeadline DateTime?
+  status      String   @default("open")
+  createdAt   DateTime @default(now())
+  nominees    NominationNominee[]
+  votes       NominationVote[]
+  @@index([ridingId])
+  @@map("nomination_races")
+}
+
+model NominationNominee {
+  id          String   @id @default(cuid())
+  raceId      String
+  race        NominationRace @relation(fields: [raceId], references: [id])
+  memberId    String
+  biography   String?  @db.Text
+  photoUrl    String?
+  signaturesRequired Int @default(25)
+  signaturesCollected Int @default(0)
+  status      String   @default("declared")
+  createdAt   DateTime @default(now())
+  @@index([raceId])
+  @@map("nomination_nominees")
+}
+
+model NominationVote {
+  id         String   @id @default(cuid())
+  raceId     String
+  race       NominationRace @relation(fields: [raceId], references: [id])
+  voterId    String
+  rankings   Json
+  createdAt  DateTime @default(now())
+  @@index([raceId])
+  @@map("nomination_votes")
+}
+
+model PartyAGM {
+  id          String   @id @default(cuid())
+  partyId     String
+  party       PartyOrganization @relation(fields: [partyId], references: [id])
+  title       String
+  date        DateTime
+  type        String
+  createdAt   DateTime @default(now())
+  resolutions PartyResolution[]
+  @@index([partyId])
+  @@map("party_agms")
+}
+
+model PartyResolution {
+  id          String   @id @default(cuid())
+  agmId       String
+  agm         PartyAGM @relation(fields: [agmId], references: [id])
+  title       String
+  description String   @db.Text
+  status      String   @default("pending")
+  votesFor    Int      @default(0)
+  votesAgainst Int     @default(0)
+  votesAbstain Int     @default(0)
+  createdAt   DateTime @default(now())
+  @@index([agmId])
+  @@map("party_resolutions")
+}
+
+model StaffAccessLog {
+  id              String   @id @default(cuid())
+  staffUserId     String
+  staffName       String
+  staffEmail      String
+  customerId      String
+  customerType    String
+  dataType        String
+  action          String
+  ticketId        String?
+  reason          String
+  ip              String
+  userAgent       String
+  queryDescription String?
+  rowsAccessed    Int?
+  createdAt       DateTime @default(now())
+  @@index([staffUserId])
+  @@index([customerId])
+  @@map("staff_access_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPERATOR SYSTEM (George Operator)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OperatorNotification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  body      String
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  @@index([read])
+  @@map("operator_notifications")
+}
+
+model DemoToken {
+  id            String    @id @default(cuid())
+  type          String
+  prospectName  String?
+  prospectEmail String?
+  token         String    @unique @default(cuid())
+  views         Int       @default(0)
+  lastViewedAt  DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  @@map("demo_tokens")
 }
