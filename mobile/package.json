@@ -48,7 +48,9 @@
     "zustand": "^5.0.0",
     "zod": "^3.23.0",
     "date-fns": "^4.1.0",
-    "lucide-react-native": "^0.460.0"
+    "lucide-react-native": "^0.460.0",
+    "@react-native-async-storage/async-storage": "~2.1.0",
+    "@react-native-community/netinfo": "~11.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
