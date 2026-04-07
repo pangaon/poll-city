@@ -169,6 +169,21 @@ export interface ShiftSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+export interface Campaign {
+  id: string;
+  name: string;
+  candidateName: string;
+  electionDate: string | null;
+  municipality: string | null;
+  province: string | null;
+  status: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 

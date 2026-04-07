@@ -11,6 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import type {
   AuthTokens,
+  Campaign,
   Contact,
   CreateInteractionPayload,
   Interaction,
@@ -180,6 +181,14 @@ export async function login(email: string, password: string): Promise<LoginRespo
 
 export async function logout(): Promise<void> {
   await clearTokens();
+}
+
+// ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+export async function fetchCampaigns(): Promise<{ data: Campaign[] }> {
+  return apiFetch<{ data: Campaign[] }>("/api/campaigns");
 }
 
 // ---------------------------------------------------------------------------
