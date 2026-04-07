@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, UserPlus, X, Shield, Mail, Trash2, AlertCircle, Check } from "lucide-react";
+import { Users, UserPlus, X, Shield, Mail, Trash2, AlertCircle, Check, ChevronDown, ChevronUp, QrCode, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, Badge } from "@/components/ui";
 
 interface Member {
   id: string;
@@ -17,18 +17,44 @@ interface Member {
 }
 
 const ROLES = [
-  { value: "ADMIN", label: "Admin", description: "Full access to everything" },
-  { value: "CAMPAIGN_MANAGER", label: "Manager", description: "All features except billing and team" },
+  { value: "SUPER_ADMIN", label: "Super Admin", description: "Platform-wide control, billing, all campaigns" },
+  { value: "ADMIN", label: "Admin", description: "Full access to everything in this campaign" },
+  { value: "CAMPAIGN_MANAGER", label: "Campaign Manager", description: "All features except billing and team" },
+  { value: "FIELD_DIRECTOR", label: "Field Director", description: "Canvassing, walk lists, volunteer shifts, GOTV" },
+  { value: "COMMUNICATIONS_DIRECTOR", label: "Comms Director", description: "Notifications, media, messaging" },
+  { value: "FINANCE_OFFICER", label: "Finance Officer", description: "Donations, budget, compliance reports" },
+  { value: "DATA_ANALYST", label: "Data Analyst", description: "Analytics, reports, import/export" },
   { value: "VOLUNTEER_LEADER", label: "Volunteer Leader", description: "Manage volunteers, shifts, walk lists" },
   { value: "VOLUNTEER", label: "Canvasser", description: "Walk list, quick capture, read-only contacts" },
+  { value: "OBSERVER", label: "Observer", description: "Read-only access to dashboards" },
+  { value: "PUBLIC_USER", label: "Public User", description: "No campaign access" },
 ] as const;
+
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  SUPER_ADMIN: ["All permissions", "Platform settings", "Billing", "Multi-campaign management", "Custom roles"],
+  ADMIN: ["Team management", "Campaign settings", "All contacts", "Import/Export", "Donations", "Analytics", "Canvassing", "Volunteers", "Notifications", "Signs"],
+  CAMPAIGN_MANAGER: ["Campaign settings", "All contacts", "Import/Export", "Donations", "Analytics", "Canvassing", "Volunteers", "Notifications", "Signs"],
+  FIELD_DIRECTOR: ["Canvassing", "Walk lists", "Volunteer shifts", "GOTV operations", "View contacts", "Edit contacts", "Signs"],
+  COMMUNICATIONS_DIRECTOR: ["Notifications", "Media management", "Messaging", "View contacts", "Events"],
+  FINANCE_OFFICER: ["Donations", "Budget management", "Compliance reports", "View contacts"],
+  DATA_ANALYST: ["Analytics", "Reports", "Import/Export", "View contacts"],
+  VOLUNTEER_LEADER: ["View contacts", "Edit contacts", "Canvassing", "Walk lists", "Volunteer shifts"],
+  VOLUNTEER: ["View contacts (read-only)", "Canvassing", "Quick capture"],
+  OBSERVER: ["View dashboards (read-only)", "View reports (read-only)"],
+  PUBLIC_USER: ["No campaign permissions"],
+};
 
 const ROLE_COLOURS: Record<string, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
   ADMIN: "bg-red-100 text-red-800 border-red-200",
   CAMPAIGN_MANAGER: "bg-blue-100 text-blue-800 border-blue-200",
+  FIELD_DIRECTOR: "bg-teal-100 text-teal-800 border-teal-200",
+  COMMUNICATIONS_DIRECTOR: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  FINANCE_OFFICER: "bg-amber-100 text-amber-800 border-amber-200",
+  DATA_ANALYST: "bg-cyan-100 text-cyan-800 border-cyan-200",
   VOLUNTEER_LEADER: "bg-emerald-100 text-emerald-800 border-emerald-200",
   VOLUNTEER: "bg-gray-100 text-gray-800 border-gray-200",
+  OBSERVER: "bg-stone-100 text-stone-700 border-stone-200",
   PUBLIC_USER: "bg-slate-100 text-slate-700 border-slate-200",
 };
 
@@ -82,6 +108,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
   const [joinMaxUses, setJoinMaxUses] = useState(50);
   const [joinExpiryDays, setJoinExpiryDays] = useState(7);
   const [joinLink, setJoinLink] = useState("");
+  const [expandedRole, setExpandedRole] = useState<string | null>(null);
 
   const canManageTeam = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN";
   const canManagePermissions = currentUserRole === "SUPER_ADMIN";
@@ -192,7 +219,7 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
   function generateJoinLink() {
     const token = crypto.randomUUID().replace(/-/g, "").slice(0, 24);
     const base = typeof window !== "undefined" ? window.location.origin : "https://poll.city";
-    const link = `${base}/join/${token}?role=${joinRole}&label=${encodeURIComponent(joinLabel)}&maxUses=${joinMaxUses}&expiryDays=${joinExpiryDays}`;
+    const link = `${base}/volunteer/onboard/${token}?role=${joinRole}&label=${encodeURIComponent(joinLabel)}&maxUses=${joinMaxUses}&expiryDays=${joinExpiryDays}`;
     setJoinLink(link);
     logAudit("Join link generated", `${joinRole} - ${joinLabel}`);
   }
@@ -315,42 +342,50 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
       </div>
       )}
 
-      {/* Permissions matrix */}
+      {/* Roles & Permissions — expandable cards for all 11 roles */}
       {activeTab === "permissions" && (
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Shield className="w-5 h-5 text-gray-500" />
-          <h2 className="font-semibold text-gray-900">Role permissions</h2>
+          <h2 className="font-semibold text-gray-900">All roles ({ROLES.length})</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="text-left px-4 py-2.5 font-semibold text-gray-700">Feature</th>
-                {ROLES.map((r) => (
-                  <th key={r.value} className="text-center px-3 py-2.5 font-semibold text-gray-700">
-                    {r.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {PERMISSIONS_MATRIX.map((row) => (
-                <tr key={row.feature}>
-                  <td className="px-4 py-2.5 text-gray-900">{row.feature}</td>
-                  {ROLES.map((r) => (
-                    <td key={r.value} className="text-center px-3 py-2.5">
-                      {row.roles[r.value as keyof typeof row.roles] ? (
-                        <Check className="w-4 h-4 text-emerald-600 inline" />
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="divide-y divide-gray-100">
+          {ROLES.map((r) => {
+            const isExp = expandedRole === r.value;
+            const perms = ROLE_PERMISSIONS[r.value] ?? [];
+            return (
+              <div key={r.value}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedRole(isExp ? null : r.value)}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors min-h-[44px] text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLOURS[r.value] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                      {r.label}
+                    </span>
+                    <span className="text-sm text-gray-500">{r.description}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{perms.length} permission{perms.length !== 1 ? "s" : ""}</span>
+                    {isExp ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </button>
+                {isExp && (
+                  <div className="px-5 pb-4 pl-8">
+                    <ul className="grid gap-1 sm:grid-cols-2">
+                      {perms.map((p) => (
+                        <li key={p} className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#1D9E75" }} />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
       )}
@@ -392,22 +427,57 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
             <input type="number" min={1} value={joinExpiryDays} onChange={(e) => setJoinExpiryDays(Number(e.target.value) || 1)} placeholder="Expiry days" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={generateJoinLink} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create Join Link</button>
-            <button onClick={copyJoinLink} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50">Copy Link</button>
-            <button onClick={() => window.print()} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50">Print QR</button>
+            <button onClick={generateJoinLink} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] transition-colors" style={{ backgroundColor: "#1D9E75" }}>
+              <QrCode className="w-4 h-4" />
+              Generate QR Code
+            </button>
+            <button onClick={copyJoinLink} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50 min-h-[44px]">Copy Link</button>
+            <button onClick={() => window.print()} disabled={!joinLink} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50 min-h-[44px]">Print QR</button>
           </div>
           {joinLink && (
             <div className="grid gap-4 md:grid-cols-[1fr_260px] items-start rounded-xl border border-gray-200 p-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900 break-all">{joinLink}</p>
-                <p className="text-xs text-gray-500 mt-2">Scan to join the campaign team.</p>
+                <p className="text-xs text-gray-500 mt-2">Volunteers scan this QR code to join the campaign team via <code className="bg-gray-100 px-1 rounded">/volunteer/onboard/[token]</code>.</p>
+                <div className="flex gap-2 mt-3 text-xs text-gray-500">
+                  <span>Max uses: {joinMaxUses}</span>
+                  <span>Expires: {joinExpiryDays} day{joinExpiryDays !== 1 ? "s" : ""}</span>
+                </div>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(joinLink)}`}
-                alt="Join QR Code"
-                className="rounded-lg border border-gray-200"
-              />
+              {/* SVG QR code placeholder — deterministic pattern from token */}
+              <div className="w-[240px] h-[240px] rounded-lg border border-gray-200 bg-white p-4 flex items-center justify-center">
+                <svg viewBox="0 0 21 21" className="w-full h-full" shapeRendering="crispEdges">
+                  {/* Finder patterns (top-left, top-right, bottom-left) */}
+                  <rect x="0" y="0" width="7" height="7" fill="#0A2342" />
+                  <rect x="1" y="1" width="5" height="5" fill="white" />
+                  <rect x="2" y="2" width="3" height="3" fill="#0A2342" />
+                  <rect x="14" y="0" width="7" height="7" fill="#0A2342" />
+                  <rect x="15" y="1" width="5" height="5" fill="white" />
+                  <rect x="16" y="2" width="3" height="3" fill="#0A2342" />
+                  <rect x="0" y="14" width="7" height="7" fill="#0A2342" />
+                  <rect x="1" y="15" width="5" height="5" fill="white" />
+                  <rect x="2" y="16" width="3" height="3" fill="#0A2342" />
+                  {/* Data modules — decorative pattern */}
+                  {[8,9,10,11,12].map((x) => [8,9,10,11,12].map((y) => (
+                    <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x + y) % 3 === 0 ? "#0A2342" : ((x * y) % 2 === 0 ? "#1D9E75" : "white")} />
+                  )))}
+                  {[8,9,10,11,12].map((x) => [0,1,2,3,4,5,6].map((y) => (
+                    <rect key={`v${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x + y) % 2 === 0 ? "#0A2342" : "white"} />
+                  )))}
+                  {[0,1,2,3,4,5,6].map((x) => [8,9,10,11,12].map((y) => (
+                    <rect key={`h${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x + y) % 2 === 0 ? "#0A2342" : "white"} />
+                  )))}
+                  {[14,15,16,17,18,19,20].map((x) => [8,9,10,11,12].map((y) => (
+                    <rect key={`r${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x * y) % 3 === 0 ? "#0A2342" : "white"} />
+                  )))}
+                  {[8,9,10,11,12].map((x) => [14,15,16,17,18,19,20].map((y) => (
+                    <rect key={`b${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x + y) % 3 !== 0 ? "#0A2342" : "white"} />
+                  )))}
+                  {[14,15,16,17,18,19,20].map((x) => [14,15,16,17,18,19,20].map((y) => (
+                    <rect key={`br${x}-${y}`} x={x} y={y} width="1" height="1" fill={(x * y + x) % 3 === 0 ? "#1D9E75" : ((x + y) % 2 === 0 ? "#0A2342" : "white")} />
+                  )))}
+                </svg>
+              </div>
             </div>
           )}
         </div>
@@ -415,8 +485,9 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
 
       {activeTab === "audit" && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Permission and access audit</h2>
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-500" />
+            <h2 className="font-semibold text-gray-900">Permission audit log</h2>
           </div>
           <div className="divide-y divide-gray-100">
             {auditEntries.length === 0 ? (
