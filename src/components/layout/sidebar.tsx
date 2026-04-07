@@ -183,8 +183,9 @@ export default function Sidebar() {
         label: "Admin",
         icon: Shield,
         items: [
-          { href: "/settings/team?tab=permissions", icon: Shield, label: "Permission Console" },
-          { href: "/settings/team?tab=audit", icon: Activity, label: "Audit Log" },
+          { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" },
+          { href: "/settings/team", icon: Users, label: "Team Management" },
+          { href: "/calendar", icon: CalendarDays, label: "Campaign Calendar" },
           { href: "/ops/security", icon: Lock, label: "Security" },
         ],
       });

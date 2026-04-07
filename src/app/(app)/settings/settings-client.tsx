@@ -5,7 +5,7 @@ import {
   PageHeader, Card, CardHeader, CardContent, FormField, Input, Button, Badge,
 } from "@/components/ui";
 import {
-  SlidersHorizontal, Palette, Users, Globe, Shield, ChevronRight,
+  SlidersHorizontal, Palette, Users, Globe, Shield, Lock, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,11 +50,18 @@ const SETTINGS_SECTIONS = [
     color: "bg-amber-50 text-amber-600",
   },
   {
+    href: "/settings/permissions",
+    label: "Permissions",
+    description: "Role-based access control, create custom roles, Adoni access matrix",
+    icon: Shield,
+    color: "bg-red-50 text-red-600",
+  },
+  {
     href: "/settings/security",
     label: "Security",
     description: "Two-factor authentication, sessions, and access controls",
-    icon: Shield,
-    color: "bg-red-50 text-red-600",
+    icon: Lock,
+    color: "bg-slate-50 text-slate-600",
   },
 ];
 
