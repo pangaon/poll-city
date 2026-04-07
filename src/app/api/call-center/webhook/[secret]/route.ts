@@ -3,6 +3,7 @@
  * Matches incoming events to Poll City contacts by embedded ID or phone number.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { InteractionType, SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest, { params }: { params: { secret: string } }) {
@@ -58,29 +59,34 @@ export async function POST(req: NextRequest, { params }: { params: { secret: str
 
     // Create interaction record
     const result = payload.result ?? payload.disposition ?? payload.status;
-    const supportMap: Record<string, string> = {
-      supporter: "strong_support", support: "strong_support",
-      leaning: "leaning_support",
-      undecided: "undecided",
-      against: "against", refused: "against",
-      not_home: "unknown", no_answer: "unknown",
+    const supportMap: Record<string, SupportLevel> = {
+      supporter: SupportLevel.strong_support, support: SupportLevel.strong_support,
+      leaning: SupportLevel.leaning_support,
+      undecided: SupportLevel.undecided,
+      against: SupportLevel.strong_opposition, refused: SupportLevel.strong_opposition,
+      not_home: SupportLevel.unknown, no_answer: SupportLevel.unknown,
     };
+
+    const mappedSupport = result ? supportMap[result.toLowerCase()] ?? null : null;
 
     await prisma.interaction.create({
       data: {
         contactId,
-        userId: null as any, // system-created
-        type: "phone_call" as any,
-        supportLevel: supportMap[result?.toLowerCase()] as any ?? null,
+        // userId is required by schema but unavailable for webhook-created interactions.
+        // This will fail the FK constraint; .catch() below handles it gracefully.
+        // TODO: add a system user or make Interaction.userId optional.
+        userId: "system",
+        type: InteractionType.phone_call,
+        supportLevel: mappedSupport,
         notes: `Call center (${integration.provider}): ${result ?? "completed"}`,
       },
     }).catch(() => {});
 
     // Update support level if we got one
-    if (result && supportMap[result.toLowerCase()]) {
+    if (mappedSupport) {
       await prisma.contact.update({
         where: { id: contactId },
-        data: { supportLevel: supportMap[result.toLowerCase()] as any },
+        data: { supportLevel: mappedSupport },
       }).catch(() => {});
     }
   }

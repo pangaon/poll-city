@@ -16,6 +16,7 @@
  * - Red flags
  */
 import { NextRequest, NextResponse } from "next/server";
+import { SupportLevel, TaskStatus } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
@@ -78,16 +79,16 @@ export async function GET(req: NextRequest) {
     totalSigns,
   ] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: "undecided" as any } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.undecided } }),
     prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: yesterday, lt: today } } }),
     prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: weekAgo } } }),
     prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: twoWeeksAgo, lt: weekAgo } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, updatedAt: { gte: yesterday } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, updatedAt: { gte: yesterday } } }),
     prisma.donation.count({ where: { campaignId, createdAt: { gte: yesterday, lt: today } } }),
     prisma.donation.aggregate({ where: { campaignId, createdAt: { gte: yesterday, lt: today } }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0)),
     prisma.event.findMany({ where: { campaignId, eventDate: { gte: today } }, orderBy: { eventDate: "asc" }, take: 5, select: { id: true, name: true, eventDate: true, location: true } }),
-    prisma.task.count({ where: { campaignId, status: "pending" as any, dueDate: { lt: today } } }),
+    prisma.task.count({ where: { campaignId, status: TaskStatus.pending, dueDate: { lt: today } } }),
     prisma.volunteerProfile.count({ where: { campaignId } }),
     // Volunteers who haven't had any interaction in 10 days
     prisma.volunteerProfile.count({ where: { campaignId, user: { interactions: { none: { createdAt: { gte: tenDaysAgo } } } } } }),

@@ -159,13 +159,16 @@ export async function POST(
 
     // Validate each swipe entry strictly
     const validSwipes = rawSwipe.filter(
-      (r): r is { optionId: string; direction: string } =>
-        !!r &&
-        typeof r === "object" &&
-        typeof (r as any).optionId === "string" &&
-        validOptionIds.has((r as any).optionId) && // must belong to this poll
-        typeof (r as any).direction === "string" &&
-        SWIPE_VALUES.has((r as any).direction) // only allowed directions
+      (r): r is { optionId: string; direction: string } => {
+        if (!r || typeof r !== "object") return false;
+        const entry = r as Record<string, unknown>;
+        return (
+          typeof entry.optionId === "string" &&
+          validOptionIds.has(entry.optionId) &&
+          typeof entry.direction === "string" &&
+          SWIPE_VALUES.has(entry.direction)
+        );
+      }
     );
 
     if (validSwipes.length === 0) {
@@ -213,15 +216,18 @@ export async function POST(
     }
 
     const validRanked = rawRanked.filter(
-      (r): r is { optionId: string; rank: number } =>
-        !!r &&
-        typeof r === "object" &&
-        typeof (r as any).optionId === "string" &&
-        validOptionIds.has((r as any).optionId) &&
-        typeof (r as any).rank === "number" &&
-        Number.isInteger((r as any).rank) &&
-        (r as any).rank >= 1 &&
-        (r as any).rank <= validOptionIds.size // rank cannot exceed number of options
+      (r): r is { optionId: string; rank: number } => {
+        if (!r || typeof r !== "object") return false;
+        const entry = r as Record<string, unknown>;
+        return (
+          typeof entry.optionId === "string" &&
+          validOptionIds.has(entry.optionId) &&
+          typeof entry.rank === "number" &&
+          Number.isInteger(entry.rank) &&
+          entry.rank >= 1 &&
+          entry.rank <= validOptionIds.size
+        );
+      }
     );
 
     if (validRanked.length === 0) {
@@ -394,7 +400,7 @@ export async function GET(
           where: { pollId: poll.id, optionId: opt.id },
           _count: true,
         });
-        return { id: opt.id, text: (opt as any).text, order: (opt as any).order, breakdown };
+        return { id: opt.id, text: opt.text, order: opt.order, breakdown };
       })
     );
     return NextResponse.json({ data: { poll, results, type: poll.type } });
@@ -416,7 +422,7 @@ export async function GET(
         const avgRank = validRanks.length > 0
           ? validRanks.reduce((a, b) => a + b, 0) / validRanks.length
           : null;
-        return { id: opt.id, text: (opt as any).text, count: rows.length, avgRank };
+        return { id: opt.id, text: opt.text, count: rows.length, avgRank };
       })
     );
     results.sort((a, b) => (a.avgRank ?? 999) - (b.avgRank ?? 999));

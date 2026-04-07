@@ -8,6 +8,7 @@
  * This is polled every 30 seconds on election day.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 
@@ -41,28 +42,28 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
     prisma.contact.count({
-      where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } },
+      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
     }),
     prisma.contact.count({
-      where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
+      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
     }),
     prisma.contact.count({ where: { campaignId, voted: true } }),
     // P1: gotvScore not available as a column — use support level + voted history as proxy
     // P1 = strong_support (most reliable)
     prisma.contact.count({
-      where: { campaignId, supportLevel: "strong_support" as any, voted: false },
+      where: { campaignId, supportLevel: SupportLevel.strong_support, voted: false },
     }),
     // P2 = leaning_support
     prisma.contact.count({
-      where: { campaignId, supportLevel: "leaning_support" as any, voted: false },
+      where: { campaignId, supportLevel: SupportLevel.leaning_support, voted: false },
     }),
     // P3 = undecided (persuadable)
     prisma.contact.count({
-      where: { campaignId, supportLevel: "undecided" as any, voted: false },
+      where: { campaignId, supportLevel: SupportLevel.undecided, voted: false },
     }),
-    // P4 = leaning_against (low priority)
+    // P4 = leaning_opposition (low priority)
     prisma.contact.count({
-      where: { campaignId, supportLevel: "leaning_against" as any, voted: false },
+      where: { campaignId, supportLevel: SupportLevel.leaning_opposition, voted: false },
     }),
     // Voted today
     prisma.contact.count({

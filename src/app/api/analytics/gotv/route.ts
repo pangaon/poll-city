@@ -2,6 +2,7 @@
  * GET /api/analytics/gotv — GOTV analytics: voted tracker, priority tier breakdown, pacing.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 
@@ -15,15 +16,15 @@ export async function GET(req: NextRequest) {
   const [totalContacts, totalVoted, supporterVoted, totalSupporters] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
     prisma.contact.count({ where: { campaignId, voted: true } }),
-    prisma.contact.count({ where: { campaignId, voted: true, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
+    prisma.contact.count({ where: { campaignId, voted: true, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
   ]);
 
   // P1-P4 tier breakdown (based on contact support + contacted status)
-  const p1 = await prisma.contact.count({ where: { campaignId, supportLevel: "strong_support" as any } });
-  const p2 = await prisma.contact.count({ where: { campaignId, supportLevel: "leaning_support" as any } });
-  const p3 = await prisma.contact.count({ where: { campaignId, supportLevel: "undecided" as any } });
-  const p4 = await prisma.contact.count({ where: { campaignId, supportLevel: { in: ["leaning_against", "against"] as any[] } } });
+  const p1 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.strong_support } });
+  const p2 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.leaning_support } });
+  const p3 = await prisma.contact.count({ where: { campaignId, supportLevel: SupportLevel.undecided } });
+  const p4 = await prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.leaning_opposition, SupportLevel.strong_opposition] } } });
 
   const turnoutRate = totalContacts > 0 ? Math.round((totalVoted / totalContacts) * 100) : 0;
   const supporterTurnoutRate = totalSupporters > 0 ? Math.round((supporterVoted / totalSupporters) * 100) : 0;
