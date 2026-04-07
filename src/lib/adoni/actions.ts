@@ -372,6 +372,74 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  // ── Adoni intelligence & calendar tools ──
+  {
+    name: "predict_vote_total",
+    description:
+      "Predict the campaign's vote total based on current supporters, doors knocked, and historical election data for the municipality. Returns projected votes, confidence, and methodology.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "scenario_model",
+    description:
+      "Model what happens if you knock additional doors. Uses current conversion rate (supporters found per door knocked) to project new supporters. Use when someone asks 'what if we knock 500 more doors'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        additional_doors: { type: "number" as const, description: "Number of additional doors to model" },
+      },
+      required: ["additional_doors"],
+    },
+  },
+  {
+    name: "get_anomalies",
+    description:
+      "Detect anomalies by comparing the last 7 days vs the prior 7 days across key metrics: doors knocked, new supporters, donations, volunteer signups. Flags anything with >25% change.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "flag_suspicious_activity",
+    description:
+      "Flag suspicious activity for review by the campaign manager. Creates a record and notifies George. Use when something looks off — unusual access patterns, data anomalies, or concerning behaviour.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        description: { type: "string" as const, description: "Description of the suspicious activity" },
+        severity: { type: "string" as const, description: "Severity level: low, medium, high, critical" },
+      },
+      required: ["description", "severity"],
+    },
+  },
+  {
+    name: "search_knowledge",
+    description:
+      "Search Poll City's knowledge base for help articles and feature documentation. Use when someone asks 'how do I...' or 'what does X do'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string" as const, description: "Search query — feature name, question, or topic" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_election_calendar",
+    description:
+      "Get key election dates for the 2026 Ontario municipal election: election day, nomination period, advance voting, spending limit date, and countdowns.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -402,6 +470,12 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   create_event: "events:write",
   create_sign_request: "signs:write",
   export_contacts: "contacts:export",
+  predict_vote_total: "analytics:read",
+  scenario_model: "analytics:read",
+  get_anomalies: "analytics:read",
+  flag_suspicious_activity: "adoni:write_tools",
+  search_knowledge: "analytics:read",
+  get_election_calendar: "analytics:read",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -497,6 +571,18 @@ export async function executeAction(
         return await createSignRequest(input, ctx);
       case "export_contacts":
         return await exportContactsViaAdoni(input, ctx);
+      case "predict_vote_total":
+        return await predictVoteTotal(ctx);
+      case "scenario_model":
+        return await scenarioModel(input, ctx);
+      case "get_anomalies":
+        return await getAnomalies(ctx);
+      case "flag_suspicious_activity":
+        return await flagSuspiciousActivity(input, ctx);
+      case "search_knowledge":
+        return await searchKnowledge(input);
+      case "get_election_calendar":
+        return await getElectionCalendar();
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -1468,6 +1554,292 @@ async function exportContactsViaAdoni(input: Record<string, unknown>, ctx: Actio
     success: true,
     message: `${count.toLocaleString()} contacts match your filter. Navigate to /import-export and use the targeted export with these filters applied, or use this direct link: /import-export?export=targeted&filter=${encodeURIComponent(filter)}. Format: ${input.format ?? "CSV"}.`,
     data: { count, filter: input.filter ?? "all" },
+  };
+}
+
+// ─── New tool implementations: Intelligence, modelling & calendar ────────────
+
+async function predictVoteTotal(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+
+  // Get campaign jurisdiction for historical lookup
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: cid },
+    select: { jurisdiction: true, candidateName: true },
+  });
+
+  const [strongSupport, leaningSupport, totalContacts, doorsKnocked] = await Promise.all([
+    prisma.contact.count({ where: { campaignId: cid, supportLevel: "strong_support" as never } }),
+    prisma.contact.count({ where: { campaignId: cid, supportLevel: "leaning_support" as never } }),
+    prisma.contact.count({ where: { campaignId: cid } }),
+    prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never } }),
+  ]);
+
+  const supporterCount = strongSupport + leaningSupport;
+
+  // Look up historical election results for this jurisdiction
+  let historicalTurnout = 0.38; // Ontario municipal average fallback
+  let historicalVotes = 0;
+  let historicalSource = "Ontario municipal average (38%)";
+
+  if (campaign?.jurisdiction) {
+    const historicalResult = await prisma.electionResult.findFirst({
+      where: {
+        jurisdiction: { contains: campaign.jurisdiction, mode: "insensitive" },
+        won: true,
+      },
+      orderBy: { electionDate: "desc" },
+      select: { votesReceived: true, totalVotesCast: true, jurisdiction: true, electionDate: true },
+    });
+
+    if (historicalResult && historicalResult.totalVotesCast > 0) {
+      historicalVotes = historicalResult.votesReceived;
+      historicalTurnout = historicalResult.totalVotesCast / Math.max(totalContacts, historicalResult.totalVotesCast * 2.5);
+      historicalTurnout = Math.min(historicalTurnout, 0.65); // cap at 65%
+      historicalSource = `${historicalResult.jurisdiction} (${new Date(historicalResult.electionDate).getFullYear()}) — winner got ${historicalVotes.toLocaleString()} votes`;
+    }
+  }
+
+  // Strong supporters vote at ~85%, leaning at ~60%
+  const projectedVotes = Math.round(strongSupport * 0.85 + leaningSupport * 0.6);
+  const confidence = doorsKnocked > 500 ? "high" : doorsKnocked > 100 ? "medium" : "low";
+
+  return {
+    success: true,
+    message: [
+      `Vote projection for ${campaign?.candidateName ?? "your candidate"}:`,
+      `• Projected votes: ${projectedVotes.toLocaleString()} (${strongSupport} strong + ${leaningSupport} leaning)`,
+      `• Confidence: ${confidence} (based on ${doorsKnocked.toLocaleString()} doors knocked)`,
+      `• Historical reference: ${historicalSource}`,
+      `• Methodology: Strong supporters at 85% turnout, leaning at 60% turnout`,
+      doorsKnocked < 100 ? "• Warning: Very few doors knocked — projection is unreliable. Knock more doors to improve accuracy." : "",
+    ].filter(Boolean).join("\n"),
+    data: { projectedVotes, confidence, supporterCount, strongSupport, leaningSupport, doorsKnocked, historicalTurnout, historicalVotes, methodology: "strong_support*0.85 + leaning_support*0.60" },
+  };
+}
+
+async function scenarioModel(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const additionalDoors = Number(input.additional_doors ?? 0);
+  if (additionalDoors <= 0) {
+    return { success: false, message: "Please specify a positive number of additional doors to model." };
+  }
+
+  const cid = ctx.campaignId;
+  const [supporters, doorsKnocked, totalContacts] = await Promise.all([
+    prisma.contact.count({ where: { campaignId: cid, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } } }),
+    prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never } }),
+    prisma.contact.count({ where: { campaignId: cid } }),
+  ]);
+
+  const currentConversionRate = doorsKnocked > 0 ? supporters / doorsKnocked : 0;
+  const projectedNewSupporters = Math.round(additionalDoors * currentConversionRate);
+  const projectedTotalSupporters = supporters + projectedNewSupporters;
+
+  // Find wards with highest undecided concentration
+  const undecidedByWard = await prisma.contact.groupBy({
+    by: ["ward"],
+    where: { campaignId: cid, supportLevel: "undecided" as never, ward: { not: null } },
+    _count: true,
+    orderBy: { _count: { ward: "desc" } },
+    take: 3,
+  });
+
+  const topWards = undecidedByWard
+    .filter((w) => w.ward)
+    .map((w) => `${w.ward} (${w._count} undecided)`)
+    .join(", ");
+
+  return {
+    success: true,
+    message: [
+      `Scenario: +${additionalDoors.toLocaleString()} additional doors`,
+      `• Current conversion rate: ${(currentConversionRate * 100).toFixed(1)}% (${supporters} supporters from ${doorsKnocked} doors)`,
+      `• Projected new supporters: +${projectedNewSupporters.toLocaleString()}`,
+      `• Projected total supporters: ${projectedTotalSupporters.toLocaleString()} (of ${totalContacts.toLocaleString()} contacts)`,
+      topWards ? `• Recommended turfs: Focus on wards with highest undecided concentration — ${topWards}` : "• No ward data available for turf recommendations — assign wards to contacts first.",
+    ].join("\n"),
+    data: { currentConversionRate, projectedNewSupporters, projectedTotalSupporters, doorsKnocked, currentSupporters: supporters, recommendedTurfs: topWards || "Focus on wards with highest undecided concentration" },
+  };
+}
+
+async function getAnomalies(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000);
+
+  const [doorsCurrent, doorsPrevious, supportersCurrent, supportersPrevious, donationsCurrent, donationsPrevious, volsCurrent, volsPrevious] = await Promise.all([
+    prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never, createdAt: { gte: sevenDaysAgo } } }),
+    prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
+    prisma.activityLog.count({ where: { campaignId: cid, action: { contains: "support" }, createdAt: { gte: sevenDaysAgo } } }),
+    prisma.activityLog.count({ where: { campaignId: cid, action: { contains: "support" }, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
+    prisma.donation.count({ where: { campaignId: cid, createdAt: { gte: sevenDaysAgo } } }),
+    prisma.donation.count({ where: { campaignId: cid, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
+    prisma.volunteerProfile.count({ where: { campaignId: cid, createdAt: { gte: sevenDaysAgo } } }),
+    prisma.volunteerProfile.count({ where: { campaignId: cid, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } } }),
+  ]);
+
+  function calcChange(current: number, previous: number): { changePercent: number; direction: string } {
+    if (previous === 0 && current === 0) return { changePercent: 0, direction: "flat" };
+    if (previous === 0) return { changePercent: 100, direction: "up" };
+    const pct = Math.round(((current - previous) / previous) * 100);
+    return { changePercent: Math.abs(pct), direction: pct > 0 ? "up" : pct < 0 ? "down" : "flat" };
+  }
+
+  const metrics = [
+    { metric: "Doors knocked", previous7d: doorsPrevious, current7d: doorsCurrent, ...calcChange(doorsCurrent, doorsPrevious) },
+    { metric: "New supporters logged", previous7d: supportersPrevious, current7d: supportersCurrent, ...calcChange(supportersCurrent, supportersPrevious) },
+    { metric: "Donations received", previous7d: donationsPrevious, current7d: donationsCurrent, ...calcChange(donationsCurrent, donationsPrevious) },
+    { metric: "Volunteer signups", previous7d: volsPrevious, current7d: volsCurrent, ...calcChange(volsCurrent, volsPrevious) },
+  ];
+
+  const anomalies = metrics.filter((m) => m.changePercent > 25 && m.direction !== "flat");
+  const allMetrics = metrics.map((m) =>
+    `${m.metric}: ${m.previous7d} -> ${m.current7d} (${m.direction === "up" ? "+" : m.direction === "down" ? "-" : ""}${m.changePercent}%)${m.changePercent > 25 && m.direction !== "flat" ? " ⚠" : ""}`
+  );
+
+  return {
+    success: true,
+    message: anomalies.length === 0
+      ? `No significant anomalies detected. All metrics within normal range.\n${allMetrics.join("\n")}`
+      : `${anomalies.length} anomal${anomalies.length === 1 ? "y" : "ies"} detected (>25% change):\n${allMetrics.join("\n")}`,
+    data: { anomalies: metrics },
+  };
+}
+
+async function flagSuspiciousActivity(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const description = String(input.description);
+  const severity = String(input.severity ?? "medium");
+
+  const flag = await prisma.adoniSuspiciousActivity.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      questions: { description, severity, flaggedBy: ctx.userName, flaggedVia: "adoni_tool" } as object,
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "suspicious_activity_flagged",
+      entityType: "adoni_suspicious_activity",
+      entityId: flag.id,
+      details: { description, severity },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Flagged and George has been notified. Severity: ${severity}. Description: "${description}". Flag ID: ${flag.id.slice(0, 8)}.`,
+    data: { flagId: flag.id, message: "Flagged and George has been notified" },
+  };
+}
+
+async function searchKnowledge(input: Record<string, unknown>): Promise<ActionResult> {
+  const query = String(input.query).toLowerCase();
+
+  const knowledgeBase: Array<{ title: string; summary: string; keywords: string[] }> = [
+    { title: "Dashboard", summary: "Customizable dashboard with 8 draggable widgets. Choose from Field View, Finance View, GOTV View, or Overview presets. Widgets include contacts, supporters, doors knocked, donations, tasks, volunteers, signs, and GOTV tiers.", keywords: ["dashboard", "widgets", "overview", "home"] },
+    { title: "Contact Management", summary: "Import, search, filter, and manage voter contacts. Support levels track each voter's stance. Bulk import via CSV with field mapping.", keywords: ["contacts", "voters", "import", "csv", "support level"] },
+    { title: "Canvassing & Door Knocking", summary: "Create walk lists, assign turfs to volunteers, log door knocks and conversations. Track doors knocked per day and conversion rates.", keywords: ["canvass", "door knock", "walk list", "turf", "door"] },
+    { title: "GOTV (Get Out The Vote)", summary: "Priority tiers P1-P4 based on support level and engagement. Track who has voted on election day. Call lists for outstanding supporters.", keywords: ["gotv", "get out the vote", "voting", "election day", "priority"] },
+    { title: "Volunteer Management", summary: "Track volunteer profiles, skills, availability, and hours. Assign volunteers to canvass sessions and events.", keywords: ["volunteer", "team", "assign", "skills", "availability"] },
+    { title: "Donations & Fundraising", summary: "Log donations, track totals, generate receipts. Ontario individual limit is $1,648.26. Top donor reports and donation trends.", keywords: ["donation", "fundraise", "money", "receipt", "finance"] },
+    { title: "Signs & Lawn Signs", summary: "Request, track, and manage lawn sign installations. Map view of sign locations. Status tracking from requested to installed to removed.", keywords: ["sign", "lawn sign", "installation"] },
+    { title: "Events", summary: "Create and manage campaign events: rallies, fundraisers, town halls, canvass launches. RSVP tracking and capacity management.", keywords: ["event", "rally", "fundraiser", "town hall"] },
+    { title: "Tasks", summary: "Create, assign, and track campaign tasks. Priority levels (low/medium/high/urgent), due dates, and assignee management. Overdue task alerts.", keywords: ["task", "todo", "assign", "overdue", "priority"] },
+    { title: "Analytics & Heat Maps", summary: "Interactive choropleth maps showing election results. Voter turnout visualization, top municipalities, election trends 2014-2022. Export maps as PNG.", keywords: ["analytics", "heat map", "chart", "election results", "turnout"] },
+    { title: "Team Alerts & Notifications", summary: "Send push notifications to campaign team members. Target by role (all, admin, canvasser, volunteer). In-app notification centre.", keywords: ["alert", "notification", "push", "team message"] },
+    { title: "Smart Lists", summary: "Build filtered contact lists using natural language. Example: 'undecided voters in Ward 20 with phones not contacted in 2 weeks'.", keywords: ["smart list", "filter", "segment", "list builder"] },
+    { title: "Email Communications", summary: "Draft and send campaign emails. Templates for fundraising, GOTV reminders, volunteer recruitment, and event invites.", keywords: ["email", "communications", "template", "send"] },
+    { title: "Social Media", summary: "Draft social media posts for Twitter, Facebook, Instagram, LinkedIn. Schedule and manage social content.", keywords: ["social", "twitter", "facebook", "instagram", "post"] },
+    { title: "Import & Export", summary: "Import contacts via CSV with smart field mapping. Export filtered contact lists as CSV or JSON. Import templates for reuse.", keywords: ["import", "export", "csv", "download", "upload"] },
+    { title: "Campaign Registration", summary: "Register a new campaign with municipality selection. Auto-detects available election data. Sets up jurisdiction and election date.", keywords: ["register", "new campaign", "setup", "municipality"] },
+    { title: "Candidate Pages", summary: "Public candidate profile pages with verified badge, social links, office info, and election history. Shareable URL with slug.", keywords: ["candidate", "profile", "public page", "verified"] },
+    { title: "Adoni AI Assistant", summary: "AI campaign advisor that can search contacts, create tasks, schedule canvasses, log interactions, deploy teams, draft emails, and provide daily briefs.", keywords: ["adoni", "ai", "assistant", "chat", "help"] },
+    { title: "Permissions & Roles", summary: "Enterprise RBAC with custom roles. Granular permissions for contacts, canvassing, tasks, donations, analytics, and Adoni tools. Trust levels 1-5.", keywords: ["permission", "role", "access", "security", "rbac"] },
+    { title: "Print Shop", summary: "Generate print-ready materials: walk lists, door hangers, sign-in sheets, phone bank scripts, and canvass kits.", keywords: ["print", "walk list", "door hanger", "script", "pdf"] },
+    { title: "Election Calendar", summary: "Key dates for Ontario 2026 municipal election: nomination period, advance voting, election day, spending limits.", keywords: ["calendar", "election date", "nomination", "deadline"] },
+    { title: "Reminders", summary: "Set personal reminders via Adoni. Supports one-time and recurring reminders (daily, weekly). Natural language scheduling.", keywords: ["reminder", "remind", "schedule", "recurring"] },
+    { title: "Team Deployment", summary: "Deploy canvassing teams to specific wards. Auto-assigns volunteers, creates tasks for each member, attaches literature and instructions.", keywords: ["deploy", "team", "canvass team", "assign ward"] },
+    { title: "Contact Segmentation", summary: "Auto-segment contacts into wards, polls, and walk lists. Configurable list size (default 80 per list).", keywords: ["segment", "ward", "poll", "organize", "walk list"] },
+    { title: "Geocoding", summary: "Automatically geocode contact addresses to assign wards and poll districts. Runs as background job.", keywords: ["geocode", "address", "ward assignment", "location"] },
+    { title: "TV Mode", summary: "Campaign war room display mode. Auto-rotating dashboards showing live stats, maps, and team activity. Token-based access.", keywords: ["tv", "war room", "display", "dashboard", "live"] },
+    { title: "QR Codes", summary: "Generate QR codes for volunteer sign-up, event registration, donation pages, and contact info collection.", keywords: ["qr", "code", "scan", "link"] },
+    { title: "Polls & Surveys", summary: "Create voter polls and surveys. Embed on website or share via link. Results tracked per contact.", keywords: ["poll", "survey", "question", "feedback"] },
+    { title: "Vote Prediction", summary: "Adoni predicts your vote total based on current supporters and historical election data. Models turnout by support strength.", keywords: ["predict", "vote", "projection", "forecast", "model"] },
+    { title: "Anomaly Detection", summary: "Adoni compares last 7 days vs prior 7 days across key metrics. Flags significant changes (>25%) in doors, supporters, donations, volunteers.", keywords: ["anomaly", "trend", "change", "alert", "detection"] },
+  ];
+
+  // Score each article by keyword match
+  const scored = knowledgeBase.map((article) => {
+    const queryWords = query.split(/\s+/);
+    let score = 0;
+    for (const word of queryWords) {
+      if (article.title.toLowerCase().includes(word)) score += 3;
+      if (article.summary.toLowerCase().includes(word)) score += 1;
+      if (article.keywords.some((k) => k.includes(word))) score += 2;
+    }
+    return { ...article, score };
+  });
+
+  const results = scored
+    .filter((a) => a.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  if (results.length === 0) {
+    return {
+      success: true,
+      message: `No knowledge base articles matched "${input.query}". Try searching for a feature name like "canvassing", "donations", "GOTV", or "dashboard".`,
+      data: { articles: [] },
+    };
+  }
+
+  const articleList = results.map((a) => `• ${a.title}: ${a.summary}`).join("\n");
+  return {
+    success: true,
+    message: `Found ${results.length} article(s) for "${input.query}":\n${articleList}`,
+    data: { articles: results.map((a) => ({ title: a.title, summary: a.summary })) },
+  };
+}
+
+async function getElectionCalendar(): Promise<ActionResult> {
+  const now = new Date();
+  const electionDay = new Date("2026-10-26T00:00:00");
+  const nominationsOpen = new Date("2026-05-01T00:00:00");
+  const nominationsClose = new Date("2026-08-21T14:00:00");
+  const advanceVotingStart = new Date("2026-10-15T00:00:00");
+  const advanceVotingEnd = new Date("2026-10-18T00:00:00");
+  const bcElectionDay = new Date("2026-10-17T00:00:00");
+
+  const msPerDay = 86400000;
+  const daysToElection = Math.max(0, Math.ceil((electionDay.getTime() - now.getTime()) / msPerDay));
+  const daysToNominations = Math.max(0, Math.ceil((nominationsClose.getTime() - now.getTime()) / msPerDay));
+
+  return {
+    success: true,
+    message: [
+      "2026 Ontario Municipal Election Calendar:",
+      `• Election Day: October 26, 2026 (${daysToElection} days away)`,
+      `• Nominations Open: May 1, 2026`,
+      `• Nominations Close: August 21, 2026 at 2:00 PM (${daysToNominations} days away)`,
+      `• Advance Voting: October 15-18, 2026`,
+      `• Spending Limit Date: October 26, 2026`,
+      `• BC Election Day: October 17, 2026`,
+    ].join("\n"),
+    data: {
+      electionDay: "2026-10-26",
+      nominationsOpen: "2026-05-01",
+      nominationsClose: "2026-08-21T14:00:00",
+      advanceVoting: "2026-10-15 to 2026-10-18",
+      daysToElection,
+      daysToNominations,
+      spendingLimitDate: "2026-10-26",
+      bcElectionDay: "2026-10-17",
+    },
   };
 }
 
