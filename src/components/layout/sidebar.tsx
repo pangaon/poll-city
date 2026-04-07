@@ -150,35 +150,12 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-  const [opsOutstanding, setOpsOutstanding] = useState<number>(0);
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const roleName = (session?.user?.role ?? "").toString().toUpperCase();
   const isCanvasserOnly = roleName === "VOLUNTEER" || roleName === "CANVASSER";
   const isFinanceOnly = roleName.includes("FINANCE");
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    let mounted = true;
-
-    fetch("/api/ops/videos")
-      .then((r) => r.json())
-      .then((data) => {
-        if (!mounted) return;
-        const noVideo = Number(data?.stats?.no_video || 0);
-        const needsUpdate = Number(data?.stats?.needs_update || 0);
-        setOpsOutstanding(noVideo + needsUpdate);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setOpsOutstanding(0);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [isAdmin]);
 
   const sidebarSections = useMemo(() => {
     if (isCanvasserOnly) return CANVASSER_SECTIONS;
@@ -314,11 +291,6 @@ export default function Sidebar() {
                         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                         <span className="flex items-center gap-2 truncate">
                           {label}
-                          {href === "/ops/videos" && opsOutstanding > 0 && (
-                            <span className="inline-flex items-center justify-center min-w-[18px] h-4 rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                              {opsOutstanding}
-                            </span>
-                          )}
                         </span>
                       </Link>
                     );
@@ -344,7 +316,6 @@ export default function Sidebar() {
           <span>Search</span>
           <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-slate-400">Ctrl+K</kbd>
         </div>
-        <p className="text-[10px] text-slate-600 pt-1">Poll City v5.2.0</p>
       </div>
     </div>
   );

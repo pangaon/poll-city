@@ -80,7 +80,6 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
         <CardHeader><h3 className="font-semibold text-gray-900">System</h3></CardHeader>
         <CardContent className="space-y-2 text-sm text-gray-600">
           <div className="flex justify-between"><span>AI Assist</span><Badge variant={isAiEnabled ? "success" : "default"}>{isAiEnabled ? "Live" : "Demo mode"}</Badge></div>
-          <div className="flex justify-between"><span>Version</span><span className="text-gray-400">Poll City v0.1.0</span></div>
         </CardContent>
       </Card>
     </div>

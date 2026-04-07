@@ -1,22 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search, ChevronLeft, ChevronRight, DollarSign, CheckCircle2, Plus,
-  AlertTriangle, Ban, Download, Receipt, TrendingUp, Users, ArrowUpDown,
-  Building2, UserX, Eye, X, FileText, ShieldAlert, ChevronDown,
+  AlertTriangle, Ban, Download, Receipt, ArrowUpDown,
+  Building2, UserX, FileText, ShieldAlert,
 } from "lucide-react";
 import {
-  Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState,
+  Badge, Button, Card, CardContent, CardHeader, EmptyState,
   FormField, Input, Label, Modal, PageHeader, Select, Textarea,
 } from "@/components/ui";
 import { toast } from "sonner";
 import { formatDateTime, fullName } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from "recharts";
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
 
@@ -55,7 +51,6 @@ interface AnalyticsSummary {
   netCash: number;
 }
 
-interface MonthlyPoint { month: string; total: number }
 
 interface Props { campaignId: string }
 
@@ -63,36 +58,6 @@ type SortKey = "contact" | "amount" | "status" | "method" | "createdAt";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
-
-/* ─── AnimatedCounter ───────────────────────────────────────────────────── */
-
-function AnimatedCounter({ value, prefix = "", decimals = 0 }: { value: number; prefix?: string; decimals?: number }) {
-  const [display, setDisplay] = useState(0);
-  const prev = useRef(0);
-
-  useEffect(() => {
-    const start = prev.current;
-    const diff = value - start;
-    if (diff === 0) return;
-    const duration = 600;
-    const startTime = performance.now();
-    let raf: number;
-    function step(t: number) {
-      const elapsed = t - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = start + diff * eased;
-      setDisplay(current);
-      if (progress < 1) raf = requestAnimationFrame(step);
-      else prev.current = value;
-    }
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-
-  return <>{prefix}{decimals > 0 ? display.toFixed(decimals) : Math.round(display).toLocaleString()}</>;
-}
 
 /* ─── Shimmer skeleton ──────────────────────────────────────────────────── */
 
@@ -147,7 +112,6 @@ export default function DonationsClient({ campaignId }: Props) {
   // ── Data state ──
   const [donations, setDonations] = useState<DonationRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -159,7 +123,6 @@ export default function DonationsClient({ campaignId }: Props) {
 
   // ── Analytics ──
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [monthlyTrend, setMonthlyTrend] = useState<MonthlyPoint[]>([]);
 
   // ── Modals ──
   const [openNew, setOpenNew] = useState(false);
@@ -204,18 +167,14 @@ export default function DonationsClient({ campaignId }: Props) {
 
   /* ─── Load analytics ────────────────────────────────────────────────── */
   const loadAnalytics = useCallback(async () => {
-    setAnalyticsLoading(true);
     try {
       const res = await fetch(`/api/analytics/donations`);
       const data = await res.json();
       if (res.ok) {
         setSummary(data.summary);
-        setMonthlyTrend(data.monthlyTrend ?? []);
       }
     } catch {
       // non-critical
-    } finally {
-      setAnalyticsLoading(false);
     }
   }, []);
 
@@ -237,23 +196,6 @@ export default function DonationsClient({ campaignId }: Props) {
   }, [totalsByStatus]);
 
   const spendingLevel = summary ? getSpendingAlertLevel(summary.utilizationPct) : "ok";
-
-  // Top donors from loaded data
-  const topDonors = useMemo(() => {
-    const map = new Map<string, { name: string; total: number; count: number }>();
-    for (const d of donations) {
-      const name = d.contact ? fullName(d.contact.firstName, d.contact.lastName) : "Anonymous";
-      const key = d.contact?.id ?? "anonymous";
-      const existing = map.get(key);
-      if (existing) {
-        existing.total += d.amount;
-        existing.count += 1;
-      } else {
-        map.set(key, { name, total: d.amount, count: 1 });
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 5);
-  }, [donations]);
 
   // Sort donations client-side
   const sortedDonations = useMemo(() => {
@@ -522,191 +464,29 @@ export default function DonationsClient({ campaignId }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Stat cards ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {analyticsLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="p-5"><Shimmer className="h-5 w-24 mb-2" /><Shimmer className="h-8 w-32" /></Card>
-          ))
-        ) : (
-          <>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Total Raised</p>
-                    <p className="text-2xl font-bold" style={{ color: NAVY }}>
-                      <AnimatedCounter value={summary?.donationTotal ?? totalRaised} prefix="$" />
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{summary?.donationCount ?? 0} donations</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}15`, color: GREEN }}>
-                    <DollarSign className="w-5 h-5" />
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Avg Donation</p>
-                    <p className="text-2xl font-bold" style={{ color: NAVY }}>
-                      <AnimatedCounter value={summary?.avgDonation ?? 0} prefix="$" />
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Per contribution</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${NAVY}10`, color: NAVY }}>
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Net Cash</p>
-                    <p className="text-2xl font-bold" style={{ color: (summary?.netCash ?? 0) >= 0 ? GREEN : RED }}>
-                      <AnimatedCounter value={summary?.netCash ?? 0} prefix="$" />
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">After expenses</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 font-medium">Spending Limit</p>
-                    <p className="text-2xl font-bold" style={{ color: spendingLevel === "ok" ? NAVY : spendingLevel === "warn" ? AMBER : RED }}>
-                      <AnimatedCounter value={summary?.utilizationPct ?? 0} />%
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">${summary?.remaining.toLocaleString() ?? 0} remaining</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                    backgroundColor: spendingLevel === "ok" ? `${GREEN}15` : spendingLevel === "warn" ? `${AMBER}15` : `${RED}15`,
-                    color: spendingLevel === "ok" ? GREEN : spendingLevel === "warn" ? AMBER : RED,
-                  }}>
-                    <ShieldAlert className="w-5 h-5" />
-                  </div>
-                </div>
-                {/* progress bar */}
-                <div className="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: spendingLevel === "ok" ? GREEN : spendingLevel === "warn" ? AMBER : RED }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(summary?.utilizationPct ?? 0, 100)}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                  />
-                </div>
-              </Card>
-            </motion.div>
-          </>
-        )}
-      </div>
-
-      {/* ── Chart + Top donors row ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Daily/monthly chart */}
-        <Card className="lg:col-span-2 overflow-hidden">
-          <CardHeader><CardTitle>Donation Trend</CardTitle></CardHeader>
-          <CardContent>
-            {analyticsLoading ? (
-              <Shimmer className="h-48 w-full" />
-            ) : monthlyTrend.length === 0 ? (
-              <EmptyState icon={<TrendingUp className="w-10 h-10" />} title="No data yet" description="Donations will appear here as they are recorded." />
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={monthlyTrend} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="donationGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={GREEN} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#888" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#888" }} tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
-                  <RechartsTooltip
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                    formatter={((value: number) => [`$${value.toLocaleString()}`, "Total"]) as never}
-                  />
-                  <Area type="monotone" dataKey="total" stroke={GREEN} fill="url(#donationGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top donors */}
-        <Card>
-          <CardHeader><CardTitle>Top Donors</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {topDonors.length === 0 ? (
-              <div className="text-center py-6">
-                <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                <p className="text-sm font-medium text-gray-700">No donors yet</p>
-                <p className="text-xs text-gray-500 mt-1">Top donors will appear here as donations are recorded. Use the &quot;New Donation&quot; button above to log your first contribution.</p>
-              </div>
-            ) : (
-              topDonors.map((d, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ backgroundColor: NAVY }}>
-                      {i + 1}
-                    </div>
-                    <span className="text-sm truncate">{d.name}</span>
-                  </div>
-                  <span className="text-sm font-semibold whitespace-nowrap" style={{ color: GREEN }}>${d.total.toFixed(2)}</span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Recent feed (last 5) ─────────────────────────────────────── */}
-      <Card>
-        <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Shimmer key={i} className="h-10 w-full" />)}</div>
-          ) : donations.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">No recent donations</p>
-          ) : (
-            <div className="space-y-2">
-              {donations.slice(0, 5).map(d => (
-                <motion.div
-                  key={d.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white flex-shrink-0" style={{ backgroundColor: GREEN }}>
-                      {d.contact ? d.contact.firstName.charAt(0).toUpperCase() : "?"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{d.contact ? fullName(d.contact.firstName, d.contact.lastName) : "Anonymous"}</p>
-                      <p className="text-xs text-gray-400">{formatDateTime(d.createdAt)} via {d.method ?? "cash"}</p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold whitespace-nowrap" style={{ color: NAVY }}>${d.amount.toFixed(2)}</span>
-                </motion.div>
-              ))}
+      {/* ── Spending limit compliance bar ─────────────────────────────── */}
+      {summary && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" style={{ color: spendingLevel === "ok" ? GREEN : spendingLevel === "warn" ? AMBER : RED }} />
+              <p className="text-sm font-medium text-gray-700">Spending Limit</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm font-semibold" style={{ color: spendingLevel === "ok" ? NAVY : spendingLevel === "warn" ? AMBER : RED }}>
+              {summary.utilizationPct}% used — ${summary.remaining.toLocaleString()} remaining
+            </p>
+          </div>
+          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: spendingLevel === "ok" ? GREEN : spendingLevel === "warn" ? AMBER : RED }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(summary.utilizationPct, 100)}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+        </Card>
+      )}
 
       {/* ── Filters & search ─────────────────────────────────────────── */}
       <Card>

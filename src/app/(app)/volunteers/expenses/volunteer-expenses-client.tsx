@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   Button, Card, CardContent, Input, Label, Textarea, Badge,
-  EmptyState, PageHeader, Modal, Select, StatCard,
+  EmptyState, PageHeader, Modal, Select,
 } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -153,14 +153,6 @@ export default function VolunteerExpensesClient({ campaignId }: Props) {
           </Button>
         }
       />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Expenses" value={rows.length} icon={<Receipt className="w-5 h-5" />} color="blue" />
-        <StatCard label="Pending" value={`$${totals.pending.toFixed(2)}`} icon={<Clock className="w-5 h-5" />} color="amber" />
-        <StatCard label="Approved" value={`$${totals.approved.toFixed(2)}`} icon={<CheckCircle2 className="w-5 h-5" />} color="green" />
-        <StatCard label="Reimbursed" value={`$${totals.reimbursed.toFixed(2)}`} icon={<DollarSign className="w-5 h-5" />} color="purple" />
-      </div>
 
       {/* Filter */}
       <div className="flex items-center gap-2">

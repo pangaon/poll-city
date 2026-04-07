@@ -401,7 +401,7 @@ function LogInteractionModal({ open, onClose, contactId, contactName, onLogged }
 }) {
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<CreateInteractionInput>({
     resolver: zodResolver(createInteractionSchema),
-    defaultValues: { contactId, type: InteractionType.door_knock, issues: [] },
+    defaultValues: { contactId, type: InteractionType.note, issues: [] },
   });
 
   async function onSubmit(data: CreateInteractionInput) {

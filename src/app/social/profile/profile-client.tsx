@@ -527,7 +527,7 @@ export default function SocialProfile() {
         Sign out
       </button>
 
-      <p className="text-center text-xs text-gray-400">Poll City Social v0.1.0</p>
+      <p className="text-center text-xs text-gray-400">Poll City Social</p>
     </div>
   );
 }

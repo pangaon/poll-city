@@ -130,16 +130,15 @@ function canAccess(userPlan: Plan, required: Plan): boolean {
 /* ── Gate overlay ────────────────────────────────────────────────────────── */
 function GateOverlay({ plan, feature, userPlan }: { plan: Plan; feature: string; userPlan: Plan }) {
   if (canAccess(userPlan, plan)) return null;
-  const labels: Record<Plan, string> = { free: "Free Trial", starter: "Starter", pro: "Pro", command: "Command", official: "Elected Official" };
   return (
     <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 rounded-xl flex flex-col items-center justify-center gap-2 p-4 text-center">
       <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
         <Lock className="w-4 h-4 text-amber-600" />
       </div>
-      <p className="text-sm font-semibold text-gray-800">{labels[plan]} required</p>
+      <p className="text-sm font-semibold text-gray-800">Feature locked</p>
       <p className="text-xs text-gray-500">{feature}</p>
       <a href="/billing" className="mt-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors">
-        Upgrade Now →
+        Manage plan
       </a>
     </div>
   );
@@ -154,7 +153,6 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const locked = plan ? !canAccess(userPlan, plan) : false;
-  const planLabels: Record<Plan, string> = { free: "Free", starter: "Starter+", pro: "Pro+", command: "Command", official: "Official" };
 
   return (
     <div className="border border-gray-200 rounded-2xl overflow-hidden">
@@ -169,10 +167,8 @@ function Section({
             {badge}
           </span>
         )}
-        {plan && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${locked ? "bg-gray-100 text-gray-400" : "bg-emerald-100 text-emerald-700"}`}>
-            {planLabels[plan]}
-          </span>
+        {locked && (
+          <Lock className="w-4 h-4 text-gray-400" />
         )}
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
       </button>
@@ -984,31 +980,6 @@ export default function PublicPageSettings() {
           <p className="text-gray-600 text-xs mt-0.5 line-clamp-2">
             {c.metaDescription || `Vote for ${campaign.candidateName} in the upcoming election.`}
           </p>
-        </div>
-      </Section>
-
-      {/* ANALYTICS */}
-      <Section icon={BarChart3} title="Analytics" plan="pro" userPlan={userPlan}>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-2xl font-black text-blue-700">{campaign.pageViews ?? 0}</p>
-            <p className="text-xs text-gray-500 mt-1">All-time views</p>
-          </div>
-          <div className="bg-emerald-50 rounded-xl p-4 text-center">
-            <p className="text-2xl font-black text-emerald-700">—</p>
-            <p className="text-xs text-gray-500 mt-1">This week</p>
-          </div>
-        </div>
-        <div className="space-y-2 mt-2">
-          <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
-            <span className="text-gray-600">Mobile visitors</span><span className="font-semibold">72%</span>
-          </div>
-          <div className="flex items-center justify-between text-sm py-2 border-b border-gray-100">
-            <span className="text-gray-600">Desktop visitors</span><span className="font-semibold">28%</span>
-          </div>
-          <div className="flex items-center justify-between text-sm py-2">
-            <span className="text-gray-600">Top section</span><span className="font-semibold">Volunteer form</span>
-          </div>
         </div>
       </Section>
 

@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Crown, MessageSquare, UserPlus, UserMinus, MapPin,
-  BarChart3, Send, X,
+  Send, X,
 } from "lucide-react";
 import {
   Button, Card, CardContent, CardHeader, CardTitle, Input, Label,
-  Textarea, Badge, EmptyState, PageHeader, Modal, Select, StatCard,
+  Textarea, Badge, EmptyState, PageHeader, Modal, Select,
 } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -81,9 +81,6 @@ export default function VolunteersGroupsClient({ campaignId }: Props) {
   }, [campaignId]);
 
   useEffect(() => { load(); }, [load]);
-
-  const totalMembers = groups.reduce((s, g) => s + g.members.length, 0);
-  const totalHours = groups.reduce((s, g) => s + g.members.reduce((ms, m) => ms + (m.volunteerProfile.totalHours ?? 0), 0), 0);
 
   async function createGroup() {
     if (!form.name.trim()) { toast.error("Group name is required"); return; }
@@ -161,14 +158,6 @@ export default function VolunteersGroupsClient({ campaignId }: Props) {
           </Button>
         }
       />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Groups" value={groups.length} icon={<Users className="w-5 h-5" />} color="blue" />
-        <StatCard label="Total Members" value={totalMembers} icon={<Users className="w-5 h-5" />} color="green" />
-        <StatCard label="Total Hours" value={totalHours.toFixed(1)} icon={<BarChart3 className="w-5 h-5" />} color="amber" />
-        <StatCard label="Avg Members" value={groups.length > 0 ? (totalMembers / groups.length).toFixed(1) : "0"} icon={<Users className="w-5 h-5" />} color="purple" />
-      </div>
 
       {/* Groups list */}
       {loading ? (

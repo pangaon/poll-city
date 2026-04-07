@@ -179,7 +179,7 @@ export default function ShopRegisterClient() {
       {/* Why join */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: <DollarSign className="w-4 h-4" />, label: "Competitive bids", colour: "text-green-600 bg-green-50" },
+          { icon: <DollarSign className="w-4 h-4" />, label: "Bid on print jobs", colour: "text-green-600 bg-green-50" },
           { icon: <Shield className="w-4 h-4" />, label: "Verified profile", colour: "text-blue-600 bg-blue-50" },
           { icon: <Clock className="w-4 h-4" />, label: "Fast payments", colour: "text-purple-600 bg-purple-50" },
           { icon: <Star className="w-4 h-4" />, label: "Rated & reviewed", colour: "text-amber-600 bg-amber-50" },

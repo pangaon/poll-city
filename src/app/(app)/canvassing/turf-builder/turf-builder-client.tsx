@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import {
-  Map, Users, Trophy, Plus, ChevronRight, ChevronDown, CheckCircle,
+  Map, Users, Plus, ChevronRight, ChevronDown, CheckCircle,
   Circle, Loader2, X, Zap, Navigation, RefreshCw, AlertTriangle,
-  MapPin, User, BarChart2, Clock, Route,
+  MapPin, User, Clock, Route,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,20 +49,6 @@ interface PreviewContact {
   household: { lat: number | null; lng: number | null } | null;
 }
 
-interface LeaderboardEntry {
-  userId: string;
-  name: string;
-  email: string;
-  doorKnocks: number;
-  supportUpdates: number;
-  turfsAssigned: number;
-  turfsCompleted: number;
-  stopsCompleted: number;
-  stopsTotal: number;
-  completionPct: number;
-  score: number;
-}
-
 interface TurfDetail extends TurfSummary {
   stops: {
     id: string;
@@ -78,7 +64,7 @@ interface TurfDetail extends TurfSummary {
   }[];
 }
 
-type Tab = "turfs" | "create" | "map" | "leaderboard";
+type Tab = "turfs" | "create" | "map";
 
 const STATUS_LABELS: Record<string, { label: string; colour: string }> = {
   draft:       { label: "Draft",       colour: "bg-gray-100 text-gray-700" },
@@ -103,7 +89,6 @@ export default function TurfBuilderClient({
   const [turfs, setTurfs] = useState<TurfSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTurf, setSelectedTurf] = useState<TurfDetail | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [canvasserLocations, setCanvasserLocations] = useState<CanvasserPin[]>([]);
   const [volunteerGroups, setVolunteerGroups] = useState<VolunteerGroupSummary[]>([]);
 
@@ -115,14 +100,6 @@ export default function TurfBuilderClient({
       setTurfs(data.data ?? []);
     } catch { toast.error("Failed to load turfs"); }
     finally { setLoading(false); }
-  }, [campaignId]);
-
-  const loadLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/turf/leaderboard?campaignId=${campaignId}`);
-      const data = await res.json();
-      setLeaderboard(data.data ?? []);
-    } catch { /* silent */ }
   }, [campaignId]);
 
   const loadCanvasserLocations = useCallback(async () => {
@@ -157,7 +134,6 @@ export default function TurfBuilderClient({
 
   useEffect(() => { loadTurfs(); }, [loadTurfs]);
   useEffect(() => { loadVolunteerGroups(); }, [loadVolunteerGroups]);
-  useEffect(() => { if (tab === "leaderboard") loadLeaderboard(); }, [tab, loadLeaderboard]);
   useEffect(() => {
     if (tab === "map") {
       loadCanvasserLocations();
@@ -204,7 +180,6 @@ export default function TurfBuilderClient({
     { id: "turfs", icon: Route, label: "Turfs" },
     { id: "create", icon: Plus, label: "Create" },
     { id: "map", icon: Map, label: "Manager Map" },
-    { id: "leaderboard", icon: Trophy, label: "Leaderboard" },
   ];
 
   return (
@@ -264,10 +239,6 @@ export default function TurfBuilderClient({
         />
       )}
 
-      {/* ── Leaderboard ── */}
-      {tab === "leaderboard" && (
-        <LeaderboardTab leaderboard={leaderboard} onRefresh={loadLeaderboard} />
-      )}
     </div>
   );
 }
@@ -872,87 +843,6 @@ function ManagerMapTab({ canvassers, turfs, onRefresh }: {
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-/* ─── Leaderboard Tab ────────────────────────────────────────────────────────── */
-
-function LeaderboardTab({ leaderboard, onRefresh }: { leaderboard: LeaderboardEntry[]; onRefresh: () => void }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-bold text-gray-900">Canvasser Leaderboard</h2>
-        <button onClick={onRefresh} className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800">
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
-      </div>
-
-      <div className="bg-white border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-8">#</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Canvasser</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Doors</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Support</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Stops</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Turfs</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Score</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {leaderboard.map((entry, idx) => (
-                <tr key={entry.userId} className={idx < 3 ? "bg-amber-50/50" : ""}>
-                  <td className="px-4 py-3">
-                    <span className={cn("font-bold text-sm", idx === 0 ? "text-amber-500" : idx === 1 ? "text-gray-400" : idx === 2 ? "text-amber-700" : "text-gray-400")}>
-                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                        {entry.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-medium text-gray-900">{entry.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium">{entry.doorKnocks}</td>
-                  <td className="px-4 py-3 text-right">{entry.supportUpdates}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span>{entry.stopsCompleted}/{entry.stopsTotal}</span>
-                      {entry.stopsTotal > 0 && (
-                        <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${entry.completionPct}%` }} />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500">{entry.turfsCompleted}/{entry.turfsAssigned}</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="font-bold text-blue-700">{entry.score}</span>
-                  </td>
-                </tr>
-              ))}
-              {!leaderboard.length && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
-                    <BarChart2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    No data yet — assign turfs and start canvassing
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 border rounded-xl p-4 text-xs text-gray-500">
-        <p className="font-medium text-gray-700 mb-1">Score calculation</p>
-        <p>Each door knock = 1pt · Support level update = 2pts · Completed turf = 10pts</p>
-      </div>
     </div>
   );
 }

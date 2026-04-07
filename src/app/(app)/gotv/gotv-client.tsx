@@ -219,15 +219,10 @@ export default function GotvClient({ campaignId }: Props) {
 
   return (
     <div className={`${shellWidthClass} mx-auto px-4 ${shellSpacingClass} pb-[env(safe-area-inset-bottom)]`}>
-      <header
-        className="rounded-2xl p-5 md:p-8 text-white mb-6"
-        style={{ background: "linear-gradient(135deg,#7C2D12 0%,#DC2626 60%,#F59E0B 100%)" }}
-      >
-        <p className="text-xs font-bold uppercase tracking-widest text-amber-100">GOTV Engine</p>
-        <h1 className="text-2xl md:text-3xl font-extrabold mt-1">Get Out The Vote</h1>
-        <p className="text-white/85 text-sm md:text-base mt-1 max-w-2xl">
-          Score, prioritise, and strike off. This is the engine that turns supporters into votes.
-        </p>
+      <header className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Get Out The Vote</h1>
+        </div>
       </header>
 
       <section className="mb-6" aria-label="The Gap">
@@ -258,44 +253,6 @@ export default function GotvClient({ campaignId }: Props) {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">War Room Layout</p>
-            <p className="text-sm text-slate-600 mt-1">
-              Adaptive canvas tuned for {scope === "single" ? "single campaign" : scope === "regional" ? "regional race cluster" : "national or province-wide command"} operations.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {(["single", "regional", "national"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setScope(s)}
-                className={`h-9 px-3 rounded-full text-xs font-semibold border transition-colors ${scope === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
-              >
-                {s === "single" ? "Single" : s === "regional" ? "Regional" : "National"}
-              </button>
-            ))}
-
-            {(["auto", "compact", "comfortable"] as const).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDensity(d)}
-                className={`h-9 px-3 rounded-full text-xs font-semibold border transition-colors ${density === d ? "bg-blue-700 text-white border-blue-700" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"}`}
-              >
-                {d === "auto" ? "Density: Auto" : d === "compact" ? "Compact" : "Comfortable"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-3 text-xs text-slate-500">
-          Viewport: <span className="font-semibold text-slate-700 tabular-nums">{viewport.width}x{viewport.height}</span>
-          {" "}• Map auto-height: <span className="font-semibold text-slate-700 tabular-nums">{mapHeight}px</span>
-          {" "}• Scroll profile: <span className="font-semibold text-slate-700">{resolvedDensity === "compact" ? "compressed" : "balanced"}</span>
-        </div>
-      </section>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <p className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporter density map</p>
@@ -601,8 +558,6 @@ function CommandTab({ campaignId }: { campaignId: string }) {
 
   if (!data) return <Skeleton height={180} radius={12} />;
 
-  const maxHourly = Math.max(1, ...data.hourlyVotes.map((h) => h.voted));
-
   return (
     <div className="space-y-4">
       {/* Hero metrics */}
@@ -641,25 +596,11 @@ function CommandTab({ campaignId }: { campaignId: string }) {
         </div>
       </div>
 
-      {/* Hourly pace chart */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-slate-900">Hourly voting pace</h2>
-          <span className="text-xs text-slate-500 tabular-nums">{data.recentInteractions.toLocaleString()} interactions in last 12h</span>
-        </div>
-        <div className="flex items-end gap-1.5 h-32">
-          {data.hourlyVotes.map((h, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex items-end h-24">
-                <div
-                  className="w-full bg-gradient-to-t from-red-600 to-red-400 rounded-t"
-                  style={{ height: `${(h.voted / maxHourly) * 100}%` }}
-                  title={`${h.voted} voted`}
-                />
-              </div>
-              <span className="text-[10px] text-slate-500 tabular-nums">{h.hour}</span>
-            </div>
-          ))}
+      {/* Voting pace */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-700">Voting pace</p>
+          <p className="text-sm text-slate-500">{data.recentInteractions.toLocaleString()} interactions in last 12h</p>
         </div>
       </div>
 

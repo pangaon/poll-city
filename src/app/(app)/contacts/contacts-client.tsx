@@ -41,7 +41,7 @@ type ColumnKey =
   | "name" | "contact" | "support" | "ward" | "tags" | "lastContact" | "flags"
   // Extended columns
   | "phone" | "email" | "address" | "city" | "postalCode" | "riding"
-  | "gotvStatus" | "gotvScore" | "issues" | "notes" | "followUpDate"
+  | "issues" | "notes" | "followUpDate"
   | "captain" | "signPlaced" | "superSupporter" | "partyMember" | "language"
   | "interactions" | "volunteer" | "dnc";
 
@@ -62,8 +62,7 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   city: "City",
   postalCode: "Postal Code",
   riding: "Riding",
-  gotvStatus: "GOTV Status",
-  gotvScore: "GOTV Score",
+
   issues: "Issues",
   notes: "Notes",
   followUpDate: "Follow-up Date",
@@ -80,7 +79,7 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
 const COLUMN_CATEGORIES: Record<string, ColumnKey[]> = {
   "Identity": ["name", "phone", "email", "language"],
   "Location": ["address", "city", "postalCode", "ward", "riding"],
-  "Canvassing": ["support", "gotvStatus", "gotvScore", "lastContact", "interactions", "issues", "notes"],
+  "CRM": ["support", "lastContact", "interactions", "issues", "notes"],
   "Engagement": ["tags", "flags", "volunteer", "signPlaced", "followUpDate", "captain"],
   "Flags": ["superSupporter", "partyMember", "dnc"],
 };
@@ -89,26 +88,11 @@ const DEFAULT_COLUMN_ORDER: ColumnKey[] = ["name", "contact", "support", "ward",
 const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
   name: 220, contact: 230, support: 170, ward: 130, tags: 220, lastContact: 150, flags: 150,
   phone: 140, email: 200, address: 220, city: 110, postalCode: 110, riding: 160,
-  gotvStatus: 140, gotvScore: 110, issues: 200, notes: 240, followUpDate: 140,
+  issues: 200, notes: 240, followUpDate: 140,
   captain: 140, signPlaced: 110, superSupporter: 130, partyMember: 130, language: 110,
   interactions: 110, volunteer: 110, dnc: 110,
 };
 
-// GOTV score heuristic (0-100): supporter weight + recency of contact + commitment
-function computeGotvScore(c: ContactRow): number {
-  const supportPts =
-    c.supportLevel === "strong_support" ? 50 :
-    c.supportLevel === "leaning_support" ? 35 :
-    c.supportLevel === "undecided" ? 15 : 0;
-  const commitPts =
-    c.gotvStatus === "voted" ? 30 :
-    c.gotvStatus === "will_vote" ? 20 :
-    c.gotvStatus === "not_checked" ? 0 : 5;
-  const contactPts = c.lastContactedAt
-    ? Math.max(0, 20 - Math.floor((Date.now() - new Date(c.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24 * 7)) * 2)
-    : 0;
-  return Math.min(100, supportPts + commitPts + contactPts);
-}
 
 export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const router = useRouter();
@@ -153,7 +137,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const columnStorageKey = `poll-city-crm-columns-${campaignId}`;
   const sortableColumns: ColumnKey[] = [
     "name", "phone", "email", "support", "ward", "lastContact", "city", "postalCode", "riding",
-    "gotvStatus", "gotvScore", "followUpDate", "interactions", "volunteer", "dnc",
+    "followUpDate", "interactions", "volunteer", "dnc",
   ];
 
   function encodeSorts(input: SortSpec[]) {
@@ -986,21 +970,6 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                       {key === "city" && <span className="text-gray-500 text-xs">{c.city ?? "—"}</span>}
                       {key === "postalCode" && <span className="text-gray-500 text-xs font-mono">{c.postalCode ?? "—"}</span>}
                       {key === "riding" && <span className="text-gray-500 text-xs truncate block max-w-[140px]">{c.riding ?? "—"}</span>}
-                      {key === "gotvStatus" && (
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          c.gotvStatus === "voted" && "bg-emerald-100 text-emerald-800",
-                          c.gotvStatus === "will_vote" && "bg-blue-100 text-blue-800",
-                          c.gotvStatus === "refused" && "bg-red-100 text-red-800",
-                          c.gotvStatus === "not_home" && "bg-amber-100 text-amber-800",
-                          (!c.gotvStatus || c.gotvStatus === "not_checked") && "bg-gray-100 text-gray-600"
-                        )}>{c.gotvStatus?.replace("_", " ") ?? "not checked"}</span>
-                      )}
-                      {key === "gotvScore" && (() => {
-                        const score = computeGotvScore(c);
-                        const tone = score >= 70 ? "text-emerald-700 bg-emerald-50" : score >= 40 ? "text-amber-700 bg-amber-50" : "text-gray-600 bg-gray-100";
-                        return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums", tone)}>{score}</span>;
-                      })()}
                       {key === "issues" && (
                         <div className="flex gap-1 flex-wrap">
                           {(c.issues ?? []).slice(0, 2).map((i) => (

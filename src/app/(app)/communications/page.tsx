@@ -4,11 +4,11 @@ import { Mail, MessageSquare, Share2, Inbox, Megaphone } from "lucide-react";
 export const metadata = { title: "Communications -- Poll City" };
 
 const HUBS = [
-  { href: "/communications/email", icon: Mail, label: "Email", desc: "CASL-compliant campaign email with templates and targeting" },
-  { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text", desc: "CRTC-compliant text blasts with time-window enforcement" },
-  { href: "/communications/social", icon: Share2, label: "Social Media", desc: "Post composer, approval workflow, mentions feed" },
-  { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox", desc: "All channels -- email, SMS, questions, mentions -- in one view" },
-  { href: "/communications/advertising", icon: Megaphone, label: "Advertising", desc: "Meta + Google political ads" },
+  { href: "/communications/email", icon: Mail, label: "Email", desc: "Send targeted emails to subscriber segments" },
+  { href: "/communications/sms", icon: MessageSquare, label: "SMS & Text", desc: "Send text blasts with delivery scheduling" },
+  { href: "/communications/social", icon: Share2, label: "Social Media", desc: "Draft, approve, and publish social posts" },
+  { href: "/communications/inbox", icon: Inbox, label: "Unified Inbox", desc: "View and respond to messages across all channels" },
+  { href: "/communications/advertising", icon: Megaphone, label: "Advertising", desc: "Create and manage political ad campaigns" },
 ];
 
 export default function CommunicationsHubPage() {
@@ -16,7 +16,7 @@ export default function CommunicationsHubPage() {
     <div className="max-w-5xl mx-auto px-4 py-6 md:py-10 pb-[env(safe-area-inset-bottom)]">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#0A2342]">Communications</h1>
-        <p className="text-sm text-slate-600 mt-1">Reach voters. Stay compliant. Measure everything.</p>
+        <p className="text-sm text-slate-600 mt-1">Choose a channel to compose and send.</p>
       </header>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {HUBS.map((h) => {

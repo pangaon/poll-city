@@ -464,9 +464,6 @@ export default function CampaignMap({
           <p className="mt-2">This area: {selectedStats.doors} doors, about {selectedStats.estimatedHours} hrs, {selectedStats.volunteersNeeded} volunteers</p>
           <p className="mt-1">Knocked: {selectedStats.knocked} ({selectedStats.doors ? Math.round((selectedStats.knocked / selectedStats.doors) * 100) : 0}%)</p>
           <p className="mt-1">Supporters identified: {selectedStats.supporters}</p>
-          <div className="mt-2 rounded-lg bg-slate-100 px-2 py-1.5 text-slate-600">
-            Poll City estimate: $799 one-time | Competitors: $3,588 to $12,564 yearly
-          </div>
         </div>
       )}
 

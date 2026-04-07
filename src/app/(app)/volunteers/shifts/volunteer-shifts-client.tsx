@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, Clock, MapPin, Plus, Users, ChevronLeft, ChevronRight,
-  CheckCircle2, UserPlus, List, CalendarDays, Bell, X,
+  CheckCircle2, UserPlus, List, Bell, X,
 } from "lucide-react";
 import {
   Button, Card, CardContent, CardHeader, CardTitle, Input, Label,
-  Textarea, Badge, EmptyState, PageHeader, Modal, StatCard, Select,
+  Textarea, Badge, EmptyState, PageHeader, Modal, Select,
 } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -123,10 +123,6 @@ export default function VolunteerShiftsClient({ campaignId }: Props) {
     return map;
   }, [shifts]);
 
-  const upcoming = shifts.filter((s) => new Date(s.shiftDate) >= new Date(new Date().toDateString())).length;
-  const totalSignups = shifts.reduce((sum, s) => sum + s.signups.length, 0);
-  const attended = shifts.reduce((sum, s) => sum + s.signups.filter((su) => su.status === "attended").length, 0);
-
   async function createShift() {
     if (!form.name.trim() || !form.shiftDate || !form.meetingLocation.trim()) {
       toast.error("Please fill in name, date, and location");
@@ -217,14 +213,6 @@ export default function VolunteerShiftsClient({ campaignId }: Props) {
           </div>
         }
       />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Shifts" value={shifts.length} icon={<Calendar className="w-5 h-5" />} color="blue" />
-        <StatCard label="Upcoming" value={upcoming} icon={<CalendarDays className="w-5 h-5" />} color="green" />
-        <StatCard label="Total Signups" value={totalSignups} icon={<Users className="w-5 h-5" />} color="amber" />
-        <StatCard label="Attended" value={attended} icon={<CheckCircle2 className="w-5 h-5" />} color="purple" />
-      </div>
 
       {/* View toggle + navigation */}
       <div className="flex items-center justify-between gap-2">

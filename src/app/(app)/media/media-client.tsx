@@ -473,93 +473,8 @@ function OutletsTab({
     }
   }
 
-  const tiers = [
-    {
-      plan: "COMMUNITY",
-      name: "Community",
-      price: "Free",
-      features: [
-        "Basic ticker embed",
-        "Up to 50 items/day",
-        "Standard branding",
-      ],
-      color: NAVY,
-    },
-    {
-      plan: "STANDARD",
-      name: "Standard",
-      price: "$199/mo",
-      features: [
-        "All embed formats",
-        "Unlimited items",
-        "Custom branding",
-        "Priority support",
-      ],
-      color: GREEN,
-      popular: true,
-    },
-    {
-      plan: "PREMIUM",
-      name: "Premium",
-      price: "$499/mo",
-      features: [
-        "Everything in Standard",
-        "Live results iframe",
-        "SSE streaming",
-        "API access",
-        "Dedicated account manager",
-      ],
-      color: AMBER,
-    },
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Pricing tiers */}
-      <Section title="Pricing Tiers">
-        <div className="grid md:grid-cols-3 gap-4">
-          {tiers.map((tier) => (
-            <motion.div
-              key={tier.plan}
-              {...hoverTap}
-              className={cn(
-                "relative rounded-xl border-2 p-5 transition-colors",
-                tier.popular ? "border-current" : "border-gray-200"
-              )}
-              style={tier.popular ? { borderColor: tier.color } : undefined}
-            >
-              {tier.popular && (
-                <span
-                  className="absolute -top-3 left-4 px-3 py-0.5 rounded-full text-xs font-bold text-white"
-                  style={{ backgroundColor: tier.color }}
-                >
-                  Popular
-                </span>
-              )}
-              <div className="mb-4">
-                <p
-                  className="text-sm font-semibold"
-                  style={{ color: tier.color }}
-                >
-                  {tier.name}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {tier.price}
-                </p>
-              </div>
-              <ul className="space-y-2">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                    <Check className="w-4 h-4 flex-shrink-0" style={{ color: tier.color }} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
-        </div>
-      </Section>
-
       {/* Add outlet */}
       <Section
         title="Media Outlets"
@@ -597,9 +512,9 @@ function OutletsTab({
                   setForm((s) => ({ ...s, plan: e.target.value }))
                 }
               >
-                <option value="COMMUNITY">Community (Free)</option>
-                <option value="STANDARD">Standard ($199/mo)</option>
-                <option value="PREMIUM">Premium ($499/mo)</option>
+                <option value="COMMUNITY">Community</option>
+                <option value="STANDARD">Standard</option>
+                <option value="PREMIUM">Premium</option>
               </select>
               <motion.button
                 {...hoverTap}
@@ -647,7 +562,6 @@ function OutletsTab({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <PlanBadge plan={o.plan} />
                     <StatusBadge active={o.isActive} />
                     <motion.button
                       {...hoverTap}

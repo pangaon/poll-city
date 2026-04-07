@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Pencil, Search, ChevronLeft, ChevronRight, Users, CheckCircle2, XCircle,
-  Trophy, DoorOpen, TrendingUp, Car, Clock, Star, Filter,
+  Trophy, DoorOpen, Car, Filter,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, Checkbox, FormField, Input, Label,
-  Modal, PageHeader, Select, Textarea, EmptyState, StatCard, Switch,
+  Modal, PageHeader, Select, Textarea, EmptyState, Switch,
 } from "@/components/ui";
 import { toast } from "sonner";
 import { fullName, formatPhone } from "@/lib/utils";
@@ -37,16 +37,6 @@ interface LeaderboardEntry {
   supportersFound: number;
   conversionRate: number;
   status: "star" | "active" | "new" | "quiet" | "inactive";
-}
-
-interface VolunteerStats {
-  activeVolunteers: number;
-  totalHours: number;
-  hoursThisWeek: number;
-  pendingExpensesCount: number;
-  pendingExpensesTotal: number;
-  upcomingShifts: number;
-  activeGroups: number;
 }
 
 interface Props { campaignId: string }
@@ -96,7 +86,6 @@ export default function VolunteersClient({ campaignId }: Props) {
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState<string[]>([]);
-  const [stats, setStats] = useState<VolunteerStats | null>(null);
   const [tab, setTab] = useState<"roster" | "leaderboard">("roster");
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -125,17 +114,6 @@ export default function VolunteersClient({ campaignId }: Props) {
 
   useEffect(() => { loadVolunteers(); }, [loadVolunteers]);
   useEffect(() => { setPage(1); }, [search, status, hasVehicle, skillsFilter, availabilityFilter]);
-
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const res = await fetch(`/api/volunteers/stats?campaignId=${campaignId}`);
-        const payload = await res.json();
-        if (res.ok) setStats(payload.data ?? null);
-      } catch { /* keep UI usable */ }
-    }
-    loadStats();
-  }, [campaignId, volunteers.length]);
 
   useEffect(() => {
     if (tab !== "leaderboard") return;
@@ -208,21 +186,6 @@ export default function VolunteersClient({ campaignId }: Props) {
         description="Manage volunteer profiles, skills, availability, and performance."
         actions={<Button onClick={() => openEditor()} className="bg-[#0A2342] hover:bg-[#0A2342]/90 min-h-[44px]"><Users className="w-4 h-4" />New volunteer</Button>}
       />
-
-      {/* Stats row */}
-      {stats && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={spring}
-          className="grid gap-3 grid-cols-2 lg:grid-cols-4"
-        >
-          <StatCard label="Active Volunteers" value={stats.activeVolunteers} icon={<Users className="w-5 h-5" />} color="blue" />
-          <StatCard label="Total Hours" value={stats.totalHours.toFixed(1)} icon={<Clock className="w-5 h-5" />} color="green" />
-          <StatCard label="This Week" value={stats.hoursThisWeek.toFixed(1)} change={`${stats.upcomingShifts} upcoming shifts`} icon={<TrendingUp className="w-5 h-5" />} color="amber" />
-          <StatCard label="Groups" value={stats.activeGroups} change={`$${stats.pendingExpensesTotal.toFixed(2)} pending`} icon={<Star className="w-5 h-5" />} color="purple" />
-        </motion.div>
-      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">

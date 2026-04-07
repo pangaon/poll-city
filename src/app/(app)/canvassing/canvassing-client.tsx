@@ -1,12 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Plus, MapPin, Users, ChevronRight, CheckCircle, Bell, BellOff,
-  Trophy, BookOpen, BarChart2, RefreshCw, Loader2,
+  Plus, MapPin, Users, BookOpen, RefreshCw,
 } from "lucide-react";
 import {
-  Button, Card, CardHeader, CardContent, PageHeader, Badge, Modal,
+  Button, Card, CardHeader, CardContent, PageHeader, Modal,
   FormField, Input, Textarea, Select, EmptyState,
 } from "@/components/ui";
 import { formatDate, cn } from "@/lib/utils";
@@ -14,7 +13,6 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createCanvassListSchema, CreateCanvassListInput } from "@/lib/validators";
-import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 import dynamic from "next/dynamic";
 import type { MapTurfSelection } from "@/components/maps/campaign-map";
 
@@ -23,8 +21,6 @@ const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ss
 /* ─── Brand colours ─────────────────────────────────────────────────────────── */
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
-const AMBER = "#EF9F27";
-const RED = "#E24B4A";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -44,14 +40,6 @@ interface TurfSummary {
   totalStops: number;
   completedStops: number;
   assignedUser: { id: string; name: string | null } | null;
-}
-
-interface LeaderboardEntry {
-  userId: string;
-  name: string;
-  doorKnocks: number;
-  score: number;
-  completionPct: number;
 }
 
 interface CanvasserLocation {
@@ -102,7 +90,6 @@ function ShimmerSkeleton({ className }: { className?: string }) {
 export default function CanvassingClient({ campaignId, currentUserId, teamMembers }: Props) {
   const [lists, setLists] = useState<CanvassList[]>([]);
   const [turfs, setTurfs] = useState<TurfSummary[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -119,26 +106,21 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
   const [turfCanvassDate, setTurfCanvassDate] = useState("");
   const [turfNotes, setTurfNotes] = useState("");
 
-  const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications(campaignId);
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [listsRes, turfsRes, lbRes, locRes] = await Promise.all([
+      const [listsRes, turfsRes, locRes] = await Promise.all([
         fetch(`/api/canvass?campaignId=${campaignId}`),
         fetch(`/api/turf?campaignId=${campaignId}`),
-        fetch(`/api/turf/leaderboard?campaignId=${campaignId}`),
         fetch(`/api/canvasser/location?campaignId=${campaignId}`),
       ]);
-      const [listsData, turfsData, lbData, locData] = await Promise.all([
+      const [listsData, turfsData, locData] = await Promise.all([
         listsRes.json(),
         turfsRes.json(),
-        lbRes.json(),
         locRes.json(),
       ]);
       setLists(listsData.data ?? []);
       setTurfs(turfsData.data ?? []);
-      setLeaderboard(lbData.data ?? []);
       setCanvassers(
         (locData.data ?? []).map((l: { user: { id: string; name: string | null }; lat: number; lng: number; updatedAt: string }) => ({
           userId: l.user.id,
@@ -179,12 +161,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     return () => clearInterval(interval);
   }, [campaignId]);
 
-  // Computed stats
-  const totalStops = turfs.reduce((a, t) => a + t.totalStops, 0);
-  const completedStops = turfs.reduce((a, t) => a + t.completedStops, 0);
-  const completionPct = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
-  const activeTurfs = turfs.filter((t) => t.status === "in_progress" || t.status === "assigned");
-  const completedTurfs = turfs.filter((t) => t.status === "completed");
 
   function centroidForPolygon(points: Array<[number, number]>) {
     if (!points.length) return null;
@@ -329,50 +305,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         }
       />
 
-      {/* ── Overview Stats ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Total Doors", value: totalStops, color: NAVY },
-          { label: "Completed", value: completedStops, color: GREEN },
-          { label: "Active Turfs", value: activeTurfs.length, color: AMBER },
-          { label: "Canvassers", value: canvassers.length, color: "#6366f1" },
-        ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          >
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</p>
-                <p className="text-2xl font-black mt-1" style={{ color: stat.color }}>{stat.value}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* ── Overall progress bar ── */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-700">Campaign Progress</p>
-            <p className="text-sm font-bold" style={{ color: GREEN }}>{completionPct}%</p>
-          </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPct}%` }}
-              transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.3 }}
-              className="h-full rounded-full"
-              style={{ backgroundColor: completionPct === 100 ? GREEN : NAVY }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1.5">{completedStops} of {totalStops} doors knocked</p>
-        </CardContent>
-      </Card>
-
       {/* ── Turf Overview with Completion Percentages ── */}
       {turfs.length > 0 && (
         <Card>
@@ -442,36 +374,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
                   </div>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Mini Leaderboard ── */}
-      {leaderboard.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Leaderboard</h2>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {leaderboard.slice(0, 5).map((entry, idx) => (
-                <div key={entry.userId} className="flex items-center gap-3 px-5 py-3">
-                  <span className="w-6 text-center font-bold text-sm" style={{ color: idx === 0 ? AMBER : idx < 3 ? "#9CA3AF" : "#D1D5DB" }}>
-                    {idx + 1}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{entry.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold" style={{ color: NAVY }}>{entry.doorKnocks} doors</p>
-                    <p className="text-xs text-gray-400">Score: {entry.score}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>
@@ -587,43 +489,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         </div>
       )}
 
-      {/* ── Push Notifications ── */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {isSubscribed ? (
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <Bell className="w-4 h-4 text-green-600" />
-                </div>
-              ) : (
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                  <BellOff className="w-4 h-4 text-gray-400" />
-                </div>
-              )}
-              <div>
-                <h3 className="font-medium text-gray-900">Push Notifications</h3>
-                <p className="text-sm text-gray-500">
-                  {isSubscribed
-                    ? "You'll receive notifications for campaign updates and GOTV alerts"
-                    : permission === "denied"
-                      ? "Notifications are blocked. Enable them in your browser settings."
-                      : "Get notified about campaign updates and GOTV alerts"}
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant={isSubscribed ? "outline" : "default"}
-              onClick={isSubscribed ? unsubscribe : subscribe}
-              disabled={pushLoading || permission === "denied"}
-            >
-              {pushLoading ? "..." : isSubscribed ? "Disable" : "Enable"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* ── Walk lists ── */}
       {loading ? (
         <div className="space-y-3">
@@ -691,23 +556,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
           ))}
         </div>
       )}
-
-      {/* ── Quick guide ── */}
-      <Card className="border-blue-200" style={{ backgroundColor: "#EFF6FF" }}>
-        <CardContent className="p-5">
-          <h3 className="font-semibold text-blue-900 mb-2">Mobile Canvassing</h3>
-          <p className="text-sm text-blue-700 mb-3">
-            When door-knocking, open the <strong>Walk List</strong> to record responses on your phone with one tap. All data syncs in real time.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            {["Support level", "Issues of concern", "Sign request", "Volunteer interest"].map((item) => (
-              <div key={item} className="flex items-center gap-1.5 text-blue-700">
-                <CheckCircle className="w-3.5 h-3.5 text-blue-500" />{item}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* ── Create list modal ── */}
       <CreateCanvassModal open={showCreate} onClose={() => setShowCreate(false)} campaignId={campaignId} onCreated={() => { setShowCreate(false); load(); }} />
