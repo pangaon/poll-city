@@ -236,6 +236,40 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  {
+    name: "deploy_team",
+    description:
+      "Deploy a canvassing team: assign volunteers to a ward/area, attach literature, create tasks for each member, and send notifications. Use when someone says 'set up a canvassing team of 20 for Ward 3' or 'deploy team alpha to polls 42-47'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        teamName: { type: "string" as const, description: "Name for this deployment (e.g. 'Ward 3 Saturday Team')" },
+        ward: { type: "string" as const, description: "Target ward or area" },
+        pollDistricts: { type: "string" as const, description: "Specific poll districts (comma-separated)" },
+        volunteerCount: { type: "number" as const, description: "How many volunteers to assign (will pick available ones)" },
+        volunteerNames: { type: "string" as const, description: "Specific volunteer names (comma-separated)" },
+        date: { type: "string" as const, description: "ISO date for the deployment" },
+        startTime: { type: "string" as const, description: "Start time like '10:00 AM'" },
+        endTime: { type: "string" as const, description: "End time like '2:00 PM'" },
+        literature: { type: "string" as const, description: "Literature/scripts to bring" },
+        notes: { type: "string" as const, description: "Special instructions" },
+      },
+      required: ["ward", "date"],
+    },
+  },
+  {
+    name: "segment_contacts",
+    description:
+      "Auto-segment imported contacts into wards, polls, and walk lists. Use when someone says 'organize the voter list into walk lists' or 'segment contacts by ward'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ward: { type: "string" as const, description: "Segment only a specific ward (optional, segments all if omitted)" },
+        maxPerList: { type: "number" as const, description: "Max contacts per walk list (default 80)" },
+      },
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -257,6 +291,8 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   create_reminder: "adoni:write_tools",
   draft_email: "email:write",
   draft_social_post: "social:write",
+  deploy_team: "canvassing:manage",
+  segment_contacts: "contacts:write",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -334,6 +370,10 @@ export async function executeAction(
         return { success: true, message: `Social post drafted for ${input.platform} about "${input.topic}". Navigate to /communications/social to review and schedule.` };
       case "get_daily_brief":
         return await getDailyBrief(ctx);
+      case "deploy_team":
+        return await deployTeam(input, ctx);
+      case "segment_contacts":
+        return await segmentContacts(input, ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -771,7 +811,266 @@ async function getDailyBrief(ctx: ActionContext): Promise<ActionResult> {
   };
 }
 
+async function deployTeam(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const ward = String(input.ward);
+  const date = String(input.date);
+  const start = input.startTime ? String(input.startTime) : "10:00 AM";
+  const end = input.endTime ? String(input.endTime) : "2:00 PM";
+  const teamName = input.teamName ? String(input.teamName) : `${ward} ${date} Team`;
+  const literature = input.literature ? String(input.literature) : null;
+  const notes = input.notes ? String(input.notes) : "";
+  const requestedCount = input.volunteerCount ? Number(input.volunteerCount) : 0;
+  const namedVolunteers = input.volunteerNames ? String(input.volunteerNames).split(",").map((n) => n.trim()).filter(Boolean) : [];
+
+  // Count doors in target area
+  const doorCount = await prisma.contact.count({
+    where: {
+      campaignId: ctx.campaignId,
+      isDeceased: false,
+      doNotContact: false,
+      ...(ward ? { ward: { contains: ward, mode: "insensitive" } as never } : {}),
+    },
+  });
+
+  if (doorCount === 0) {
+    return {
+      success: false,
+      message: `No contacts found in ${ward}. We need contacts imported and assigned to wards before deploying a team there. Try importing a voter list first, or check the ward name.`,
+    };
+  }
+
+  // Find volunteers — by name or by availability
+  let assignedMembers: Array<{ userId: string; name: string }> = [];
+
+  if (namedVolunteers.length > 0) {
+    for (const name of namedVolunteers) {
+      const member = await prisma.membership.findFirst({
+        where: {
+          campaignId: ctx.campaignId,
+          user: { name: { contains: name, mode: "insensitive" } },
+        },
+        select: { userId: true, user: { select: { name: true } } },
+      });
+      if (member) {
+        assignedMembers.push({ userId: member.userId, name: member.user.name ?? name });
+      }
+    }
+    const notFound = namedVolunteers.filter((n) => !assignedMembers.some((m) => m.name.toLowerCase().includes(n.toLowerCase())));
+    if (notFound.length > 0 && assignedMembers.length === 0) {
+      return {
+        success: false,
+        message: `Could not find team members: ${notFound.join(", ")}. Check the names and make sure they are campaign members.`,
+        data: { notFound },
+      };
+    }
+  } else if (requestedCount > 0) {
+    // Pick available volunteers from the roster
+    const vols = await prisma.volunteerProfile.findMany({
+      where: { campaignId: ctx.campaignId, isActive: true },
+      include: { contact: { select: { firstName: true, lastName: true } }, user: { select: { id: true, name: true } } },
+      take: requestedCount,
+    });
+    assignedMembers = vols
+      .filter((v) => v.user)
+      .map((v) => ({ userId: v.user!.id, name: v.user!.name ?? `${v.contact?.firstName ?? ""} ${v.contact?.lastName ?? ""}`.trim() }));
+
+    if (assignedMembers.length < requestedCount) {
+      // Not enough but proceed with what we have
+    }
+  }
+
+  // Create a canvass list for this deployment
+  const canvassList = await prisma.canvassList.create({
+    data: {
+      campaignId: ctx.campaignId,
+      name: teamName,
+      description: `Deployed via Adoni. Ward: ${ward}, Date: ${date} ${start}-${end}.${literature ? ` Literature: ${literature}.` : ""}${notes ? ` Notes: ${notes}` : ""}`,
+      status: "pending" as never,
+      geoArea: { ward, pollDistricts: input.pollDistricts ? String(input.pollDistricts) : null },
+    },
+  });
+
+  // Create assignments for each volunteer
+  for (const member of assignedMembers) {
+    await prisma.canvassAssignment.create({
+      data: {
+        canvassListId: canvassList.id,
+        userId: member.userId,
+        status: "pending" as never,
+      },
+    });
+  }
+
+  // Create a master task
+  const task = await prisma.task.create({
+    data: {
+      campaignId: ctx.campaignId,
+      title: `Team Deployment: ${teamName}`,
+      description: [
+        `Ward: ${ward}`,
+        input.pollDistricts ? `Polls: ${input.pollDistricts}` : null,
+        `Time: ${start} to ${end}`,
+        `Doors: ${doorCount}`,
+        `Team: ${assignedMembers.length} volunteer(s)${assignedMembers.length > 0 ? ` — ${assignedMembers.map((m) => m.name).join(", ")}` : ""}`,
+        literature ? `Literature: ${literature}` : null,
+        notes ? `Notes: ${notes}` : null,
+      ].filter(Boolean).join("\n"),
+      priority: "high" as TaskPriority,
+      status: "pending" as TaskStatus,
+      dueDate: new Date(date),
+      createdById: ctx.userId,
+    },
+  });
+
+  // Create individual tasks for each volunteer
+  for (const member of assignedMembers) {
+    await prisma.task.create({
+      data: {
+        campaignId: ctx.campaignId,
+        title: `Canvass ${ward} — ${date} ${start}-${end}`,
+        description: `Part of: ${teamName}.${literature ? ` Bring: ${literature}.` : ""}${notes ? ` ${notes}` : ""}`,
+        priority: "high" as TaskPriority,
+        status: "pending" as TaskStatus,
+        dueDate: new Date(date),
+        assignedToId: member.userId,
+        createdById: ctx.userId,
+      },
+    });
+  }
+
+  // Activity log
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "team_deployed_by_adoni",
+      entityType: "canvassList",
+      entityId: canvassList.id,
+      details: {
+        teamName,
+        ward,
+        date,
+        start,
+        end,
+        volunteerCount: assignedMembers.length,
+        doorCount,
+        literature: literature ?? "",
+      },
+    },
+  }).catch(() => {});
+
+  const missingCount = requestedCount > 0 && assignedMembers.length < requestedCount
+    ? ` (${requestedCount - assignedMembers.length} more needed — not enough available volunteers)`
+    : "";
+
+  return {
+    success: true,
+    message: `Team "${teamName}" deployed to ${ward} for ${date} ${start}-${end}. ${assignedMembers.length} volunteer(s) assigned${missingCount}. ${doorCount.toLocaleString()} doors in the area.${literature ? ` Literature: ${literature}.` : ""} Tasks created for each team member.`,
+    data: { canvassListId: canvassList.id, taskId: task.id, volunteerCount: assignedMembers.length, doorCount },
+  };
+}
+
+async function segmentContacts(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const targetWard = input.ward ? String(input.ward) : null;
+  const maxPerList = input.maxPerList ? Number(input.maxPerList) : 80;
+
+  // Get ward breakdown
+  const wardWhere: Record<string, unknown> = {
+    campaignId: ctx.campaignId,
+    isDeceased: false,
+    doNotContact: false,
+    ward: { not: null },
+  };
+  if (targetWard) {
+    wardWhere.ward = { contains: targetWard, mode: "insensitive" };
+  }
+
+  const contacts = await prisma.contact.findMany({
+    where: wardWhere as never,
+    select: { id: true, ward: true, pollDistrict: true, address1: true, supportLevel: true },
+    orderBy: [{ ward: "asc" }, { pollDistrict: "asc" }, { address1: "asc" }],
+  });
+
+  if (contacts.length === 0) {
+    return {
+      success: false,
+      message: targetWard
+        ? `No contacts with ward data found in "${targetWard}". Make sure contacts have ward assignments — this usually comes from the voter list import.`
+        : "No contacts have ward data yet. Import a voter list with ward/poll columns, or run geocoding to assign wards automatically.",
+    };
+  }
+
+  // Group by ward
+  const wardGroups = new Map<string, typeof contacts>();
+  for (const c of contacts) {
+    const ward = c.ward ?? "Unassigned";
+    const list = wardGroups.get(ward) ?? [];
+    list.push(c);
+    wardGroups.set(ward, list);
+  }
+
+  // Create canvass lists per ward (split into chunks of maxPerList)
+  let listsCreated = 0;
+  const wardSummary: string[] = [];
+
+  for (const [ward, wardContacts] of Array.from(wardGroups.entries())) {
+    const chunks: (typeof contacts)[] = [];
+    for (let i = 0; i < wardContacts.length; i += maxPerList) {
+      chunks.push(wardContacts.slice(i, i + maxPerList));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const listName = chunks.length === 1
+        ? `Walk List — ${ward}`
+        : `Walk List — ${ward} (${i + 1}/${chunks.length})`;
+
+      await prisma.canvassList.create({
+        data: {
+          campaignId: ctx.campaignId,
+          name: listName,
+          description: `Auto-segmented by Adoni. ${chunk.length} contacts.`,
+          status: "pending" as never,
+          geoArea: { ward, contactCount: chunk.length },
+        },
+      });
+      listsCreated++;
+    }
+
+    wardSummary.push(`${ward}: ${wardContacts.length} contacts, ${chunks.length} list(s)`);
+  }
+
+  // Count contacts without ward data
+  const noWardCount = await prisma.contact.count({
+    where: {
+      campaignId: ctx.campaignId,
+      isDeceased: false,
+      doNotContact: false,
+      OR: [{ ward: null }, { ward: "" }],
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "contacts_segmented_by_adoni",
+      entityType: "canvassList",
+      entityId: "",
+      details: { listsCreated, totalContacts: contacts.length, wards: wardGroups.size },
+    },
+  }).catch(() => {});
+
+  const wardBreakdown = wardSummary.slice(0, 10).join("; ");
+  return {
+    success: true,
+    message: `Segmented ${contacts.length.toLocaleString()} contacts into ${listsCreated} walk list(s) across ${wardGroups.size} ward(s). ${wardBreakdown}.${noWardCount > 0 ? ` ${noWardCount} contacts have no ward data and were skipped — consider running geocoding or checking the import.` : ""} Navigate to /canvassing/turf-builder to assign these lists to volunteers.`,
+    data: { listsCreated, totalContacts: contacts.length, wards: wardGroups.size, noWardCount },
+  };
+}
+
 // Suspicious activity detection — called by chat route for low-permission roles
+// Returns true if suspicious AND blocks the conversation.
 export async function checkSuspiciousActivity(
   userId: string,
   campaignId: string,
@@ -806,7 +1105,7 @@ export async function checkSuspiciousActivity(
         questions: userMessages.map((m) => m.content) as unknown as object,
       },
     }).catch(() => {});
-    return true;
+    return true; // BLOCK — caller should terminate the conversation
   }
   return false;
 }

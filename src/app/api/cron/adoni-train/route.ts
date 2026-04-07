@@ -6,11 +6,9 @@ export const maxDuration = 60;
 // Nightly at 3am — rebuilds Adoni's knowledge base from live system data.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  const auth = req.headers.get("authorization");
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   try {

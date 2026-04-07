@@ -57,6 +57,14 @@ export async function GET(req: NextRequest) {
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
+  // Verify membership — prevent cross-campaign access
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) {
+    return NextResponse.json({ error: "Not a member of this campaign" }, { status: 403 });
+  }
+
   // Try to load saved layout from campaign customization
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -98,6 +106,14 @@ export async function PUT(req: NextRequest) {
 
   const { campaignId, layout } = await req.json();
   if (!campaignId || !layout) return NextResponse.json({ error: "campaignId and layout required" }, { status: 400 });
+
+  // Verify membership — prevent cross-campaign writes
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) {
+    return NextResponse.json({ error: "Not a member of this campaign" }, { status: 403 });
+  }
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },

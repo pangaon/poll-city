@@ -150,6 +150,21 @@ function computeAreaStats(pointCount: number): AreaStats {
   return { doors, knocked, supporters, estimatedHours, volunteersNeeded };
 }
 
+/** Completion color — grey (not started), yellow (in progress), green (complete) */
+function completionColor(percent: number | null | undefined): string {
+  const pct = percent ?? 0;
+  if (pct >= 90) return "#22c55e"; // green
+  if (pct > 0) return "#eab308"; // yellow
+  return "#9ca3af"; // grey
+}
+
+function completionFillOpacity(percent: number | null | undefined): number {
+  const pct = percent ?? 0;
+  if (pct >= 90) return 0.25;
+  if (pct > 0) return 0.15;
+  return 0.08;
+}
+
 export default function CampaignMap({
   mode,
   height = 480,
@@ -318,11 +333,15 @@ export default function CampaignMap({
 
         {mapPoints.length > 1 && <FitMapBounds points={mapPoints} />}
 
-        {layer.turfs && turfPolygons.map((poly, index) => (
+        {layer.turfs && turfPolygons.map((poly, index) => {
+          const pct = typeof poly.properties.completionPercent === "number" ? poly.properties.completionPercent : 0;
+          const color = completionColor(pct);
+          const fill = completionFillOpacity(pct);
+          return (
           <Polygon
             key={`turf-${index}`}
             positions={poly.points as LatLngExpression[]}
-            pathOptions={{ color: "#2563eb", weight: 2, fillOpacity: 0.08 }}
+            pathOptions={{ color, weight: 2, fillOpacity: fill }}
             eventHandlers={{
               click: () => {
                 const pointCount = Math.max(1, poly.points.length * 16);
@@ -335,9 +354,15 @@ export default function CampaignMap({
               },
             }}
           >
-            <Popup>Turf {(poly.properties.name as string) ?? index + 1}</Popup>
+            <Popup>
+              {(poly.properties.name as string) ?? `Turf ${index + 1}`}
+              {" — "}
+              {pct >= 90 ? "Complete" : pct > 0 ? `${Math.round(pct)}% done` : "Not started"}
+              {poly.properties.assignedVolunteer ? ` (${poly.properties.assignedVolunteer})` : ""}
+            </Popup>
           </Polygon>
-        ))}
+          );
+        })}
 
         {layer.signs && signPoints.map((point, index) => (
           <Marker key={`sign-${index}`} position={point.latLng}>
@@ -441,6 +466,18 @@ export default function CampaignMap({
           <p className="mt-1">Supporters identified: {selectedStats.supporters}</p>
           <div className="mt-2 rounded-lg bg-slate-100 px-2 py-1.5 text-slate-600">
             Poll City estimate: $799 one-time | Competitors: $3,588 to $12,564 yearly
+          </div>
+        </div>
+      )}
+
+      {/* Completion legend */}
+      {layer.turfs && turfPolygons.length > 0 && (
+        <div className="absolute left-3 top-3 z-[500] rounded-xl bg-white/95 border border-slate-200 p-2.5 shadow-lg text-xs text-slate-700">
+          <p className="font-semibold text-slate-900 mb-1.5">Turf Progress</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#9ca3af" }} /> Not started</div>
+            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#eab308" }} /> In progress</div>
+            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }} /> Complete</div>
           </div>
         </div>
       )}

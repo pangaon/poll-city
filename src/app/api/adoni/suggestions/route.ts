@@ -46,6 +46,19 @@ export async function GET(req: NextRequest) {
   });
   const campaignId = userRow?.activeCampaignId ?? null;
 
+  // Verify membership — prevent stale activeCampaignId from leaking data
+  if (campaignId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+    });
+    if (!membership) {
+      return NextResponse.json({
+        context: { page, campaignName: "No active campaign", daysToElection: null, contactCount: 0, supporterCount: 0, volunteerCount: 0, userName: session?.user?.name ?? "Team Member" },
+        suggestions: suggestionForPage(page),
+      });
+    }
+  }
+
   const [campaign, contactCount, supporterCount, volunteerCount] = await Promise.all([
     campaignId
       ? prisma.campaign.findUnique({

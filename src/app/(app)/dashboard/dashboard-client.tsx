@@ -142,6 +142,8 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
   const [weather, setWeather] = useState<{ temp: number; wind: number; code: number } | null>(null);
   const [leaderboard, setLeaderboard] = useState<Array<{ name: string; score: number; doorKnocks: number }>>([]);
   const [signCityLeaderboard, setSignCityLeaderboard] = useState<Array<{ city: string; count: number }>>([]);
+  const [wardProgress, setWardProgress] = useState<Array<{ ward: string; totalContacts: number; doorsKnocked: number; completionPct: number; turfCount: number; turfsComplete: number; status: string }>>([]);
+  const [wardSummary, setWardSummary] = useState<{ totalWards: number; wardsComplete: number; wardsInProgress: number; overallPct: number } | null>(null);
   const [tick, setTick] = useState(0);
   const [showTvPanel, setShowTvPanel] = useState(false);
   const [tvToken, setTvToken] = useState(() => Math.random().toString(36).slice(2, 10).toUpperCase());
@@ -311,6 +313,20 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
       } catch { /* non-critical — widgets show 0 */ }
     }
     loadExtra();
+  }, [campaign.id]);
+
+  // Load ward progress data
+  useEffect(() => {
+    async function loadWardProgress() {
+      try {
+        const res = await fetch(`/api/maps/ward-progress?campaignId=${campaign.id}`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        setWardProgress((payload?.wards ?? []).slice(0, 15));
+        setWardSummary(payload?.summary ?? null);
+      } catch { /* non-critical */ }
+    }
+    loadWardProgress();
   }, [campaign.id]);
 
   useEffect(() => {
@@ -1128,6 +1144,44 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
                   </div>
                   <div className="h-2 rounded-full bg-gray-100">
                     <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, (entry.count / Math.max(1, signCityLeaderboard[0].count)) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Ward Progress */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-12">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-blue-600" />
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ward Progress</p>
+            </div>
+            {wardSummary && (
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-500" /> {wardSummary.wardsComplete} complete</span>
+                <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-500" /> {wardSummary.wardsInProgress} in progress</span>
+                <span className="font-semibold text-gray-700">{wardSummary.overallPct}% overall</span>
+              </div>
+            )}
+          </div>
+          {wardProgress.length === 0 ? (
+            <p className="text-sm text-gray-500">No ward data yet. Import contacts with ward assignments to see progress here.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
+              {wardProgress.map((w) => (
+                <div key={w.ward} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{w.ward}</p>
+                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${w.status === "complete" ? "bg-green-500" : w.status === "in_progress" ? "bg-yellow-500" : "bg-gray-300"}`} />
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gray-200 mb-1">
+                    <div className={`h-full rounded-full transition-all ${w.status === "complete" ? "bg-green-500" : w.status === "in_progress" ? "bg-yellow-500" : "bg-gray-300"}`} style={{ width: `${Math.min(100, w.completionPct)}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-500">
+                    <span>{w.doorsKnocked}/{w.totalContacts} doors</span>
+                    <span className="font-semibold">{w.completionPct}%</span>
                   </div>
                 </div>
               ))}

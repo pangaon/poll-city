@@ -144,6 +144,19 @@ export async function POST(req: NextRequest) {
   // Resolve enterprise permissions early (used in system prompt + action context)
   const resolved = cid ? await resolvePermissions(session!.user.id, cid) : null;
 
+  // Verify current membership — prevent stale activeCampaignId leak
+  if (cid && resolved && resolved.roleSlug === "none") {
+    // User is not a member of this campaign — clear context
+    return new Response(
+      streamText("It looks like you are not a member of the active campaign. Please switch campaigns or ask your admin for access."),
+      { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } },
+    );
+  }
+
+  const perms = resolved?.permissions ?? [];
+  const hasAnalytics = perms.includes("*") || perms.some((p) => p.startsWith("analytics:"));
+  const hasFinance = perms.includes("*") || perms.some((p) => p.startsWith("donations:") || p.startsWith("budget:"));
+
   const [campaign, contactCount, supporterCount, undecidedCount, volunteerCount, doorsKnocked, signsDeployed, donationsCount, donationsTotal] = await Promise.all([
     cid
       ? prisma.campaign.findUnique({
@@ -152,12 +165,13 @@ export async function POST(req: NextRequest) {
         })
       : Promise.resolve(null),
     cid ? prisma.contact.count({ where: { campaignId: cid } }) : Promise.resolve(0),
-    cid
+    // Only fetch supporter/undecided counts for users with analytics permission
+    cid && hasAnalytics
       ? prisma.contact.count({
           where: { campaignId: cid, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } },
         })
       : Promise.resolve(0),
-    cid
+    cid && hasAnalytics
       ? prisma.contact.count({
           where: { campaignId: cid, supportLevel: "undecided" as never },
         })
@@ -169,8 +183,9 @@ export async function POST(req: NextRequest) {
     cid
       ? prisma.sign.count({ where: { campaignId: cid } })
       : Promise.resolve(0),
-    cid ? prisma.donation.count({ where: { campaignId: cid } }) : Promise.resolve(0),
-    cid
+    // Only fetch donation data for users with finance permission
+    cid && hasFinance ? prisma.donation.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid && hasFinance
       ? prisma.donation.aggregate({ where: { campaignId: cid }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0))
       : Promise.resolve(0),
   ]);
@@ -262,11 +277,17 @@ export async function POST(req: NextRequest) {
           autoExecuteEnabled = custom.adoniAutoExecute;
         }
 
-        // Suspicious activity detection for canvassers/volunteers
+        // Suspicious activity detection for canvassers/volunteers — now blocks
         const plainMessages = messages
           .filter((m) => typeof m.content === "string")
           .map((m) => ({ role: String(m.role), content: String(m.content) }));
-        await checkSuspiciousActivity(session!.user.id, activeCampaignId, userRole, plainMessages);
+        const isSuspicious = await checkSuspiciousActivity(session!.user.id, activeCampaignId, userRole, plainMessages);
+        if (isSuspicious) {
+          const deflection = streamText("I have noticed some questions that are outside your current access level. If you need this information, please ask your campaign manager. I am here to help with anything within your role.");
+          return new Response(deflection, {
+            headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+          });
+        }
       }
       const actionCtx: ActionContext | null = activeCampaignId
         ? { userId: session!.user.id, campaignId: activeCampaignId, userName: session?.user?.name ?? "Team Member", userRole, permissions: resolved?.permissions ?? [], trustLevel: resolved?.trustLevel ?? 2, autoExecuteEnabled }
