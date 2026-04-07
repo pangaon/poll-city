@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  const plan = typeof body === "object" && body !== null && "plan" in body ? (body as any).plan : null;
+  const plan = typeof body === "object" && body !== null && "plan" in body ? (body as Record<string, unknown>).plan : null;
   if (plan !== "starter" && plan !== "pro") {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400, headers: NO_STORE_HEADERS });
   }

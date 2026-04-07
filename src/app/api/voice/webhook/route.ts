@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { InteractionType, SupportLevel } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const body = await req.formData();
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       // Update the contact's support level in real time
       await prisma.contact.update({
         where: { id: call.contactId },
-        data: { supportLevel: supportMap[digits] as any },
+        data: { supportLevel: supportMap[digits] as SupportLevel },
       }).catch(() => {});
 
       // Log as interaction
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
         data: {
           contactId: call.contactId,
           userId: call.broadcast.createdById,
-          type: "phone_call" as any,
-          supportLevel: supportMap[digits] as any,
+          type: InteractionType.phone_call,
+          supportLevel: supportMap[digits] as SupportLevel,
           notes: `IVR poll response: pressed ${digits}`,
         },
       }).catch(() => {});

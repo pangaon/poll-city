@@ -182,8 +182,8 @@ export async function POST(req: NextRequest) {
               email: existing.email || row.email || null,
               ward: existing.ward || row.ward || null,
               riding: existing.riding || row.riding || null,
-              federalDistrict: (existing as any).federalDistrict || row.federalDistrict || null,
-              federalPoll: (existing as any).federalPoll || row.federalPoll || null,
+              federalDistrict: existing.federalDistrict || row.federalDistrict || null,
+              federalPoll: existing.federalPoll || row.federalPoll || null,
               importSource: importSource ?? "smart_import",
             },
           });
