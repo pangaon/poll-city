@@ -58,6 +58,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB unavailable — skip
   }
 
+  // Dynamic: public polls
+  let pollPages: MetadataRoute.Sitemap = [];
+  try {
+    const polls = await prisma.poll.findMany({
+      where: { visibility: "public" },
+      select: { id: true, createdAt: true },
+      take: 1000,
+    });
+    pollPages = polls.map((p) => ({
+      url: `${base}/social/polls/${p.id}`,
+      lastModified: p.createdAt,
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    }));
+  } catch {
+    // DB unavailable — skip
+  }
+
   return [
     ...staticPages.map((p) => ({
       url: `${base}${p.path}`,
@@ -67,5 +85,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...candidatePages,
     ...officialPages,
+    ...pollPages,
   ];
 }
