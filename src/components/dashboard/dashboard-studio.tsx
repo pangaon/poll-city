@@ -105,6 +105,9 @@ type DashboardData = {
   pollsReporting: number;
   totalPolls: number;
   pollResults: PollResult[];
+  /* Health */
+  healthScore: number;
+  grade: string;
 };
 
 type ActivityItem = { id: string; text: string; time: string; type: "door" | "call" | "donation" | "signup" };
@@ -195,6 +198,8 @@ const FALLBACK: DashboardData = {
   pollsReporting: 34,
   totalPolls: 52,
   pollResults: [],
+  healthScore: 0,
+  grade: "–",
 };
 
 /* ── Main component ────────────────────────────────── */
@@ -216,22 +221,51 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
     let cancelled = false;
     async function pull() {
       try {
-        const [health, gotv, election, morning, volunteers] = await Promise.all([
+        const [health, gotv, election, morning, volunteers, donations, signs] = await Promise.all([
           fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/election-night/live?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/briefing/morning?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/election-night?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/briefing?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/donations?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/signs?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
         ]);
         if (cancelled) return;
+
+        /* ── Process donation data ────────────────────────── */
+        const donationRecords: any[] = donations?.data ?? [];
+        const receivedGroup = donations?.totalsByStatus?.find((g: any) => g.status === "received");
+        const computedDonationTotal = Number(receivedGroup?._sum?.amount ?? 0);
+
+        const computedRecentDonations: DonationItem[] = donationRecords.slice(0, 5).map((d: any) => ({
+          id: d.id,
+          name: d.contact ? `${d.contact.firstName ?? ""} ${d.contact.lastName ?? ""}`.trim() || "Anonymous" : "Anonymous",
+          amount: Number(d.amount ?? 0),
+          time: relativeTime(d.createdAt),
+        }));
+
+        const donorMap = new Map<string, number>();
+        for (const d of donationRecords) {
+          const name = d.contact ? `${d.contact.firstName ?? ""} ${d.contact.lastName ?? ""}`.trim() || "Anonymous" : "Anonymous";
+          donorMap.set(name, (donorMap.get(name) ?? 0) + Number(d.amount ?? 0));
+        }
+        const computedTopDonors: DonorRow[] = Array.from(donorMap.entries())
+          .map(([name, total]) => ({ name, total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5);
+
+        /* ── Process sign data ────────────────────────────── */
+        const signRecords: any[] = signs?.data ?? [];
+        const computedSignsPending = signRecords.filter((s: any) => s.status === "requested").length;
 
         setData((prev) => ({
           ...prev,
           gap: gotv?.gap ?? election?.gap ?? prev.gap,
           supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? prev.supportersVoted,
           confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? prev.confirmedSupporters,
-          doorsToday: morning?.trends?.doorsToday ?? prev.doorsToday,
-          volunteersActive: volunteers?.active ?? prev.volunteersActive,
+          doorsToday: morning?.yesterday?.doorsKnocked ?? prev.doorsToday,
+          volunteersActive: volunteers?.summary?.active ?? prev.volunteersActive,
+          signRequestsPending: computedSignsPending || prev.signRequestsPending,
           p1Count: gotv?.p1Count ?? prev.p1Count,
           p2Count: gotv?.p2Count ?? prev.p2Count,
           p3Count: gotv?.p3Count ?? prev.p3Count,
@@ -242,6 +276,13 @@ export default function DashboardStudio({ campaignId, campaignName }: DashboardS
           opponentVotes: election?.opponentVotes ?? prev.opponentVotes,
           pollsReporting: election?.pollsReporting ?? prev.pollsReporting,
           totalPolls: election?.totalPolls ?? prev.totalPolls,
+          /* Finance */
+          donationTotal: computedDonationTotal || prev.donationTotal,
+          recentDonations: computedRecentDonations.length > 0 ? computedRecentDonations : prev.recentDonations,
+          topDonors: computedTopDonors.length > 0 ? computedTopDonors : prev.topDonors,
+          /* Health */
+          healthScore: health?.healthScore ?? prev.healthScore,
+          grade: health?.grade ?? prev.grade,
         }));
       } catch {
         /* keep fallback data */
@@ -1174,4 +1215,15 @@ function getGreeting(): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function relativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }

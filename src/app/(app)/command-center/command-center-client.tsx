@@ -85,27 +85,27 @@ async function safeJson<T>(url: string): Promise<T | null> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock Data                                                         */
+/*  Live-feed helpers                                                  */
 /* ------------------------------------------------------------------ */
 
-const MOCK_VOLUNTEERS: Volunteer[] = [
-  { id: "v1", name: "Jamie K.", location: "North River precinct", status: "active", contactsMade: 24 },
-  { id: "v2", name: "Priya S.", location: "Old Town precinct", status: "active", contactsMade: 18 },
-  { id: "v3", name: "Marcus T.", location: "West Market precinct", status: "en-route", contactsMade: 12 },
-  { id: "v4", name: "Lin W.", location: "Hillcrest precinct", status: "idle", contactsMade: 31 },
-  { id: "v5", name: "Sarah D.", location: "Lakeside precinct", status: "active", contactsMade: 22 },
-];
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
-const MOCK_ACTIVITY: ActivityItem[] = [
-  { id: "a1", type: "voted", name: "Jordan Lee", detail: "Confirmed voted at Poll 001", time: "2 min ago" },
-  { id: "a2", type: "called", name: "Rina Patel", detail: "Reached by phone — will vote after 5pm", time: "4 min ago" },
-  { id: "a3", type: "knocked", name: "Carlos Nguyen", detail: "Door knock — not home, left reminder", time: "7 min ago" },
-  { id: "a4", type: "voted", name: "Fatima Ali", detail: "Confirmed voted at Poll 004", time: "9 min ago" },
-  { id: "a5", type: "dispatched", name: "Team Alpha", detail: "Dispatched to Hillcrest — 14 outstanding P1s", time: "12 min ago" },
-  { id: "a6", type: "called", name: "Ben Torres", detail: "Voicemail left", time: "15 min ago" },
-  { id: "a7", type: "voted", name: "Aisha Khan", detail: "Confirmed voted at Poll 010", time: "18 min ago" },
-  { id: "a8", type: "knocked", name: "David Chen", detail: "Door knock — committed to vote by 6pm", time: "22 min ago" },
-];
+function categoryToActivityType(category: string): ActivityItem["type"] {
+  switch (category) {
+    case "gotv": return "voted";
+    case "canvass": return "knocked";
+    case "donation": return "called";
+    default: return "dispatched";
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Animated Counter                                                  */
@@ -230,17 +230,19 @@ export default function CommandCenterClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [fallback, setFallback] = useState<string[]>([]);
   const [busyContactId, setBusyContactId] = useState<string | null>(null);
-  const [volunteers] = useState<Volunteer[]>(MOCK_VOLUNTEERS);
-  const [activityFeed] = useState<ActivityItem[]>(MOCK_ACTIVITY);
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
 
   const load = useCallback(async (id: string) => {
     const fallbackReasons: string[] = [];
 
-    const [summaryRes, priorityRes, briefingRes, healthRes] = await Promise.all([
+    const [summaryRes, priorityRes, briefingRes, healthRes, volunteerRes, activityRes] = await Promise.all([
       safeJson<SummaryResponse>(`/api/gotv/summary?campaignId=${id}`),
       safeJson<{ data: PriorityContact[] }>(`/api/gotv/priority-list?campaignId=${id}`),
-      safeJson<BriefingResponse>(`/api/briefing/morning?campaignId=${id}`),
+      safeJson<BriefingResponse>(`/api/briefing?campaignId=${id}`),
       safeJson<HealthResponse>(`/api/briefing/health-score?campaignId=${id}`),
+      safeJson<{ leaderboard: Array<{ userId: string; name: string; doorsToday: number; status: string }> }>(`/api/volunteers/performance?campaignId=${id}`),
+      safeJson<{ feed: Array<{ id: string; message: string; category: string; who: string; time: string }> }>(`/api/activity/live-feed?campaignId=${id}`),
     ]);
 
     if (summaryRes) setSummary(summaryRes);
@@ -254,6 +256,26 @@ export default function CommandCenterClient() {
 
     if (healthRes) setHealth(healthRes);
     else fallbackReasons.push("Health score unavailable");
+
+    if (volunteerRes?.leaderboard) {
+      setVolunteers(volunteerRes.leaderboard.map((v) => ({
+        id: v.userId,
+        name: v.name,
+        location: "—",
+        status: (v.status === "star" || v.status === "active" ? "active" : "idle") as Volunteer["status"],
+        contactsMade: v.doorsToday,
+      })));
+    }
+
+    if (activityRes?.feed) {
+      setActivityFeed(activityRes.feed.map((a) => ({
+        id: a.id,
+        type: categoryToActivityType(a.category),
+        name: a.who,
+        detail: a.message,
+        time: relativeTime(a.time),
+      })));
+    }
 
     setFallback(fallbackReasons);
   }, []);
@@ -511,6 +533,13 @@ export default function CommandCenterClient() {
                   </div>
                 </motion.div>
               ))}
+              {volunteers.length === 0 && (
+                <div className="py-8 text-center">
+                  <Users className="mx-auto mb-2 h-6 w-6 text-slate-500" />
+                  <p className="text-sm font-medium text-slate-400">No live volunteer tracking</p>
+                  <p className="mt-1 text-xs text-slate-500">Volunteer activity will appear here during operations</p>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -617,6 +646,13 @@ export default function CommandCenterClient() {
                   <span className="flex-shrink-0 text-[10px] font-semibold text-slate-500">{item.time}</span>
                 </motion.div>
               ))}
+              {activityFeed.length === 0 && (
+                <div className="py-8 text-center">
+                  <Activity className="mx-auto mb-2 h-6 w-6 text-slate-500" />
+                  <p className="text-sm font-medium text-slate-400">Activity feed populates during live operations</p>
+                  <p className="mt-1 text-xs text-slate-500">Door knocks, calls, and votes will appear here in real time</p>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

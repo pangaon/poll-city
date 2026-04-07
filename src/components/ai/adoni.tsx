@@ -48,39 +48,24 @@ const STRUCTURED_HINTS: Record<Exclude<StructuredMode, "none">, RegExp[]> = {
 
 const DEFAULT_STRUCTURED_DATA: Record<Exclude<StructuredMode, "none">, Record<string, unknown>> = {
   stats: {
-    supportRate: 58,
-    doorsToday: 212,
-    activeVolunteers: 34,
-    financePace: 71,
-    daysToElection: 42,
-    missingReceipts: 6,
+    supportRate: null,
+    doorsToday: null,
+    activeVolunteers: null,
+    financePace: null,
+    daysToElection: null,
+    missingReceipts: null,
   },
-  contacts: {
-    rows: [
-      { name: "Avery Ross", phone: "+1-416-555-0191", support: "Leaning Support", lastContacted: "2d ago" },
-      { name: "Jordan Patel", phone: "+1-647-555-0142", support: "Undecided", lastContacted: "5d ago" },
-      { name: "Morgan Lee", phone: "Hidden", support: "Strong Support", lastContacted: "Today" },
-    ],
-  },
-  email: {
-    subject: "Quick volunteer push for this weekend",
-    body: "Hi team, we are close to our weekend target. Please claim one extra shift if you can. Reply if you need a turf reassignment.",
-  },
-  roster: {
-    rows: [
-      { name: "Casey Nguyen", role: "Lead", doors: 76, availability: "Evenings", hasCar: true },
-      { name: "Drew Martin", role: "Volunteer", doors: 41, availability: "Weekends", hasCar: false },
-      { name: "Sam Kim", role: "Volunteer", doors: 29, availability: "Afternoons", hasCar: true },
-    ],
-  },
+  contacts: { rows: [] },
+  email: { subject: "", body: "" },
+  roster: { rows: [] },
   gotv: {
-    p1: 812,
-    p2: 531,
-    p3: 289,
-    p4: 118,
-    voted: 903,
-    totalSupporters: 1750,
-    actions: ["Text P1 no-response list", "Dispatch rides for P2 seniors", "Call undecided absentee requests"],
+    p1: null,
+    p2: null,
+    p3: null,
+    p4: null,
+    voted: null,
+    totalSupporters: null,
+    actions: [],
   },
 };
 
@@ -802,60 +787,75 @@ function StructuredPanel({
   }
 
   if (mode === "stats") {
-    const payload = (structured.payload ?? DEFAULT_STRUCTURED_DATA.stats) as Record<string, number>;
-    const supportRate = Number(payload.supportRate ?? 0);
-    const doorsToday = Number(payload.doorsToday ?? 0);
-    const activeVolunteers = Number(payload.activeVolunteers ?? 0);
-    const financePace = Number(payload.financePace ?? 0);
-    const daysToElection = Number(payload.daysToElection ?? 0);
-    const missingReceipts = Number(payload.missingReceipts ?? 0);
+    const payload = (structured.payload ?? DEFAULT_STRUCTURED_DATA.stats) as Record<string, number | null>;
+    const supportRate = payload.supportRate;
+    const doorsToday = payload.doorsToday;
+    const activeVolunteers = payload.activeVolunteers;
+    const financePace = payload.financePace;
+    const daysToElection = payload.daysToElection;
+    const missingReceipts = payload.missingReceipts;
 
     return (
       <div className="grid gap-4 md:grid-cols-2">
         <article className="rounded-2xl bg-white border border-slate-200 p-5">
           <p className="text-sm text-slate-500">Support rate</p>
           <div className="mt-3 h-32 w-32 rounded-full border-[10px] border-blue-200 border-t-blue-700 flex items-center justify-center text-2xl font-semibold text-blue-900">
-            {supportRate}%
+            {supportRate != null ? `${supportRate}%` : "—"}
           </div>
         </article>
         <article className="rounded-2xl bg-white border border-slate-200 p-5">
           <p className="text-sm text-slate-500">Doors knocked today</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">{doorsToday}</p>
-          <div className="mt-3 h-2 rounded-full bg-slate-100">
-            <div className="h-2 rounded-full bg-blue-600" style={{ width: `${Math.min(100, Math.max(5, supportRate))}%` }} />
-          </div>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{doorsToday != null ? doorsToday : "—"}</p>
+          {supportRate != null && (
+            <div className="mt-3 h-2 rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-blue-600" style={{ width: `${Math.min(100, Math.max(5, supportRate))}%` }} />
+            </div>
+          )}
         </article>
         <article className="rounded-2xl bg-white border border-slate-200 p-5">
           <p className="text-sm text-slate-500">Active volunteers</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">{activeVolunteers}</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{activeVolunteers != null ? activeVolunteers : "—"}</p>
         </article>
         <article className="rounded-2xl bg-white border border-slate-200 p-5">
           <p className="text-sm text-slate-500">Finance pace</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">{financePace}%</p>
-          <div className="mt-3 h-2 rounded-full bg-slate-100">
-            <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(5, financePace))}%` }} />
-          </div>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{financePace != null ? `${financePace}%` : "—"}</p>
+          {financePace != null && (
+            <div className="mt-3 h-2 rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(5, financePace))}%` }} />
+            </div>
+          )}
         </article>
         <article className="rounded-2xl bg-white border border-slate-200 p-5 md:col-span-2">
           <div className="flex flex-wrap items-center gap-6">
             <div>
               <p className="text-sm text-slate-500">Days to election</p>
-              <p className="text-2xl font-semibold text-slate-900">{daysToElection}</p>
+              <p className="text-2xl font-semibold text-slate-900">{daysToElection != null ? daysToElection : "—"}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Missing receipts</p>
-              <p className={`text-2xl font-semibold ${missingReceipts > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                {missingReceipts}
+              <p className={`text-2xl font-semibold ${missingReceipts != null && missingReceipts > 0 ? "text-rose-600" : missingReceipts != null ? "text-emerald-600" : "text-slate-400"}`}>
+                {missingReceipts != null ? missingReceipts : "—"}
               </p>
             </div>
           </div>
         </article>
+        {supportRate == null && (
+          <p className="md:col-span-2 text-center text-sm text-slate-400">Ask Adoni for live stats to populate this panel</p>
+        )}
       </div>
     );
   }
 
   if (mode === "contacts") {
     const rows = ((structured.payload ?? DEFAULT_STRUCTURED_DATA.contacts) as Record<string, unknown>).rows as Array<Record<string, string>>;
+    if (!rows || rows.length === 0) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Contact List</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni to build a call list or search contacts</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -888,6 +888,14 @@ function StructuredPanel({
 
   if (mode === "email") {
     const payload = (structured.payload ?? DEFAULT_STRUCTURED_DATA.email) as Record<string, string>;
+    if (!payload.subject && !payload.body) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Email Draft</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni to draft an email to populate this panel</p>
+        </div>
+      );
+    }
     return (
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Subject</p>
@@ -903,6 +911,14 @@ function StructuredPanel({
 
   if (mode === "roster") {
     const rows = ((structured.payload ?? DEFAULT_STRUCTURED_DATA.roster) as Record<string, unknown>).rows as Array<Record<string, unknown>>;
+    if (!rows || rows.length === 0) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Volunteer Roster</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni for the volunteer roster to populate this panel</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -932,9 +948,9 @@ function StructuredPanel({
   }
 
   const payload = (structured.payload ?? DEFAULT_STRUCTURED_DATA.gotv) as Record<string, unknown>;
-  const voted = Number(payload.voted ?? 0);
-  const total = Number(payload.totalSupporters ?? 1);
-  const pct = Math.round((voted / Math.max(1, total)) * 100);
+  const voted = payload.voted != null ? Number(payload.voted) : null;
+  const total = payload.totalSupporters != null ? Number(payload.totalSupporters) : null;
+  const pct = voted != null && total != null ? Math.round((voted / Math.max(1, total)) * 100) : null;
   const actions = (payload.actions as string[]) || [];
 
   return (
@@ -942,25 +958,29 @@ function StructuredPanel({
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">P tier breakdown</p>
         <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-          <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs text-emerald-700">P1</p><p className="text-xl font-semibold text-emerald-900">{String(payload.p1)}</p></div>
-          <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs text-blue-700">P2</p><p className="text-xl font-semibold text-blue-900">{String(payload.p2)}</p></div>
-          <div className="rounded-lg bg-amber-50 p-3"><p className="text-xs text-amber-700">P3</p><p className="text-xl font-semibold text-amber-900">{String(payload.p3)}</p></div>
-          <div className="rounded-lg bg-rose-50 p-3"><p className="text-xs text-rose-700">P4</p><p className="text-xl font-semibold text-rose-900">{String(payload.p4)}</p></div>
+          <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs text-emerald-700">P1</p><p className="text-xl font-semibold text-emerald-900">{payload.p1 != null ? String(payload.p1) : "—"}</p></div>
+          <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs text-blue-700">P2</p><p className="text-xl font-semibold text-blue-900">{payload.p2 != null ? String(payload.p2) : "—"}</p></div>
+          <div className="rounded-lg bg-amber-50 p-3"><p className="text-xs text-amber-700">P3</p><p className="text-xl font-semibold text-amber-900">{payload.p3 != null ? String(payload.p3) : "—"}</p></div>
+          <div className="rounded-lg bg-rose-50 p-3"><p className="text-xs text-rose-700">P4</p><p className="text-xl font-semibold text-rose-900">{payload.p4 != null ? String(payload.p4) : "—"}</p></div>
         </div>
       </article>
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Voted counter</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-900">{voted} / {total}</p>
-        <div className="mt-3 h-2 rounded-full bg-slate-100">
-          <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(3, pct))}%` }} />
-        </div>
+        <p className="mt-2 text-3xl font-semibold text-slate-900">{voted != null && total != null ? `${voted} / ${total}` : "—"}</p>
+        {pct != null && (
+          <div className="mt-3 h-2 rounded-full bg-slate-100">
+            <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${Math.min(100, Math.max(3, pct))}%` }} />
+          </div>
+        )}
       </article>
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Priority actions</p>
         <div className="mt-2 space-y-2">
-          {actions.map((item) => (
+          {actions.length > 0 ? actions.map((item) => (
             <p key={item} className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{item}</p>
-          ))}
+          )) : (
+            <p className="text-sm text-slate-400">Ask Adoni for GOTV status to see priority actions</p>
+          )}
         </div>
       </article>
     </div>

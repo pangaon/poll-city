@@ -172,43 +172,24 @@ function roleBadgeClass(level: string): string {
 
 const DEFAULT_STRUCTURED: Record<Exclude<StructuredMode, "none">, Record<string, unknown>> = {
   stats: {
-    supportRate: 58,
-    doorsToday: 212,
-    activeVolunteers: 34,
-    financePace: 71,
-    daysToElection: 42,
-    missingReceipts: 6,
+    supportRate: null,
+    doorsToday: null,
+    activeVolunteers: null,
+    financePace: null,
+    daysToElection: null,
+    missingReceipts: null,
   },
-  contacts: {
-    rows: [
-      { name: "Avery Ross", phone: "+1-416-555-0191", support: "Leaning Support", lastContacted: "2d ago" },
-      { name: "Jordan Patel", phone: "+1-647-555-0142", support: "Undecided", lastContacted: "5d ago" },
-      { name: "Morgan Lee", phone: "Hidden", support: "Strong Support", lastContacted: "Today" },
-    ],
-  },
-  email: {
-    subject: "Quick volunteer push for this weekend",
-    body: "Hi team, we are close to our weekend target. Please claim one extra shift if you can. Reply if you need a turf reassignment.",
-  },
-  roster: {
-    rows: [
-      { name: "Casey Nguyen", role: "Lead", doors: 76, availability: "Evenings", hasCar: true },
-      { name: "Drew Martin", role: "Volunteer", doors: 41, availability: "Weekends", hasCar: false },
-      { name: "Sam Kim", role: "Volunteer", doors: 29, availability: "Afternoons", hasCar: true },
-    ],
-  },
+  contacts: { rows: [] },
+  email: { subject: "", body: "" },
+  roster: { rows: [] },
   gotv: {
-    p1: 812,
-    p2: 531,
-    p3: 289,
-    p4: 118,
-    voted: 903,
-    totalSupporters: 1750,
-    actions: [
-      "Text P1 no-response list",
-      "Dispatch rides for P2 seniors",
-      "Call undecided absentee requests",
-    ],
+    p1: null,
+    p2: null,
+    p3: null,
+    p4: null,
+    voted: null,
+    totalSupporters: null,
+    actions: [],
   },
 };
 
@@ -447,17 +428,17 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
   }
 
   if (mode === "stats") {
-    const p = (structured.payload ?? DEFAULT_STRUCTURED.stats) as Record<string, number>;
+    const p = (structured.payload ?? DEFAULT_STRUCTURED.stats) as Record<string, number | null>;
     return (
       <div className="grid gap-4 md:grid-cols-2">
         {(
           [
-            ["Support rate", `${p.supportRate ?? 0}%`],
-            ["Doors knocked today", String(p.doorsToday ?? 0)],
-            ["Active volunteers", String(p.activeVolunteers ?? 0)],
-            ["Finance pace", `${p.financePace ?? 0}%`],
-            ["Days to election", String(p.daysToElection ?? 0)],
-            ["Missing receipts", String(p.missingReceipts ?? 0)],
+            ["Support rate", p.supportRate != null ? `${p.supportRate}%` : "—"],
+            ["Doors knocked today", p.doorsToday != null ? String(p.doorsToday) : "—"],
+            ["Active volunteers", p.activeVolunteers != null ? String(p.activeVolunteers) : "—"],
+            ["Finance pace", p.financePace != null ? `${p.financePace}%` : "—"],
+            ["Days to election", p.daysToElection != null ? String(p.daysToElection) : "—"],
+            ["Missing receipts", p.missingReceipts != null ? String(p.missingReceipts) : "—"],
           ] as const
         ).map(([label, value]) => (
           <article key={label} className="rounded-2xl bg-white border border-slate-200 p-5">
@@ -465,6 +446,9 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
             <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
           </article>
         ))}
+        {p.supportRate == null && (
+          <p className="md:col-span-2 text-center text-sm text-slate-400">Ask Adoni for live stats to populate this panel</p>
+        )}
       </div>
     );
   }
@@ -472,6 +456,14 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
   if (mode === "contacts") {
     const rows = ((structured.payload ?? DEFAULT_STRUCTURED.contacts) as Record<string, unknown>)
       .rows as Array<Record<string, string>>;
+    if (!rows || rows.length === 0) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Contact List</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni to build a call list or search contacts</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -504,6 +496,14 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
 
   if (mode === "email") {
     const p = (structured.payload ?? DEFAULT_STRUCTURED.email) as Record<string, string>;
+    if (!p.subject && !p.body) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Email Draft</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni to draft an email to populate this panel</p>
+        </div>
+      );
+    }
     return (
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Subject</p>
@@ -524,6 +524,14 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
   if (mode === "roster") {
     const rows = ((structured.payload ?? DEFAULT_STRUCTURED.roster) as Record<string, unknown>)
       .rows as Array<Record<string, unknown>>;
+    if (!rows || rows.length === 0) {
+      return (
+        <div className="h-full rounded-2xl border border-dashed border-slate-300 bg-white p-6 flex flex-col items-center justify-center">
+          <p className="text-lg font-semibold text-slate-900">Volunteer Roster</p>
+          <p className="mt-2 text-sm text-slate-500">Ask Adoni for the volunteer roster to populate this panel</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -554,9 +562,9 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
 
   /* gotv */
   const p = (structured.payload ?? DEFAULT_STRUCTURED.gotv) as Record<string, unknown>;
-  const voted = Number(p.voted ?? 0);
-  const total = Number(p.totalSupporters ?? 1);
-  const pct = Math.round((voted / Math.max(1, total)) * 100);
+  const voted = p.voted != null ? Number(p.voted) : null;
+  const total = p.totalSupporters != null ? Number(p.totalSupporters) : null;
+  const pct = voted != null && total != null ? Math.round((voted / Math.max(1, total)) * 100) : null;
   const actions = (p.actions as string[]) ?? [];
 
   return (
@@ -574,7 +582,7 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
             return (
               <div key={key} className={`rounded-lg bg-${colours[0]}-50 p-3`}>
                 <p className={`text-xs text-${colours[1]}-700`}>{key.toUpperCase()}</p>
-                <p className={`text-xl font-semibold text-${colours[1]}-900`}>{String(p[key])}</p>
+                <p className={`text-xl font-semibold text-${colours[1]}-900`}>{p[key] != null ? String(p[key]) : "—"}</p>
               </div>
             );
           })}
@@ -583,23 +591,27 @@ function StructuredPanel({ structured }: { structured: StructuredData }) {
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Voted counter</p>
         <p className="mt-2 text-3xl font-semibold text-slate-900">
-          {voted} / {total}
+          {voted != null && total != null ? `${voted} / ${total}` : "—"}
         </p>
-        <div className="mt-3 h-2 rounded-full bg-slate-100">
-          <div
-            className="h-2 rounded-full"
-            style={{ width: `${Math.min(100, Math.max(3, pct))}%`, backgroundColor: GREEN }}
-          />
-        </div>
+        {pct != null && (
+          <div className="mt-3 h-2 rounded-full bg-slate-100">
+            <div
+              className="h-2 rounded-full"
+              style={{ width: `${Math.min(100, Math.max(3, pct))}%`, backgroundColor: GREEN }}
+            />
+          </div>
+        )}
       </article>
       <article className="rounded-2xl border border-slate-200 bg-white p-5">
         <p className="text-sm text-slate-500">Priority actions</p>
         <div className="mt-2 space-y-2">
-          {actions.map((item) => (
+          {actions.length > 0 ? actions.map((item) => (
             <p key={item} className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
               {item}
             </p>
-          ))}
+          )) : (
+            <p className="text-sm text-slate-400">Ask Adoni for GOTV status to see priority actions</p>
+          )}
         </div>
       </article>
     </div>

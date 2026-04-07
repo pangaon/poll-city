@@ -30,8 +30,6 @@ import {
   LineChart,
   Pie,
   PieChart,
-  RadialBar,
-  RadialBarChart,
   ResponsiveContainer,
   Tooltip as RTooltip,
   XAxis,
@@ -300,17 +298,13 @@ function ProgressBar({ value, max, color = GREEN }: { value: number; max: number
   );
 }
 
-/* ─── Synthetic time series (for demo richness when real data sparse) ──── */
-function generateTimeSeries(base: number, length: number, volatility: number): Array<{ day: string; value: number }> {
-  const result: Array<{ day: string; value: number }> = [];
-  let current = base;
-  for (let i = 0; i < length; i++) {
-    current = Math.max(0, current + Math.round((Math.random() - 0.4) * volatility));
-    const d = new Date();
-    d.setDate(d.getDate() - (length - i));
-    result.push({ day: d.toLocaleDateString("en-CA", { month: "short", day: "numeric" }), value: current });
-  }
-  return result;
+/* ─── Empty state placeholder for missing time-series data ─────────────── */
+function EmptyChart({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center h-32 text-sm text-slate-400">
+      {message}
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -416,42 +410,20 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
   const supportRate = pct(supportTotal, data.contactsTotal);
   const gotvRate = pct(data.gotvPulled, data.gotvSupporters);
 
-  // Synthetic time series for rich visualizations
-  const supportTrend = useMemo(() => generateTimeSeries(supportRate > 0 ? supportRate - 10 : 35, 30, 3), [supportRate]);
-  const doorsTrend = useMemo(() => generateTimeSeries(data.contactsTotal > 0 ? Math.round(data.contactsTotal / 30) : 40, 30, 15), [data.contactsTotal]);
-  const gapTrend = useMemo(() => generateTimeSeries(supportTotal - oppositionTotal > 0 ? supportTotal - oppositionTotal : 20, 30, 8), [supportTotal, oppositionTotal]);
-  const donationTrend = useMemo(() => generateTimeSeries(data.donationsRaised > 0 ? Math.round(data.donationsRaised / 30) : 100, 30, 50), [data.donationsRaised]);
+  // Time-series placeholders — no synthetic data; show empty state in charts
+  const supportTrend: Array<{ day: string; value: number }> = [];
+  const doorsTrend: Array<{ day: string; value: number }> = [];
+  const gapTrend: Array<{ day: string; value: number }> = [];
+  const donationTrend: Array<{ day: string; value: number }> = [];
 
-  /* ── Volunteer leaderboard (synthetic from volunteer count) ──────────── */
-  const volunteerLeaderboard = useMemo(() => {
-    const names = ["Alex T.", "Sam R.", "Jordan M.", "Casey L.", "Riley P.", "Morgan K.", "Quinn B.", "Devon S."];
-    return names.slice(0, Math.max(3, data.volunteersActive || 5)).map((name, i) => ({
-      name,
-      doors: Math.max(10, Math.round((data.contactsTotal / Math.max(1, data.volunteersActive)) * (1 - i * 0.12))),
-      hours: Math.round(20 - i * 2.3),
-      conversion: Math.max(8, Math.round(35 - i * 3.5)),
-    }));
-  }, [data.contactsTotal, data.volunteersActive]);
+  /* ── Volunteer leaderboard — requires real per-volunteer tracking data ── */
+  const volunteerLeaderboard: Array<{ name: string; doors: number; hours: number; conversion: number }> = [];
 
-  /* ── Event mock data ─────────────────────────────────────────────────── */
-  const eventData = useMemo(() => [
-    { type: "Town Hall", rsvp: 120, attended: 95, conversion: 79 },
-    { type: "Fundraiser", rsvp: 85, attended: 68, conversion: 80 },
-    { type: "Door Knock", rsvp: 200, attended: 180, conversion: 90 },
-    { type: "Phone Bank", rsvp: 60, attended: 45, conversion: 75 },
-    { type: "Rally", rsvp: 300, attended: 210, conversion: 70 },
-  ], []);
+  /* ── Event data — requires real event tracking ──────────────────────── */
+  const eventData: Array<{ type: string; rsvp: number; attended: number; conversion: number }> = [];
 
-  /* ── GOTV priority breakdown ─────────────────────────────────────────── */
-  const gotvPriority = useMemo(() => {
-    const total = data.gotvSupporters || 100;
-    return [
-      { name: "P1 - Definite", value: Math.round(total * 0.35), color: GREEN },
-      { name: "P2 - Likely", value: Math.round(total * 0.25), color: AMBER },
-      { name: "P3 - Possible", value: Math.round(total * 0.25), color: NAVY },
-      { name: "P4 - Unlikely", value: Math.round(total * 0.15), color: RED },
-    ];
-  }, [data.gotvSupporters]);
+  /* ── GOTV priority breakdown — requires real tier scoring data ────────── */
+  const gotvPriority: Array<{ name: string; value: number; color: string }> = [];
 
   /* ── Support by ward ─────────────────────────────────────────────────── */
   const wardBreakdown = useMemo(() => {
@@ -586,6 +558,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 />
 
                 <ChartPanel title="Support Rate Over Time" className="md:col-span-2">
+                  {supportTrend.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={supportTrend}>
@@ -603,9 +576,13 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Historical trends require time-series data" />
+                  )}
                 </ChartPanel>
 
                 <ChartPanel title="Doors Knocked Trend" className="md:col-span-2">
+                  {doorsTrend.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={doorsTrend}>
@@ -617,9 +594,13 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Historical trends require time-series data" />
+                  )}
                 </ChartPanel>
 
                 <ChartPanel title="Gap Trajectory (Support - Opposition)" className="md:col-span-2">
+                  {gapTrend.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={gapTrend}>
@@ -631,6 +612,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Historical trends require time-series data" />
+                  )}
                 </ChartPanel>
 
                 <ChartPanel title="Sentiment Distribution" className="md:col-span-2">
@@ -776,6 +760,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 </div>
 
                 <ChartPanel title="Trend: Movement Toward / Away">
+                  {supportTrend.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={supportTrend}>
@@ -793,6 +778,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Historical trends require time-series data" />
+                  )}
                 </ChartPanel>
               </div>
             )}
@@ -805,6 +793,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 <MetricCard label="Volunteer Leads" value={fmt(data.volunteerInterest)} icon={Users} color={AMBER} />
 
                 <ChartPanel title="Leaderboard: Doors Knocked" className="md:col-span-2">
+                  {volunteerLeaderboard.length > 0 ? (
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={volunteerLeaderboard} layout="vertical">
@@ -816,10 +805,14 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Volunteer performance data not available" />
+                  )}
                 </ChartPanel>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="mb-3 text-sm font-bold text-slate-800">Performance Table</p>
+                  {volunteerLeaderboard.length > 0 ? (
                   <div className="max-h-64 overflow-auto">
                     <table className="w-full text-xs">
                       <thead className="sticky top-0 bg-slate-50">
@@ -840,9 +833,13 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </tbody>
                     </table>
                   </div>
+                  ) : (
+                    <EmptyChart message="Volunteer performance data not available" />
+                  )}
                 </div>
 
                 <ChartPanel title="Conversion Rate by Canvasser" className="md:col-span-3">
+                  {volunteerLeaderboard.length > 0 ? (
                   <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={volunteerLeaderboard}>
@@ -858,6 +855,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Volunteer performance data not available" />
+                  )}
                 </ChartPanel>
               </div>
             )}
@@ -871,6 +871,8 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 <MetricCard label="Riding Votes" value={fmt(data.gotvRidingVotes)} color={NAVY} />
 
                 <ChartPanel title="Priority Conversion Breakdown" className="md:col-span-2">
+                  {gotvPriority.length > 0 ? (
+                  <>
                   <div className="h-60">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -891,6 +893,10 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </div>
                     ))}
                   </div>
+                  </>
+                  ) : (
+                    <EmptyChart message="Real tier breakdown requires GOTV scoring" />
+                  )}
                 </ChartPanel>
 
                 <div className="md:col-span-2 space-y-4">
@@ -916,19 +922,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 </div>
 
                 <ChartPanel title="P1/P2/P3/P4 Conversion Rates" className="md:col-span-4">
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadialBarChart innerRadius="20%" outerRadius="100%" data={[
-                        { name: "P4", value: 22, fill: RED },
-                        { name: "P3", value: 45, fill: NAVY },
-                        { name: "P2", value: 68, fill: AMBER },
-                        { name: "P1", value: 87, fill: GREEN },
-                      ]} startAngle={180} endAngle={0}>
-                        <RadialBar dataKey="value" />
-                        <RTooltip formatter={(v) => [`${v}%`, "Conversion"]} />
-                      </RadialBarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <EmptyChart message="Conversion rates require voting confirmation data" />
                 </ChartPanel>
               </div>
             )}
@@ -945,6 +939,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 />
 
                 <ChartPanel title="Donation Trends (30 days)" className="md:col-span-2">
+                  {donationTrend.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={donationTrend}>
@@ -962,6 +957,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Historical trends require time-series data" />
+                  )}
                 </ChartPanel>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -987,6 +985,7 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                 </div>
 
                 <ChartPanel title="Donor Demographics" className="md:col-span-3">
+                  {data.donationsCount > 0 ? (
                   <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={[
@@ -1004,6 +1003,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Donor demographics require donation records" />
+                  )}
                 </ChartPanel>
               </div>
             )}
@@ -1011,11 +1013,12 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
             {/* ═══ TAB 7: Event Intelligence ═════════════════════════════ */}
             {tab === "events" && (
               <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Upcoming Events" value={fmt(data.pollsLive)} icon={Calendar} color={NAVY} />
-                <MetricCard label="Avg RSVP Conversion" value={`${Math.round(eventData.reduce((s, e) => s + e.conversion, 0) / eventData.length)}%`} color={GREEN} />
-                <MetricCard label="Total Attendance" value={fmt(eventData.reduce((s, e) => s + e.attended, 0))} color={AMBER} />
+                <MetricCard label="Upcoming Events" value="N/A" icon={Calendar} color={NAVY} />
+                <MetricCard label="Avg RSVP Conversion" value={eventData.length > 0 ? `${Math.round(eventData.reduce((s, e) => s + e.conversion, 0) / eventData.length)}%` : "N/A"} color={GREEN} />
+                <MetricCard label="Total Attendance" value={eventData.length > 0 ? fmt(eventData.reduce((s, e) => s + e.attended, 0)) : "N/A"} color={AMBER} />
 
                 <ChartPanel title="RSVP vs Attendance by Event Type" className="md:col-span-2">
+                  {eventData.length > 0 ? (
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={eventData}>
@@ -1028,10 +1031,14 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Event analytics not available" />
+                  )}
                 </ChartPanel>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="mb-3 text-sm font-bold text-slate-800">Event Type Performance</p>
+                  {eventData.length > 0 ? (
                   <div className="space-y-3">
                     {eventData.map((e) => (
                       <div key={e.type}>
@@ -1045,9 +1052,13 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </div>
                     ))}
                   </div>
+                  ) : (
+                    <EmptyChart message="Event analytics not available" />
+                  )}
                 </div>
 
                 <ChartPanel title="Conversion Rate Trend" className="md:col-span-3">
+                  {eventData.length > 0 ? (
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={eventData}>
@@ -1059,6 +1070,9 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+                  ) : (
+                    <EmptyChart message="Event analytics not available" />
+                  )}
                 </ChartPanel>
               </div>
             )}
