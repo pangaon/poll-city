@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const printOrderSchema = z.object({
+  campaignId: z.string().min(1, "campaignId is required"),
+  templateId: z.string().nullish(),
+  productType: z.string().min(1, "productType is required"),
+  quantity: z.number().int().positive("quantity must be positive"),
+  designData: z.record(z.unknown()).optional(),
+  shippingAddr: z.record(z.unknown()).optional(),
+  notes: z.string().nullish(),
+});
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -29,39 +40,32 @@ export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
-  let body: {
-    campaignId: string;
-    templateId?: string;
-    productType: string;
-    quantity: number;
-    designData?: Record<string, unknown>;
-    shippingAddr?: Record<string, unknown>;
-    notes?: string;
-  };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.campaignId || !body.productType || !body.quantity) {
-    return NextResponse.json({ error: "campaignId, productType, and quantity are required" }, { status: 400 });
+  const parsed = printOrderSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } },
+    where: { userId_campaignId: { userId: session!.user.id, campaignId: parsed.data.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const order = await prisma.printOrder.create({
     data: {
-      campaignId: body.campaignId,
-      templateId: body.templateId ?? null,
-      productType: body.productType,
-      quantity: body.quantity,
-      designData: body.designData as object ?? undefined,
-      shippingAddr: body.shippingAddr as object ?? undefined,
-      notes: body.notes ?? null,
+      campaignId: parsed.data.campaignId,
+      templateId: parsed.data.templateId ?? null,
+      productType: parsed.data.productType,
+      quantity: parsed.data.quantity,
+      designData: parsed.data.designData as object ?? undefined,
+      shippingAddr: parsed.data.shippingAddr as object ?? undefined,
+      notes: parsed.data.notes ?? null,
     },
   });
 

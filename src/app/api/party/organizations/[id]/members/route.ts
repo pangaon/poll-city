@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const createMemberSchema = z.object({
+  firstName: z.string().min(1, "firstName is required"),
+  lastName: z.string().min(1, "lastName is required"),
+  ridingId: z.string().nullish(),
+  email: z.string().email().nullish(),
+  phone: z.string().nullish(),
+  memberSince: z.string().nullish(),
+  isActive: z.boolean().optional().default(true),
+});
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await apiAuth(req);
@@ -34,21 +45,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (error) return error;
 
   const body = await req.json();
-
-  if (!body.firstName || !body.lastName) {
-    return NextResponse.json({ error: "firstName and lastName are required" }, { status: 400 });
+  const parsed = createMemberSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const member = await prisma.partyMember.create({
     data: {
       partyId: params.id,
-      ridingId: body.ridingId ?? null,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email ?? null,
-      phone: body.phone ?? null,
-      memberSince: body.memberSince ? new Date(body.memberSince) : null,
-      isActive: body.isActive ?? true,
+      ridingId: parsed.data.ridingId ?? null,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+      memberSince: parsed.data.memberSince ? new Date(parsed.data.memberSince) : null,
+      isActive: parsed.data.isActive,
     },
   });
 

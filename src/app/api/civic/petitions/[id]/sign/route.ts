@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { awardCivicCredits } from "@/lib/civic-credits";
+import { z } from "zod";
+
+const signPetitionSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().email().nullish(),
+  isPublic: z.boolean().optional().default(false),
+});
 
 export async function POST(
   req: NextRequest,
@@ -31,14 +38,18 @@ export async function POST(
   }
 
   const body = await req.json();
+  const parsed = signPetitionSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+  }
 
   const signature = await prisma.petitionSignature.create({
     data: {
       petitionId,
       userId,
-      name: body.name ?? session!.user!.name ?? "Anonymous",
-      email: body.email ?? null,
-      isPublic: body.isPublic ?? false,
+      name: parsed.data.name ?? session!.user!.name ?? "Anonymous",
+      email: parsed.data.email ?? null,
+      isPublic: parsed.data.isPublic,
     },
   });
 

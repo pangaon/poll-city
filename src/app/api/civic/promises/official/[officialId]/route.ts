@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const createPromiseSchema = z.object({
+  promise: z.string().min(1, "promise is required"),
+  madeAt: z.string().min(1, "madeAt is required"),
+  status: z.enum(["pending", "kept", "broken", "in_progress"]).optional().default("pending"),
+  evidence: z.string().nullish(),
+});
 
 export async function GET(
   req: NextRequest,
@@ -23,21 +31,18 @@ export async function POST(
   if (error) return error;
 
   const body = await req.json();
-
-  if (!body.promise || !body.madeAt) {
-    return NextResponse.json(
-      { error: "promise and madeAt are required" },
-      { status: 400 }
-    );
+  const parsed = createPromiseSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const promise = await prisma.officialPromise.create({
     data: {
       officialId: params.officialId,
-      promise: body.promise,
-      madeAt: new Date(body.madeAt),
-      status: body.status ?? "pending",
-      evidence: body.evidence ?? null,
+      promise: parsed.data.promise,
+      madeAt: new Date(parsed.data.madeAt),
+      status: parsed.data.status,
+      evidence: parsed.data.evidence ?? null,
     },
   });
 

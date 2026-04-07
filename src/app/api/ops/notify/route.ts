@@ -2,28 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { Role } from "@prisma/client";
+import { z } from "zod";
+
+const notifySchema = z.object({
+  type: z.string().min(1, "type is required"),
+  title: z.string().min(1, "title is required"),
+  body: z.string().min(1, "body is required"),
+  data: z.record(z.unknown()).optional(),
+});
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req, [Role.ADMIN, Role.SUPER_ADMIN]);
   if (error) return error;
 
-  let body: { type: string; title: string; body: string; data?: Record<string, unknown> };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.type || !body.title || !body.body) {
-    return NextResponse.json({ error: "type, title, and body are required" }, { status: 400 });
+  const parsed = notifySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const notification = await prisma.operatorNotification.create({
     data: {
-      type: body.type,
-      title: body.title,
-      body: body.body,
-      data: body.data as object ?? undefined,
+      type: parsed.data.type,
+      title: parsed.data.title,
+      body: parsed.data.body,
+      data: parsed.data.data as object ?? undefined,
     },
   });
 

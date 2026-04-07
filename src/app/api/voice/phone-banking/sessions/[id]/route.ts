@@ -5,6 +5,7 @@
  * PATCH — End session
  */
 import { NextRequest, NextResponse } from "next/server";
+import { InteractionType, SupportLevel } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 import { phoneBankResultSchema } from "@/lib/validators/voice";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const calledContactIds = await prisma.interaction.findMany({
     where: {
       userId: session.user.id as string,
-      type: "phone_call" as any,
+      type: InteractionType.phone_call,
       createdAt: { gte: pbSession.startedAt },
       contact: { campaignId: pbSession.campaignId },
     },
@@ -85,9 +86,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await prisma.interaction.create({
     data: {
       contactId,
-      userId: session.user.id as string,
-      type: "phone_call" as any,
-      supportLevel: supportLevel as any ?? null,
+      userId: session.user.id,
+      type: InteractionType.phone_call,
+      supportLevel: supportLevel ? (supportLevel as SupportLevel) : null,
       notes: notes ?? `Phone bank: ${result}`,
     },
   });
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (supportLevel) {
     await prisma.contact.update({
       where: { id: contactId },
-      data: { supportLevel: supportLevel as any, lastContactedAt: new Date() },
+      data: { supportLevel: supportLevel as SupportLevel, lastContactedAt: new Date() },
     }).catch(() => {});
   }
 

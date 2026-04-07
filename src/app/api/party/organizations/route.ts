@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const createOrgSchema = z.object({
+  name: z.string().min(1, "name is required"),
+  shortName: z.string().min(1, "shortName is required"),
+  level: z.string().min(1, "level is required"),
+  province: z.string().nullish(),
+  plan: z.string().optional().default("RIDING"),
+  dataRetentionDays: z.number().int().positive().optional().default(365),
+});
 
 export async function GET(req: NextRequest) {
   const { error } = await apiAuth(req);
@@ -19,19 +29,19 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-
-  if (!body.name || !body.shortName || !body.level) {
-    return NextResponse.json({ error: "name, shortName, and level are required" }, { status: 400 });
+  const parsed = createOrgSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const org = await prisma.partyOrganization.create({
     data: {
-      name: body.name,
-      shortName: body.shortName,
-      level: body.level,
-      province: body.province ?? null,
-      plan: body.plan ?? "RIDING",
-      dataRetentionDays: body.dataRetentionDays ?? 365,
+      name: parsed.data.name,
+      shortName: parsed.data.shortName,
+      level: parsed.data.level,
+      province: parsed.data.province ?? null,
+      plan: parsed.data.plan,
+      dataRetentionDays: parsed.data.dataRetentionDays,
     },
   });
 

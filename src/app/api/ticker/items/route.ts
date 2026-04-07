@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -26,22 +27,28 @@ export async function POST(request: NextRequest) {
   const outlet = await authenticateOutlet(request);
   if (!outlet) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
 
-  const body = await request.json().catch(() => null) as {
-    text?: string; url?: string; type?: string; priority?: number; expiresAt?: string;
-  } | null;
+  const tickerSchema = z.object({
+    text: z.string().min(1, "text is required").transform(s => s.trim()),
+    url: z.string().url().nullish(),
+    type: z.string().optional().default("GENERAL"),
+    priority: z.number().int().min(1).max(10).optional().default(5),
+    expiresAt: z.string().nullish(),
+  });
 
-  if (!body?.text?.trim()) {
-    return NextResponse.json({ error: "text is required" }, { status: 400 });
+  const rawBody = await request.json().catch(() => null);
+  const parsed = tickerSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const item = await prisma.tickerItem.create({
     data: {
       mediaOutletId: outlet.id,
-      text: body.text.trim(),
-      url: body.url?.trim() || null,
-      type: body.type ?? "GENERAL",
-      priority: body.priority ?? 5,
-      expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+      text: parsed.data.text,
+      url: parsed.data.url ?? null,
+      type: parsed.data.type,
+      priority: parsed.data.priority,
+      expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
     },
   });
 

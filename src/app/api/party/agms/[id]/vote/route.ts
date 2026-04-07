@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const agmVoteSchema = z.object({
+  resolutionId: z.string().min(1, "resolutionId is required"),
+  vote: z.enum(["for", "against", "abstain"]),
+});
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await apiAuth(req);
   if (error) return error;
 
   const body = await req.json();
-
-  if (!body.resolutionId || !body.vote) {
-    return NextResponse.json({ error: "resolutionId and vote (for|against|abstain) are required" }, { status: 400 });
-  }
-
-  if (!["for", "against", "abstain"].includes(body.vote)) {
-    return NextResponse.json({ error: "vote must be for, against, or abstain" }, { status: 400 });
+  const parsed = agmVoteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const resolution = await prisma.partyResolution.findFirst({
-    where: { id: body.resolutionId, agmId: params.id },
+    where: { id: parsed.data.resolutionId, agmId: params.id },
   });
 
   if (!resolution) {
@@ -28,10 +30,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Resolution is no longer open for voting" }, { status: 400 });
   }
 
-  const field = body.vote === "for" ? "votesFor" : body.vote === "against" ? "votesAgainst" : "votesAbstain";
+  const field = parsed.data.vote === "for" ? "votesFor" : parsed.data.vote === "against" ? "votesAgainst" : "votesAbstain";
 
   const updated = await prisma.partyResolution.update({
-    where: { id: body.resolutionId },
+    where: { id: parsed.data.resolutionId },
     data: { [field]: { increment: 1 } },
   });
 

@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { z } from "zod";
+
+const resultEntrySchema = z.object({
+  province: z.string().min(1),
+  municipality: z.string().min(1),
+  ward: z.string().nullish(),
+  office: z.string().min(1),
+  candidateName: z.string().min(1),
+  party: z.string().nullish(),
+  votes: z.number().int().min(0),
+  percentReporting: z.number().min(0).max(100).optional().default(0),
+});
 
 export async function POST(request: NextRequest) {
   const { session, error } = await apiAuth(request);
   if (error) return error;
 
-  const body = await request.json().catch(() => null) as {
-    province?: string; municipality?: string; ward?: string; office?: string;
-    candidateName?: string; party?: string; votes?: number; percentReporting?: number;
-  } | null;
-
-  if (!body?.province || !body.municipality || !body.office || !body.candidateName || body.votes === undefined) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  const rawBody = await request.json().catch(() => null);
+  const parsed = resultEntrySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
+  const body = parsed.data;
 
   // Check for existing first entry (match on province+municipality+ward+candidateName)
   const existing = await prisma.liveResult.findFirst({

@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { computeRankedBallotResult } from "@/lib/party/ranked-ballot";
+import { z } from "zod";
+
+const nominationVoteSchema = z.object({
+  rankings: z.array(z.object({
+    nomineeId: z.string().min(1),
+    rank: z.number().int().positive(),
+  })).min(1, "rankings array is required"),
+});
 
 export async function GET(req: NextRequest, { params }: { params: { raceId: string } }) {
   const { error } = await apiAuth(req);
@@ -34,9 +42,9 @@ export async function POST(req: NextRequest, { params }: { params: { raceId: str
 
   const userId = session!.user!.id as string;
   const body = await req.json();
-
-  if (!Array.isArray(body.rankings) || body.rankings.length === 0) {
-    return NextResponse.json({ error: "rankings array is required" }, { status: 400 });
+  const parsed = nominationVoteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const race = await prisma.nominationRace.findUnique({ where: { id: params.raceId } });
@@ -57,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { raceId: str
     data: {
       raceId: params.raceId,
       voterId: userId,
-      rankings: body.rankings,
+      rankings: parsed.data.rankings,
     },
   });
 
