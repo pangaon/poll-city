@@ -172,8 +172,8 @@ export default function PollsClient({ campaignId }: Props) {
           <h3 className="text-lg font-semibold mb-1" style={{ color: NAVY }}>
             No polls yet
           </h3>
-          <p className="text-gray-500 text-sm mb-6">
-            Create your first poll to start gathering voter insights.
+          <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
+            Polls let you gauge voter sentiment on local issues, test campaign messaging, and prioritize platform topics. Create your first poll to start collecting responses.
           </p>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}>
             <Button onClick={() => router.push("/polls/new")} style={{ backgroundColor: GREEN }}>

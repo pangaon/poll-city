@@ -196,8 +196,8 @@ export default function InboxClient({
           >
             <Inbox className="w-12 h-12 mx-auto text-slate-300 mb-3" />
             <p className="text-lg font-bold text-slate-700">Nothing here yet</p>
-            <p className="text-sm text-slate-500 mt-1">
-              Sent communications and incoming messages will appear here.
+            <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+              Your unified inbox collects every campaign communication in one place — sent emails, SMS blasts, voter questions, and social media mentions. Send your first email or SMS blast from the Communications page to see it here.
             </p>
           </motion.div>
         ) : (

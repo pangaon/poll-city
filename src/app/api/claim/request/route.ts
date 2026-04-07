@@ -59,10 +59,7 @@ export async function POST(req: NextRequest) {
     const token = `${payload}.${sig}`;
 
     // Build the verification URL
-    const origin = req.headers.get("origin");
-    const forwardedHost = req.headers.get("x-forwarded-host");
-    const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
-    const baseUrl = origin ?? (forwardedHost ? `${forwardedProto}://${forwardedHost}` : "http://localhost:3000");
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const verifyUrl = `${baseUrl}/api/claim/verify?token=${encodeURIComponent(token)}`;
 
     // Send verification email via Resend

@@ -5,19 +5,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { z } from "zod";
+
+const donationSchema = z.object({
+  amount: z.number().positive().max(25000),
+  donorName: z.string().min(1).max(200),
+  donorEmail: z.string().email().max(200),
+  donorAddress: z.string().max(500).optional(),
+  donorPostalCode: z.string().max(20).optional(),
+});
 
 export async function POST(req: NextRequest, { params }: { params: { slug: string } }) {
   const rateLimitResponse = await rateLimit(req, "form");
   if (rateLimitResponse) return rateLimitResponse;
 
   const body = await req.json();
-  const { amount, donorName, donorEmail, donorAddress, donorPostalCode } = body;
-
-  if (!amount || amount < 1 || amount > 1200) {
-    return NextResponse.json({ error: "Donation amount must be between $1 and $1,200 (Ontario municipal limit)" }, { status: 400 });
+  const parsed = donationSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  if (!donorName || !donorEmail) {
-    return NextResponse.json({ error: "Donor name and email are required" }, { status: 400 });
+  const { amount, donorName, donorEmail, donorAddress, donorPostalCode } = parsed.data;
+
+  if (amount < 1 || amount > 1200) {
+    return NextResponse.json({ error: "Donation amount must be between $1 and $1,200 (Ontario municipal limit)" }, { status: 400 });
   }
 
   const campaign = await prisma.campaign.findUnique({

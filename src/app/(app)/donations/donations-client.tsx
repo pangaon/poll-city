@@ -652,7 +652,11 @@ export default function DonationsClient({ campaignId }: Props) {
           <CardHeader><CardTitle>Top Donors</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {topDonors.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No donors yet</p>
+              <div className="text-center py-6">
+                <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                <p className="text-sm font-medium text-gray-700">No donors yet</p>
+                <p className="text-xs text-gray-500 mt-1">Top donors will appear here as donations are recorded. Use the &quot;New Donation&quot; button above to log your first contribution.</p>
+              </div>
             ) : (
               topDonors.map((d, i) => (
                 <div key={i} className="flex items-center justify-between">

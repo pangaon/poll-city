@@ -44,10 +44,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const origin = req.headers.get("origin");
-    const forwardedHost = req.headers.get("x-forwarded-host");
-    const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
-    const baseUrl = origin ?? (forwardedHost ? `${forwardedProto}://${forwardedHost}` : process.env.NEXTAUTH_URL ?? "http://localhost:3000");
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
     if (process.env.RESEND_API_KEY) {

@@ -772,8 +772,14 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
           <Card className="p-6 text-center">
             <p className="text-sm font-semibold text-slate-900">No contacts found</p>
             <p className="text-xs text-slate-500 mt-1">
-              {hasActiveFilters ? "Try clearing filters or search terms." : "Add your first contact to get started."}
+              {hasActiveFilters ? "Try clearing filters or search terms." : "Contacts are the people in your campaign universe — voters, volunteers, and supporters. Import a list or add your first contact to get started."}
             </p>
+            {!hasActiveFilters && (
+              <div className="mt-4 flex justify-center gap-2">
+                <Link href="/import-export"><Button variant="outline" size="sm"><Upload className="w-3.5 h-3.5" />Import Contacts</Button></Link>
+                <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" />Add Contact</Button>
+              </div>
+            )}
           </Card>
         )}
         {contacts.map((c) => {
@@ -885,8 +891,14 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                     <div className="space-y-1">
                       <p className="font-medium text-gray-700">No contacts found</p>
                       <p className="text-xs text-gray-500">
-                        {hasActiveFilters ? "Try clearing filters or search terms." : "Add your first contact to get started."}
+                        {hasActiveFilters ? "Try clearing filters or search terms." : "Contacts are the people in your campaign universe. Import a list or add your first contact to begin."}
                       </p>
+                      {!hasActiveFilters && (
+                        <div className="mt-3 flex justify-center gap-2">
+                          <Link href="/import-export"><Button variant="outline" size="sm"><Upload className="w-3.5 h-3.5" />Import Contacts</Button></Link>
+                          <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-3.5 h-3.5" />Add Contact</Button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

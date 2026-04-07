@@ -256,48 +256,48 @@ export default function Sidebar() {
   }
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-slate-950 text-slate-200">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-gray-200">
+      <div className="px-4 py-4 border-b border-slate-800">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <Image src="/logo.png" alt="Poll City" width={32} height={32} priority />
-          <span className="font-bold text-lg tracking-tight" style={{ color: "#1E3A8A" }}>Poll City</span>
+          <Image src="/logo.png" alt="Poll City" width={28} height={28} priority />
+          <span className="font-bold text-base tracking-tight text-white">Poll City</span>
         </Link>
       </div>
 
       {/* Campaign switcher */}
-      <div className="px-3 py-3 border-b border-gray-100">
+      <div className="px-3 py-3 border-b border-slate-800">
         <CampaignSwitcher />
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto scrollbar-thin">
         {sidebarSections.map((section) => {
           const isCollapsed = sectionStates[section.id] ?? false;
           const isActiveSection = sectionHasActivePath(pathname, section.items);
           const SectionIcon = section.icon;
 
           return (
-            <section key={section.id} className="rounded-xl border border-gray-100 bg-white/80">
+            <section key={section.id}>
               <button
                 type="button"
                 onClick={() => toggleSection(section.id)}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2.5 text-left rounded-xl transition-colors",
-                  isActiveSection ? "bg-blue-50" : "hover:bg-gray-50"
+                  "w-full flex items-center justify-between px-3 py-2 text-left rounded-md transition-colors",
+                  isActiveSection ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
                 )}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <SectionIcon className={cn("w-4 h-4 flex-shrink-0", isActiveSection ? "text-blue-700" : "text-gray-500")} />
-                  <span className={cn("text-xs font-semibold uppercase tracking-wide", isActiveSection ? "text-blue-700" : "text-gray-600")}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <SectionIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">
                     {section.label}
                   </span>
                 </div>
-                {isCollapsed ? <ChevronRight className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
               </button>
 
               {!isCollapsed && (
-                <div className="px-2 pb-2 space-y-0.5">
+                <div className="mt-0.5 ml-2 space-y-px">
                   {section.items.map(({ href, icon: Icon, label }) => {
                     const active = pathname === href || pathname.startsWith(`${href}/`);
                     return (
@@ -305,17 +305,17 @@ export default function Sidebar() {
                         key={href}
                         href={href}
                         className={cn(
-                          "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all",
+                          "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all",
                           active
-                            ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 pl-2"
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent"
+                            ? "bg-blue-600 text-white"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
                         )}
                       >
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex items-center gap-2">
+                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="flex items-center gap-2 truncate">
                           {label}
                           {href === "/ops/videos" && opsOutstanding > 0 && (
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+                            <span className="inline-flex items-center justify-center min-w-[18px] h-4 rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                               {opsOutstanding}
                             </span>
                           )}
@@ -331,24 +331,20 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="px-4 py-3 border-t border-gray-100 space-y-2">
+      <div className="px-3 py-3 border-t border-slate-800 space-y-2">
         <button
           type="button"
           onClick={openAdoni}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2"
+          className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2 transition-colors"
         >
           <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-blue-700 text-xs font-bold">A</span>
           Ask Adoni
         </button>
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-slate-500">
           <span>Search</span>
-          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">Ctrl+K</kbd>
+          <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-slate-400">Ctrl+K</kbd>
         </div>
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>Shortcuts</span>
-          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-[10px] font-mono">?</kbd>
-        </div>
-        <p className="text-xs text-gray-300 pt-1">Poll City v5.1.0</p>
+        <p className="text-[10px] text-slate-600 pt-1">Poll City v5.2.0</p>
       </div>
     </div>
   );
@@ -356,7 +352,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 flex-shrink-0 bg-white border-r border-gray-200 flex-col">
+      <aside className="hidden md:flex w-60 flex-shrink-0 bg-slate-950 border-r border-slate-800 flex-col">
         <SidebarContent />
       </aside>
     </>

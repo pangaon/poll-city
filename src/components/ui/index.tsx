@@ -26,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-400",
     };
     const sizes = {
-      sm: "text-xs px-3 py-1.5 h-7",
+      sm: "text-xs px-3 py-1.5 h-8",
       md: "text-sm px-4 py-2 h-9",
       lg: "text-sm px-5 py-2.5 h-10",
       icon: "w-9 h-9 p-0",

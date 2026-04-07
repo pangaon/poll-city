@@ -3,13 +3,12 @@ import prisma from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   const secret = process.env.VERCEL_WEBHOOK_SECRET;
-  if (secret) {
-    const provided = req.headers.get("x-vercel-signature") ?? req.nextUrl.searchParams.get("secret");
-    if (provided !== secret) {
-      return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
-    }
-  } else {
-    console.warn("[vercel-webhook] VERCEL_WEBHOOK_SECRET is not set — accepting request without verification");
+  if (!secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const provided = req.headers.get("x-vercel-signature") ?? req.nextUrl.searchParams.get("secret");
+  if (provided !== secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   let body: Record<string, unknown>;

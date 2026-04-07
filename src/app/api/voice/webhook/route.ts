@@ -7,6 +7,12 @@ import prisma from "@/lib/db/prisma";
 import { InteractionType, SupportLevel } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
+  const webhookSecret = process.env.VOICE_WEBHOOK_SECRET ?? process.env.CRON_SECRET;
+  const auth = req.headers.get("authorization");
+  if (webhookSecret && auth !== `Bearer ${webhookSecret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const body = await req.formData();
   const callSid = body.get("CallSid") as string;
   const callStatus = body.get("CallStatus") as string;

@@ -44,7 +44,12 @@ const oauthProviders = [
 ];
 
 export const authOptions: NextAuthOptions = {
-  secret: nextAuthSecret,
+  secret: process.env.NEXTAUTH_SECRET ?? (() => {
+    if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+      throw new Error("NEXTAUTH_SECRET is required in production");
+    }
+    return "dev-secret-only-for-local-development";
+  })(),
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,

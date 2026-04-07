@@ -270,6 +270,108 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  // ── New tools: closing enterprise automation gaps ──
+  {
+    name: "list_tasks",
+    description:
+      "List campaign tasks filtered by status, assignee, or priority. Use when someone says 'what tasks are overdue', 'show my tasks', 'what's pending'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: { type: "string" as const, description: "Filter: pending, in_progress, completed, cancelled" },
+        assigneeName: { type: "string" as const, description: "Filter by assignee name" },
+        priority: { type: "string" as const, description: "Filter: low, medium, high, urgent" },
+        limit: { type: "number" as const, description: "Max results (default 10)" },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "complete_task",
+    description:
+      "Mark a task as completed. Use when someone says 'mark that task done', 'we finished the sign installation', 'close task X'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        taskQuery: { type: "string" as const, description: "Task title or keyword to find it" },
+      },
+      required: ["taskQuery"],
+    },
+  },
+  {
+    name: "get_donation_summary",
+    description:
+      "Get donation summary: total raised, donor count, average donation, top donors, recent donations. Use when someone asks 'how much have we raised' or 'who are our top donors'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        since: { type: "string" as const, description: "ISO date to filter from (optional)" },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "log_donation",
+    description:
+      "Record a new donation for the campaign. Use when someone says 'John donated $100' or 'log a $50 donation from Sarah'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        donorName: { type: "string" as const, description: "Name of the donor" },
+        amount: { type: "number" as const, description: "Donation amount in dollars" },
+        method: { type: "string" as const, description: "Payment method: cash, cheque, e_transfer, credit_card, other" },
+        notes: { type: "string" as const, description: "Any notes about the donation" },
+      },
+      required: ["donorName", "amount"],
+    },
+  },
+  {
+    name: "create_event",
+    description:
+      "Create a campaign event (rally, fundraiser, town hall, etc). Use when someone says 'set up a fundraiser for next week' or 'create a volunteer appreciation event'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string" as const, description: "Event title" },
+        date: { type: "string" as const, description: "ISO date for the event" },
+        startTime: { type: "string" as const, description: "Start time like '7:00 PM'" },
+        endTime: { type: "string" as const, description: "End time like '9:00 PM'" },
+        location: { type: "string" as const, description: "Event location/venue" },
+        type: { type: "string" as const, description: "rally, fundraiser, town_hall, canvass_launch, volunteer_social, debate_watch, other" },
+        description: { type: "string" as const, description: "Event details" },
+        capacity: { type: "number" as const, description: "Max attendees (optional)" },
+      },
+      required: ["title", "date"],
+    },
+  },
+  {
+    name: "create_sign_request",
+    description:
+      "Create a lawn sign request. Use when someone says 'put a sign at 123 Elm St' or 'Sarah wants a lawn sign'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, address, or phone of requester" },
+        address: { type: "string" as const, description: "Sign installation address (if different from contact)" },
+        signType: { type: "string" as const, description: "lawn, window, balcony, large (default: lawn)" },
+        notes: { type: "string" as const, description: "Installation notes" },
+      },
+      required: ["contactQuery"],
+    },
+  },
+  {
+    name: "export_contacts",
+    description:
+      "Trigger a contact export and return the download link. Use when someone says 'export the voter list' or 'download supporters as CSV'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        filter: { type: "string" as const, description: "Natural language filter: 'supporters', 'ward 5', 'undecided with phones', 'all'" },
+        format: { type: "string" as const, description: "csv or json (default csv)" },
+      },
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -293,6 +395,13 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   draft_social_post: "social:write",
   deploy_team: "canvassing:manage",
   segment_contacts: "contacts:write",
+  list_tasks: "tasks:read",
+  complete_task: "tasks:write",
+  get_donation_summary: "donations:read",
+  log_donation: "donations:write",
+  create_event: "events:write",
+  create_sign_request: "signs:write",
+  export_contacts: "contacts:export",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -374,6 +483,20 @@ export async function executeAction(
         return await deployTeam(input, ctx);
       case "segment_contacts":
         return await segmentContacts(input, ctx);
+      case "list_tasks":
+        return await listTasks(input, ctx);
+      case "complete_task":
+        return await completeTask(input, ctx);
+      case "get_donation_summary":
+        return await getDonationSummary(input, ctx);
+      case "log_donation":
+        return await logDonation(input, ctx);
+      case "create_event":
+        return await createEvent(input, ctx);
+      case "create_sign_request":
+        return await createSignRequest(input, ctx);
+      case "export_contacts":
+        return await exportContactsViaAdoni(input, ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -1066,6 +1189,285 @@ async function segmentContacts(input: Record<string, unknown>, ctx: ActionContex
     success: true,
     message: `Segmented ${contacts.length.toLocaleString()} contacts into ${listsCreated} walk list(s) across ${wardGroups.size} ward(s). ${wardBreakdown}.${noWardCount > 0 ? ` ${noWardCount} contacts have no ward data and were skipped — consider running geocoding or checking the import.` : ""} Navigate to /canvassing/turf-builder to assign these lists to volunteers.`,
     data: { listsCreated, totalContacts: contacts.length, wards: wardGroups.size, noWardCount },
+  };
+}
+
+// ─── New tool implementations: Enterprise automation gaps ──────────────────
+
+async function listTasks(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const limit = Math.min(Number(input.limit ?? 10), 20);
+  const where: Record<string, unknown> = { campaignId: ctx.campaignId };
+  if (input.status) where.status = input.status;
+  if (input.priority) where.priority = input.priority;
+  if (input.assigneeName) {
+    where.assignedTo = { name: { contains: String(input.assigneeName), mode: "insensitive" } };
+  }
+
+  const tasks = await prisma.task.findMany({
+    where: where as never,
+    take: limit,
+    orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
+    select: { id: true, title: true, status: true, priority: true, dueDate: true, assignedTo: { select: { name: true } } },
+  });
+
+  if (tasks.length === 0) return { success: true, message: "No tasks found matching those filters." };
+
+  const lines = tasks.map((t) => {
+    const due = t.dueDate ? ` due ${new Date(t.dueDate).toLocaleDateString("en-CA")}` : "";
+    const assigned = t.assignedTo?.name ? ` (${t.assignedTo.name})` : "";
+    const overdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed" ? " OVERDUE" : "";
+    return `[${t.priority}] ${t.title}${assigned}${due}${overdue} — ${t.status}`;
+  });
+
+  return { success: true, message: `${tasks.length} task(s) found:\n${lines.join("\n")}`, data: { tasks } };
+}
+
+async function completeTask(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.taskQuery);
+  const task = await prisma.task.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      title: { contains: query, mode: "insensitive" },
+      status: { not: "completed" as never },
+    } as never,
+    select: { id: true, title: true },
+  });
+
+  if (!task) return { success: false, message: `Could not find an open task matching "${query}".` };
+
+  await prisma.task.update({
+    where: { id: task.id },
+    data: { status: "completed" as never, completedAt: new Date() },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "task_completed_via_adoni",
+      entityType: "task",
+      entityId: task.id,
+      details: { title: task.title },
+    },
+  }).catch(() => {});
+
+  return { success: true, message: `Task completed: "${task.title}".`, data: { taskId: task.id } };
+}
+
+async function getDonationSummary(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const sinceDate = input.since ? new Date(String(input.since)) : undefined;
+  const dateFilter = sinceDate ? { createdAt: { gte: sinceDate } } : {};
+
+  const [agg, recentDonations, donorCount] = await Promise.all([
+    prisma.donation.aggregate({
+      where: { campaignId: ctx.campaignId, ...dateFilter } as never,
+      _sum: { amount: true },
+      _count: true,
+      _avg: { amount: true },
+      _max: { amount: true },
+    }),
+    prisma.donation.findMany({
+      where: { campaignId: ctx.campaignId, ...dateFilter } as never,
+      orderBy: { amount: "desc" },
+      take: 5,
+      select: { amount: true, contact: { select: { firstName: true, lastName: true } }, createdAt: true },
+    }),
+    prisma.donation.groupBy({
+      by: ["contactId"],
+      where: { campaignId: ctx.campaignId, ...dateFilter } as never,
+    }),
+  ]);
+
+  const total = Number(agg._sum.amount ?? 0);
+  const avg = Number(agg._avg.amount ?? 0);
+  const topDonors = recentDonations.map((d) =>
+    `${d.contact?.firstName ?? "Anonymous"} ${d.contact?.lastName ?? ""} — $${Number(d.amount).toFixed(2)}`
+  ).join("; ");
+
+  return {
+    success: true,
+    message: `Donations${sinceDate ? ` since ${sinceDate.toLocaleDateString("en-CA")}` : ""}: $${total.toFixed(2)} total from ${donorCount.length} donor(s), ${agg._count} donation(s). Average: $${avg.toFixed(2)}.${recentDonations.length > 0 ? ` Top: ${topDonors}.` : ""}`,
+    data: { total, count: agg._count, donors: donorCount.length, average: avg },
+  };
+}
+
+async function logDonation(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const donorName = String(input.donorName);
+  const amount = Number(input.amount);
+  if (amount <= 0 || amount > 25000) {
+    return { success: false, message: `Invalid donation amount: $${amount}. Ontario individual donation limit is $1,648.26 (2026). Check the amount and try again.` };
+  }
+
+  // Find or note the donor contact
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      OR: [
+        { firstName: { contains: donorName.split(" ")[0] ?? donorName, mode: "insensitive" } },
+        { lastName: { contains: donorName.split(" ").slice(1).join(" ") || donorName, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  const donation = await prisma.donation.create({
+    data: {
+      campaignId: ctx.campaignId,
+      contactId: contact?.id ?? null,
+      amount,
+      method: ((input.method as string) ?? "other") as never,
+      notes: input.notes ? String(input.notes) : donorName,
+      receiptSent: false,
+    } as never,
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "donation_logged_via_adoni",
+      entityType: "donation",
+      entityId: donation.id,
+      details: { donorName, amount, method: input.method ?? "other" },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Donation logged: $${amount.toFixed(2)} from ${donorName}${contact ? ` (matched to ${contact.firstName} ${contact.lastName})` : " (no matching contact found — consider adding them)"}. Remember to issue a receipt for donations over $20.`,
+    data: { donationId: donation.id, contactId: contact?.id },
+  };
+}
+
+async function createEvent(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const title = String(input.title);
+  const date = new Date(String(input.date));
+  const start = input.startTime ? String(input.startTime) : "7:00 PM";
+  const end = input.endTime ? String(input.endTime) : "9:00 PM";
+
+  const event = await prisma.event.create({
+    data: {
+      campaignId: ctx.campaignId,
+      title,
+      description: input.description ? String(input.description) : null,
+      date,
+      startTime: start,
+      endTime: end,
+      location: input.location ? String(input.location) : null,
+      type: ((input.type as string) ?? "other") as never,
+      capacity: input.capacity ? Number(input.capacity) : null,
+      createdById: ctx.userId,
+    } as never,
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "event_created_via_adoni",
+      entityType: "event",
+      entityId: event.id,
+      details: { title, date: date.toISOString(), location: input.location ?? "" },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Event created: "${title}" on ${date.toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" })} from ${start} to ${end}${input.location ? ` at ${input.location}` : ""}${input.capacity ? ` (capacity: ${input.capacity})` : ""}. Navigate to /events to manage RSVPs and share the invite.`,
+    data: { eventId: event.id },
+  };
+}
+
+async function createSignRequest(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true, address1: true, city: true },
+  });
+
+  const signAddress = input.address ? String(input.address) : contact?.address1 ?? query;
+
+  const sign = await prisma.sign.create({
+    data: {
+      campaignId: ctx.campaignId,
+      contactId: contact?.id ?? null,
+      address: signAddress,
+      city: contact?.city ?? null,
+      type: ((input.signType as string) ?? "lawn") as never,
+      status: "requested" as never,
+      notes: input.notes ? String(input.notes) : null,
+    } as never,
+  });
+
+  // Mark contact as sign requested
+  if (contact) {
+    await prisma.contact.update({
+      where: { id: contact.id },
+      data: { signRequested: true },
+    });
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "sign_request_via_adoni",
+      entityType: "sign",
+      entityId: sign.id,
+      details: { address: signAddress, contactName: contact ? `${contact.firstName} ${contact.lastName}` : query },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Sign request created at ${signAddress}${contact ? ` for ${contact.firstName} ${contact.lastName}` : ""}. Type: ${input.signType ?? "lawn"}. Navigate to /signs to manage installation schedule.`,
+    data: { signId: sign.id, contactId: contact?.id },
+  };
+}
+
+async function exportContactsViaAdoni(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const filter = String(input.filter ?? "all").toLowerCase();
+  const where: Record<string, unknown> = { campaignId: ctx.campaignId, isDeceased: false };
+
+  if (filter.includes("supporter")) where.supportLevel = { in: ["strong_support", "leaning_support"] };
+  else if (filter.includes("undecided")) where.supportLevel = "undecided";
+  else if (filter.includes("opposition")) where.supportLevel = { in: ["leaning_opposition", "strong_opposition"] };
+  if (filter.includes("phone")) where.phone = { not: null };
+  if (filter.includes("email")) where.email = { not: null };
+
+  const wardMatch = filter.match(/ward\s*(\d+|[\w\s-]+)/i);
+  if (wardMatch) where.ward = { contains: wardMatch[1].trim(), mode: "insensitive" };
+
+  const count = await prisma.contact.count({ where: where as never });
+
+  if (count === 0) {
+    return { success: false, message: `No contacts match the filter "${input.filter}". Try a broader filter or "all".` };
+  }
+
+  // Log the export intent — actual download happens through the export UI
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "export_initiated_via_adoni",
+      entityType: "contact_export",
+      entityId: "",
+      details: { filter: input.filter ?? "all", format: input.format ?? "csv", estimatedCount: count },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `${count.toLocaleString()} contacts match your filter. Navigate to /import-export and use the targeted export with these filters applied, or use this direct link: /import-export?export=targeted&filter=${encodeURIComponent(filter)}. Format: ${input.format ?? "CSV"}.`,
+    data: { count, filter: input.filter ?? "all" },
   };
 }
 

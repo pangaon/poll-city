@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { enforceLimit } from "@/lib/rate-limit-redis";
+import { z } from "zod";
+
+const subscribeSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+});
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const body = await request.json().catch(() => null) as {
-    email?: string; pushToken?: string; phone?: string;
-  } | null;
+  // Rate limit: public form tier
+  const limited = await enforceLimit(request, "publicForm");
+  if (limited) return limited;
 
-  if (!body?.email && !body?.pushToken && !body?.phone) {
-    return NextResponse.json({ error: "email, pushToken, or phone required" }, { status: 400 });
+  const body = await request.json().catch(() => null);
+
+  const parsed = subscribeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.errors[0]?.message ?? "Invalid input" },
+      { status: 400 },
+    );
   }
 
   // Verify poll exists
@@ -20,9 +33,8 @@ export async function POST(
   const subscriber = await prisma.pollSubscriber.create({
     data: {
       pollId: params.id,
-      email: body.email?.trim() || null,
-      pushToken: body.pushToken || null,
-      phone: body.phone?.trim() || null,
+      email: parsed.data.email.trim(),
+      phone: parsed.data.phone?.trim() || null,
     },
   });
 
