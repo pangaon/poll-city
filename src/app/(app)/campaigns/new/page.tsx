@@ -4,11 +4,25 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronRight, AlertCircle, CheckCircle, Loader2, MapPin,
+  ClipboardList, Palette, Tag, SkipForward, ArrowRight, Check,
 } from "lucide-react";
 import {
-  Button, Card, CardContent, FormField, Input, Select,
+  Button, Card, CardContent, FormField, Input, Select, Checkbox,
 } from "@/components/ui";
 import { toast } from "sonner";
+
+// ─── Setup Step Definitions ──────────────────────────────────────────────────
+
+const BUILT_IN_CANVASSING_FIELDS = [
+  { key: "__sign_requested", label: "Sign Requested", description: "Track lawn sign requests" },
+  { key: "__volunteer_interest", label: "Volunteer Interest", description: "Flag voters willing to volunteer" },
+  { key: "__follow_up", label: "Follow-up Needed", description: "Mark contacts that need a callback" },
+  { key: "__issues", label: "Issues", description: "Tag issues raised at the door" },
+  { key: "__notes", label: "Notes", description: "Free-text canvasser notes" },
+  { key: "__not_home", label: "Not Home", description: "Mark when nobody answers" },
+  { key: "__support_level", label: "Support Level", description: "1-5 support rating" },
+  { key: "__gotv_status", label: "GOTV Status", description: "Get-out-the-vote tracking" },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -174,6 +188,104 @@ export default function NewCampaignPage() {
     setOfficialDismissed(true);
   }
 
+  // ── Post-creation setup wizard state ────────────────────────────────────────
+  const [setupStep, setSetupStep] = useState<0 | 1 | 2 | 3>(0); // 0=not started, 1=fields, 2=issues, 3=colors
+  const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
+  const [enabledFields, setEnabledFields] = useState<Set<string>>(
+    new Set(BUILT_IN_CANVASSING_FIELDS.map((f) => f.key))
+  );
+  const [issuesList, setIssuesList] = useState<string[]>(["Roads", "Taxes", "Healthcare", "Housing", "Transit"]);
+  const [newIssue, setNewIssue] = useState("");
+  const [setupColors, setSetupColors] = useState({ primary: "#0A2342", accent: "#1D9E75" });
+  const [savingSetup, setSavingSetup] = useState(false);
+
+  function toggleField(key: string) {
+    setEnabledFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function addIssue() {
+    const trimmed = newIssue.trim();
+    if (!trimmed || issuesList.includes(trimmed)) return;
+    setIssuesList((prev) => [...prev, trimmed]);
+    setNewIssue("");
+  }
+
+  function removeIssue(issue: string) {
+    setIssuesList((prev) => prev.filter((i) => i !== issue));
+  }
+
+  async function saveSetupStep() {
+    if (!createdCampaignId) return;
+    setSavingSetup(true);
+    try {
+      if (setupStep === 1) {
+        // Toggle off disabled built-in fields
+        const disabledKeys = BUILT_IN_CANVASSING_FIELDS
+          .filter((f) => !enabledFields.has(f.key))
+          .map((f) => f.key);
+        if (disabledKeys.length > 0) {
+          await fetch("/api/campaign-fields/bulk-toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaignId: createdCampaignId, keys: disabledKeys, isVisible: false }),
+          });
+        }
+        setSetupStep(2);
+      } else if (setupStep === 2) {
+        // Save issues as a multiselect custom field
+        if (issuesList.length > 0) {
+          await fetch("/api/campaign-fields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              campaignId: createdCampaignId,
+              key: "campaign_issues",
+              label: "Campaign Issues",
+              fieldType: "multiselect",
+              category: "canvassing",
+              options: issuesList,
+              showOnCard: true,
+              showOnList: true,
+            }),
+          });
+        }
+        setSetupStep(3);
+      } else if (setupStep === 3) {
+        // Save brand colors
+        await fetch("/api/brand", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId: createdCampaignId,
+            primaryColor: setupColors.primary,
+            accentColor: setupColors.accent,
+          }),
+        });
+        toast.success("Campaign setup complete!");
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to save — you can configure this later in Settings");
+    } finally {
+      setSavingSetup(false);
+    }
+  }
+
+  function skipSetup() {
+    if (setupStep < 3) {
+      setSetupStep((s) => (s + 1) as 1 | 2 | 3);
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
+  }
+
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function submit() {
     if (!form.name || !form.electionType) {
@@ -214,8 +326,8 @@ export default function NewCampaignPage() {
           body: JSON.stringify({ campaignId: data.data.id }),
         });
         toast.success("Campaign created!");
-        router.push("/dashboard");
-        router.refresh();
+        setCreatedCampaignId(data.data.id);
+        setSetupStep(1);
       } else {
         toast.error(data.error ?? "Failed to create campaign");
       }
@@ -227,6 +339,190 @@ export default function NewCampaignPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const isMunicipal = form.electionType === "municipal";
+
+  // ── Setup wizard (post-creation) ──────────────────────────────────────────
+  if (setupStep > 0) {
+    const steps = [
+      { num: 1, label: "Fields", icon: ClipboardList },
+      { num: 2, label: "Issues", icon: Tag },
+      { num: 3, label: "Colors", icon: Palette },
+    ];
+
+    return (
+      <div className="max-w-xl animate-fade-in">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-gray-900">Setup Your Campaign</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Configure your environment. You can change everything later in Settings.
+          </p>
+        </div>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-6">
+          {steps.map((s) => (
+            <div
+              key={s.num}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                setupStep === s.num
+                  ? "bg-[#0A2342] text-white"
+                  : setupStep > s.num
+                    ? "bg-[#1D9E75]/10 text-[#1D9E75]"
+                    : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              {setupStep > s.num ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <s.icon className="w-3 h-3" />
+              )}
+              {s.label}
+            </div>
+          ))}
+        </div>
+
+        <Card>
+          <CardContent className="pt-6 space-y-5">
+            {/* Step 1: Configure canvassing fields */}
+            {setupStep === 1 && (
+              <>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Configure canvassing fields</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Choose which fields your canvassers see at the door.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {BUILT_IN_CANVASSING_FIELDS.map((f) => (
+                    <label
+                      key={f.key}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabledFields.has(f.key)}
+                        onChange={() => toggleField(f.key)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#1D9E75] focus:ring-[#1D9E75]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{f.label}</p>
+                        <p className="text-xs text-gray-400">{f.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">
+                  You can add custom fields later in Settings &rarr; Fields.
+                </p>
+              </>
+            )}
+
+            {/* Step 2: Set campaign issues */}
+            {setupStep === 2 && (
+              <>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Set your campaign issues</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    These are the issues your canvassers can tag at the door. Add, remove, or reorder.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {issuesList.map((issue) => (
+                    <span
+                      key={issue}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#0A2342]/5 text-[#0A2342] text-sm font-medium"
+                    >
+                      {issue}
+                      <button
+                        onClick={() => removeIssue(issue)}
+                        className="w-4 h-4 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors text-xs leading-none"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newIssue}
+                    onChange={(e) => setNewIssue(e.target.value)}
+                    placeholder="Add an issue (e.g. Childcare, Environment)"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addIssue(); } }}
+                    className="flex-1"
+                  />
+                  <Button variant="outline" onClick={addIssue} disabled={!newIssue.trim()}>
+                    Add
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Step 3: Set colors */}
+            {setupStep === 3 && (
+              <>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Set your campaign colors</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Choose a primary and accent color for your campaign brand.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label="Primary Color">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={setupColors.primary}
+                        onChange={(e) => setSetupColors((c) => ({ ...c, primary: e.target.value }))}
+                        className="w-11 h-11 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                      />
+                      <Input
+                        value={setupColors.primary}
+                        onChange={(e) => setSetupColors((c) => ({ ...c, primary: e.target.value }))}
+                        className="font-mono text-xs flex-1"
+                      />
+                    </div>
+                  </FormField>
+                  <FormField label="Accent Color">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={setupColors.accent}
+                        onChange={(e) => setSetupColors((c) => ({ ...c, accent: e.target.value }))}
+                        className="w-11 h-11 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                      />
+                      <Input
+                        value={setupColors.accent}
+                        onChange={(e) => setSetupColors((c) => ({ ...c, accent: e.target.value }))}
+                        className="font-mono text-xs flex-1"
+                      />
+                    </div>
+                  </FormField>
+                </div>
+                {/* Preview swatch */}
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-gray-100">
+                  <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: setupColors.primary }} />
+                  <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: setupColors.accent }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold" style={{ color: setupColors.primary }}>Campaign Name</p>
+                    <p className="text-xs" style={{ color: setupColors.accent }}>Accent text preview</p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <Button variant="outline" onClick={skipSetup} className="flex-1">
+                <SkipForward className="w-4 h-4" /> Skip for now
+              </Button>
+              <Button onClick={saveSetupStep} loading={savingSetup} className="flex-1">
+                {setupStep === 3 ? "Finish Setup" : "Save & Continue"} <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl">
