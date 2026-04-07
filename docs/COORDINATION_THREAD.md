@@ -1,7 +1,10 @@
-# Poll City Coordination Thread
+# Poll City — Coordination Thread
+
+> SINGLE SOURCE OF TRUTH for all cross-agent communication.
+> Every agent MUST read this before acting and post here after acting.
+> Orchestrator resolves all conflicts. No silent decisions. No isolated assumptions.
 
 Date baseline: 2026-04-05
-Purpose: asynchronous communication between contributors for conflicts, design decisions, and dependency blockers.
 
 ## Rules
 
@@ -9,8 +12,104 @@ Purpose: asynchronous communication between contributors for conflicts, design d
 2. Use clear ownership in From/To fields.
 3. Mark each item Open or Resolved.
 4. Link impacted files in the context section.
+5. Every agent must read the latest thread state before acting.
+6. No agent may change a data structure without announcing it here.
 
 ---
+
+## CURRENT SYSTEM STATE (as of 2026-04-07)
+
+### Completed Work
+- **Support level taxonomy**: UNIFIED. 6 values only: strong_support, leaning_support, undecided, leaning_opposition, strong_opposition, unknown. Fixed in 14 files.
+- **GOTV tier computation**: UNIFIED. Single engine: `computeGotvScore()` from `src/lib/gotv/score.ts`. Tiers: P1(≥80), P2(60-79), P3(40-59), P4(<40).
+- **Context violations**: 43 violations fixed. Surface ownership enforced.
+- **Security**: 7 fixes shipped (host header injection, webhook auth, input validation, fail-closed patterns).
+- **Calendar**: Unified month/week/agenda views at `/calendar` — wired to events, shifts, tasks, milestones.
+- **Reports**: 8 enterprise report templates + custom builder at `/reports`.
+- **Alerts**: Alert system at `/alerts`.
+
+### Active Data Contracts
+
+#### Support Level Enum (CANONICAL — DO NOT ADD VALUES)
+```
+strong_support | leaning_support | undecided | leaning_opposition | strong_opposition | unknown
+```
+
+#### Metric Formulas (CANONICAL — DO NOT REDEFINE)
+| Metric | Formula | Owner |
+|---|---|---|
+| Support Rate | `(strong_support + leaning_support) / total * 100` | api/analytics/campaign |
+| ID Rate | `(total - unknown) / total * 100` | api/analytics/campaign, adoni knowledge-base |
+| GOTV Score | `computeGotvScore()` from lib/gotv/score.ts | lib/gotv/score.ts |
+| GOTV Tier | P1(≥80), P2(60-79), P3(40-59), P4(<40) | lib/gotv/score.ts |
+| Gap | `max(0, ceil(totalContacts * 0.35) - supportersVoted)` | api/gotv/summary |
+| Contact Rate | `contactsWithInteraction / total * 100` | api/analytics/campaign |
+
+#### API Route Ownership
+| Route | Returns | Campaign Scoped | Auth |
+|---|---|---|---|
+| /api/gotv/summary | gap, p1-p4, voted counts | YES | Session |
+| /api/gotv/priority-list | Priority contacts for strike | YES | Session |
+| /api/briefing | Morning briefing + trends | YES | Session |
+| /api/analytics/campaign | Full campaign analytics | YES | Session |
+| /api/analytics/gotv | Real GOTV tier breakdown | YES | Session |
+| /api/election-night | Live election night data | YES | Session |
+| /api/volunteers/performance | Leaderboard + summary | YES | Session |
+| /api/events | Events CRUD + date range | YES | Session |
+| /api/volunteers/shifts | Shifts CRUD | YES | Session |
+| /api/tasks | Tasks CRUD | YES | Session |
+| /api/donations | Donation records + totals | YES | Session |
+| /api/signs | Sign records + counts | YES | Session |
+
+### Architecture Rules (ENFORCED)
+- ALL new queries MUST include `campaignId` filter
+- ALL new API routes MUST use `resolveActiveCampaign()` or `getServerSession()`
+- ALL support level values MUST use the 6-value Prisma enum
+- ALL GOTV tiers MUST use `computeGotvScore()` — no local reimplementations
+- ALL metric computations MUST match the canonical formulas above
+- NO new mock/demo/fallback data without explicit "DEMO" label visible to user
+- NO hardcoded percentages for real data displays
+
+### Known Remaining Issues (WORK FROM THIS LIST)
+1. Two RBAC systems coexist (legacy ROLE_PERMISSIONS + enterprise CampaignRole) — need convergence
+2. 6 StatCard implementations, 3 MetricCard, 4 AnimatedCounter — need consolidation
+3. Export routes lack rate limiting
+4. TV mode entirely hardcoded demo data (no API connection)
+5. Election night mock uses "Sarah Chen" while seed uses "Sam Rivera"
+6. Dashboard-studio FALLBACK still has stale values for unwired fields
+7. Orphan file: `src/app/(app)/dashboard/dashboard-client.tsx` — never imported, dead code
+8. Adoni structured panel only shows real data after tool calls — no auto-fetch on panel open
+
+### Merge Protocol
+1. Agent completes → orchestrator reads diff
+2. Check: no schema conflicts, no shared file mutations
+3. npx tsc --noEmit — must be zero
+4. npm run build — must compile
+5. git push
+6. Log merge to this thread
+
+---
+
+## THREAD LOG
+
+### 2026-04-07 | ORCHESTRATOR: Thread Consolidation
+- **ROLE**: Orchestrator
+- **TASK**: Consolidate 3 coordination threads into 1
+- **CONTEXT**: Three files existed: COORDINATION_THREAD.md (historical), COORDINATION_THREAD_LIVE.md (worktree session), AGENT-COORDINATION-THREAD.md (current state). User mandated single thread.
+- **DECISION**: Merged all into this single file. Deleted duplicates. Current state at top, history below.
+- **IMPACT**: All agents use this file only. No other coordination files.
+- **FILES DELETED**: docs/COORDINATION_THREAD_LIVE.md, docs/AGENT-COORDINATION-THREAD.md
+
+### 2026-04-07 | ORCHESTRATOR: Calendar wired to sidebar
+- **ROLE**: Orchestrator
+- **TASK**: Wire orphaned calendar page into sidebar nav
+- **CONTEXT**: BOT-CALENDAR built full calendar at `/calendar` but never added it to sidebar navigation
+- **DECISION**: Added to "Campaign Ops" section in sidebar.tsx
+- **IMPACT**: Calendar now accessible from sidebar. Unifies events, shifts, tasks, milestones in one view.
+
+---
+
+## HISTORICAL LOG
 
 ### 2026-04-08 04:15 | ARMY FULL DEPLOYMENT — ARCHITECT
 - CRITICAL: Fixed 2 IDOR vulnerabilities (voice broadcasts + campaign customization)
