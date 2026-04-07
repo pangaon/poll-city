@@ -20,6 +20,15 @@ export default function PwaRegister() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const height = showIosBanner ? 176 : showAndroidBanner ? 56 : 0;
+    window.dispatchEvent(new CustomEvent("pollcity:pwa-banner", { detail: { height } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("pollcity:pwa-banner", { detail: { height: 0 } }));
+    };
+  }, [showAndroidBanner, showIosBanner]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     // ── Service worker registration ────────────────────────────────────────
     if ("serviceWorker" in navigator) {

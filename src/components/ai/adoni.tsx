@@ -148,6 +148,7 @@ export default function AdoniButton() {
   const [mobileScrollHidden, setMobileScrollHidden] = useState(false);
   const [dragState, setDragState] = useState<BubbleDragState>("idle");
   const [structured, setStructured] = useState<StructuredData>({ mode: "none" });
+  const [pwaBannerHeight, setPwaBannerHeight] = useState(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -239,6 +240,15 @@ export default function AdoniButton() {
       scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
     }
   }, [messages, streaming]);
+
+  useEffect(() => {
+    function onPwaBanner(ev: Event) {
+      const detail = (ev as CustomEvent<{ height?: number }>).detail;
+      setPwaBannerHeight(Number(detail?.height ?? 0));
+    }
+    window.addEventListener("pollcity:pwa-banner", onPwaBanner as EventListener);
+    return () => window.removeEventListener("pollcity:pwa-banner", onPwaBanner as EventListener);
+  }, []);
 
   useEffect(() => {
     function onDragStart() {
@@ -424,6 +434,7 @@ export default function AdoniButton() {
 
   const bubbleSize = dragState === "drag-over" ? 80 : 60;
   const showChat = mode !== "bubble";
+  const offsetBottom = pwaBannerHeight > 0 ? pwaBannerHeight + 24 : 16;
 
   return (
     <>
@@ -431,8 +442,8 @@ export default function AdoniButton() {
         <div
           className="fixed z-[9999]"
           style={{
-            bottom: "calc(1rem + env(safe-area-inset-bottom))",
-            right: "1rem",
+            bottom: `calc(${offsetBottom}px + env(safe-area-inset-bottom))`,
+            right: "20px",
             left: "auto",
             transform: "none",
           }}
@@ -500,7 +511,10 @@ export default function AdoniButton() {
       {showChat && (
         <>
           {mode === "panel" && (
-            <div className="fixed bottom-5 right-5 z-50 flex h-[min(85vh,760px)] w-[400px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
+            <div
+              className="fixed right-5 z-50 flex h-[min(85vh,760px)] w-[400px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl"
+              style={{ bottom: `calc(${Math.max(offsetBottom, 20)}px + env(safe-area-inset-bottom))` }}
+            >
               <header className="flex items-center justify-between bg-gradient-to-r from-blue-800 to-sky-600 px-4 py-3 text-white">
                 <div>
                   <p className="text-sm font-semibold">Adoni</p>

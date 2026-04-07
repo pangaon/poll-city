@@ -99,3 +99,5 @@
 
 /* Safe area utility for mobile bottom nav */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+@import './poll-city-global-override.css';

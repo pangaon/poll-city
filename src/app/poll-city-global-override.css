@@ -1,0 +1,210 @@
+/*
+ * POLL CITY — GLOBAL DESIGN OVERRIDE
+ * This file enforces the 2026 standard across every page.
+ * Import this in src/app/globals.css at the very bottom.
+ * It overrides everything. No exceptions.
+ */
+
+/* ── KILL ALL GRADIENTS SITE WIDE ──────────────────────────────────────────── */
+*:not(#__NEXT_DATA__) {
+  background-image: none !important;
+}
+
+/* Whitelist: only these specific gradient uses are allowed */
+.progress-bar-fill,
+.prog-fill,
+[data-gradient="allowed"] {
+  background-image: unset !important;
+}
+
+/* ── KILL DARK BACKGROUNDS OUTSIDE WAR ROOM ────────────────────────────────── */
+/* Everything is white except GOTV and Election Night */
+body:not([data-page="gotv"]):not([data-page="election-night"]) .dark-card,
+body:not([data-page="gotv"]):not([data-page="election-night"]) [style*="background: #1"],
+body:not([data-page="gotv"]):not([data-page="election-night"]) [style*="background:#1"],
+body:not([data-page="gotv"]):not([data-page="election-night"]) [style*="background: rgb(10"],
+body:not([data-page="gotv"]):not([data-page="election-night"]) [style*="background: linear-gradient"] {
+  background: var(--color-background-primary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* ── ADONI — ALWAYS ABOVE EVERYTHING ───────────────────────────────────────── */
+[data-adoni="bubble"],
+.adoni-bubble,
+#adoni-trigger,
+button[aria-label="Ask Adoni"] {
+  position: fixed !important;
+  bottom: 80px !important;
+  right: 20px !important;
+  z-index: 9999 !important;
+}
+
+/* ── MAP — ALWAYS CONTAINED ─────────────────────────────────────────────────── */
+.leaflet-container,
+[data-map="container"],
+.map-container {
+  position: relative !important;
+  overflow: hidden !important;
+  z-index: 0 !important;
+}
+
+.leaflet-pane,
+.leaflet-map-pane {
+  z-index: 1 !important;
+}
+
+/* Adoni always above map */
+[data-adoni="bubble"] {
+  z-index: 9999 !important;
+}
+
+/* ── TYPOGRAPHY — DM SANS EVERYWHERE ───────────────────────────────────────── */
+* {
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+}
+
+/* ── BUTTONS — spring feel via CSS only ─────────────────────────────────────── */
+button,
+[role="button"] {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.15s ease,
+              background 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+button:hover,
+[role="button"]:hover {
+  transform: translateY(-1px) scale(1.01) !important;
+}
+
+button:active,
+[role="button"]:active {
+  transform: scale(0.97) !important;
+}
+
+/* Primary buttons */
+button.primary,
+.btn-primary,
+button[data-variant="primary"] {
+  background: #0A2342 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 9px !important;
+  font-weight: 600 !important;
+  padding: 9px 18px !important;
+}
+
+/* ── CARDS — no shadow stacking, no gradients ───────────────────────────────── */
+.card,
+[data-widget],
+.widget {
+  background: var(--color-background-primary) !important;
+  border: 0.5px solid var(--color-border-tertiary) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.card:hover,
+[data-widget]:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 20px rgba(10, 35, 66, 0.08) !important;
+}
+
+/* ── REMOVE ALL BOX SHADOWS (replaced with borders) ─────────────────────────── */
+*:not(.adoni-bubble):not([data-shadow="allowed"]) {
+  box-shadow: none !important;
+}
+
+/* Restore only functional shadows */
+.adoni-bubble,
+[data-shadow="allowed"],
+button:hover {
+  box-shadow: unset !important;
+}
+
+/* ── INSTALL BANNER CLEARANCE ───────────────────────────────────────────────── */
+/* Ensures nothing sits behind the install banner */
+.install-banner,
+[data-install-prompt] {
+  z-index: 100 !important;
+  position: fixed !important;
+  bottom: 0 !important;
+}
+
+/* ── SKELETON SHIMMER — replaces all spinners ───────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-background-secondary) 25%,
+    var(--color-background-tertiary) 50%,
+    var(--color-background-secondary) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.5s infinite !important;
+  border-radius: 8px !important;
+}
+
+/* Hide all spinners — replace with skeleton class */
+.spinner,
+[class*="spinner"],
+[class*="loading-circle"],
+svg[class*="spin"] {
+  display: none !important;
+}
+
+/* ── METRIC NUMBERS — always the largest thing ──────────────────────────────── */
+[data-metric="number"],
+.metric-value,
+.gap-number,
+.tally-num {
+  font-size: clamp(28px, 4vw, 52px) !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* ── GOTV + ELECTION NIGHT — dark mode allowed ──────────────────────────────── */
+[data-page="gotv"],
+[data-page="election-night"] {
+  background: #0A1628 !important;
+  color: white !important;
+}
+
+[data-page="gotv"] .card,
+[data-page="election-night"] .card {
+  background: #0F1F35 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* ── WALK LIST — no dark blue sections ──────────────────────────────────────── */
+.walk-list-header,
+.walk-list-stats,
+[class*="walk-list"] {
+  background: var(--color-background-secondary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* ── PROGRESS BARS — flat colour only ───────────────────────────────────────── */
+.progress,
+[role="progressbar"],
+.prog-track {
+  background: var(--color-background-secondary) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+.progress-fill,
+.prog-fill {
+  background: #0A2342 !important;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.progress-fill.green { background: #1D9E75 !important; }
+.progress-fill.amber { background: #EF9F27 !important; }
+.progress-fill.red   { background: #E24B4A !important; }

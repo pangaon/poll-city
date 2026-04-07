@@ -1,8 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Loader2, Bell, AlertTriangle, Megaphone } from "lucide-react";
+import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Bell, AlertTriangle, Megaphone } from "lucide-react";
 import { tierColor } from "@/lib/gotv/score";
 import dynamic from "next/dynamic";
+import {
+  AnimatedCounter,
+  Button,
+  EmptyState,
+  GapWidget,
+  RacingLeaderboard,
+  Skeleton,
+} from "@/components/poll-city-components";
 
 const CampaignMap = dynamic(() => import("@/components/maps/campaign-map"), { ssr: false });
 
@@ -67,12 +75,27 @@ interface GapResponse {
   };
 }
 
+type RacePrecinct = {
+  id: string;
+  name: string;
+  gap: number;
+  turnout: number;
+  totalVoters: number;
+  volunteersAssigned: string[];
+  targetVotes: number;
+};
+
+type VolunteerOption = { id: string; name: string; initials: string };
+
 export default function GotvClient({ campaignId }: Props) {
   const [active, setActive] = useState<Tab>("priority");
   const [gapData, setGapData] = useState<GapResponse | null>(null);
   const [scope, setScope] = useState<"single" | "regional" | "national">("single");
   const [density, setDensity] = useState<"auto" | "compact" | "comfortable">("auto");
   const [viewport, setViewport] = useState({ width: 1366, height: 900 });
+  const [racePrecincts, setRacePrecincts] = useState<RacePrecinct[]>([]);
+  const [volunteers, setVolunteers] = useState<VolunteerOption[]>([]);
+  const [raceLoading, setRaceLoading] = useState(true);
 
   useEffect(() => {
     function syncViewport() {
@@ -100,6 +123,65 @@ export default function GotvClient({ campaignId }: Props) {
     void loadGap();
     const id = window.setInterval(loadGap, 30_000);
 
+    return () => {
+      mounted = false;
+      window.clearInterval(id);
+    };
+  }, [campaignId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadRace() {
+      try {
+        const [tiersRes, volunteerRes] = await Promise.all([
+          fetch(`/api/gotv/tiers?campaignId=${campaignId}`, { cache: "no-store" }),
+          fetch(`/api/volunteers/performance?campaignId=${campaignId}`, { cache: "no-store" }),
+        ]);
+
+        const tiersData = tiersRes.ok ? await tiersRes.json() as TiersResponse : null;
+        const volunteerData = volunteerRes.ok ? await volunteerRes.json() : null;
+
+        const grouped = new Map<string, { total: number; voted: number; supporters: number; name: string }>();
+        for (const contact of tiersData?.contacts ?? []) {
+          const key = contact.ward || "Unassigned";
+          const current = grouped.get(key) ?? { total: 0, voted: 0, supporters: 0, name: key };
+          current.total += 1;
+          if (contact.voted) current.voted += 1;
+          if (contact.supportLevel === "strong_support" || contact.supportLevel === "leaning_support") current.supporters += 1;
+          grouped.set(key, current);
+        }
+
+        const nextPrecincts = Array.from(grouped.entries()).slice(0, 12).map(([ward, stats]) => {
+          const targetVotes = Math.max(1, Math.ceil(stats.total * 0.35));
+          const gap = Math.max(0, targetVotes - stats.voted);
+          return {
+            id: ward,
+            name: ward,
+            gap,
+            turnout: stats.voted,
+            totalVoters: stats.total,
+            volunteersAssigned: [],
+            targetVotes,
+          };
+        });
+
+        const nextVolunteers: VolunteerOption[] = (volunteerData?.leaderboard ?? []).slice(0, 12).map((row: { userId: string; name: string }) => ({
+          id: row.userId,
+          name: row.name,
+          initials: row.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+        }));
+
+        if (!mounted) return;
+        setRacePrecincts(nextPrecincts);
+        setVolunteers(nextVolunteers);
+      } finally {
+        if (mounted) setRaceLoading(false);
+      }
+    }
+
+    loadRace();
+    const id = window.setInterval(loadRace, 30_000);
     return () => {
       mounted = false;
       window.clearInterval(id);
@@ -148,39 +230,31 @@ export default function GotvClient({ campaignId }: Props) {
         </p>
       </header>
 
-      <section
-        className="mb-6 rounded-2xl p-5 md:p-8 text-center border border-red-200 bg-gradient-to-b from-red-50 to-white"
-        aria-label="The Gap"
-      >
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-700">THE GAP</p>
-        <p className="mt-2 text-sm md:text-base text-slate-600">Supporters still needed to reach winning threshold</p>
-
-        <div className="mt-3">
-          <p className="text-5xl md:text-7xl font-black tracking-tight text-red-700 tabular-nums">
-            {gapData ? gapData.gap.toLocaleString() : "--"}
-          </p>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Winning threshold</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums">{gapData ? gapData.winThreshold.toLocaleString() : "--"}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Supporters voted</p>
-            <p className="mt-1 text-2xl font-extrabold text-emerald-700 tabular-nums">{gapData ? gapData.supportersVoted.toLocaleString() : "--"}</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Votes needed per hour</p>
-            <p className="mt-1 text-2xl font-extrabold text-blue-700 tabular-nums">{gapData ? gapData.pacing.votesNeededPerHour.toLocaleString() : "--"}</p>
-          </div>
-        </div>
-
-        {gapData && (
-          <p className="mt-4 text-sm text-slate-600">
-            Supporter turnout is <span className="font-bold text-slate-900 tabular-nums">{gapData.supporterTurnoutPct}%</span>. 
-            {" "}General turnout is <span className="font-bold text-slate-900 tabular-nums">{gapData.turnoutPct}%</span>.
-          </p>
+      <section className="mb-6" aria-label="The Gap">
+        {gapData ? (
+          <GapWidget
+            gap={gapData.gap}
+            voted={gapData.supportersVoted}
+            threshold={gapData.winThreshold}
+            pace={gapData.pacing.votesNeededPerHour}
+            currentPace={Math.max(1, Math.round(gapData.supportersVoted / Math.max(1, 12 - gapData.pacing.hoursRemaining)))}
+            onMarkVoted={async () => {
+              await fetch(`/api/gotv/mark-voted`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ campaignId }),
+              }).catch(() => undefined);
+            }}
+            onStrikeOff={async (name) => {
+              await fetch(`/api/gotv/strike-off`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ campaignId, name }),
+              }).catch(() => undefined);
+            }}
+          />
+        ) : (
+          <Skeleton height={220} radius={16} />
         )}
       </section>
 
@@ -228,6 +302,36 @@ export default function GotvClient({ campaignId }: Props) {
         <CampaignMap mode="gotv" height={mapHeight} showControls />
       </div>
 
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live Race Leaderboard</p>
+          {gapData && <span className="text-xs text-slate-600">Gap <AnimatedCounter value={gapData.gap} /></span>}
+        </div>
+        {raceLoading ? (
+          <Skeleton height={280} radius={12} />
+        ) : racePrecincts.length === 0 ? (
+          <EmptyState
+            icon="🏁"
+            title="No precinct race data yet"
+            description="Sync contact wards and turnout records to start live precinct ranking."
+            actionLabel="Open Priority List"
+            onAction={() => setActive("priority")}
+          />
+        ) : (
+          <RacingLeaderboard
+            precincts={racePrecincts}
+            availableVolunteers={volunteers}
+            onDispatch={async (precinctId, volunteerId) => {
+              await fetch(`/api/gotv/rides`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ campaignId, precinctId, volunteerId }),
+              }).catch(() => undefined);
+            }}
+          />
+        )}
+      </section>
+
       {/* Tabs — horizontal scroll on mobile */}
       <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-2 -mx-4 px-4 md:mx-0 md:px-0 mb-4">
         {(
@@ -242,16 +346,15 @@ export default function GotvClient({ campaignId }: Props) {
           const Icon = t.icon;
           const isActive = t.id === active;
           return (
-            <button
+            <Button
               key={t.id}
               onClick={() => setActive(t.id)}
-              className={`shrink-0 h-11 px-4 rounded-full font-semibold text-sm flex items-center gap-2 transition-colors ${
-                isActive ? "bg-red-700 text-white" : "bg-white border border-slate-200 text-slate-700 hover:border-red-300"
-              }`}
+              variant={isActive ? "primary" : "secondary"}
+              size="sm"
             >
               <Icon className="w-4 h-4" />
               {t.label}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -280,11 +383,7 @@ function PriorityListTab({ campaignId }: { campaignId: string }) {
   }, [campaignId, tier]);
 
   if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center py-12 text-slate-500">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Scoring contacts…
-      </div>
-    );
+    return <Skeleton height={140} radius={12} />;
   }
   if (!data) return null;
 
@@ -372,7 +471,7 @@ function StrikeTab({ campaignId }: { campaignId: string }) {
     fetch(`/api/gotv/tiers?campaignId=${campaignId}`).then((r) => r.json()).then(setData);
   }, [campaignId]);
 
-  if (!data) return <div className="text-slate-500 text-center py-12">Loading…</div>;
+  if (!data) return <Skeleton height={110} radius={12} />;
 
   const votedPct = data.summary.totals.all > 0
     ? Math.round((data.summary.voted.all / data.summary.totals.all) * 100)
@@ -383,7 +482,7 @@ function StrikeTab({ campaignId }: { campaignId: string }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-slate-900">Strike-Off Progress</h2>
-          <span className="text-3xl font-extrabold text-emerald-600 tabular-nums">{votedPct}%</span>
+            <span className="text-3xl font-extrabold text-emerald-600 tabular-nums"><AnimatedCounter value={votedPct} format={(n) => `${Math.round(n)}%`} /></span>
         </div>
         <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
           <div
@@ -468,7 +567,6 @@ function UploadTab({ campaignId }: { campaignId: string }) {
           disabled={!file || uploading}
           className="mt-4 w-full md:w-auto h-12 px-6 rounded-lg bg-red-700 text-white font-bold hover:bg-red-800 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
           {uploading ? "Matching…" : "Process voted list"}
         </button>
       </div>
@@ -501,7 +599,7 @@ function CommandTab({ campaignId }: { campaignId: string }) {
     return () => clearInterval(id);
   }, [campaignId]);
 
-  if (!data) return <div className="text-slate-500 text-center py-12">Loading command centre…</div>;
+  if (!data) return <Skeleton height={180} radius={12} />;
 
   const maxHourly = Math.max(1, ...data.hourlyVotes.map((h) => h.voted));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -91,7 +91,7 @@ export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
   );
 
   return (
-    <div className="relative h-[26rem] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+    <div className="relative z-0 h-[26rem] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
       <MapContainer center={[43.6532, -79.3832]} zoom={12} className="h-full w-full" zoomControl>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -109,20 +109,33 @@ export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
           <Circle center={[opponentSignCenter.lat, opponentSignCenter.lng]} radius={700} pathOptions={{ color: "#dc2626", fillOpacity: 0.16, weight: 2 }} />
         )}
 
-        {data.contacts.map((contact) => (
-          <CircleMarker
-            key={contact.id}
-            center={[contact.lat, contact.lng]}
-            radius={contact.voted ? 4 : 5.5}
-            pathOptions={{
-              color: "#0f172a",
-              weight: 1,
-              fillColor: supportColor(contact.supportLevel),
-              fillOpacity: contact.voted ? 0.6 : 0.95,
-            }}
-            eventHandlers={{ click: () => setSelected(contact) }}
-          />
-        ))}
+        {data.contacts.map((contact) => {
+          const recentlyContacted = !!contact.lastContacted && Date.now() - new Date(contact.lastContacted).getTime() < 30 * 60 * 1000;
+            return (
+              <Fragment key={contact.id}>
+              {recentlyContacted && (
+                <Circle
+                  key={`${contact.id}-pulse`}
+                  center={[contact.lat, contact.lng]}
+                  radius={120}
+                  pathOptions={{ color: "#38bdf8", weight: 1, fillOpacity: 0.08 }}
+                />
+              )}
+              <CircleMarker
+                key={contact.id}
+                center={[contact.lat, contact.lng]}
+                radius={contact.voted ? 4 : recentlyContacted ? 7 : 5.5}
+                pathOptions={{
+                  color: "#0f172a",
+                  weight: 1,
+                  fillColor: supportColor(contact.supportLevel),
+                  fillOpacity: contact.voted ? 0.6 : 0.95,
+                }}
+                eventHandlers={{ click: () => setSelected(contact) }}
+              />
+              </Fragment>
+          );
+        })}
 
         {data.signs.map((sign, i) => (
           <CircleMarker
