@@ -37,6 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
       location: source.location,
       capacity: source.capacity,
       description: source.description,
+      eventType: source.eventType,
       status: "draft",
       visibility: source.visibility,
       isPublic: false,

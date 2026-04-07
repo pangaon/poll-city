@@ -2027,6 +2027,7 @@ model Event {
   capacity          Int?
   maxWaitlist       Int?
   description       String?
+  eventType         String?
   status            EventStatus     @default(draft)
   visibility        EventVisibility @default(internal)
   isPublic          Boolean         @default(false)
