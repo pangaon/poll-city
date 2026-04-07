@@ -646,7 +646,7 @@ export default function ImportExportClient({ campaignId }: Props) {
           >
             {/* Import card */}
             <Card className="overflow-hidden">
-              <CardHeader className="border-b-2" style={{ borderColor: GREEN }}>
+              <CardHeader className="border-b-2 border-[#1D9E75]">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold" style={{ color: NAVY }}>Quick Import</h3>
                   <div className="flex gap-2">
@@ -1005,7 +1005,7 @@ export default function ImportExportClient({ campaignId }: Props) {
           >
             {/* Exports card */}
             <Card className="overflow-hidden">
-              <CardHeader className="border-b-2" style={{ borderColor: GREEN }}>
+              <CardHeader className="border-b-2 border-[#1D9E75]">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <h3 className="font-semibold" style={{ color: NAVY }}>Targeted Exports</h3>
                   <MButton onClick={exportOpsPack} loading={bulkExporting} variant="outline" size="sm">
