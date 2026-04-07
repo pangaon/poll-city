@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { TaskPriority, TaskStatus } from "@prisma/client";
 
 /** GET — Available volunteers for dispatch dropdown */
 export async function GET(req: NextRequest) {
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
       title: `GOTV Dispatch: ${action ?? "Cover"} ${precinctId}`,
       assignedToId: volunteerId,
       createdById: session!.user.id,
-      priority: "urgent" as any,
-      status: "pending" as any,
+      priority: TaskPriority.urgent,
+      status: TaskStatus.pending,
       dueDate: new Date(),
     },
   });

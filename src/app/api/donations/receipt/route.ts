@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { DonationStatus } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   // Find donations over $25 that haven't been receipted
   const unreceipted = await prisma.donation.findMany({
-    where: { campaignId, amount: { gte: 25 }, status: { not: "receipted" as any } },
+    where: { campaignId, amount: { gte: 25 }, status: { not: DonationStatus.receipted } },
     include: {
       contact: { select: { firstName: true, lastName: true, address1: true, city: true, province: true, postalCode: true } },
     },
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
   if (unreceipted.length > 0) {
     await prisma.donation.updateMany({
       where: { id: { in: unreceipted.map((d) => d.id) } },
-      data: { status: "receipted" as any },
+      data: { status: DonationStatus.receipted },
     });
   }
 

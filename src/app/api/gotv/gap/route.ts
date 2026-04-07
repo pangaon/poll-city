@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
@@ -30,10 +31,10 @@ export async function GET(req: NextRequest) {
       select: { electionDate: true, spendingLimit: true },
     }),
     prisma.contact.count({
-      where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } },
+      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
     }),
     prisma.contact.count({
-      where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
+      where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
     }),
     prisma.contact.count({ where: { campaignId, voted: true } }),
     prisma.contact.count({ where: { campaignId } }),

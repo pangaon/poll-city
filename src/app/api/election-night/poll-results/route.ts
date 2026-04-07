@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -32,13 +33,13 @@ export async function GET(req: NextRequest) {
 
   const supportersByPoll = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } },
+    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
     _count: { id: true },
   });
 
   const supportersVotedByPoll = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
+    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
     _count: { id: true },
   });
 

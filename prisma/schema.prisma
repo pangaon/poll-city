@@ -1232,6 +1232,7 @@ model ServiceBooking {
 enum DonationStatus {
   pledged // captured at door/phone, not yet processed
   processed // payment received
+  receipted // receipt generated
   cancelled
   refunded
 }

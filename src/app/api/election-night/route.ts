@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
@@ -41,8 +42,8 @@ export async function GET(req: NextRequest) {
     lastUpload,
   ] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true } }),
     prisma.contact.count({ where: { campaignId, voted: true } }),
     prisma.contact.count({ where: { campaignId, voted: true, votedAt: { gte: todayStart } } }),
     // Last 10 strike-offs for the live ticker
