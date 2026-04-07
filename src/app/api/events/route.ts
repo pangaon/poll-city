@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
     recurrenceRule?: string;
     followUpMessage?: string;
     maxWaitlist?: number;
+    eventType?: string;
     city?: string;
     province?: string;
     postalCode?: string;
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
       address2: body.address2?.trim() || null,
       lat: typeof body.lat === "number" ? body.lat : null,
       lng: typeof body.lng === "number" ? body.lng : null,
+      eventType: body.eventType?.trim() || null,
     },
     include: { rsvps: true },
   });

@@ -62,10 +62,29 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     },
   });
 
-  const status =
+  // Capacity check — auto-waitlist if event is full
+  let resolvedStatus: EventRsvpStatus =
     body.status && Object.values(EventRsvpStatus).includes(body.status as EventRsvpStatus)
       ? (body.status as EventRsvpStatus)
       : EventRsvpStatus.going;
+
+  if (resolvedStatus === EventRsvpStatus.going && event.capacity && event.capacity > 0 && !existing) {
+    const goingCount = await prisma.eventRsvp.count({
+      where: { eventId: params.eventId, status: { in: ["going", "checked_in"] } },
+    });
+    if (goingCount >= event.capacity) {
+      // Check waitlist cap
+      if (event.maxWaitlist && event.maxWaitlist > 0) {
+        const waitlistCount = await prisma.eventRsvp.count({
+          where: { eventId: params.eventId, status: "waitlisted" },
+        });
+        if (waitlistCount >= event.maxWaitlist) {
+          return NextResponse.json({ error: "Event is full and waitlist is at capacity" }, { status: 409 });
+        }
+      }
+      resolvedStatus = EventRsvpStatus.waitlisted;
+    }
+  }
 
   const data = {
     eventId: params.eventId,
@@ -73,7 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     email: body.email.trim().toLowerCase(),
     phone: body.phone?.trim() || null,
     contactId: body.contactId || null,
-    status,
+    status: resolvedStatus,
     notes: body.notes?.trim() || null,
     source: body.source?.trim() || "staff",
   };

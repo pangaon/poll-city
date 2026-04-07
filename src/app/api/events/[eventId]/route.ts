@@ -77,6 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
     lng?: number | null;
     timezone?: string;
     maxWaitlist?: number | null;
+    eventType?: string | null;
   } | null;
 
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
@@ -113,6 +114,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
   if (body.lng !== undefined) data.lng = body.lng;
   if (body.timezone !== undefined) data.timezone = body.timezone.trim() || "America/Toronto";
   if (body.maxWaitlist !== undefined) data.maxWaitlist = body.maxWaitlist;
+  if (body.eventType !== undefined) data.eventType = body.eventType?.trim() || null;
 
   if (body.visibility !== undefined && Object.values(EventVisibility).includes(body.visibility as EventVisibility)) {
     data.visibility = body.visibility as EventVisibility;
