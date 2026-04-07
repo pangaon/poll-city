@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { GovernmentLevel } from "@prisma/client";
 
 const LIST_SELECT = {
   id: true,
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
       where: {
         isActive: true,
         postalCodes: { has: prefix },
-        ...(level && { level: level as any }),
+        ...(level && { level: level as GovernmentLevel }),
       },
       orderBy: { level: "asc" },
       take: 10,

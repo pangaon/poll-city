@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { InteractionType } from "@prisma/client";
 
 interface Milestone {
   date: Date;
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   // First door knocked
   const firstDoor = await prisma.interaction.findFirst({
-    where: { contact: { campaignId }, type: "door_knock" as any },
+    where: { contact: { campaignId }, type: InteractionType.door_knock },
     orderBy: { createdAt: "asc" }, select: { createdAt: true },
   });
   if (firstDoor) {

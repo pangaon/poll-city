@@ -25,9 +25,18 @@ export async function GET(req: NextRequest) {
   try {
     // Dynamic require — twilio may not be installed
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const twilio = require("twilio") as any;
+    const twilio = require("twilio") as {
+      jwt: {
+        AccessToken: new (
+          accountSid: string,
+          apiKey: string,
+          apiSecret: string,
+          opts: { identity: string; ttl: number },
+        ) => { addGrant: (grant: unknown) => void; toJwt: () => string };
+      };
+    };
     const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
+    const VoiceGrant = (AccessToken as unknown as { VoiceGrant: new (opts: { outgoingApplicationSid: string; incomingAllow: boolean }) => unknown }).VoiceGrant;
 
     const token = new AccessToken(accountSid, apiKey, apiSecret, {
       identity: session.user.id as string,

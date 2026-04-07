@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { SupportLevel } from "@prisma/client";
 
 /** Benchmarks by days-to-election phase */
 const BENCHMARKS: Record<string, {
@@ -80,8 +81,8 @@ export async function GET(req: NextRequest) {
 
   const [totalContacts, identified, supporters, doorsThisWeek, volunteers, donations, signs] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { not: "unknown" as any } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { not: SupportLevel.unknown } } }),
+    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
     prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: weekAgo } } }),
     prisma.volunteerProfile.count({ where: { campaignId } }),
     prisma.donation.count({ where: { campaignId } }),

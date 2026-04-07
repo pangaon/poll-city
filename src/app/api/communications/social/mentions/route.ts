@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
-import { SocialMentionSentiment } from "@prisma/client";
+import { SocialMentionSentiment, SocialPlatform } from "@prisma/client";
 
 async function ensureMembership(userId: string, campaignId: string) {
   return prisma.membership.findUnique({
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     where: {
       campaignId_platform_externalMentionId: {
         campaignId: body.campaignId,
-        platform: body.platform as any,
+        platform: body.platform as SocialPlatform,
         externalMentionId: body.externalMentionId,
       },
     },
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     },
     create: {
       campaignId: body.campaignId,
-      platform: body.platform as any,
+      platform: body.platform as SocialPlatform,
       externalMentionId: body.externalMentionId,
       authorHandle: body.authorHandle?.trim() || null,
       authorName: body.authorName?.trim() || null,
