@@ -388,6 +388,11 @@ model User {
   debugSessions            DebugSession[]
   newsletterCampaignsAuthored NewsletterCampaign[] @relation("NewsletterAuthor")
 
+  // Civic social
+  civicProfile   CivicProfile?    @relation("UserCivicProfile")
+  voterPassport  VoterPassport?   @relation("UserVoterPassport")
+  civicCredits   CivicCredit[]    @relation("UserCivicCredits")
+
   @@map("users")
 }
 
@@ -3284,4 +3289,113 @@ model PollSubscriber {
 
   @@index([pollId])
   @@map("poll_subscribers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIC SOCIAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CivicProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation("UserCivicProfile", fields: [userId], references: [id])
+  postalCode      String?
+  ward            String?
+  municipality    String?
+  province        String?
+  issues          String[]
+  civicCredits    Int      @default(0)
+  notifyResults   Boolean  @default(true)
+  notifyPolls     Boolean  @default(true)
+  notifyDebates   Boolean  @default(true)
+  notifyEmergency Boolean  @default(true)
+  quietHoursStart Int      @default(22)
+  quietHoursEnd   Int      @default(7)
+  pushToken       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@map("civic_profiles")
+}
+
+model VoterPassport {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation("UserVoterPassport", fields: [userId], references: [id])
+  credits               Int      @default(0)
+  badges                String[]
+  pollsParticipated     Int      @default(0)
+  petitionsSigned       Int      @default(0)
+  eventsAttended        Int      @default(0)
+  volunteeredFor        Int      @default(0)
+  doorsKnocked          Int      @default(0)
+  electionsParticipated Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@map("voter_passports")
+}
+
+model CivicCredit {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("UserCivicCredits", fields: [userId], references: [id])
+  action      String
+  credits     Int
+  description String
+  createdAt   DateTime @default(now())
+  @@index([userId])
+  @@map("civic_credits")
+}
+
+model Petition {
+  id                 String              @id @default(cuid())
+  createdByUserId    String
+  title              String
+  description        String              @db.Text
+  targetMunicipality String?
+  targetWard         String?
+  targetOfficialId   String?
+  signatureGoal      Int                 @default(500)
+  isPublic           Boolean             @default(true)
+  status             String              @default("active")
+  createdAt          DateTime            @default(now())
+  signatures         PetitionSignature[]
+  @@index([status])
+  @@map("petitions")
+}
+
+model PetitionSignature {
+  id         String   @id @default(cuid())
+  petitionId String
+  petition   Petition @relation(fields: [petitionId], references: [id])
+  userId     String?
+  name       String
+  email      String?
+  isPublic   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  @@index([petitionId])
+  @@map("petition_signatures")
+}
+
+model OfficialPromise {
+  id         String           @id @default(cuid())
+  officialId String
+  promise    String           @db.Text
+  madeAt     DateTime
+  status     String           @default("pending")
+  evidence   String?          @db.Text
+  updatedAt  DateTime         @updatedAt
+  createdAt  DateTime         @default(now())
+  trackers   PromiseTracker[]
+  @@index([officialId])
+  @@map("official_promises")
+}
+
+model PromiseTracker {
+  id        String          @id @default(cuid())
+  promiseId String
+  promise   OfficialPromise @relation(fields: [promiseId], references: [id])
+  userId    String
+  createdAt DateTime        @default(now())
+  @@unique([promiseId, userId])
+  @@map("promise_trackers")
 }

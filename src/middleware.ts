@@ -51,6 +51,7 @@ const PUBLIC_PATHS = [
   "/api/v1",
   "/api/ticker",
   "/api/results",
+  "/api/civic",
 ];
 
 function isPublicPath(path: string) {
