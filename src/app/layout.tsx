@@ -6,19 +6,22 @@ import PwaRegister from "@/components/pwa/pwa-register";
 
 export const metadata: Metadata = {
   title: { default: "Poll City", template: "%s | Poll City" },
-  description: "Campaign operations and voter engagement platform",
-  metadataBase: new URL("https://poll.city"),
+  description: "The civic operating system for Canadian democracy. Campaign management, voter engagement, election results, and civic intelligence.",
+  metadataBase: new URL("https://www.poll.city"),
+  alternates: { canonical: "https://www.poll.city" },
+  keywords: ["campaign software Canada", "election results", "municipal elections 2026", "Ontario elections", "BC elections", "voter engagement", "canvassing app", "GOTV", "political campaign management"],
   manifest: "/manifest.json",
   openGraph: {
-    title: "Poll City",
-    description: "Campaign operations and voter engagement platform",
+    title: "Poll City — The Civic Operating System for Canadian Democracy",
+    description: "Campaign management, voter engagement, election results, and civic intelligence for Canadian campaigns.",
+    siteName: "Poll City",
     images: [{ url: "/logo.png", alt: "Poll City logo" }],
     type: "website",
   },
   twitter: {
-    card: "summary",
-    title: "Poll City",
-    description: "Campaign operations and voter engagement platform",
+    card: "summary_large_image",
+    title: "Poll City — Canadian Democracy Platform",
+    description: "Campaign management, voter engagement, election results, and civic intelligence.",
     images: ["/logo.png"],
   },
   appleWebApp: {
@@ -50,6 +53,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Poll City" />
         <meta property="og:image" content="/logo.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "Poll City",
+              "applicationCategory": "GovernmentApplication",
+              "operatingSystem": "Web",
+              "description": "The civic operating system for Canadian democracy. Campaign management, voter engagement, election results, and civic intelligence.",
+              "url": "https://www.poll.city",
+              "author": {
+                "@type": "Organization",
+                "name": "Poll City",
+                "url": "https://www.poll.city"
+              },
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "CAD",
+                "description": "Free tier available"
+              }
+            }),
+          }}
+        />
         <meta name="msapplication-TileColor" content="#1e40af" />
         <meta name="msapplication-TileImage" content="/apple-touch-icon.png" />
       </head>
