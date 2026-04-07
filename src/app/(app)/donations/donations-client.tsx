@@ -638,7 +638,7 @@ export default function DonationsClient({ campaignId }: Props) {
                   <YAxis tick={{ fontSize: 11, fill: "#888" }} tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
                   <RechartsTooltip
                     contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Total"]}
+                    formatter={((value: number) => [`$${value.toLocaleString()}`, "Total"]) as never}
                   />
                   <Area type="monotone" dataKey="total" stroke={GREEN} fill="url(#donationGrad)" strokeWidth={2} />
                 </AreaChart>
@@ -1021,7 +1021,7 @@ export default function DonationsClient({ campaignId }: Props) {
             <div className="bg-gray-50 rounded-xl p-5 space-y-3 font-mono text-sm" id="receipt-content">
               <div className="text-center border-b border-gray-200 pb-3">
                 <p className="font-bold text-base" style={{ color: NAVY }}>{receiptData.campaignName as string}</p>
-                {receiptData.candidateName && <p className="text-gray-600">{receiptData.candidateName as string}</p>}
+                {receiptData.candidateName ? <p className="text-gray-600">{String(receiptData.candidateName)}</p> : null}
                 <p className="text-xs text-gray-400 mt-1">OFFICIAL DONATION RECEIPT</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -1030,9 +1030,9 @@ export default function DonationsClient({ campaignId }: Props) {
                 <div><p className="text-xs text-gray-400">Donor</p><p>{receiptData.donorName as string}</p></div>
                 <div><p className="text-xs text-gray-400">Amount</p><p className="font-bold text-lg" style={{ color: GREEN }}>${Number(receiptData.amount).toFixed(2)}</p></div>
               </div>
-              {receiptData.donorAddress && (
-                <div><p className="text-xs text-gray-400">Address</p><p>{receiptData.donorAddress as string}</p></div>
-              )}
+              {receiptData.donorAddress ? (
+                <div><p className="text-xs text-gray-400">Address</p><p>{String(receiptData.donorAddress)}</p></div>
+              ) : null}
               <div><p className="text-xs text-gray-400">Method</p><p className="capitalize">{(receiptData.method as string) ?? "cash"}</p></div>
               <div className="border-t border-gray-200 pt-3 mt-3">
                 <p className="text-xs text-gray-400 italic">{receiptData.legalNotice as string}</p>
