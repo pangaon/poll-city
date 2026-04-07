@@ -428,6 +428,7 @@ model Campaign {
   require2FA             Boolean      @default(false)
   allowedIpRanges        String[]     @default([])
   sessionTimeoutHours    Int          @default(24)
+  dataRetentionDays      Int          @default(365)
   // Brand Kit
   secondaryColor         String?      @default("#d71920")
   accentColor            String?      @default("#f5a623")
