@@ -1,50 +1,161 @@
 "use client";
-import Link from "next/link";
-import { ArrowRight, Printer } from "lucide-react";
-import { Button, Card, CardContent, PageHeader } from "@/components/ui";
-import { PRINT_PRODUCTS } from "@/lib/print/catalog";
 
-interface Props { campaignId: string; }
+import { useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  Flag, DoorOpen, FileText, CreditCard, Mail, Sticker, Circle,
+  Shirt, HardHat, ShoppingBag, Scroll, Square, Anchor, RectangleHorizontal,
+  Tag, Paintbrush, Store, Briefcase, LayoutTemplate, Sparkles,
+} from "lucide-react";
+import { PRINT_PRODUCTS, type ProductSpec } from "@/lib/print/catalog";
+import { Button, Badge } from "@/components/ui";
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Flag, DoorOpen, FileText, CreditCard, Mail, Sticker, Circle,
+  Shirt, HardHat, ShoppingBag, Scroll, Square, Anchor, RectangleHorizontal, Tag,
+};
+
+interface Props {
+  campaignId: string;
+}
+
+function ProductCard({ product, idx }: { product: ProductSpec; idx: number }) {
+  const Icon = ICON_MAP[product.icon] || Flag;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: idx * 0.03, duration: 0.3 }}
+    >
+      <Link href={`/print/products/${product.id}`}>
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow cursor-pointer h-full min-h-[11rem]"
+        >
+          <div
+            className={`h-11 w-11 rounded-lg bg-gradient-to-br ${product.heroClass} flex items-center justify-center mb-3`}
+          >
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-bold text-[#0A2342] text-sm leading-tight">{product.name}</h3>
+          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{product.summary}</p>
+          <div className="flex items-center justify-between mt-3 gap-1">
+            <span className="text-xs font-semibold text-[#1D9E75]">From {product.startingPrice}</span>
+            <Badge variant="default">{product.turnaround.replace("Standard ", "").replace("Economy ", "")}</Badge>
+          </div>
+        </motion.div>
+      </Link>
+    </motion.div>
+  );
+}
 
 export default function PrintClient({ campaignId }: Props) {
+  const [brandApplied, setBrandApplied] = useState(false);
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Professional Campaign Print Materials - Local Shops. Competitive Prices. Fast Turnaround."
-        description="Vistaprint-level quality for Canadian campaigns with local production partners."
-        actions={
-          <div className="flex gap-2">
-            <Link href="/print/jobs/new"><Button size="sm"><Printer className="w-4 h-4 mr-2" />New Job</Button></Link>
-            <Link href="/print/shops"><Button size="sm" variant="outline">Vendor Directory</Button></Link>
-          </div>
-        }
-      />
+    <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 pb-[env(safe-area-inset-bottom)]">
+      {/* Hero */}
+      <header
+        className="rounded-2xl p-6 md:p-10 text-white mb-8 relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #0A2342 0%, #1D9E75 100%)" }}
+      >
+        <p className="text-xs uppercase tracking-widest opacity-80 font-semibold">Poll City Print</p>
+        <h1 className="text-2xl md:text-4xl font-extrabold mt-1">Print Marketplace</h1>
+        <p className="text-emerald-100 mt-2 md:mt-3 text-sm md:text-base max-w-xl">
+          Campaign materials from lawn signs to lanyards. Select a product, post a job, and
+          local print shops compete for your business.
+        </p>
+        <div className="flex flex-wrap gap-3 mt-5">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              onClick={() => setBrandApplied(true)}
+              className="bg-white text-[#0A2342] hover:bg-emerald-50 font-bold h-11 px-5"
+            >
+              <Paintbrush className="w-4 h-4 mr-2" />
+              {brandApplied ? "Brand Kit Applied" : "Apply My Brand Kit"}
+              {brandApplied && <Sparkles className="w-4 h-4 ml-1 text-[#1D9E75]" />}
+            </Button>
+          </motion.div>
+          <Link href="/print/jobs/new">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 h-11 px-5">
+                <Briefcase className="w-4 h-4 mr-2" />
+                New Print Job
+              </Button>
+            </motion.div>
+          </Link>
+        </div>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {PRINT_PRODUCTS.map((product) => (
-          <Card key={product.id} className="overflow-hidden border-gray-200 hover:shadow-lg transition-shadow">
-            <div className={`h-28 bg-gradient-to-br ${product.heroClass} relative`}>
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,white_0,transparent_45%),radial-gradient(circle_at_80%_65%,white_0,transparent_40%)]" />
+      {brandApplied && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mb-6 rounded-xl border border-[#1D9E75]/30 bg-emerald-50 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-[#1D9E75] flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-[#0A2342]">Brand Kit applied to all templates</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Your campaign name, colours, logo, and tagline will auto-fill on every design.
+              </p>
             </div>
-            <CardContent className="p-4 space-y-3">
-              <div>
-                <h3 className="font-semibold text-gray-900">{product.name}</h3>
-                <p className="text-xs text-gray-500 mt-1">{product.summary}</p>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-gray-900">Starting at {product.startingPrice}</span>
-                <span className="text-xs text-gray-500">{product.turnaround}</span>
-              </div>
-              <Link href={`/print/products/${product.id}`}>
-                <Button size="sm" className="w-full">
-                  View Product <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+          </div>
+        </motion.div>
+      )}
 
+      {/* Product Grid — 15 categories */}
+      <section className="mb-10">
+        <h2 className="text-lg font-bold text-[#0A2342] mb-4">15 Product Categories</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {PRINT_PRODUCTS.map((product, idx) => (
+            <ProductCard key={product.id} product={product} idx={idx} />
+          ))}
+        </div>
+      </section>
+
+      {/* Quick Links */}
+      <section className="grid gap-4 sm:grid-cols-3 mb-10">
+        <Link href="/print/jobs">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
+          >
+            <Briefcase className="w-8 h-8 text-[#0A2342] mb-2" />
+            <h3 className="font-bold text-[#0A2342]">My Print Jobs</h3>
+            <p className="text-xs text-gray-500 mt-1">Track jobs, review bids, award contracts</p>
+          </motion.div>
+        </Link>
+        <Link href="/print/shops">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
+          >
+            <Store className="w-8 h-8 text-[#1D9E75] mb-2" />
+            <h3 className="font-bold text-[#0A2342]">Shop Directory</h3>
+            <p className="text-xs text-gray-500 mt-1">Browse local print shops near your riding</p>
+          </motion.div>
+        </Link>
+        <Link href="/print/templates">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
+          >
+            <LayoutTemplate className="w-8 h-8 text-purple-600 mb-2" />
+            <h3 className="font-bold text-[#0A2342]">Templates</h3>
+            <p className="text-xs text-gray-500 mt-1">Pre-designed, auto-branded templates</p>
+          </motion.div>
+        </Link>
+      </section>
+
+      {/* Hidden campaignId for React key */}
       <div className="hidden">{campaignId}</div>
     </div>
   );

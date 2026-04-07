@@ -1701,6 +1701,13 @@ enum PrintProductType {
   banner
   button_pin
   window_sign
+  bumper_sticker
+  t_shirt
+  hat
+  tote_bag
+  yard_stake
+  table_cover
+  lanyard
 }
 
 enum PrintJobStatus {

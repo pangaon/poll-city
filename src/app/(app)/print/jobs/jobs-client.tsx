@@ -45,14 +45,21 @@ const STATUS_VARIANTS: Record<string, "default" | "info" | "warning" | "success"
 };
 
 const PRODUCT_LABELS: Record<string, string> = {
-  door_hanger: "Door Hanger",
-  lawn_sign: "Lawn Sign",
-  flyer: "Flyer",
-  palm_card: "Palm Card",
-  mailer_postcard: "Mailer / Postcard",
-  banner: "Banner",
-  button_pin: "Button / Pin",
-  window_sign: "Window Sign",
+  door_hanger: "Door Hangers",
+  lawn_sign: "Lawn Signs",
+  flyer: "Flyers",
+  palm_card: "Palm Cards",
+  mailer_postcard: "Postcards",
+  banner: "Banners",
+  button_pin: "Buttons",
+  window_sign: "Window Clings",
+  bumper_sticker: "Bumper Stickers",
+  t_shirt: "T-Shirts",
+  hat: "Hats",
+  tote_bag: "Tote Bags",
+  yard_stake: "Yard Stakes",
+  table_cover: "Table Covers",
+  lanyard: "Lanyards",
 };
 
 const PAGE_SIZE = 20;
