@@ -585,7 +585,7 @@ function FinanceMode({ data }: { data: DashboardData }) {
               <YAxis tick={{ fontSize: 11, fill: "#64748B" }} tickFormatter={(v: number) => `$${v}`} />
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, "Amount"]}
+                formatter={((value: number) => [`$${value.toLocaleString()}`, "Amount"]) as never}
               />
               <Bar dataKey="amount" fill={GREEN} radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -771,7 +771,7 @@ function GOTVMode({ data }: { data: DashboardData }) {
               </Pie>
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
-                formatter={(value: number) => [value.toLocaleString(), ""]}
+                formatter={((value: number) => [value.toLocaleString(), ""]) as never}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -1084,7 +1084,7 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
       className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}15` }}>
-        <Icon className="h-4 w-4" style={{ color }} />
+        <Icon className="h-4 w-4" />
       </div>
       <AnimatedNumber value={value} className="text-2xl font-black text-slate-900" />
       <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{label}</p>
