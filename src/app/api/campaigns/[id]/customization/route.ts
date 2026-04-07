@@ -12,6 +12,11 @@ export async function GET(
   const permError = requirePermission(session!.user.role as string, "settings:read");
   if (permError) return permError;
 
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id as string, campaignId: params.id } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const campaign = await prisma.campaign.findUnique({
     where: { id: params.id },
     select: {
@@ -39,6 +44,11 @@ export async function POST(
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "settings:write");
   if (permError) return permError;
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id as string, campaignId: params.id } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     await prisma.campaign.update({

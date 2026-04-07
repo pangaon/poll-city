@@ -120,6 +120,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const pbSession = await prisma.phoneBankSession.findUnique({ where: { id: params.id } });
   if (!pbSession) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (pbSession.volunteerId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await prisma.phoneBankSession.update({
     where: { id: params.id },

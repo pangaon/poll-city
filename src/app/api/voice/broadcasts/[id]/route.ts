@@ -5,7 +5,7 @@ import { checkCRTCCompliance, filterOptedOut } from "@/lib/voice/crtc-compliance
 
 /** GET — Get broadcast details */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await apiAuthWithPermission(req, "sms:read");
+  const { session, error } = await apiAuthWithPermission(req, "sms:read");
   if (error) return error;
 
   const broadcast = await prisma.voiceBroadcast.findUnique({
@@ -13,6 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     include: { createdBy: { select: { name: true } } },
   });
   if (!broadcast) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id as string, campaignId: broadcast.campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   return NextResponse.json({ broadcast });
 }
@@ -24,6 +29,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const broadcast = await prisma.voiceBroadcast.findUnique({ where: { id: params.id } });
   if (!broadcast) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id as string, campaignId: broadcast.campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
 
@@ -101,11 +111,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 /** DELETE — Delete a draft broadcast */
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await apiAuthWithPermission(req, "sms:write");
+  const { session, error } = await apiAuthWithPermission(req, "sms:write");
   if (error) return error;
 
   const broadcast = await prisma.voiceBroadcast.findUnique({ where: { id: params.id } });
   if (!broadcast) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id as string, campaignId: broadcast.campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   if (broadcast.status !== "draft") {
     return NextResponse.json({ error: "Can only delete draft broadcasts" }, { status: 400 });
   }
