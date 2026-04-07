@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock, Palette, CheckCircle2
+  Megaphone, Inbox, Bot, Activity, Landmark, CalendarDays, BookOpen, Lock, Palette, CheckCircle2, Gauge
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -24,6 +24,7 @@ const SIDEBAR_SECTIONS: NavSection[] = [
     icon: BarChart3,
     items: [
       { href: "/command-center", icon: Activity, label: "Command Center" },
+      { href: "/election-night", icon: Gauge, label: "Election Night" },
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/analytics", icon: BarChart3, label: "Analytics" },
       { href: "/reports", icon: FileText, label: "Reports" },
