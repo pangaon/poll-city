@@ -48,7 +48,7 @@ const PUBLIC_PATHS = [
   "/api/health",
   "/reset-password",
   "/store",
-  "/api/v1",
+  "/api/v1/approval",
   "/api/ticker",
   "/api/results",
   "/api/civic",

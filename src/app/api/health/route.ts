@@ -5,10 +5,29 @@ import { validateEnv } from "@/lib/env-check";
 export const dynamic = "force-dynamic";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  let dbOk = false;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+
+  // Public response — minimal info, no service enumeration
+  const isDetailedRequest = request.headers.get("x-health-secret") === process.env.HEALTH_CHECK_SECRET;
+
+  if (!isDetailedRequest || !process.env.HEALTH_CHECK_SECRET) {
+    return NextResponse.json(
+      { status: dbOk ? "healthy" : "degraded", timestamp: new Date().toISOString() },
+      { status: dbOk ? 200 : 503, headers: NO_STORE_HEADERS },
+    );
+  }
+
+  // Detailed response — only with HEALTH_CHECK_SECRET header
   const envCheck = validateEnv();
   const checks = {
-    database: false,
+    database: dbOk,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || "5.0.0",
     environment: process.env.NODE_ENV,
@@ -21,23 +40,10 @@ export async function GET(_request: NextRequest) {
       vapidKeys: !!(process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
       stripeKey: !!process.env.STRIPE_SECRET_KEY,
       redisUrl: !!process.env.UPSTASH_REDIS_REST_URL,
-      redisToken: !!process.env.UPSTASH_REDIS_REST_TOKEN,
       turnstileSecret: !!process.env.TURNSTILE_SECRET_KEY,
-      turnstileSiteKey: !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
     },
-    envValidation: {
-      ok: envCheck.ok,
-      missing: envCheck.missing,
-      warned: envCheck.warned,
-    },
+    envValidation: { ok: envCheck.ok, missing: envCheck.missing, warned: envCheck.warned },
   };
-
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    checks.database = true;
-  } catch {
-    checks.database = false;
-  }
 
   const requireAuthVars = process.env.NODE_ENV === "production";
   const allCriticalPass =
