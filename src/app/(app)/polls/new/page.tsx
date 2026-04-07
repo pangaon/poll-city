@@ -1,15 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight, ChevronLeft, Plus, Trash2, Check, BarChart3,
-  Eye, EyeOff, Calendar, Bell, RefreshCw, Lock, Globe,
+  Eye, EyeOff, Calendar, Bell, RefreshCw, Lock, Globe, Zap,
+  GripVertical, Sliders, Image, ThumbsUp, List, SortAsc,
 } from "lucide-react";
 import { Button, Card, CardContent, FormField, Input, Select, Textarea } from "@/components/ui";
 import { toast } from "sonner";
-import { Suspense } from "react";
 
-/* ── Types ──────────────────────────────────────────────────────────────── */
+/* ── Constants ────────────────────────────────────────────────── */
+
+const NAVY = "#0A2342";
+const GREEN = "#1D9E75";
+const spring = { type: "spring" as const, stiffness: 300, damping: 24 };
+
+/* ── Types ────────────────────────────────────────────────────── */
 interface PollOption {
   id: string;
   text: string;
@@ -30,53 +37,86 @@ interface FormState {
   tags: string;
 }
 
-/* ── Option colors ───────────────────────────────────────────────────────── */
-const OPTION_COLORS = ["#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6","#EC4899","#06B6D4","#F97316"];
+/* ── Option colors ────────────────────────────────────────────── */
+const OPTION_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#F97316"];
 
-/* ── Poll types ─────────────────────────────────────────────────────────── */
+/* ── Poll types (7 specified) ─────────────────────────────────── */
 const POLL_TYPES = [
-  { value: "binary",         label: "Yes / No",          desc: "Simple binary choice" },
-  { value: "multiple_choice",label: "Multiple Choice",    desc: "Pick one from several" },
-  { value: "ranked",         label: "Ranked Choice",      desc: "Order by preference" },
-  { value: "slider",         label: "Slider (0–100)",     desc: "Rate on a numeric scale" },
-  { value: "swipe",          label: "Swipe Cards",        desc: "Tinder-style swipe voting" },
-  { value: "image_swipe",    label: "Image Swipe",        desc: "Swipe on image cards" },
-  { value: "emoji_react",    label: "Emoji React",        desc: "React with an emoji" },
-  { value: "priority_rank",  label: "Priority Rank",      desc: "Rank priorities" },
+  { value: "binary", label: "Yes / No", desc: "Simple binary choice", icon: ThumbsUp },
+  { value: "multiple_choice", label: "Multiple Choice", desc: "Pick one from several", icon: List },
+  { value: "ranked", label: "Ranked Choice", desc: "Drag to rank by preference", icon: SortAsc },
+  { value: "slider", label: "Slider (0-100)", desc: "Rate on a numeric scale", icon: Sliders },
+  { value: "swipe", label: "Swipe Cards", desc: "Swipe left/right to vote", icon: ChevronRight },
+  { value: "image_swipe", label: "Image Swipe", desc: "Swipe on visual cards", icon: Image },
+  { value: "flash_poll", label: "Flash Poll", desc: "Quick yes/no with urgency", icon: Zap },
 ];
 
-const NEEDS_OPTIONS = new Set(["multiple_choice","ranked","swipe","image_swipe","priority_rank"]);
+const NEEDS_OPTIONS = new Set(["multiple_choice", "ranked", "swipe", "image_swipe"]);
 
-/* ── Step indicator ──────────────────────────────────────────────────────── */
+/* ── Step indicator ───────────────────────────────────────────── */
 function StepDot({ step, current, label }: { step: number; current: number; label: string }) {
   const done = current > step;
   const active = current === step;
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-        done ? "bg-blue-600 text-white" : active ? "bg-blue-600 text-white ring-4 ring-blue-100" : "bg-gray-100 text-gray-400"
-      }`}>
+      <motion.div
+        animate={{
+          scale: active ? 1.1 : 1,
+          backgroundColor: done || active ? GREEN : "#f3f4f6",
+        }}
+        transition={spring}
+        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+        style={{ color: done || active ? "#fff" : "#9ca3af" }}
+      >
         {done ? <Check className="w-4 h-4" /> : step}
-      </div>
-      <span className={`text-xs font-medium hidden sm:block ${active ? "text-blue-600" : done ? "text-gray-600" : "text-gray-400"}`}>{label}</span>
+      </motion.div>
+      <span className={`text-xs font-medium hidden sm:block ${active ? "text-[#1D9E75]" : done ? "text-gray-600" : "text-gray-400"}`}>
+        {label}
+      </span>
     </div>
   );
 }
 
-/* ── Step 1: Question ────────────────────────────────────────────────────── */
+/* ── Step 1: Type Selection + Question ────────────────────────── */
 function Step1({ form, onChange }: { form: FormState; onChange: (k: keyof FormState, v: string) => void }) {
-  const selectedType = POLL_TYPES.find(t => t.value === form.type);
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="space-y-6"
+    >
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">What do you want to ask?</h2>
-        <p className="text-gray-500 text-sm">Write a clear, concise question for your voters.</p>
+        <h2 className="text-xl font-bold mb-1" style={{ color: NAVY }}>Choose poll type</h2>
+        <p className="text-gray-500 text-sm">Select the type that best fits your question.</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {POLL_TYPES.map((t) => (
+          <motion.button
+            key={t.value}
+            type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            transition={spring}
+            onClick={() => onChange("type", t.value)}
+            className={`text-left p-3 rounded-2xl border-2 transition-all min-h-[88px] ${
+              form.type === t.value
+                ? "border-[#1D9E75] bg-emerald-50"
+                : "border-gray-200 hover:border-gray-300 bg-white"
+            }`}
+          >
+            <t.icon className={`w-5 h-5 mb-1.5 ${form.type === t.value ? "text-[#1D9E75]" : "text-gray-400"}`} />
+            <p className={`text-sm font-semibold ${form.type === t.value ? "text-[#0A2342]" : "text-gray-800"}`}>{t.label}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t.desc}</p>
+          </motion.button>
+        ))}
       </div>
 
       <FormField label="Question" required>
         <Textarea
           value={form.question}
-          onChange={e => onChange("question", e.target.value)}
+          onChange={(e) => onChange("question", e.target.value)}
           placeholder="e.g. Do you support expanding public transit in our city?"
           className="text-base resize-none"
           rows={3}
@@ -87,90 +127,87 @@ function Step1({ form, onChange }: { form: FormState; onChange: (k: keyof FormSt
       <FormField label="Description (optional)">
         <Textarea
           value={form.description}
-          onChange={e => onChange("description", e.target.value)}
-          placeholder="Provide additional context…"
+          onChange={(e) => onChange("description", e.target.value)}
+          placeholder="Provide additional context..."
           rows={2}
         />
       </FormField>
-
-      <div>
-        <p className="text-sm font-medium text-gray-700 mb-3">Poll Type</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {POLL_TYPES.map(t => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => onChange("type", t.value)}
-              className={`text-left p-3 rounded-2xl border-2 transition-all ${
-                form.type === t.value
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300 bg-white"
-              }`}
-            >
-              <p className={`text-sm font-semibold ${form.type === t.value ? "text-blue-700" : "text-gray-800"}`}>{t.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{t.desc}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selectedType && (
-        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl text-sm text-blue-700 border border-blue-100">
-          <BarChart3 className="w-4 h-4 flex-shrink-0" />
-          <span><strong>{selectedType.label}:</strong> {selectedType.desc}</span>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 }
 
-/* ── Step 2: Options ─────────────────────────────────────────────────────── */
+/* ── Step 2: Options ──────────────────────────────────────────── */
 function Step2({ form, setOptions }: { form: FormState; setOptions: (opts: PollOption[]) => void }) {
   function addOption() {
     const idx = form.options.length;
     setOptions([...form.options, { id: crypto.randomUUID(), text: "", color: OPTION_COLORS[idx % OPTION_COLORS.length] }]);
   }
   function removeOption(id: string) {
-    setOptions(form.options.filter(o => o.id !== id));
+    setOptions(form.options.filter((o) => o.id !== id));
   }
   function updateText(id: string, text: string) {
-    setOptions(form.options.map(o => o.id === id ? { ...o, text } : o));
+    setOptions(form.options.map((o) => (o.id === id ? { ...o, text } : o)));
   }
   function updateColor(id: string, color: string) {
-    setOptions(form.options.map(o => o.id === id ? { ...o, color } : o));
+    setOptions(form.options.map((o) => (o.id === id ? { ...o, color } : o)));
+  }
+  // Drag reorder
+  function handleDragStart(e: React.DragEvent, index: number) {
+    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = "move";
+  }
+  function handleDrop(e: React.DragEvent, toIndex: number) {
+    e.preventDefault();
+    const fromIndex = Number(e.dataTransfer.getData("text/plain"));
+    if (fromIndex === toIndex) return;
+    const items = [...form.options];
+    const [moved] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, moved);
+    setOptions(items);
   }
 
   if (!NEEDS_OPTIONS.has(form.type)) {
     return (
-      <div className="text-center py-12">
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="text-center py-12">
         <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
           <Check className="w-7 h-7 text-gray-400" />
         </div>
         <p className="text-gray-600 font-medium">No options needed</p>
         <p className="text-gray-400 text-sm mt-1">
-          <strong className="capitalize">{form.type.replace(/_/g," ")}</strong> polls don&apos;t require custom options.
+          <strong className="capitalize">{form.type.replace(/_/g, " ")}</strong> polls don&apos;t require custom options.
         </p>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Add your options</h2>
-        <p className="text-gray-500 text-sm">Add the choices voters can select. Drag to reorder.</p>
+        <h2 className="text-xl font-bold mb-1" style={{ color: NAVY }}>Add your options</h2>
+        <p className="text-gray-500 text-sm">Add choices voters can select. Drag to reorder.</p>
       </div>
 
       <div className="space-y-3">
         {form.options.map((opt, i) => (
-          <div key={opt.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-200">
-            {/* Color picker */}
+          <motion.div
+            key={opt.id}
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            draggable
+            onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, i)}
+            onDragOver={(e) => (e as unknown as React.DragEvent).preventDefault()}
+            onDrop={(e) => handleDrop(e as unknown as React.DragEvent, i)}
+            className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-200 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <div className="relative flex-shrink-0">
               <div className="w-8 h-8 rounded-full cursor-pointer border-2 border-white shadow-sm overflow-hidden">
                 <input
                   type="color"
                   value={opt.color}
-                  onChange={e => updateColor(opt.id, e.target.value)}
+                  onChange={(e) => updateColor(opt.id, e.target.value)}
                   className="w-12 h-12 -translate-x-2 -translate-y-2 cursor-pointer opacity-0 absolute"
                 />
                 <div className="w-full h-full rounded-full" style={{ backgroundColor: opt.color }} />
@@ -181,46 +218,49 @@ function Step2({ form, setOptions }: { form: FormState; setOptions: (opts: PollO
             </span>
             <Input
               value={opt.text}
-              onChange={e => updateText(opt.id, e.target.value)}
+              onChange={(e) => updateText(opt.id, e.target.value)}
               placeholder={`Option ${i + 1}`}
               className="flex-1"
             />
             <button
               onClick={() => removeOption(opt.id)}
-              className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+              className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
               <Trash2 className="w-4 h-4" />
             </button>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <button
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        transition={spring}
         onClick={addOption}
-        className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-sm font-medium text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
+        className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-sm font-medium text-gray-500 hover:border-[#1D9E75] hover:text-[#1D9E75] transition-all flex items-center justify-center gap-2 min-h-[48px]"
       >
         <Plus className="w-4 h-4" /> Add option
-      </button>
+      </motion.button>
 
       {form.options.length < 2 && (
         <p className="text-sm text-amber-600 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           Add at least 2 options to proceed.
         </p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
-/* ── Step 3: Settings ────────────────────────────────────────────────────── */
+/* ── Step 3: Settings ─────────────────────────────────────────── */
 function Step3({ form, onChange, onToggle }: {
   form: FormState;
   onChange: (k: keyof FormState, v: string) => void;
   onToggle: (k: "allowMultipleVotes" | "showResultsBeforeEnd" | "notifySubscribers") => void;
 }) {
   return (
-    <div className="space-y-6">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Poll settings</h2>
+        <h2 className="text-xl font-bold mb-1" style={{ color: NAVY }}>Poll settings</h2>
         <p className="text-gray-500 text-sm">Configure visibility, schedule, and behaviour.</p>
       </div>
 
@@ -232,23 +272,26 @@ function Step3({ form, onChange, onToggle }: {
             { value: "public", label: "Public", icon: Globe, desc: "Anyone can vote" },
             { value: "campaign_only", label: "Campaign", icon: Lock, desc: "Members only" },
             { value: "unlisted", label: "Unlisted", icon: EyeOff, desc: "Link access only" },
-          ].map(v => (
-            <button
+          ].map((v) => (
+            <motion.button
               key={v.value}
               type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              transition={spring}
               onClick={() => onChange("visibility", v.value)}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all min-h-[100px] ${
                 form.visibility === v.value
-                  ? "border-blue-500 bg-blue-50"
+                  ? "border-[#1D9E75] bg-emerald-50"
                   : "border-gray-200 hover:border-gray-300 bg-white"
               }`}
             >
-              <v.icon className={`w-5 h-5 ${form.visibility === v.value ? "text-blue-600" : "text-gray-400"}`} />
+              <v.icon className={`w-5 h-5 ${form.visibility === v.value ? "text-[#1D9E75]" : "text-gray-400"}`} />
               <div className="text-center">
-                <p className={`text-sm font-semibold ${form.visibility === v.value ? "text-blue-700" : "text-gray-700"}`}>{v.label}</p>
+                <p className={`text-sm font-semibold ${form.visibility === v.value ? "text-[#0A2342]" : "text-gray-700"}`}>{v.label}</p>
                 <p className="text-xs text-gray-400">{v.desc}</p>
               </div>
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -260,7 +303,7 @@ function Step3({ form, onChange, onToggle }: {
           <Input
             type="datetime-local"
             value={form.endsAt}
-            onChange={e => onChange("endsAt", e.target.value)}
+            onChange={(e) => onChange("endsAt", e.target.value)}
             className="pl-10"
           />
         </div>
@@ -270,7 +313,7 @@ function Step3({ form, onChange, onToggle }: {
       <FormField label="Target region (optional)">
         <Input
           value={form.targetRegion}
-          onChange={e => onChange("targetRegion", e.target.value)}
+          onChange={(e) => onChange("targetRegion", e.target.value)}
           placeholder="e.g. Toronto Ward 12, Ottawa East"
         />
       </FormField>
@@ -279,7 +322,7 @@ function Step3({ form, onChange, onToggle }: {
       <FormField label="Tags (optional)">
         <Input
           value={form.tags}
-          onChange={e => onChange("tags", e.target.value)}
+          onChange={(e) => onChange("tags", e.target.value)}
           placeholder="municipal, transit, infrastructure (comma separated)"
         />
       </FormField>
@@ -287,28 +330,14 @@ function Step3({ form, onChange, onToggle }: {
       {/* Toggles */}
       <div className="space-y-3">
         {[
-          {
-            key: "showResultsBeforeEnd" as const,
-            label: "Show results before poll closes",
-            desc: "Voters can see results after voting, even while poll is open",
-            icon: Eye,
-          },
-          {
-            key: "allowMultipleVotes" as const,
-            label: "Allow multiple votes",
-            desc: "Voters can change or re-submit their vote",
-            icon: RefreshCw,
-          },
-          {
-            key: "notifySubscribers" as const,
-            label: "Notify subscribers",
-            desc: "Send push notification to campaign subscribers",
-            icon: Bell,
-          },
-        ].map(toggle => (
-          <div
+          { key: "showResultsBeforeEnd" as const, label: "Show results before poll closes", desc: "Voters can see results after voting", icon: Eye },
+          { key: "allowMultipleVotes" as const, label: "Allow multiple votes", desc: "Voters can change their vote", icon: RefreshCw },
+          { key: "notifySubscribers" as const, label: "Notify subscribers", desc: "Send notification to campaign subscribers", icon: Bell },
+        ].map((toggle) => (
+          <motion.div
             key={toggle.key}
-            className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+            whileHover={{ scale: 1.01 }}
+            className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors min-h-[60px]"
             onClick={() => onToggle(toggle.key)}
           >
             <div className="flex items-center gap-3">
@@ -318,39 +347,38 @@ function Step3({ form, onChange, onToggle }: {
                 <p className="text-xs text-gray-400">{toggle.desc}</p>
               </div>
             </div>
-            <div className={`w-11 h-6 rounded-full transition-all relative flex-shrink-0 ${form[toggle.key] ? "bg-blue-600" : "bg-gray-200"}`}>
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${form[toggle.key] ? "left-6" : "left-1"}`} />
+            <div className={`w-11 h-6 rounded-full transition-all relative flex-shrink-0 ${form[toggle.key] ? "bg-[#1D9E75]" : "bg-gray-200"}`}>
+              <motion.div
+                animate={{ left: form[toggle.key] ? 22 : 2 }}
+                transition={spring}
+                className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+              />
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-/* ── Step 4: Preview ─────────────────────────────────────────────────────── */
+/* ── Step 4: Preview ──────────────────────────────────────────── */
 function Step4({ form }: { form: FormState }) {
-  const GRADIENTS = [
-    "from-blue-600 via-blue-700 to-purple-700",
-    "from-emerald-500 via-emerald-600 to-teal-600",
-  ];
-  const gradient = GRADIENTS[form.type.length % 2];
-  const typeDef = POLL_TYPES.find(t => t.value === form.type);
+  const typeDef = POLL_TYPES.find((t) => t.value === form.type);
 
   return (
-    <div className="space-y-6">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Preview your poll</h2>
+        <h2 className="text-xl font-bold mb-1" style={{ color: NAVY }}>Preview your poll</h2>
         <p className="text-gray-500 text-sm">Here&apos;s how your poll will look to voters.</p>
       </div>
 
       {/* Card preview */}
-      <div className={`rounded-3xl bg-gradient-to-br ${gradient} p-6 text-white`}>
+      <div className="rounded-3xl p-6 text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, ${GREEN})` }}>
         <div className="flex items-center justify-between mb-4">
           <span className="px-2.5 py-1 bg-white/20 text-white text-xs font-semibold rounded-full capitalize">
             {typeDef?.label ?? form.type}
           </span>
-          <span className="text-white/60 text-xs capitalize">{form.visibility.replace("_"," ")}</span>
+          <span className="text-white/60 text-xs capitalize">{form.visibility.replace("_", " ")}</span>
         </div>
         <h3 className="font-black text-xl leading-snug mb-2">
           {form.question || <span className="opacity-50 italic">Your question will appear here</span>}
@@ -366,7 +394,7 @@ function Step4({ form }: { form: FormState }) {
             ))}
           </div>
         )}
-        {form.type === "binary" && (
+        {(form.type === "binary" || form.type === "flash_poll") && (
           <div className="flex gap-3 mt-4">
             <div className="flex-1 py-3 bg-emerald-500/80 rounded-2xl text-center font-bold text-sm">Yes</div>
             <div className="flex-1 py-3 bg-red-500/80 rounded-2xl text-center font-bold text-sm">No</div>
@@ -374,23 +402,28 @@ function Step4({ form }: { form: FormState }) {
         )}
         {form.type === "slider" && (
           <div className="mt-4">
-            <div className="h-3 bg-white/30 rounded-full overflow-hidden"><div className="h-full bg-white rounded-full w-1/2" /></div>
-            <div className="flex justify-between text-white/60 text-xs mt-1"><span>0</span><span>100</span></div>
+            <div className="h-3 bg-white/30 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full w-1/2" />
+            </div>
+            <div className="flex justify-between text-white/60 text-xs mt-1">
+              <span>0</span>
+              <span>100</span>
+            </div>
           </div>
         )}
       </div>
 
       {/* Summary */}
       <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
-        <h4 className="font-semibold text-gray-900 text-sm">Summary</h4>
+        <h4 className="font-semibold text-sm" style={{ color: NAVY }}>Summary</h4>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-gray-400 text-xs">Type</p>
-            <p className="font-medium text-gray-800 capitalize">{form.type.replace(/_/g," ")}</p>
+            <p className="font-medium text-gray-800 capitalize">{form.type.replace(/_/g, " ")}</p>
           </div>
           <div>
             <p className="text-gray-400 text-xs">Visibility</p>
-            <p className="font-medium text-gray-800 capitalize">{form.visibility.replace(/_/g," ")}</p>
+            <p className="font-medium text-gray-800 capitalize">{form.visibility.replace(/_/g, " ")}</p>
           </div>
           {form.options.length > 0 && (
             <div>
@@ -412,11 +445,11 @@ function Step4({ form }: { form: FormState }) {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-/* ── Main wizard ─────────────────────────────────────────────────────────── */
+/* ── Main wizard ──────────────────────────────────────────────── */
 function NewPollInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -440,28 +473,31 @@ function NewPollInner() {
 
   // Fetch active campaign
   useEffect(() => {
-    fetch("/api/campaigns/switch").then(r => r.json()).then(d => {
-      if (d.data?.id) setCampaignId(d.data.id);
-    }).catch(() => {});
+    fetch("/api/campaigns/switch")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.data?.id) setCampaignId(d.data.id);
+      })
+      .catch(() => {});
   }, []);
 
   function onChange(k: keyof FormState, v: string) {
-    setForm(f => ({ ...f, [k]: v }));
+    setForm((f) => ({ ...f, [k]: v }));
   }
 
   function onToggle(k: "allowMultipleVotes" | "showResultsBeforeEnd" | "notifySubscribers") {
-    setForm(f => ({ ...f, [k]: !f[k] }));
+    setForm((f) => ({ ...f, [k]: !f[k] }));
   }
 
   function setOptions(options: PollOption[]) {
-    setForm(f => ({ ...f, options }));
+    setForm((f) => ({ ...f, options }));
   }
 
   function canProceed() {
     if (step === 1) return form.question.trim().length >= 5;
     if (step === 2) {
       if (!NEEDS_OPTIONS.has(form.type)) return true;
-      return form.options.length >= 2 && form.options.every(o => o.text.trim().length > 0);
+      return form.options.length >= 2 && form.options.every((o) => o.text.trim().length > 0);
     }
     return true;
   }
@@ -469,15 +505,18 @@ function NewPollInner() {
   async function submit() {
     setSaving(true);
     try {
+      // flash_poll maps to binary API type
+      const apiType = form.type === "flash_poll" ? "binary" : form.type;
+
       const payload = {
         question: form.question.trim(),
         description: form.description.trim() || undefined,
-        type: form.type,
+        type: apiType,
         visibility: form.visibility,
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
         targetRegion: form.targetRegion || undefined,
-        tags: form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
-        options: NEEDS_OPTIONS.has(form.type) ? form.options.map(o => o.text) : undefined,
+        tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+        options: NEEDS_OPTIONS.has(form.type) ? form.options.map((o) => o.text) : undefined,
         campaignId: campaignId || undefined,
       };
 
@@ -492,7 +531,6 @@ function NewPollInner() {
         toast.success("Poll created!");
         router.push("/polls");
       } else {
-        // Show specific field errors if available
         if (data.errors) {
           const msgs = Object.values(data.errors as Record<string, string[]>).flat();
           toast.error(msgs[0] ?? "Validation failed");
@@ -505,13 +543,18 @@ function NewPollInner() {
     }
   }
 
-  const STEPS = ["Question", "Options", "Settings", "Preview"];
+  const STEPS = ["Type & Question", "Options", "Settings", "Preview"];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-2xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Create Poll</h1>
+        <h1 className="text-3xl font-bold tracking-tight" style={{ color: NAVY }}>Create Poll</h1>
         <p className="text-gray-500 mt-1">Build a poll to collect voter insights.</p>
       </div>
 
@@ -525,40 +568,56 @@ function NewPollInner() {
 
       <Card>
         <CardContent className="pt-6 pb-6">
-          {step === 1 && <Step1 form={form} onChange={onChange} />}
-          {step === 2 && <Step2 form={form} setOptions={setOptions} />}
-          {step === 3 && <Step3 form={form} onChange={onChange} onToggle={onToggle} />}
-          {step === 4 && <Step4 form={form} />}
+          <AnimatePresence mode="wait">
+            {step === 1 && <Step1 key="s1" form={form} onChange={onChange} />}
+            {step === 2 && <Step2 key="s2" form={form} setOptions={setOptions} />}
+            {step === 3 && <Step3 key="s3" form={form} onChange={onChange} onToggle={onToggle} />}
+            {step === 4 && <Step4 key="s4" form={form} />}
+          </AnimatePresence>
         </CardContent>
       </Card>
 
       {/* Navigation */}
       <div className="flex gap-3 mt-6">
         {step > 1 ? (
-          <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
-            <ChevronLeft className="w-4 h-4" /> Back
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring} className="flex-1">
+            <Button variant="outline" onClick={() => setStep((s) => s - 1)} className="w-full min-h-[44px]">
+              <ChevronLeft className="w-4 h-4" /> Back
+            </Button>
+          </motion.div>
         ) : (
-          <Button variant="outline" onClick={() => router.back()} className="flex-1">
-            Cancel
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring} className="flex-1">
+            <Button variant="outline" onClick={() => router.back()} className="w-full min-h-[44px]">
+              Cancel
+            </Button>
+          </motion.div>
         )}
 
         {step < 4 ? (
-          <Button
-            onClick={() => setStep(s => s + 1)}
-            disabled={!canProceed()}
-            className="flex-1"
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring} className="flex-1">
+            <Button
+              onClick={() => setStep((s) => s + 1)}
+              disabled={!canProceed()}
+              className="w-full min-h-[44px]"
+              style={{ backgroundColor: canProceed() ? GREEN : undefined }}
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </Button>
+          </motion.div>
         ) : (
-          <Button onClick={submit} loading={saving} className="flex-1">
-            <Check className="w-4 h-4" /> Publish Poll
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring} className="flex-1">
+            <Button
+              onClick={submit}
+              loading={saving}
+              className="w-full min-h-[44px]"
+              style={{ backgroundColor: GREEN }}
+            >
+              <Check className="w-4 h-4" /> Publish Poll
+            </Button>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
