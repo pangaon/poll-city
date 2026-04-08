@@ -6,11 +6,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 55;
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret — fail closed. If CRON_SECRET is unset, lock the endpoint entirely.
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    console.error("[autonomous/ingest] CRON_SECRET is not configured — endpoint locked");
+    return NextResponse.json({ error: "Service misconfigured" }, { status: 503 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

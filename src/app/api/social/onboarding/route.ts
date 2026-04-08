@@ -59,27 +59,17 @@ export async function POST(req: NextRequest) {
   let profile;
 
   if (userId) {
-    // Authenticated user — upsert by userId
-    // If there's a guestToken, also try to merge guest profile data
-    if (d.guestToken) {
-      const hashedGuest = hashGuestToken(d.guestToken);
-      const guestProfile = await prisma.civicProfile.findUnique({ where: { guestToken: hashedGuest } });
-      if (guestProfile && !guestProfile.userId) {
-        // Merge: link guest profile to this user
-        profile = await prisma.civicProfile.update({
-          where: { id: guestProfile.id },
-          data: { userId, guestToken: null, ...updateData },
-        });
-      }
-    }
-
-    if (!profile) {
-      profile = await prisma.civicProfile.upsert({
-        where: { userId },
-        create: { userId, ...updateData },
-        update: updateData,
-      });
-    }
+    // Authenticated user — upsert by userId only.
+    // Guest token merging is intentionally NOT supported here: an attacker could
+    // submit someone else's guestToken to absorb their civic profile. Guest data
+    // collected during onboarding is already saved under the guestToken — the
+    // client auto-saves on each screen. That data is not lost; it persists under
+    // the guest profile and can be surfaced separately if needed.
+    profile = await prisma.civicProfile.upsert({
+      where: { userId },
+      create: { userId, ...updateData },
+      update: updateData,
+    });
   } else if (d.guestToken) {
     // Guest user — upsert by hashed guest token
     const hashedGuest = hashGuestToken(d.guestToken);

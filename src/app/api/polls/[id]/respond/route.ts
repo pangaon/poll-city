@@ -140,8 +140,17 @@ export async function POST(
   const sessionUserId = session?.user?.id ?? null;
   const ipHash = hashIp(getIp(req));
 
-  // Anonymous vote hash: prevents double-voting without storing identity
-  const voterIdentifier = sessionUserId ?? ipHash ?? `anon-${Date.now()}`;
+  // Anonymous vote hash: prevents double-voting without storing identity.
+  // If we have neither a session userId nor a hashed IP, we cannot reliably
+  // identify the voter — reject rather than issuing a timestamp-based identifier
+  // that would allow the same browser to vote unlimited times.
+  if (!sessionUserId && !ipHash) {
+    return NextResponse.json(
+      { error: "Unable to record vote: IP_HASH_SALT is not configured on this server." },
+      { status: 503 }
+    );
+  }
+  const voterIdentifier = sessionUserId ?? ipHash!;
   const voteHash = generateVoteHash(params.id, voterIdentifier);
   const validOptionIds = new Set(poll.options.map((o) => o.id));
 
