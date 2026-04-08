@@ -4,6 +4,112 @@ import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { resolvePermissions, checkAccess } from "@/lib/permissions/engine";
 import type { ResolvedPermissions, Permission } from "@/lib/permissions/types";
+import * as jose from "jose";
+import prisma from "@/lib/db/prisma";
+
+// ---------------------------------------------------------------------------
+// Mobile JWT auth — accepts Bearer tokens issued by /api/auth/mobile/token
+// ---------------------------------------------------------------------------
+
+const MOBILE_JWT_SECRET = new TextEncoder().encode(
+  process.env.NEXTAUTH_SECRET ?? "dev-secret-only-for-local-development",
+);
+
+/**
+ * Minimal session shape returned by mobileAuth — compatible with getSession().
+ */
+interface MobileSession {
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    role: Role;
+    activeCampaignId: string | null;
+    invalidSession?: boolean;
+  };
+}
+
+/**
+ * Validates a Bearer JWT from the Authorization header.
+ * Returns a session-like object or null if invalid.
+ */
+async function verifyBearerToken(req: NextRequest): Promise<MobileSession | null> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const token = authHeader.slice(7);
+  try {
+    const { payload } = await jose.jwtVerify(token, MOBILE_JWT_SECRET);
+    if (payload.type !== "access" || typeof payload.sub !== "string") return null;
+
+    // Verify user is still active and session version hasn't changed
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        activeCampaignId: true,
+        isActive: true,
+        sessionVersion: true,
+      },
+    });
+
+    if (!user || !user.isActive) return null;
+    if (user.sessionVersion !== (payload.sessionVersion as number)) return null;
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role as Role,
+        activeCampaignId: user.activeCampaignId,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * apiAuth — accepts BOTH NextAuth session cookies AND mobile Bearer JWT tokens.
+ * Drop-in replacement for the existing apiAuth in any route that needs to
+ * support mobile clients.
+ */
+export async function mobileApiAuth(
+  req: NextRequest,
+  allowedRoles?: Role[],
+): Promise<{ session: MobileSession | null; error?: NextResponse }> {
+  // Try Bearer token first (mobile app)
+  const mobileSession = await verifyBearerToken(req);
+  if (mobileSession) {
+    if (allowedRoles && !allowedRoles.includes(mobileSession.user.role)) {
+      return {
+        session: mobileSession,
+        error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+    return { session: mobileSession };
+  }
+
+  // Fall back to NextAuth cookie session (web app)
+  const session = await getSession();
+  if (!session?.user || (session.user as { invalidSession?: boolean }).invalidSession) {
+    return {
+      session: null,
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+  if (allowedRoles && !allowedRoles.includes(session.user.role as Role)) {
+    return {
+      session: session as unknown as MobileSession,
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    };
+  }
+  return { session: session as unknown as MobileSession };
+}
 
 export async function getSession() {
   return await getServerSession(authOptions);

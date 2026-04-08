@@ -192,6 +192,62 @@ export async function fetchCampaigns(): Promise<{ data: Campaign[] }> {
 }
 
 // ---------------------------------------------------------------------------
+// Canvassing — Turfs and Walk Lists
+// ---------------------------------------------------------------------------
+
+export interface TurfSummary {
+  id: string;
+  name: string;
+  status: string;
+  contactCount: number;
+  completedCount: number;
+  completionPercent: number;
+  ward: string | null;
+  streets: string[];
+  estimatedMinutes: number | null;
+  notes: string | null;
+}
+
+export interface WalkStop {
+  id: string;
+  contactId: string;
+  order: number;
+  visited: boolean;
+  visitedAt: string | null;
+  contact: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    address1: string | null;
+    address2: string | null;
+    city: string | null;
+    postalCode: string | null;
+    phone: string | null;
+    email: string | null;
+    supportLevel: string;
+    notes: string | null;
+    doNotContact: boolean;
+    followUpNeeded: boolean;
+  };
+}
+
+export async function fetchTurfs(campaignId: string): Promise<{ data: TurfSummary[] }> {
+  return apiFetch<{ data: TurfSummary[] }>("/api/canvassing/turfs", {
+    params: { campaignId },
+  });
+}
+
+export async function fetchWalkList(
+  turfId: string,
+  campaignId: string,
+): Promise<{ turf: { id: string; name: string }; data: WalkStop[] }> {
+  return apiFetch<{ turf: { id: string; name: string }; data: WalkStop[] }>(
+    "/api/canvassing/walk",
+    { params: { turfId, campaignId } },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Contacts / Walk List
 // ---------------------------------------------------------------------------
 

@@ -1,8 +1,18 @@
 /**
- * Walk List screen — today's doors to knock.
+ * Walk List screen — ordered doors for a turf.
  *
- * Ordered contacts with support badges, progress indicator, and offline
- * indicator. Pull-to-refresh. 56px+ touch targets.
+ * Accepts params: { turfId, turfName, campaignId }
+ *
+ * Data:  GET /api/canvassing/walk?turfId=X&campaignId=Y
+ * Offline fallback: AsyncStorage cache keyed by turfId
+ *
+ * Features:
+ * - Progress header: X / Y doors visited
+ * - 56px touch targets
+ * - Support level colour badge
+ * - Green checkmark for visited doors
+ * - Offline indicator banner
+ * - Pull-to-refresh
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -16,13 +26,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "../../lib/auth";
-import { fetchContacts } from "../../lib/api";
+import { fetchWalkList, type WalkStop } from "../../lib/api";
 import { getQueueStats } from "../../lib/sync";
 import { OfflineIndicator } from "../../components/offline-indicator";
-import type { Contact } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,7 +41,9 @@ const GREEN = "#1D9E75";
 const AMBER = "#EF9F27";
 const RED = "#E24B4A";
 
-const CACHE_KEY = "@poll_city_walk_list";
+function cacheKey(turfId: string) {
+  return `@poll_city_walk_turf_${turfId}`;
+}
 
 const SUPPORT_COLORS: Record<string, string> = {
   strong_support: GREEN,
@@ -58,19 +68,24 @@ const SUPPORT_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export default function WalkListScreen() {
-  const { user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    turfId?: string;
+    turfName?: string;
+    campaignId?: string;
+  }>();
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const turfId = params.turfId ?? "";
+  const campaignId = params.campaignId ?? "";
+
+  const [stops, setStops] = useState<WalkStop[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState(0);
   const [visitedIds, setVisitedIds] = useState<Set<string>>(new Set());
 
-  const campaignId = user?.activeCampaignId;
-
-  // Load visited IDs from storage
+  // Load visited IDs for today
   useEffect(() => {
     (async () => {
       const raw = await AsyncStorage.getItem("@poll_city_visited_today");
@@ -88,39 +103,40 @@ export default function WalkListScreen() {
     })();
   }, []);
 
-  const markVisited = useCallback(
-    (contactId: string) => {
-      setVisitedIds((prev) => {
-        const next = new Set(prev);
-        next.add(contactId);
-        const today = new Date().toISOString().split("T")[0];
-        AsyncStorage.setItem(
-          "@poll_city_visited_today",
-          JSON.stringify({ ids: Array.from(next), date: today }),
-        ).catch(() => {});
-        return next;
-      });
-    },
-    [],
-  );
+  const markVisited = useCallback((contactId: string) => {
+    setVisitedIds((prev) => {
+      const next = new Set(prev);
+      next.add(contactId);
+      const today = new Date().toISOString().split("T")[0];
+      AsyncStorage.setItem(
+        "@poll_city_visited_today",
+        JSON.stringify({ ids: Array.from(next), date: today }),
+      ).catch(() => {});
+      return next;
+    });
+  }, []);
 
-  // Load contacts
-  const loadContacts = useCallback(
+  // Load walk list
+  const loadStops = useCallback(
     async (showRefresh = false) => {
-      if (!campaignId) return;
+      if (!turfId || !campaignId) {
+        setLoading(false);
+        return;
+      }
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
 
       try {
-        const result = await fetchContacts(campaignId, { pageSize: "200" });
-        setContacts(result.data);
-        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
+        const result = await fetchWalkList(turfId, campaignId);
+        setStops(result.data);
+        await AsyncStorage.setItem(cacheKey(turfId), JSON.stringify(result.data));
       } catch {
-        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        // Offline — try cache
+        const cached = await AsyncStorage.getItem(cacheKey(turfId));
         if (cached) {
-          setContacts(JSON.parse(cached) as Contact[]);
-          setError("Offline mode — showing cached walk list");
+          setStops(JSON.parse(cached) as WalkStop[]);
+          setError("Offline — showing cached walk list");
         } else {
           setError("Could not load walk list. Check your connection.");
         }
@@ -129,7 +145,7 @@ export default function WalkListScreen() {
         setRefreshing(false);
       }
     },
-    [campaignId],
+    [turfId, campaignId],
   );
 
   // Sync stats
@@ -141,37 +157,46 @@ export default function WalkListScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Initial load
   useEffect(() => {
-    loadContacts();
-  }, [loadContacts]);
+    loadStops();
+  }, [loadStops]);
 
   // Navigate to door screen
   const openDoor = useCallback(
-    (contact: Contact) => {
-      markVisited(contact.id);
+    (stop: WalkStop) => {
+      markVisited(stop.contactId);
       router.push({
         pathname: "/(app)/door/[id]",
-        params: { id: contact.id, contactJson: JSON.stringify(contact) },
+        params: {
+          id: stop.contactId,
+          contactJson: JSON.stringify({
+            id: stop.contact.id,
+            firstName: stop.contact.firstName,
+            lastName: stop.contact.lastName,
+            address1: stop.contact.address1,
+            phone: stop.contact.phone,
+            supportLevel: stop.contact.supportLevel,
+            doNotContact: stop.contact.doNotContact,
+          }),
+        },
       });
     },
     [router, markVisited],
   );
 
   // Stats
-  const totalDoors = contacts.length;
-  const doorsVisited = contacts.filter((c) => visitedIds.has(c.id)).length;
+  const totalDoors = stops.length;
+  const doorsVisited = stops.filter((s) => visitedIds.has(s.contactId) || s.visited).length;
   const progressPct =
     totalDoors > 0 ? Math.round((doorsVisited / totalDoors) * 100) : 0;
 
-  // Render
-  const renderContact = useCallback(
-    ({ item, index }: { item: Contact; index: number }) => {
-      const visited = visitedIds.has(item.id);
-      const supportColor =
-        SUPPORT_COLORS[item.supportLevel] ?? SUPPORT_COLORS.unknown;
-      const supportLabel =
-        SUPPORT_LABELS[item.supportLevel] ?? "Unknown";
+  const renderStop = useCallback(
+    ({ item, index }: { item: WalkStop; index: number }) => {
+      if (item.contact.doNotContact) return null;
+
+      const visited = visitedIds.has(item.contactId) || item.visited;
+      const supportColor = SUPPORT_COLORS[item.contact.supportLevel] ?? SUPPORT_COLORS.unknown;
+      const supportLabel = SUPPORT_LABELS[item.contact.supportLevel] ?? "Unknown";
 
       return (
         <Pressable
@@ -182,40 +207,28 @@ export default function WalkListScreen() {
           ]}
           onPress={() => openDoor(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Door ${index + 1}: ${item.firstName} ${item.lastName} at ${item.address1 ?? "no address"}`}
+          accessibilityLabel={`Door ${index + 1}: ${item.contact.firstName} ${item.contact.lastName}`}
         >
-          {/* Sequence number */}
-          <View
-            style={[
-              styles.sequenceBadge,
-              visited && styles.sequenceBadgeVisited,
-            ]}
-          >
-            <Text
-              style={[
-                styles.sequenceText,
-                visited && styles.sequenceTextVisited,
-              ]}
-            >
-              {visited ? "\u2713" : index + 1}
+          {/* Sequence badge */}
+          <View style={[styles.sequenceBadge, visited && styles.sequenceBadgeVisited]}>
+            <Text style={[styles.sequenceText, visited && styles.sequenceTextVisited]}>
+              {visited ? "\u2713" : item.order}
             </Text>
           </View>
 
           {/* Contact info */}
           <View style={styles.contactInfo}>
             <Text style={styles.contactName} numberOfLines={1}>
-              {item.firstName} {item.lastName}
+              {item.contact.firstName} {item.contact.lastName}
             </Text>
             <Text style={styles.contactAddress} numberOfLines={1}>
-              {item.address1 ?? "No address"}
-              {item.city ? `, ${item.city}` : ""}
+              {item.contact.address1 ?? "No address"}
+              {item.contact.city ? `, ${item.contact.city}` : ""}
             </Text>
           </View>
 
-          {/* Support level badge */}
-          <View
-            style={[styles.supportBadge, { backgroundColor: supportColor }]}
-          >
+          {/* Support badge */}
+          <View style={[styles.supportBadge, { backgroundColor: supportColor }]}>
             <Text style={styles.supportBadgeText}>{supportLabel}</Text>
           </View>
         </Pressable>
@@ -244,16 +257,12 @@ export default function WalkListScreen() {
             {doorsVisited}
             <Text style={styles.progressSlash}> / {totalDoors}</Text>
           </Text>
-          <Text style={styles.progressLabel}>
-            doors visited ({progressPct}%)
-          </Text>
+          <Text style={styles.progressLabel}>doors visited ({progressPct}%)</Text>
         </View>
 
         {syncPending > 0 && (
           <View style={styles.syncBadge}>
-            <Text style={styles.syncBadgeText}>
-              {syncPending} pending sync
-            </Text>
+            <Text style={styles.syncBadgeText}>{syncPending} pending sync</Text>
           </View>
         )}
 
@@ -286,22 +295,22 @@ export default function WalkListScreen() {
 
       {/* Contact list */}
       <FlatList
-        data={contacts}
+        data={stops}
         keyExtractor={(item) => item.id}
-        renderItem={renderContact}
+        renderItem={renderStop}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => loadContacts(true)}
+            onRefresh={() => loadStops(true)}
             tintColor={NAVY}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No doors assigned</Text>
+            <Text style={styles.emptyTitle}>No doors in this turf</Text>
             <Text style={styles.emptySubtitle}>
-              Ask your campaign manager to assign you a walk list.
+              Ask your campaign manager to add contacts to this turf.
             </Text>
           </View>
         }
@@ -315,23 +324,10 @@ export default function WalkListScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f8fafc",
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#64748b",
-    fontSize: 15,
-  },
+  safe: { flex: 1, backgroundColor: "#f8fafc" },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc" },
+  loadingText: { marginTop: 12, color: "#64748b", fontSize: 15 },
 
-  // Progress header
   progressHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -341,24 +337,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
-  progressStats: {
-    flex: 1,
-  },
-  progressNumber: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: NAVY,
-  },
-  progressSlash: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#94a3b8",
-  },
-  progressLabel: {
-    fontSize: 13,
-    color: "#64748b",
-    marginTop: 2,
-  },
+  progressStats: { flex: 1 },
+  progressNumber: { fontSize: 28, fontWeight: "800", color: NAVY },
+  progressSlash: { fontSize: 18, fontWeight: "500", color: "#94a3b8" },
+  progressLabel: { fontSize: 13, color: "#64748b", marginTop: 2 },
   syncBadge: {
     backgroundColor: "#fef3c7",
     borderRadius: 12,
@@ -366,11 +348,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginRight: 10,
   },
-  syncBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#92400e",
-  },
+  syncBadgeText: { fontSize: 12, fontWeight: "600", color: "#92400e" },
   endShiftButton: {
     backgroundColor: RED,
     borderRadius: 10,
@@ -379,38 +357,15 @@ const styles = StyleSheet.create({
     minHeight: 56,
     justifyContent: "center",
   },
-  endShiftText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  endShiftText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
 
-  // Progress bar
-  progressBarTrack: {
-    height: 4,
-    backgroundColor: "#e2e8f0",
-  },
-  progressBarFill: {
-    height: 4,
-    backgroundColor: GREEN,
-  },
+  progressBarTrack: { height: 4, backgroundColor: "#e2e8f0" },
+  progressBarFill: { height: 4, backgroundColor: GREEN },
 
-  // Error
-  errorBanner: {
-    backgroundColor: "#fef3c7",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  errorText: {
-    color: "#92400e",
-    fontSize: 13,
-    textAlign: "center",
-  },
+  errorBanner: { backgroundColor: "#fef3c7", paddingHorizontal: 16, paddingVertical: 8 },
+  errorText: { color: "#92400e", fontSize: 13, textAlign: "center" },
 
-  // List
-  listContent: {
-    paddingVertical: 8,
-  },
+  listContent: { paddingVertical: 8 },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -427,15 +382,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  contactRowVisited: {
-    opacity: 0.6,
-    backgroundColor: "#f1f5f9",
-  },
-  contactRowPressed: {
-    backgroundColor: "#eff6ff",
-  },
+  contactRowVisited: { opacity: 0.6, backgroundColor: "#f1f5f9" },
+  contactRowPressed: { backgroundColor: "#eff6ff" },
 
-  // Sequence badge
   sequenceBadge: {
     width: 36,
     height: 36,
@@ -445,36 +394,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  sequenceBadgeVisited: {
-    backgroundColor: "#dcfce7",
-  },
-  sequenceText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: NAVY,
-  },
-  sequenceTextVisited: {
-    color: GREEN,
-    fontSize: 18,
-  },
+  sequenceBadgeVisited: { backgroundColor: "#dcfce7" },
+  sequenceText: { fontSize: 14, fontWeight: "700", color: NAVY },
+  sequenceTextVisited: { color: GREEN, fontSize: 18 },
 
-  // Contact info
-  contactInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  contactName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0f172a",
-  },
-  contactAddress: {
-    fontSize: 13,
-    color: "#64748b",
-    marginTop: 2,
-  },
+  contactInfo: { flex: 1, marginRight: 8 },
+  contactName: { fontSize: 16, fontWeight: "600", color: "#0f172a" },
+  contactAddress: { fontSize: 13, color: "#64748b", marginTop: 2 },
 
-  // Support badge
   supportBadge: {
     borderRadius: 8,
     paddingHorizontal: 8,
@@ -482,23 +409,10 @@ const styles = StyleSheet.create({
     minWidth: 56,
     alignItems: "center",
   },
-  supportBadgeText: {
-    color: "#ffffff",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  supportBadgeText: { color: "#ffffff", fontSize: 11, fontWeight: "700" },
 
-  // Empty state
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 80,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#334155",
-  },
+  emptyState: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#334155" },
   emptySubtitle: {
     fontSize: 14,
     color: "#64748b",

@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X } from "lucide-react";
-import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X, Users, CheckCircle2 } from "lucide-react";
+import { Button, Input, Select, Card, PageHeader, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, MultiSelect, Spinner } from "@/components/ui";
 import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
@@ -384,9 +384,70 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   );
 
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [selectAllPages, setSelectAllPages] = useState(false);
+  const [bulkActionModal, setBulkActionModal] = useState<"support" | "delete" | null>(null);
   const [slideOverContactId, setSlideOverContactId] = useState<string | null>(null);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  // ── Inline cell editing ──────────────────────────────────────────────────
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+
+  function startEdit(id: string, field: string) {
+    setEditingCell({ id, field });
+  }
+
+  async function saveCell(id: string, field: string, value: string) {
+    setEditingCell(null);
+    const prev = contacts.find((c) => c.id === id);
+    if (!prev) return;
+
+    // Optimistic update
+    setContacts((cs) =>
+      cs.map((c) =>
+        c.id === id ? { ...c, [field]: value || null } : c
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value || null }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      toast.success("Saved", { duration: 1500, position: "bottom-right" });
+    } catch {
+      // Revert on error
+      setContacts((cs) => cs.map((c) => (c.id === id ? prev : c)));
+      toast.error("Failed to save");
+    }
+  }
+
+  async function saveCellName(id: string, firstName: string, lastName: string) {
+    setEditingCell(null);
+    const prev = contacts.find((c) => c.id === id);
+    if (!prev) return;
+
+    setContacts((cs) =>
+      cs.map((c) =>
+        c.id === id ? { ...c, firstName: firstName || prev.firstName, lastName: lastName || prev.lastName } : c
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: firstName || prev.firstName, lastName: lastName || prev.lastName }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      toast.success("Saved", { duration: 1500, position: "bottom-right" });
+    } catch {
+      setContacts((cs) => cs.map((c) => (c.id === id ? prev : c)));
+      toast.error("Failed to save");
+    }
+  }
   // Task modal state
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -395,6 +456,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedContacts(checked ? contacts.map(c => c.id) : []);
+    if (!checked) setSelectAllPages(false);
   };
 
   const handleSelectContact = (contactId: string, checked: boolean) => {
@@ -444,6 +506,106 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       setSelectedContacts([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update support levels");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleBulkMarkContacted = async () => {
+    setBulkSubmitting(true);
+    try {
+      const res = await fetch("/api/contacts/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedContacts,
+          campaignId,
+          operation: "update",
+          update: { lastContactedAt: new Date().toISOString() },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to mark contacted");
+      toast.success(`${selectedContacts.length} contact${selectedContacts.length !== 1 ? "s" : ""} marked as contacted`);
+      setSelectedContacts([]);
+      setSelectAllPages(false);
+      loadContacts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkSubmitting(true);
+    try {
+      const res = await fetch("/api/contacts/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedContacts,
+          campaignId,
+          operation: "delete",
+          ...(selectAllPages && {
+            selectAll: true,
+            filters: {
+              search: debouncedSearch,
+              supportLevels,
+              followUpNeeded: followUp,
+              volunteerInterest: volunteerOnly,
+              signRequested: signOnly,
+              tags: selectedTags,
+              wards,
+            },
+          }),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to delete contacts");
+      toast.success(`${selectAllPages ? "All matching" : selectedContacts.length} contact${selectedContacts.length !== 1 ? "s" : ""} moved to Recycle Bin`);
+      setSelectedContacts([]);
+      setSelectAllPages(false);
+      setBulkActionModal(null);
+      loadContacts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleBulkSupportChange = async (supportLevel: string) => {
+    setBulkSubmitting(true);
+    try {
+      const res = await fetch("/api/contacts/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedContacts,
+          campaignId,
+          operation: "update",
+          update: { supportLevel },
+          ...(selectAllPages && {
+            selectAll: true,
+            filters: {
+              search: debouncedSearch,
+              supportLevels,
+              followUpNeeded: followUp,
+              volunteerInterest: volunteerOnly,
+              signRequested: signOnly,
+              tags: selectedTags,
+              wards,
+            },
+          }),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update support level");
+      toast.success(`Updated support level for ${selectAllPages ? "all matching" : selectedContacts.length} contact${selectedContacts.length !== 1 ? "s" : ""}`);
+      setSelectedContacts([]);
+      setSelectAllPages(false);
+      setBulkActionModal(null);
+      loadContacts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
       setBulkSubmitting(false);
     }
@@ -1218,6 +1380,32 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         })}
       </div>
 
+      {/* Select-all pages banner */}
+      {selectedContacts.length === contacts.length && contacts.length === pageSize && !selectAllPages && (
+        <div className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <span className="text-blue-800">All {contacts.length} contacts on this page are selected.</span>
+          <button
+            type="button"
+            onClick={() => setSelectAllPages(true)}
+            className="font-semibold text-blue-600 hover:text-blue-800 underline"
+          >
+            Select all {total.toLocaleString()} contacts?
+          </button>
+        </div>
+      )}
+      {selectAllPages && (
+        <div className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm">
+          <span className="text-white font-medium">All {total.toLocaleString()} contacts are selected.</span>
+          <button
+            type="button"
+            onClick={() => { setSelectAllPages(false); setSelectedContacts([]); }}
+            className="font-semibold text-blue-200 hover:text-white underline"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
       {/* Desktop table (md and above) */}
       <Card className="overflow-hidden hidden md:block">
         <div className="max-h-[65vh] overflow-x-auto overflow-y-auto">
@@ -1324,10 +1512,43 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                   {columnOrder.filter((k) => !hiddenColumns.includes(k)).map((key) => (
                     <td key={key} className="px-4 py-3" style={{ width: columnWidths[key], minWidth: columnWidths[key] }}>
                       {key === "name" && (
-                        <>
-                          <div className="font-medium text-gray-900">{fullName(c.firstName, c.lastName)}</div>
-                          {c._count.interactions > 0 && <div className="text-xs text-gray-400">{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</div>}
-                        </>
+                        editingCell?.id === c.id && editingCell.field === "name" ? (
+                          <div className="flex gap-1">
+                            <input
+                              ref={firstNameRef}
+                              autoFocus
+                              placeholder="First"
+                              defaultValue={c.firstName}
+                              onKeyDown={(e) => {
+                                if (e.key === "Tab") { e.preventDefault(); (e.currentTarget.nextElementSibling as HTMLInputElement | null)?.focus(); }
+                                if (e.key === "Escape") setEditingCell(null);
+                              }}
+                              className="w-24 px-1.5 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              data-first-name
+                            />
+                            <input
+                              placeholder="Last"
+                              defaultValue={c.lastName}
+                              onBlur={(e) => {
+                                const firstName = (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? c.firstName;
+                                void saveCellName(c.id, firstName, e.target.value);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const firstName = (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? c.firstName;
+                                  void saveCellName(c.id, firstName, e.currentTarget.value);
+                                }
+                                if (e.key === "Escape") setEditingCell(null);
+                              }}
+                              className="w-28 px-1.5 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        ) : (
+                          <div onClick={() => startEdit(c.id, "name")}>
+                            <div className="font-medium text-gray-900 cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all inline-block">{fullName(c.firstName, c.lastName)}</div>
+                            {c._count.interactions > 0 && <div className="text-xs text-gray-400 mt-0.5">{c._count.interactions} interaction{c._count.interactions !== 1 ? "s" : ""}</div>}
+                          </div>
+                        )
                       )}
                       {key === "contact" && (
                         <div className="space-y-0.5">
@@ -1358,7 +1579,27 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           ))}
                         </Select>
                       )}
-                      {key === "ward" && <span className="text-gray-500">{c.ward ?? "—"}</span>}
+                      {key === "ward" && (
+                        editingCell?.id === c.id && editingCell.field === "ward" ? (
+                          <input
+                            autoFocus
+                            defaultValue={c.ward ?? ""}
+                            onBlur={(e) => void saveCell(c.id, "ward", e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void saveCell(c.id, "ward", e.currentTarget.value);
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            className="w-full px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEdit(c.id, "ward")}
+                            className="text-gray-500 text-sm cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all inline-block"
+                          >
+                            {c.ward ?? <span className="text-gray-300">—</span>}
+                          </span>
+                        )
+                      )}
                       {key === "tags" && (
                         <div className="flex gap-1 flex-wrap">
                           {c.tags.slice(0, 2).map(({ tag }) => (
@@ -1375,8 +1616,50 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full" title="Sign requested" />}
                         </div>
                       )}
-                      {key === "phone" && <span className="text-gray-600 text-xs">{c.phone ? formatPhone(c.phone) : "—"}</span>}
-                      {key === "email" && <span className="text-gray-500 text-xs truncate block max-w-[180px]">{c.email ?? "—"}</span>}
+                      {key === "phone" && (
+                        editingCell?.id === c.id && editingCell.field === "phone" ? (
+                          <input
+                            autoFocus
+                            type="tel"
+                            defaultValue={c.phone ?? ""}
+                            onBlur={(e) => void saveCell(c.id, "phone", e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void saveCell(c.id, "phone", e.currentTarget.value);
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            className="w-full px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEdit(c.id, "phone")}
+                            className="text-gray-600 text-xs cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all inline-block"
+                          >
+                            {c.phone ? formatPhone(c.phone) : <span className="text-gray-300">—</span>}
+                          </span>
+                        )
+                      )}
+                      {key === "email" && (
+                        editingCell?.id === c.id && editingCell.field === "email" ? (
+                          <input
+                            autoFocus
+                            type="email"
+                            defaultValue={c.email ?? ""}
+                            onBlur={(e) => void saveCell(c.id, "email", e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void saveCell(c.id, "email", e.currentTarget.value);
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            className="w-full px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEdit(c.id, "email")}
+                            className="text-gray-500 text-xs truncate block max-w-[180px] cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all"
+                          >
+                            {c.email ?? <span className="text-gray-300">—</span>}
+                          </span>
+                        )
+                      )}
                       {key === "address" && <span className="text-gray-600 text-xs truncate block max-w-[200px]">{c.address1 ?? "—"}</span>}
                       {key === "city" && <span className="text-gray-500 text-xs">{c.city ?? "—"}</span>}
                       {key === "postalCode" && <span className="text-gray-500 text-xs font-mono">{c.postalCode ?? "—"}</span>}
@@ -1389,8 +1672,56 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           {(c.issues ?? []).length > 2 && <span className="text-[10px] text-gray-400">+{(c.issues ?? []).length - 2}</span>}
                         </div>
                       )}
-                      {key === "notes" && <span className="text-gray-500 text-xs truncate block max-w-[220px]">{c.notes ?? "—"}</span>}
-                      {key === "followUpDate" && <span className="text-gray-500 text-xs">{formatDate(c.followUpDate)}</span>}
+                      {key === "notes" && (
+                        editingCell?.id === c.id && editingCell.field === "notes" ? (
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            defaultValue={c.notes ?? ""}
+                            onBlur={(e) => void saveCell(c.id, "notes", e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditingCell(null);
+                              if (e.key === "Enter" && e.metaKey) void saveCell(c.id, "notes", e.currentTarget.value);
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEdit(c.id, "notes")}
+                            className="text-gray-500 text-xs truncate block max-w-[220px] cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all"
+                          >
+                            {c.notes ?? <span className="text-gray-300">—</span>}
+                          </span>
+                        )
+                      )}
+                      {key === "followUpDate" && (
+                        editingCell?.id === c.id && editingCell.field === "followUpDate" ? (
+                          <input
+                            autoFocus
+                            type="date"
+                            defaultValue={c.followUpDate ? c.followUpDate.slice(0, 10) : ""}
+                            onBlur={(e) => {
+                              const val = e.target.value ? new Date(e.target.value).toISOString() : "";
+                              void saveCell(c.id, "followUpDate", val);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = e.currentTarget.value ? new Date(e.currentTarget.value).toISOString() : "";
+                                void saveCell(c.id, "followUpDate", val);
+                              }
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                            className="w-full px-2 py-1 text-xs border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEdit(c.id, "followUpDate")}
+                            className="text-gray-500 text-xs cursor-text hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 rounded px-1 py-0.5 transition-all inline-block"
+                          >
+                            {c.followUpDate ? formatDate(c.followUpDate) : <span className="text-gray-300">—</span>}
+                          </span>
+                        )
+                      )}
                       {key === "captain" && <span className="text-gray-500 text-xs">{c.captain ?? "—"}</span>}
                       {key === "signPlaced" && <span className="text-xs">{c.signPlaced ? "✓" : "—"}</span>}
                       {key === "superSupporter" && <span className="text-xs">{c.superSupporter ? "★" : "—"}</span>}
@@ -1426,7 +1757,167 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         campaignId={campaignId}
         onCreated={() => { setShowAdd(false); loadContacts(); }}
       />
+
+      {/* ── Sticky bottom bulk action bar ─────────────────────────────── */}
+      <AnimatePresence>
+        {selectedContacts.length > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A2342] border-t border-slate-700 px-4 py-3 flex items-center gap-3 shadow-2xl md:left-60"
+          >
+            <span className="text-white font-semibold text-sm whitespace-nowrap">
+              {selectAllPages ? `All ${total.toLocaleString()} selected` : `${selectedContacts.length} contact${selectedContacts.length !== 1 ? "s" : ""} selected`}
+            </span>
+            <div className="flex-1 flex flex-wrap gap-2">
+              <BulkActionButton icon={Users} label="Change Support" onClick={() => setBulkActionModal("support")} />
+              <BulkActionButton icon={Send} label="Send Email" onClick={handleSendEmail} />
+              <BulkActionButton icon={MessageSquare} label="Send SMS" onClick={handleSendSMS} />
+              <BulkActionButton icon={CheckCircle2} label="Mark Contacted" onClick={() => void handleBulkMarkContacted()} disabled={bulkSubmitting} />
+              <BulkActionButton icon={Trash2} label="Delete" onClick={() => setBulkActionModal("delete")} danger />
+            </div>
+            <button
+              onClick={() => { setSelectedContacts([]); setSelectAllPages(false); }}
+              className="text-slate-400 hover:text-white ml-auto flex-shrink-0"
+              aria-label="Clear selection"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Change Support modal ──────────────────────────────────────── */}
+      <AnimatePresence>
+        {bulkActionModal === "support" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setBulkActionModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-base font-bold text-gray-900">Change Support Level</p>
+                <button onClick={() => setBulkActionModal(null)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                Update {selectAllPages ? `all ${total.toLocaleString()} matching` : selectedContacts.length} contact{selectedContacts.length !== 1 ? "s" : ""}
+              </p>
+              <div className="space-y-2">
+                {(["strong_support", "leaning_support", "unknown", "leaning_opposition", "strong_opposition"] as const).map((level) => {
+                  const colors: Record<string, string> = {
+                    strong_support: "bg-emerald-600 hover:bg-emerald-700 text-white",
+                    leaning_support: "bg-emerald-400 hover:bg-emerald-500 text-white",
+                    unknown: "bg-amber-400 hover:bg-amber-500 text-white",
+                    leaning_opposition: "bg-orange-500 hover:bg-orange-600 text-white",
+                    strong_opposition: "bg-red-600 hover:bg-red-700 text-white",
+                  };
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => void handleBulkSupportChange(level)}
+                      disabled={bulkSubmitting}
+                      className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${colors[level]}`}
+                    >
+                      {SUPPORT_LEVEL_LABELS[level]}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button variant="outline" className="w-full mt-3" onClick={() => setBulkActionModal(null)}>Cancel</Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete confirmation modal ─────────────────────────────────── */}
+      <AnimatePresence>
+        {bulkActionModal === "delete" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setBulkActionModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-base font-bold text-gray-900">Delete Contacts</p>
+                <button onClick={() => setBulkActionModal(null)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-700 mb-4">
+                Delete {selectAllPages ? `all ${total.toLocaleString()} matching` : <strong>{selectedContacts.length}</strong>} contact{selectedContacts.length !== 1 ? "s" : ""}? They will be moved to the Recycle Bin and can be restored within 90 days.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setBulkActionModal(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => void handleBulkDelete()}
+                  loading={bulkSubmitting}
+                  disabled={bulkSubmitting}
+                >
+                  Delete
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ─── Bulk action button ───────────────────────────────────────────────────────
+function BulkActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  danger,
+  disabled,
+}: {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+        danger
+          ? "bg-red-600/20 text-red-300 hover:bg-red-600/40 border border-red-600/40"
+          : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
+      }`}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
   );
 }
 

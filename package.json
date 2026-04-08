@@ -65,6 +65,7 @@
     "@upstash/redis": "^1.37.0",
     "@vercel/blob": "^2.3.3",
     "bcryptjs": "^2.4.3",
+    "jose": "^4.15.9",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",

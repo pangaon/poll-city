@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "Poll City",
-    "slug": "poll-city",
+    "name": "Poll City Canvasser",
+    "slug": "poll-city-canvasser",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "scheme": "pollcity",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1e40af"
+      "backgroundColor": "#0A2342"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "city.poll.canvasser",
+      "bundleIdentifier": "ca.pollcity.canvasser",
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Poll City uses your location to show your position on the canvassing map and track your route through the turf.",
@@ -30,9 +30,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1e40af"
+        "backgroundColor": "#0A2342"
       },
-      "package": "city.poll.canvasser",
+      "package": "ca.pollcity.canvasser",
       "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -76,6 +76,7 @@
       "router": {
         "origin": "https://app.poll.city"
       },
+      "EXPO_PUBLIC_API_URL": "https://poll-city-74azv5fvw-pangaons-projects.vercel.app",
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
       }

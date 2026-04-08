@@ -100,4 +100,10 @@
 /* Safe area utility for mobile bottom nav */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
+/* ─── Demo ticker animation ─────────────────────────────────────────────── */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @import './poll-city-global-override.css';

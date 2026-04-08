@@ -6,7 +6,7 @@ import {
   ArrowRight, Play, Users, MapPin, BarChart3, DollarSign,
   Mail, Phone, Target, Bot, Shield, Globe, Calendar,
   Zap, CheckCircle2, Eye, Copy, Check, ExternalLink,
-  BookOpen, Printer, Settings, MessageSquare, Vote,
+  BookOpen, Printer, Settings, MessageSquare, Vote, Lock,
 } from "lucide-react";
 
 /* ─── Demo Roles ─────────────────────────────────────────────────────────── */
@@ -268,6 +268,69 @@ export default function DemoPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+      {/* Personalised Demo Links */}
+      <section className="py-14 bg-slate-50 border-t border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">Shareable Demos</p>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Want a Personalised Demo?</h2>
+            <p className="mt-2 text-sm text-slate-500 max-w-xl mx-auto">
+              Request a shareable demo link from our team. No login required — just click and explore.
+              Each link is personalised and token-gated.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {[
+              {
+                type: "candidate",
+                label: "Candidate Demo",
+                desc: "Ward 20 Toronto municipal campaign — CRM, GOTV gap, canvassing, Adoni AI insights.",
+                color: "#0A2342",
+                icon: MapPin,
+              },
+              {
+                type: "party",
+                label: "Party Demo",
+                desc: "Ontario provincial party — 124 ridings, donation tracking, province-wide metrics.",
+                color: "#1D9E75",
+                icon: Globe,
+              },
+              {
+                type: "media",
+                label: "Election Night Demo",
+                desc: "Live results ticker, mayoral race, approval ratings, flash polls.",
+                color: "#dc2626",
+                icon: BarChart3,
+              },
+            ].map((d) => {
+              const Icon = d.icon;
+              return (
+                <div key={d.type} className="rounded-xl border-2 border-slate-200 bg-white p-5 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: `${d.color}15` }}>
+                      <Icon className="w-5 h-5" style={{ color: d.color }} />
+                    </div>
+                    <h3 className="font-bold text-slate-900">{d.label}</h3>
+                  </div>
+                  <p className="text-sm text-slate-500 flex-1">{d.desc}</p>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="text-xs text-slate-500">Request required — link from your Poll City contact</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-center mt-6 text-sm text-slate-400">
+            Already have a link?{" "}
+            <span className="text-slate-600 font-medium">
+              Add <code className="font-mono text-xs bg-slate-100 px-1 py-0.5 rounded">?token=your_token</code> to
+              the demo URL your contact sent you.
+            </span>
+          </p>
         </div>
       </section>
     </div>

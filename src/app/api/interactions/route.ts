@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { apiAuth, mobileApiAuth } from "@/lib/auth/helpers";
 import { createInteractionSchema } from "@/lib/validators";
 import { sanitizeUserText } from "@/lib/security/monitor";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
@@ -56,10 +56,11 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/interactions
- * Log a new interaction with a contact
+ * Log a new interaction with a contact.
+ * Accepts both NextAuth cookie sessions (web) and mobile Bearer JWT tokens.
  */
 export async function POST(req: NextRequest) {
-  const { session, error } = await apiAuth(req);
+  const { session, error } = await mobileApiAuth(req);
   if (error) return error;
 
   let body: unknown;
