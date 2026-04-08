@@ -25,6 +25,11 @@ import {
   BarChart3,
   TrendingUp,
   FileText,
+  Globe,
+  Layers,
+  Play,
+  XCircle,
+  MinusCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +42,7 @@ const RED = "#E24B4A";
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 /* ── types ──────────────────────────────────────────────────── */
-type Tab = "health" | "alerts" | "customers" | "demo" | "platform" | "clients";
+type Tab = "health" | "alerts" | "customers" | "demo" | "platform" | "clients" | "dataops";
 
 interface HealthMetric {
   id: string;
@@ -129,6 +134,39 @@ interface DemoCreateResponse {
   data: DemoToken;
 }
 
+interface DatasetHealth {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  status: string;
+  source: { name: string; slug: string; jurisdictionLevel: string };
+  lastIngestedAt: string | null;
+  recordCount: number | null;
+  qualityScore: number | null;
+  isOverdue: boolean;
+  lastRun: { status: string; startedAt: string; recordsFetched: number | null; errorSummary: string | null } | null;
+}
+
+interface IngestRun {
+  id: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  recordsFetched: number | null;
+  recordsInserted: number | null;
+  durationMs: number | null;
+  errorSummary: string | null;
+  dataSource: { name: string; slug: string };
+  dataset: { name: string; slug: string; category: string };
+}
+
+interface DataOpsData {
+  sources: Array<{ id: string; name: string; slug: string; jurisdictionLevel: string; isActive: boolean; lastCheckedAt: string | null; _count: { datasets: number; ingestRuns: number } }>;
+  datasetHealth: DatasetHealth[];
+  recentRuns: IngestRun[];
+}
+
 const METRIC_ICONS = {
   server: Server,
   database: Database,
@@ -215,6 +253,10 @@ export default function OpsClient() {
   const [clientsData, setClientsData] = useState<ClientRecord[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [clientsLoaded, setClientsLoaded] = useState(false);
+  const [dataOpsData, setDataOpsData] = useState<DataOpsData | null>(null);
+  const [dataOpsLoading, setDataOpsLoading] = useState(false);
+  const [dataOpsLoaded, setDataOpsLoaded] = useState(false);
+  const [dataOpsSeeding, setDataOpsSeeding] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -348,6 +390,38 @@ export default function OpsClient() {
     }
   }, [clientsLoaded]);
 
+  const loadDataOps = useCallback(async () => {
+    if (dataOpsLoaded) return;
+    setDataOpsLoading(true);
+    try {
+      const res = await fetch("/api/platform/data-ops");
+      if (res.ok) {
+        const json = (await res.json()) as { data: DataOpsData };
+        setDataOpsData(json.data ?? null);
+        setDataOpsLoaded(true);
+      }
+    } catch (err) {
+      console.error("Failed to load data ops:", err);
+    } finally {
+      setDataOpsLoading(false);
+    }
+  }, [dataOpsLoaded]);
+
+  const seedRegistry = useCallback(async () => {
+    setDataOpsSeeding(true);
+    try {
+      const res = await fetch("/api/platform/data-ops/seed", { method: "POST" });
+      if (res.ok) {
+        setDataOpsLoaded(false);
+        await loadDataOps();
+      }
+    } catch (err) {
+      console.error("Seed failed:", err);
+    } finally {
+      setDataOpsSeeding(false);
+    }
+  }, [loadDataOps]);
+
   function resolveAlert(id: string) {
     setAlerts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, resolved: true } : a)),
@@ -376,6 +450,7 @@ export default function OpsClient() {
   const tabs: { id: Tab; label: string; icon: typeof Activity }[] = [
     { id: "platform", label: "Platform", icon: BarChart3 },
     { id: "clients", label: "Clients", icon: Building2 },
+    { id: "dataops", label: "Data Ops", icon: Globe },
     { id: "health", label: "Health", icon: Activity },
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "customers", label: "Customers", icon: Users },
@@ -385,6 +460,7 @@ export default function OpsClient() {
   function handleTabChange(id: Tab) {
     setTab(id);
     if (id === "clients") void loadClients();
+    if (id === "dataops") void loadDataOps();
   }
 
   const unresolvedCount = alerts.filter((a) => !a.resolved).length;
@@ -475,6 +551,15 @@ export default function OpsClient() {
             )}
             {tab === "clients" && (
               <ClientsTab data={clientsData} loading={clientsLoading} />
+            )}
+            {tab === "dataops" && (
+              <DataOpsTab
+                data={dataOpsData}
+                loading={dataOpsLoading}
+                onSeed={() => void seedRegistry()}
+                seeding={dataOpsSeeding}
+                onRefresh={() => { setDataOpsLoaded(false); void loadDataOps(); }}
+              />
             )}
             {tab === "health" && <HealthTab metrics={health} />}
             {tab === "alerts" && (
@@ -1453,3 +1538,132 @@ function DemoTab({
     </div>
   );
 }
+
+// -- DataOps Tab ----------------------------------------------------------------
+
+function DataOpsTab({
+  data,
+  loading,
+  onSeed,
+  seeding,
+  onRefresh,
+}: {
+  data: DataOpsData | null;
+  loading: boolean;
+  onSeed: () => void;
+  seeding: boolean;
+  onRefresh: () => void;
+}) {
+  if (loading) {
+    return (
+      <div className='space-y-3'>
+        {[1, 2, 3].map((i) => <Shimmer key={i} className='h-20 w-full' />)}
+      </div>
+    );
+  }
+
+  const statusColor = (s: string) =>
+    s === 'active' ? GREEN : s === 'planned' ? AMBER : s === 'broken' ? RED : '#9ca3af';
+
+  const runColor = (s: string) =>
+    s === 'success' ? GREEN : s === 'failed' ? RED : s === 'partial' ? AMBER : '#9ca3af';
+
+  const sourcesByLevel: Record<string, DataOpsData["sources"]> = {};
+  for (const src of (data?.sources ?? [])) {
+    const lvl = src.jurisdictionLevel;
+    sourcesByLevel[lvl] = [...(sourcesByLevel[lvl] ?? []), src];
+  }
+
+  return (
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h2 className='text-lg font-semibold' style={{ color: NAVY }}>Civic Data Ops</h2>
+          <p className='text-sm text-gray-500'>Official Canadian political data ingestion</p>
+        </div>
+        <div className='flex gap-2'>
+          {(!data || data.sources.length === 0) && (
+            <button onClick={onSeed} disabled={seeding}
+              className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white'
+              style={{ background: GREEN, opacity: seeding ? 0.6 : 1 }}>
+              <Layers className='w-4 h-4' />
+              {seeding ? 'Seeding...' : 'Seed Registry'}
+            </button>
+          )}
+          <button onClick={onRefresh}
+            className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50'>
+            <RefreshCw className='w-4 h-4' />Refresh
+          </button>
+        </div>
+      </div>
+      {!data || data.sources.length === 0 ? (
+        <div className='rounded-xl border-2 border-dashed border-gray-200 p-10 text-center'>
+          <Globe className='w-10 h-10 text-gray-300 mx-auto mb-3' />
+          <p className='text-gray-500 font-medium'>Source registry is empty</p>
+          <p className='text-sm text-gray-400 mt-1'>Click Seed Registry to load Toronto, StatsCan, Elections Canada, Elections Ontario</p>
+        </div>
+      ) : (
+        <>
+          <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+            {Object.entries(sourcesByLevel).map(([level, srcs]) => (
+              <div key={level} className='bg-white rounded-xl border border-gray-100 p-4'>
+                <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>{level}</p>
+                <p className='text-2xl font-bold' style={{ color: NAVY }}>{srcs.length}</p>
+                <p className='text-xs text-gray-500'>{srcs.length === 1 ? 'source' : 'sources'}</p>
+              </div>
+            ))}
+            <div className='bg-white rounded-xl border border-gray-100 p-4'>
+              <p className='text-xs text-gray-400 uppercase tracking-wide mb-1'>Datasets</p>
+              <p className='text-2xl font-bold' style={{ color: NAVY }}>{data.datasetHealth.length}</p>
+              <p className='text-xs text-gray-500'>registered</p>
+            </div>
+          </div>
+          <div>
+            <h3 className='text-sm font-semibold text-gray-700 mb-3'>Dataset Health</h3>
+            <div className='space-y-2'>
+              {data.datasetHealth.map((d) => (
+                <div key={d.id} className='bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-4'>
+                  <div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColor(d.status) }} />
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-sm font-medium text-gray-900 truncate'>{d.name}</p>
+                    <p className='text-xs text-gray-400'>{d.source.name} � {d.category}</p>
+                  </div>
+                  <div className='text-right text-xs text-gray-400 flex-shrink-0'>
+                    {d.lastIngestedAt ? new Date(d.lastIngestedAt).toLocaleDateString('en-CA') : <span className='text-amber-500'>never run</span>}
+                  </div>
+                  {d.recordCount !== null && <div className='text-xs text-gray-500 flex-shrink-0'>{d.recordCount.toLocaleString()} rows</div>}
+                  {d.isOverdue && <AlertCircle className='w-4 h-4 flex-shrink-0' style={{ color: AMBER }} />}
+                  {d.lastRun && (
+                    <div className='flex-shrink-0'>
+                      {d.lastRun.status === 'success' ? <CheckCircle className='w-4 h-4' style={{ color: GREEN }} /> :
+                       d.lastRun.status === 'failed' ? <XCircle className='w-4 h-4' style={{ color: RED }} /> :
+                       d.lastRun.status === 'partial' ? <MinusCircle className='w-4 h-4' style={{ color: AMBER }} /> :
+                       <Play className='w-4 h-4 text-gray-400' />}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          {data.recentRuns.length > 0 && (
+            <div>
+              <h3 className='text-sm font-semibold text-gray-700 mb-3'>Recent Runs</h3>
+              <div className='space-y-1'>
+                {data.recentRuns.slice(0, 10).map((r) => (
+                  <div key={r.id} className='flex items-center gap-3 px-4 py-2 bg-white rounded-lg border border-gray-100 text-sm'>
+                    <div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: runColor(r.status) }} />
+                    <span className='text-gray-700 flex-1 truncate'>{r.dataset.name}</span>
+                    <span className='text-gray-400 text-xs'>{r.dataSource.name}</span>
+                    {r.recordsFetched !== null && <span className='text-gray-500 text-xs'>{r.recordsFetched} rows</span>}
+                    {r.durationMs !== null && <span className='text-gray-400 text-xs'>{(r.durationMs / 1000).toFixed(1)}s</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+

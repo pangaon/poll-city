@@ -1181,13 +1181,23 @@ model GeoDistrict {
   centroid     Json? // { lat, lng } for map centering
   metadata     Json? // raw source metadata (boundary set, area id, etc.)
   geoJson      Json? // GeoJSON geometry (Polygon or MultiPolygon)
+  // Ingestion provenance — which DataSource populated this boundary
+  dataSourceId String?
+  datasetId    String?
+  ingestedAt   DateTime?
+  effectiveAt  DateTime? // when this boundary version took effect
   createdAt    DateTime        @default(now())
+
+  dataSource DataSource? @relation(fields: [dataSourceId], references: [id])
+  dataset    Dataset?    @relation(fields: [datasetId], references: [id])
+  boundaryMemberships BoundaryMembership[]
 
   @@unique([postalPrefix, level])
   @@index([postalPrefix])
   @@index([province, districtType])
   @@index([name])
   @@index([slug])
+  @@index([dataSourceId])
   @@map("geo_districts")
 }
 
@@ -3726,4 +3736,124 @@ model AutonomousContent {
   @@unique([sourceId, sourceUrl])
   @@index([status, createdAt])
   @@map("autonomous_content")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CIVIC DATA INGESTION — SOURCE REGISTRY
+// Foundation for official Canadian civic/political data pipeline.
+// Phase 1 connectors: Toronto Open Data, Elections Canada, Elections Ontario,
+// Statistics Canada. Full multi-city ingestion platform builds on top of this.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Official data source registry — one row per government/agency source
+model DataSource {
+  id                   String    @id @default(cuid())
+  name                 String    // "Toronto Open Data", "Elections Canada", "Statistics Canada"
+  slug                 String    @unique // "toronto-open-data", "elections-canada"
+  jurisdictionLevel    String    // "municipal" | "provincial" | "federal" | "statistical"
+  jurisdictionName     String    // "Toronto", "Ontario", "Canada"
+  sourceType           String    // "api" | "bulk_download" | "rss" | "manual_import"
+  platformType         String    // "ckan" | "arcgis" | "statscan_wds" | "custom" | "unknown"
+  baseUrl              String
+  licenseUrl           String?
+  commercialUseAllowed Boolean   @default(true)
+  authRequired         Boolean   @default(false)
+  isActive             Boolean   @default(true)
+  refreshStrategy      String    @default("scheduled") // "scheduled" | "manual" | "webhook"
+  ownerTeam            String    @default("platform") // who owns this ingestion
+  notes                String?   @db.Text
+  lastCheckedAt        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  datasets     Dataset[]
+  ingestRuns   IngestRun[]
+  geoDistricts GeoDistrict[]
+
+  @@index([jurisdictionLevel])
+  @@index([isActive])
+  @@map("data_sources")
+}
+
+/// Individual dataset/endpoint within a DataSource
+model Dataset {
+  id                       String    @id @default(cuid())
+  dataSourceId             String
+  name                     String    // "Ward Boundaries 2022", "311 Service Requests"
+  slug                     String    // "toronto-ward-boundaries", "toronto-311"
+  category                 String    // "boundaries" | "elections" | "demographics" | "issues" | "finance" | "planning"
+  description              String?   @db.Text
+  officialDatasetUrl       String?
+  apiEndpointUrl           String?
+  downloadUrl              String?
+  format                   String    // "json" | "csv" | "geojson" | "shp" | "zip" | "xml"
+  isSpatial                Boolean   @default(false)
+  containsPii              Boolean   @default(false)
+  status                   String    @default("planned") // "planned" | "active" | "paused" | "deprecated" | "broken"
+  updateFrequencyDeclared  String?   // "daily" | "weekly" | "monthly" | "annual" | "on_election"
+  refreshIntervalMinutes   Int       @default(10080) // default: weekly
+  lastIngestedAt           DateTime?
+  lastSeenModifiedAt       DateTime?
+  recordCount              Int?
+  schemaHash               String?   // hash of the last seen schema for drift detection
+  qualityScore             Float?    // 0-100 computed quality score
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  dataSource   DataSource  @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+  ingestRuns   IngestRun[]
+  geoDistricts GeoDistrict[]
+
+  @@unique([dataSourceId, slug])
+  @@index([category])
+  @@index([status])
+  @@index([dataSourceId])
+  @@map("datasets")
+}
+
+/// Audit log for every ingestion attempt — raw zone record
+model IngestRun {
+  id              String    @id @default(cuid())
+  dataSourceId    String
+  datasetId       String
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  status          String    @default("running") // "running" | "success" | "partial" | "failed" | "skipped"
+  httpStatus      Int?
+  recordsFetched  Int?
+  recordsInserted Int?
+  recordsUpdated  Int?
+  recordsFailed   Int?
+  payloadChecksum String?   // SHA-256 of raw payload for deduplication
+  errorSummary    String?   @db.Text
+  rawStorageUri   String?   // path to raw payload if stored externally
+  triggeredBy     String    @default("cron") // "cron" | "manual" | "webhook"
+  durationMs      Int?
+
+  dataSource DataSource @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+  dataset    Dataset    @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId, startedAt])
+  @@index([status])
+  @@index([dataSourceId, completedAt])
+  @@map("ingest_runs")
+}
+
+/// Links any entity (contact, official, campaign) to a canonical boundary
+/// Replaces ad-hoc ward/riding string fields with FK-linked boundary memberships
+model BoundaryMembership {
+  id              String      @id @default(cuid())
+  entityType      String      // "contact" | "official" | "campaign" | "user"
+  entityId        String
+  geoBoundaryId   String
+  method          String      @default("postal_map") // "postal_map" | "point_in_polygon" | "source_native" | "manual"
+  confidenceScore Float       @default(1.0)
+  createdAt       DateTime    @default(now())
+
+  geoBoundary GeoDistrict @relation(fields: [geoBoundaryId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([geoBoundaryId])
+  @@index([entityType, entityId, geoBoundaryId])
+  @@map("boundary_memberships")
 }
