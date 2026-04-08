@@ -358,6 +358,105 @@ export async function POST(
     return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
+  // ── NPS ───────────────────────────────────────────────────────────────────
+  if (poll.type === "nps") {
+    const rawValue = body.value;
+    const numericValue = typeof rawValue === "number" ? rawValue : typeof rawValue === "string" ? parseInt(rawValue, 10) : NaN;
+    if (isNaN(numericValue) || numericValue < 0 || numericValue > 10) {
+      return NextResponse.json({ error: "NPS value must be an integer 0-10" }, { status: 422 });
+    }
+    const value = String(numericValue);
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+    const receipt = generateReceipt(params.id);
+    const err = await runWithDuplicateProtection(async () => {
+      await prisma.$transaction([
+        prisma.pollResponse.create({
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, value, postalCode, ward, riding, ipHash },
+        }),
+        prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
+      ]);
+    });
+    if (err) return err;
+    return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
+  }
+
+  // ── WORD CLOUD ────────────────────────────────────────────────────────────
+  if (poll.type === "word_cloud") {
+    const rawWords = Array.isArray(body.words) ? body.words : null;
+    if (!rawWords || rawWords.length === 0) {
+      return NextResponse.json({ error: "words array required for word_cloud polls" }, { status: 422 });
+    }
+    const cleaned = rawWords
+      .filter((w): w is string => typeof w === "string")
+      .map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30))
+      .filter((w) => w.length >= 2)
+      .slice(0, 3);
+    if (cleaned.length === 0) {
+      return NextResponse.json({ error: "No valid words after sanitization" }, { status: 422 });
+    }
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+    const receipt = generateReceipt(params.id);
+    const err = await runWithDuplicateProtection(async () => {
+      await prisma.$transaction([
+        prisma.pollResponse.create({
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, value: cleaned.join(","), postalCode, ward, riding, ipHash },
+        }),
+        prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
+        ...cleaned.map((word) =>
+          prisma.wordCloudEntry.upsert({
+            where: { pollId_word: { pollId: params.id, word } },
+            create: { pollId: params.id, word, count: 1 },
+            update: { count: { increment: 1 } },
+          })
+        ),
+      ]);
+    });
+    if (err) return err;
+    return NextResponse.json({ data: { recorded: cleaned.length, receipt: receipt.receiptCode } }, { status: 201 });
+  }
+
+  // ── TIMELINE / RADAR ──────────────────────────────────────────────────────
+  if (poll.type === "timeline_radar") {
+    const rawRatings = Array.isArray(body.ratings) ? body.ratings : null;
+    if (!rawRatings || rawRatings.length === 0) {
+      return NextResponse.json({ error: "ratings array required for timeline_radar polls" }, { status: 422 });
+    }
+    const validRatings = rawRatings.filter(
+      (r): r is { optionId: string; value: number } => {
+        if (!r || typeof r !== "object") return false;
+        const e = r as Record<string, unknown>;
+        return typeof e.optionId === "string" && validOptionIds.has(e.optionId) &&
+          typeof e.value === "number" && e.value >= 0 && e.value <= 10;
+      }
+    );
+    if (validRatings.length === 0) {
+      return NextResponse.json({ error: "No valid ratings (check optionId and value 0-10)" }, { status: 422 });
+    }
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+    const receipt = generateReceipt(params.id);
+    const err = await runWithDuplicateProtection(async () => {
+      await prisma.$transaction([
+        prisma.pollResponse.createMany({
+          data: validRatings.map((r, idx) => ({
+            pollId: params.id,
+            optionId: r.optionId,
+            value: String(Math.round(r.value)),
+            voteHash: idx === 0 ? voteHash : null,
+            receiptHash: idx === 0 ? receipt.receiptHash : null,
+            postalCode, ward, riding, ipHash,
+          })),
+          skipDuplicates: true,
+        }),
+        prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
+      ]);
+    });
+    if (err) return err;
+    return NextResponse.json({ data: { recorded: validRatings.length, receipt: receipt.receiptCode } }, { status: 201 });
+  }
+
   // Unknown poll type
   return NextResponse.json({ error: `Poll type "${poll.type}" does not support voting via this endpoint` }, { status: 422 });
 }
@@ -443,6 +542,45 @@ export async function GET(
     return NextResponse.json({
       data: { poll, results: { average: avg, count: values.length }, type: "slider" },
     });
+  }
+
+  if (poll.type === "nps") {
+    const rows = await prisma.pollResponse.findMany({
+      where: { pollId: poll.id },
+      select: { value: true },
+    });
+    const vals = rows.map((r) => parseInt(r.value ?? "0", 10)).filter((v) => !isNaN(v));
+    const promoters = vals.filter((v) => v >= 9).length;
+    const passives = vals.filter((v) => v >= 7 && v <= 8).length;
+    const detractors = vals.filter((v) => v <= 6).length;
+    const npsScore = vals.length > 0 ? Math.round(((promoters - detractors) / vals.length) * 100) : 0;
+    return NextResponse.json({
+      data: { poll, results: { promoters, passives, detractors, npsScore, total: vals.length }, type: "nps" },
+    });
+  }
+
+  if (poll.type === "word_cloud") {
+    const entries = await prisma.wordCloudEntry.findMany({
+      where: { pollId: poll.id },
+      orderBy: { count: "desc" },
+      take: 50,
+    });
+    return NextResponse.json({ data: { poll, results: entries, type: "word_cloud" } });
+  }
+
+  if (poll.type === "timeline_radar") {
+    const results = await Promise.all(
+      poll.options.map(async (opt) => {
+        const rows = await prisma.pollResponse.findMany({
+          where: { pollId: poll.id, optionId: opt.id },
+          select: { value: true },
+        });
+        const vals = rows.map((r) => parseFloat(r.value ?? "")).filter((v) => !isNaN(v));
+        const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+        return { id: opt.id, text: opt.text, avgValue: avg, count: vals.length };
+      })
+    );
+    return NextResponse.json({ data: { poll, results, type: "timeline_radar" } });
   }
 
   return NextResponse.json({ data: { poll, results: [], type: poll.type } });

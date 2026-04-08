@@ -17,7 +17,8 @@ export async function triggerNotification(event: NotificationEvent): Promise<num
         where: { ward: event.ward, notifyResults: true },
         select: { userId: true, pushToken: true, quietHoursStart: true, quietHoursEnd: true },
       });
-      recipients = profiles.filter((p) => !isQuietHours(p.quietHoursStart, p.quietHoursEnd));
+      recipients = profiles
+        .filter((p): p is typeof p & { userId: string } => p.userId !== null && !isQuietHours(p.quietHoursStart, p.quietHoursEnd));
       break;
     }
     case "poll_threshold": {
@@ -48,7 +49,7 @@ export async function triggerNotification(event: NotificationEvent): Promise<num
         where: { notifyEmergency: true },
         select: { userId: true, pushToken: true },
       });
-      recipients = profiles; // Emergency overrides quiet hours
+      recipients = profiles.filter((p): p is typeof p & { userId: string } => p.userId !== null); // Emergency overrides quiet hours
       break;
     }
   }

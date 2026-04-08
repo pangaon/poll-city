@@ -112,6 +112,9 @@ enum PollType {
   image_swipe // swipe on images
   emoji_react // react with emoji
   priority_rank // drag to rank issues
+  nps           // 0-10 NPS score
+  word_cloud    // free word submission
+  timeline_radar // multi-dimension rating
 }
 
 enum SwipeDirection {
@@ -1045,8 +1048,9 @@ model Poll {
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
-  campaign Campaign? @relation(fields: [campaignId], references: [id])
-  official Official? @relation(fields: [officialId], references: [id])
+  campaign         Campaign?        @relation(fields: [campaignId], references: [id])
+  official         Official?        @relation(fields: [officialId], references: [id])
+  wordCloudEntries WordCloudEntry[]
 
   @@index([targetRegion])
   @@index([isActive, isFeatured])
@@ -3332,13 +3336,16 @@ model PollSubscriber {
 
 model CivicProfile {
   id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation("UserCivicProfile", fields: [userId], references: [id])
+  userId          String?  @unique
+  user            User?    @relation("UserCivicProfile", fields: [userId], references: [id])
+  guestToken      String?  @unique // HMAC hash of guest UUID — for anonymous civic passport
   postalCode      String?
   ward            String?
   municipality    String?
   province        String?
   issues          String[]
+  ageRange        String?  // "18-24" | "25-34" | "35-49" | "50-64" | "65+"
+  sector          String?  // "public" | "private" | "nonprofit" | "student" | "retired"
   civicCredits    Int      @default(0)
   notifyResults   Boolean  @default(true)
   notifyPolls     Boolean  @default(true)
@@ -3618,4 +3625,68 @@ model DemoToken {
   expiresAt     DateTime
   createdAt     DateTime  @default(now())
   @@map("demo_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORD CLOUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WordCloudEntry {
+  id        String   @id @default(cuid())
+  pollId    String
+  word      String
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, word])
+  @@index([pollId, count])
+  @@map("word_cloud_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTONOMOUS CONTENT PIPELINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AutonomousSource {
+  id            String    @id @default(cuid())
+  name          String
+  type          String    // "rss" | "gov_api" | "open_north" | "gc_api"
+  url           String
+  config        Json?
+  geography     String?
+  topics        String[]  @default([])
+  isActive      Boolean   @default(true)
+  checkInterval Int       @default(30)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  content AutonomousContent[]
+
+  @@map("autonomous_sources")
+}
+
+model AutonomousContent {
+  id               String    @id @default(cuid())
+  sourceId         String
+  sourceUrl        String
+  headline         String
+  rawContent       String    @db.Text
+  extractedPoll    Json?
+  status           String    @default("pending")
+  pollId           String?
+  reviewNotes      String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  source AutonomousSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, sourceUrl])
+  @@index([status, createdAt])
+  @@map("autonomous_content")
 }
