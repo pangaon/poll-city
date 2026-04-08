@@ -405,6 +405,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
   const [mode, setMode] = useState<DashboardMode>("overview");
   const [data, setData] = useState<DashboardData>(FALLBACK);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -434,26 +435,25 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
     setSavingPrefs(false);
   }, [campaignId]);
 
-  /* Data fetching — every 10s */
-  useEffect(() => {
-    let cancelled = false;
-    async function pull() {
-      try {
-        const [health, gotv, election, morning, volunteers, donations, signs, activity, turfs, callList, priorityList, funnel] = await Promise.all([
-          fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/election-night?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/briefing?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/donations?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/signs?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/activity/live-feed?campaignId=${campaignId}&limit=20`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/turf?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/call-list?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/gotv/priority-list?campaignId=${campaignId}&tier=P1&limit=10`).then((r) => r.ok ? r.json() : null),
-          fetch(`/api/funnel/metrics?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
-        ]);
-        if (cancelled) return;
+  /* Data fetching — every 10s + manual refresh */
+  const refreshData = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [health, gotv, election, morning, volunteers, donations, signs, activity, turfs, callList, priorityList, funnel, stats] = await Promise.all([
+        fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/election-night?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/briefing?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/donations?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/signs?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/activity/live-feed?campaignId=${campaignId}&limit=20`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/turf?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/call-list?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/gotv/priority-list?campaignId=${campaignId}&tier=P1&limit=10`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/funnel/metrics?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+        fetch(`/api/dashboard/stats`).then((r) => r.ok ? r.json() : null),
+      ]);
 
         // ── Donations ───────────────────────────────────────────
         const donationRecords: any[] = donations?.data ?? [];
@@ -549,42 +549,52 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           ...prev,
           gap: gotv?.gap ?? election?.gap ?? prev.gap,
           supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? prev.supportersVoted,
-          confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? prev.confirmedSupporters,
+          confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? (stats?.contacts ? (stats.contacts.bySupport?.strong_support ?? 0) + (stats.contacts.bySupport?.leaning_support ?? 0) : prev.confirmedSupporters),
           doorsToday: morning?.yesterday?.doorsKnocked ?? prev.doorsToday,
-          volunteersActive: volunteers?.summary?.active ?? (leaderboard.filter((v: any) => v.status === "active" || v.status === "star").length || prev.volunteersActive),
-          signRequestsPending: computedSignsPending || prev.signRequestsPending,
+          volunteersActive: volunteers?.summary?.active ?? (leaderboard.filter((v: any) => v.status === "active" || v.status === "star").length || stats?.volunteers?.total || prev.volunteersActive),
+          signRequestsPending: computedSignsPending || stats?.signs?.requested || prev.signRequestsPending,
           recentActivity: computedActivity.length > 0 ? computedActivity : prev.recentActivity,
           canvassersSummary: computedCanvassersSummary.length > 0 ? computedCanvassersSummary : prev.canvassersSummary,
           turfCompletion: computedTurfCompletion.length > 0 ? computedTurfCompletion : prev.turfCompletion,
           walkListProgress: computedWalkListProgress.length > 0 ? computedWalkListProgress : prev.walkListProgress,
           callListStats: computedCallListStats.total > 0 ? computedCallListStats : prev.callListStats,
           donationChart: computedDonationChart,
-          p1Count: gotv?.p1Count ?? prev.p1Count,
-          p2Count: gotv?.p2Count ?? prev.p2Count,
-          p3Count: gotv?.p3Count ?? prev.p3Count,
+          p1Count: gotv?.p1Count ?? stats?.gotv?.p1Count ?? prev.p1Count,
+          p2Count: gotv?.p2Count ?? stats?.gotv?.p2Count ?? prev.p2Count,
+          p3Count: gotv?.p3Count ?? stats?.gotv?.p3Count ?? prev.p3Count,
           p4Count: gotv?.p4Count ?? prev.p4Count,
           totalVoted: gotv?.supportersVoted ?? prev.totalVoted,
-          totalSupporters: gotv?.confirmedSupporters ?? prev.totalSupporters,
+          totalSupporters: gotv?.confirmedSupporters ?? (stats?.contacts ? (stats.contacts.bySupport?.strong_support ?? 0) + (stats.contacts.bySupport?.leaning_support ?? 0) : prev.totalSupporters),
           priorityCallList: computedPriorityCallList.length > 0 ? computedPriorityCallList : prev.priorityCallList,
           candidateVotes: election?.candidateVotes ?? prev.candidateVotes,
           opponentVotes: election?.opponentVotes ?? prev.opponentVotes,
           pollsReporting: election?.pollsReporting ?? prev.pollsReporting,
-          totalPolls: election?.totalPolls ?? prev.totalPolls,
-          donationTotal: computedDonationTotal || prev.donationTotal,
+          totalPolls: election?.totalPolls ?? stats?.polls?.total ?? prev.totalPolls,
+          donationTotal: computedDonationTotal || stats?.donations?.total || prev.donationTotal,
           recentDonations: computedRecentDonations.length > 0 ? computedRecentDonations : prev.recentDonations,
           topDonors: computedTopDonors.length > 0 ? computedTopDonors : prev.topDonors,
           healthScore: health?.healthScore ?? prev.healthScore,
           grade: health?.grade ?? prev.grade,
           funnelData: funnel?.stages ?? prev.funnelData,
+          // ── From /api/dashboard/stats — previously unset fields ──────────────
+          currentSpending: stats?.spending?.current ?? prev.currentSpending,
+          spendingLimit: stats?.spending?.limit ?? prev.spendingLimit,
         }));
         setLastRefresh(new Date());
       } catch (e) { /* graceful degradation */ }
-      if (!cancelled) setLoading(false);
+    setRefreshing(false);
+    setLoading(false);
+  }, [campaignId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      if (!cancelled) await refreshData();
     }
     pull();
     const timer = setInterval(pull, 10000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [campaignId]);
+  }, [refreshData]);
 
   const isDark = mode === "war-room" || mode === "election-night";
   const currentModeInfo = MODES.find((m) => m.id === mode)!;
@@ -629,6 +639,19 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { void refreshData(); }}
+              disabled={refreshing}
+              title="Refresh data"
+              className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                isDark
+                  ? "border border-white/10 text-slate-300 hover:bg-white/10 disabled:opacity-40"
+                  : "border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              }`}
+            >
+              <Loader2 className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{refreshing ? "Refreshing…" : "Refresh"}</span>
+            </button>
             <button
               onClick={() => setShowWidgetBuilder(true)}
               className="flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
