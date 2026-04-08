@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
   const where = {
     campaignId,
     isDeceased: false,
+    deletedAt: null,
     ...(doNotContact !== undefined && { doNotContact }),
     ...(supportLevels && supportLevels.length > 0 && { supportLevel: { in: supportLevels } }),
     ...(followUpNeeded !== undefined && { followUpNeeded }),

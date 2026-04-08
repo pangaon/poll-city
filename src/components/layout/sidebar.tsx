@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Inbox, Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge
+  Inbox, Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -97,6 +97,7 @@ const SETTINGS_ADMIN_SECTION: NavSection = {
     { href: "/settings/team", icon: Users, label: "Team" },
     { href: "/settings/security", icon: Lock, label: "Security" },
     { href: "/import-export", icon: Upload, label: "Import / Export" },
+    { href: "/settings/recycle-bin", icon: Trash2, label: "Recycle Bin" },
     { href: "/help", icon: HelpCircle, label: "Help" },
   ],
 };

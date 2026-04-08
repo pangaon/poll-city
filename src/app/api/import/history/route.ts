@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       status: true,
       createdAt: true,
       completedAt: true,
+      rollbackDeadline: true,
     },
   });
 

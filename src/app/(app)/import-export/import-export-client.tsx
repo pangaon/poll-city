@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Upload, Download, FileText, AlertCircle, CheckCircle, History,
   Link2, FileSpreadsheet, Users, MapPin, Heart, HandHelping,
-  MessageSquare, ClipboardList, Package, ArrowUpFromLine, ArrowDownToLine,
+  MessageSquare, ClipboardList, Package, ArrowUpFromLine, ArrowDownToLine, RotateCcw,
 } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, PageHeader, Select, Badge, EmptyState } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
@@ -101,6 +101,7 @@ interface ImportHistoryItem {
   updatedCount: number;
   skippedCount: number;
   createdAt: string;
+  rollbackDeadline?: string | null;
 }
 
 interface ExportHistoryItem {
@@ -215,6 +216,7 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [duplicates, setDuplicates] = useState<DuplicatePreview | null>(null);
   const [phoneMatch, setPhoneMatch] = useState<PhoneMatchPreview | null>(null);
   const [history, setHistory] = useState<ImportHistoryItem[]>([]);
+  const [rollingBack, setRollingBack] = useState<Set<string>>(new Set());
   const [exportHistory, setExportHistory] = useState<ExportHistoryItem[]>([]);
   const [exportingByEndpoint, setExportingByEndpoint] = useState<Record<string, boolean>>({});
   const [useAiMatch, setUseAiMatch] = useState(true);
@@ -265,6 +267,29 @@ export default function ImportExportClient({ campaignId }: Props) {
       const data = await res.json();
       setHistory(Array.isArray(data?.data) ? data.data : []);
     } catch { /* Non-blocking */ }
+  }
+
+  async function handleRollback(importLogId: string, filename: string) {
+    if (!confirm(`Roll back all contacts from "${filename}"? They will be moved to the Recycle Bin.`)) return;
+    setRollingBack((prev) => new Set(prev).add(importLogId));
+    try {
+      const res = await fetch("/api/import-export/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ importLogId, campaignId }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        toast.success(json.message ?? "Import rolled back successfully");
+        await loadImportHistory();
+      } else {
+        toast.error(json.error ?? "Failed to roll back import");
+      }
+    } catch {
+      toast.error("Network error during rollback");
+    } finally {
+      setRollingBack((prev) => { const s = new Set(prev); s.delete(importLogId); return s; });
+    }
   }
 
   function buildMappingsFromAnalysis(next: AnalyzeResponse): Record<string, string> {
@@ -968,23 +993,44 @@ export default function ImportExportClient({ campaignId }: Props) {
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Updated</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Skipped</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">When</th>
+                          <th className="px-3 py-2 text-left text-gray-600 font-medium">Rollback</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {history.slice(0, 10).map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50/50">
-                            <td className="px-3 py-2 text-gray-800">{item.filename}</td>
-                            <td className="px-3 py-2">
-                              <Badge variant={item.status === "completed" ? "success" : item.status === "failed" ? "danger" : "default"}>
-                                {item.status}
-                              </Badge>
-                            </td>
-                            <td className="px-3 py-2 text-gray-700">{item.importedCount ?? 0}</td>
-                            <td className="px-3 py-2 text-gray-700">{item.updatedCount ?? 0}</td>
-                            <td className="px-3 py-2 text-gray-700">{item.skippedCount ?? 0}</td>
-                            <td className="px-3 py-2 text-gray-500">{new Date(item.createdAt).toLocaleString()}</td>
-                          </tr>
-                        ))}
+                        {history.slice(0, 10).map((item) => {
+                          const canRollback =
+                            item.status !== "rolled_back" &&
+                            item.rollbackDeadline != null &&
+                            new Date(item.rollbackDeadline) > new Date();
+                          return (
+                            <tr key={item.id} className="hover:bg-gray-50/50">
+                              <td className="px-3 py-2 text-gray-800">{item.filename}</td>
+                              <td className="px-3 py-2">
+                                <Badge variant={item.status === "completed" ? "success" : item.status === "failed" ? "danger" : item.status === "rolled_back" ? "warning" : "default"}>
+                                  {item.status}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-gray-700">{item.importedCount ?? 0}</td>
+                              <td className="px-3 py-2 text-gray-700">{item.updatedCount ?? 0}</td>
+                              <td className="px-3 py-2 text-gray-700">{item.skippedCount ?? 0}</td>
+                              <td className="px-3 py-2 text-gray-500">{new Date(item.createdAt).toLocaleString()}</td>
+                              <td className="px-3 py-2">
+                                {canRollback ? (
+                                  <button
+                                    onClick={() => handleRollback(item.id, item.filename)}
+                                    disabled={rollingBack.has(item.id)}
+                                    className="flex items-center gap-1 text-amber-700 hover:text-amber-900 disabled:opacity-50 font-medium"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    {rollingBack.has(item.id) ? "Rolling back…" : "Rollback"}
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

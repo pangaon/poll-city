@@ -103,7 +103,35 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ error: "Forbidden — requires Campaign Manager or above role in this campaign" }, { status: 403 });
   }
 
-  await prisma.contact.delete({ where: { id: params.id } });
+  const permanent = req.nextUrl.searchParams.get("permanent") === "true";
+
+  if (permanent) {
+    // Hard delete — only ADMIN / SUPER_ADMIN
+    if (!["ADMIN", "SUPER_ADMIN"].includes(membership.role)) {
+      return NextResponse.json({ error: "Forbidden — only Campaign Admins can permanently delete contacts" }, { status: 403 });
+    }
+    await prisma.contact.delete({ where: { id: params.id } });
+    await prisma.activityLog.create({
+      data: {
+        campaignId: contact.campaignId,
+        userId: session!.user.id,
+        action: "permanently_deleted",
+        entityType: "contact",
+        entityId: params.id,
+        details: {},
+      },
+    });
+    return NextResponse.json({ message: "Contact permanently deleted" });
+  }
+
+  // Soft delete
+  await prisma.contact.update({
+    where: { id: params.id },
+    data: {
+      deletedAt: new Date(),
+      deletedById: session!.user.id,
+    },
+  });
 
   await prisma.activityLog.create({
     data: {

@@ -800,6 +800,8 @@ model Contact {
   votedListUploadId    String?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  deletedAt            DateTime?
+  deletedById          String?
 
   campaign            Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   household           Household?           @relation(fields: [householdId], references: [id])
@@ -824,6 +826,7 @@ model Contact {
   @@index([email])
   @@index([phone])
   @@index([campaignId, supportLevel])
+  @@index([campaignId, deletedAt])
   @@map("contacts")
 }
 
@@ -938,6 +941,8 @@ model Task {
   completedAt  DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+  deletedById  String?
 
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact    Contact? @relation(fields: [contactId], references: [id])
@@ -974,6 +979,8 @@ model Sign {
   isOpponent   Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  deletedById  String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact  Contact? @relation(fields: [contactId], references: [id])
@@ -1003,6 +1010,8 @@ model VolunteerProfile {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+  deletedById      String?
 
   user              User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact           Contact?               @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -1275,6 +1284,8 @@ model Donation {
   receiptNumber String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  deletedById   String?
 
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact    Contact? @relation(fields: [contactId], references: [id])
@@ -2075,6 +2086,8 @@ model Event {
   cancelledAt       DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+  deletedById       String?
 
   campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   rsvps     EventRsvp[]
