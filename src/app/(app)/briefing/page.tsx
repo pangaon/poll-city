@@ -38,7 +38,7 @@ export default function BriefingPage() {
   useEffect(() => {
     const campaignId = document.cookie.match(/activeCampaignId=([^;]+)/)?.[1] ?? "";
     Promise.all([
-      fetch(`/api/briefing/morning?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/briefing?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
     ]).then(([briefing, healthScore]) => {
       setData(briefing);
