@@ -529,35 +529,70 @@ function ResolveModal({
 
 function TaskModal({
   context,
+  campaignId,
   onClose,
 }: {
   context: string;
+  campaignId: string;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(`Follow up: ${context}`);
-  const [saved, setSaved] = useState(false);
+  const [dueDate, setDueDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function submit() {
+    if (!title.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          title: title.trim(),
+          description: `Alert context: ${context}`,
+          dueDate: dueDate || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create task");
+      setDone(true);
+      setTimeout(onClose, 900);
+    } catch {
+      // stay open so user can retry
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <ModalOverlay title="Create Follow-up Task" onClose={onClose}>
+    <ModalOverlay title="Create Task" onClose={onClose}>
       <label className="block text-sm font-medium text-slate-700 mb-1">Task title</label>
       <input
         type="text"
-        className="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        disabled={done}
       />
-      <p className="mt-2 text-xs text-slate-500">Context: {context}</p>
+      <label className="block text-sm font-medium text-slate-700 mb-1">Due date (optional)</label>
+      <input
+        type="date"
+        className="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={dueDate}
+        onChange={(e) => setDueDate(e.target.value)}
+        disabled={done}
+      />
+      <p className="mt-2 text-xs text-slate-400">Alert: {context}</p>
       <div className="flex justify-end gap-2 mt-4">
-        <Button variant="outline" size="sm" onClick={onClose}>
-          Cancel
-        </Button>
-        {saved ? (
+        <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
+        {done ? (
           <Button size="sm" disabled>
-            <Check className="h-3.5 w-3.5" /> Saved
+            <Check className="h-3.5 w-3.5" /> Task created
           </Button>
         ) : (
-          <Button size="sm" onClick={() => setSaved(true)} disabled={!title.trim()}>
-            Create Task
+          <Button size="sm" onClick={submit} disabled={!title.trim() || submitting}>
+            {submitting ? "Creating…" : "Create Task"}
           </Button>
         )}
       </div>
@@ -567,38 +602,105 @@ function TaskModal({
 
 /* ─── Assign Modal ───────────────────────────────────────────────────────── */
 
-function AssignModal({ onClose }: { onClose: () => void }) {
-  const [assigned, setAssigned] = useState(false);
+interface TeamMember { userId: string; name: string; email: string | null; role: string }
+
+function AssignModal({
+  onClose,
+  campaignId,
+  alertTitle,
+  alertContext,
+}: {
+  onClose: () => void;
+  campaignId: string;
+  alertTitle: string;
+  alertContext?: string;
+}) {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [taskTitle, setTaskTitle] = useState(alertTitle);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/team?campaignId=${campaignId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.members) setMembers(d.members); else setLoadError(true); })
+      .catch(() => setLoadError(true));
+  }, [campaignId]);
+
+  async function submit() {
+    if (!selectedId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          title: taskTitle.trim() || alertTitle,
+          description: alertContext ? `Alert: ${alertContext}` : undefined,
+          assignedToId: selectedId,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setDone(true);
+      setTimeout(onClose, 900);
+    } catch {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <ModalOverlay title="Assign Team" onClose={onClose}>
-      <p className="text-sm text-slate-600 mb-3">
-        Quick-assign this alert to available team members.
-      </p>
-      <div className="space-y-2">
-        {["Field Lead", "Canvass Captain", "Finance Officer", "Volunteer Coord."].map((role) => (
-          <label key={role} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-            <input type="checkbox" className="rounded border-slate-300" />
-            <span className="text-sm text-slate-700">{role}</span>
-          </label>
-        ))}
-      </div>
-      <div className="flex justify-end gap-2 mt-4">
-        <Button variant="outline" size="sm" onClick={onClose}>
-          Cancel
-        </Button>
-        {assigned ? (
-          <Button size="sm" disabled>
-            <Check className="h-3.5 w-3.5" /> Assigned
-          </Button>
+    <ModalOverlay title="Assign to Team Member" onClose={onClose}>
+      <label className="block text-sm font-medium text-slate-700 mb-1">Task title</label>
+      <input
+        type="text"
+        className="w-full rounded-lg border border-slate-300 p-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={taskTitle}
+        onChange={(e) => setTaskTitle(e.target.value)}
+        disabled={done}
+      />
+      <label className="block text-sm font-medium text-slate-700 mb-1">Assign to</label>
+      {loadError ? (
+        <p className="text-sm text-red-500 mb-3">Could not load team members</p>
+      ) : members.length === 0 ? (
+        <p className="text-sm text-slate-400 mb-3">Loading team…</p>
+      ) : (
+        <div className="space-y-1.5 max-h-48 overflow-y-auto mb-3">
+          {members.map((m) => (
+            <label key={m.userId} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-slate-100">
+              <input
+                type="radio"
+                name="assignee"
+                value={m.userId}
+                checked={selectedId === m.userId}
+                onChange={() => setSelectedId(m.userId)}
+                className="text-blue-600"
+                disabled={done}
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{m.name}</p>
+                <p className="text-xs text-slate-400 truncate">{m.email} · {m.role}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+      <div className="flex justify-end gap-2 mt-2">
+        <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
+        {done ? (
+          <Button size="sm" disabled><Check className="h-3.5 w-3.5" /> Assigned</Button>
         ) : (
-          <Button size="sm" onClick={() => setAssigned(true)}>
-            <Users className="h-3.5 w-3.5" /> Assign
+          <Button size="sm" onClick={submit} disabled={!selectedId || submitting}>
+            <Users className="h-3.5 w-3.5" />{submitting ? "Assigning…" : "Assign + Create Task"}
           </Button>
         )}
       </div>
     </ModalOverlay>
   );
 }
+
 
 /* ─── Single Alert Card ──────────────────────────────────────────────────── */
 
@@ -611,7 +713,7 @@ function AlertCard({
   alert: AlertItem;
   onAcknowledge: (id: string) => void;
   onResolve: (alert: AlertItem) => void;
-  onAction: (action: AlertAction) => void;
+  onAction: (action: AlertAction, alert: AlertItem) => void;
 }) {
   const router = useRouter();
   const sev = SEVERITY_CONFIG[alert.severity];
@@ -722,7 +824,7 @@ function AlertCard({
                       if (action.href) {
                         router.push(action.href);
                       } else {
-                        onAction(action);
+                        onAction(action, alert);
                       }
                     }}
                   >
@@ -781,7 +883,7 @@ export default function AlertsClient({ campaignId }: Props) {
   // Modal state
   const [resolveTarget, setResolveTarget] = useState<AlertItem | null>(null);
   const [taskContext, setTaskContext] = useState<string | null>(null);
-  const [showAssign, setShowAssign] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<AlertItem | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -789,27 +891,48 @@ export default function AlertsClient({ campaignId }: Props) {
 
   const fetchAlerts = useCallback(async () => {
     setRefreshing(true);
-    const [followUps, gotv, notifications, signs] = await Promise.all([
-      getJson(`/api/contacts?campaignId=${campaignId}&followUpNeeded=true&pageSize=1`),
+    const [summary, gotv, notifications] = await Promise.all([
+      getJson(`/api/alerts/summary?campaignId=${campaignId}`),
       getJson(`/api/gotv?campaignId=${campaignId}`),
       getJson(`/api/notifications/stats?campaignId=${campaignId}`),
-      getJson(`/api/signs?campaignId=${campaignId}&pageSize=100`),
     ]);
 
-    const signRows = (signs?.data ?? []) as Array<{ status?: string }>;
-
     const rawData: RawData = {
-      followUpCount: followUps?.total ?? 0,
+      followUpCount: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "fu")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "fu")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
       gotvRate: Number(gotv?.data?.percentagePulled ?? 0),
       deliveryRate: Number(notifications?.data?.deliveryRate ?? 100),
-      pendingSigns: signRows.filter((r) => r.status === "requested").length,
-      installedSigns: signRows.filter((r) => r.status === "installed").length,
-      p1Uncontacted: 0, // would come from real API
-      spendingPct: 0,
+      pendingSigns: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "signs")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "signs")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
+      installedSigns: 0,
+      p1Uncontacted: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "p1")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "p1")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
+      spendingPct: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "spend")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "spend")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
       maxDonation: 0,
       maxAnonymous: 0,
-      shiftsUnfilled: 0,
-      canvasserInactive: 0,
+      shiftsUnfilled: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "shifts")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "shifts")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
+      canvasserInactive: summary?.top
+        ? (summary.top as Array<{ id: string; title: string }>).find(t => t.id === "canvas")
+          ? parseInt(((summary.top as Array<{ id: string; title: string }>).find(t => t.id === "canvas")?.title ?? "0").match(/\d+/)?.[0] ?? "0")
+          : 0
+        : 0,
       turfsIncomplete: 0,
     };
 
@@ -860,14 +983,18 @@ export default function AlertsClient({ campaignId }: Props) {
     setResolveTarget(null);
   }, []);
 
-  const handleAction = useCallback((action: AlertAction) => {
+  const handleAction = useCallback((action: AlertAction, alert?: AlertItem) => {
     if (action.modal === "task") {
-      setTaskContext(action.context ?? "");
+      setTaskContext(action.context ?? alert?.title ?? "");
     } else if (action.modal === "assign") {
-      setShowAssign(true);
+      setAssignTarget(alert ?? null);
     } else if (action.modal === "adoni") {
-      // Navigate to adoni with context — in a real app this would open the Adoni panel
-      setTaskContext(null);
+      const prefill = action.context
+        ? `Alert: ${action.context}. What should we do about this?`
+        : "What are the most urgent alerts I should act on right now?";
+      window.dispatchEvent(
+        new CustomEvent("pollcity:open-adoni", { detail: { prefill } })
+      );
     }
   }, []);
 
@@ -1128,11 +1255,18 @@ export default function AlertsClient({ campaignId }: Props) {
           <TaskModal
             key="task"
             context={taskContext}
+            campaignId={campaignId}
             onClose={() => setTaskContext(null)}
           />
         )}
-        {showAssign && (
-          <AssignModal key="assign" onClose={() => setShowAssign(false)} />
+        {assignTarget !== null && (
+          <AssignModal
+            key="assign"
+            campaignId={campaignId}
+            alertTitle={assignTarget.title}
+            alertContext={assignTarget.detail}
+            onClose={() => setAssignTarget(null)}
+          />
         )}
       </AnimatePresence>
     </div>
