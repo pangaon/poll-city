@@ -402,7 +402,9 @@ function OverviewTab({ campaignId, channelFilter, onNavigate }: { campaignId: st
           const histData = await historyRes.json();
           setRecentSends(histData.data ?? []);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Failed to load overview:", err);
+      }
       setLoading(false);
     })();
   }, [campaignId]);
@@ -567,9 +569,17 @@ function ComposeTab({
             const firstLine = data.text.split("\n")[0].replace(/<[^>]*>/g, "").slice(0, 100);
             setSubject(firstLine);
           }
+          setResult({ message: "AI content generated. Review and edit before sending." });
+        } else {
+          setResult({ error: "AI returned empty content. Try a more specific prompt." });
         }
+      } else {
+        const err = await res.json().catch(() => ({ error: "AI generation failed" }));
+        setResult({ error: err.error || "AI generation failed. Check your ANTHROPIC_API_KEY." });
       }
-    } catch {}
+    } catch {
+      setResult({ error: "Network error connecting to AI. Try again." });
+    }
     setAiGenerating(false);
     setShowAiPrompt(false);
     setAiPrompt("");
@@ -607,7 +617,10 @@ function ComposeTab({
           }),
         });
         if (res.ok) setAudience(await res.json());
-      } catch {}
+        else setAudience(null);
+      } catch {
+        setAudience(null);
+      }
       setAudienceLoading(false);
     }, 400);
     return () => clearTimeout(timer);
@@ -1146,7 +1159,7 @@ function CampaignsTab({ campaignId, channelFilter }: { campaignId: string; chann
           const data = await res.json();
           setHistory(data.data ?? data ?? []);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoading(false);
     })();
   }, [campaignId]);
@@ -1259,7 +1272,7 @@ function InboxTab({ campaignId, onNavigateCompose }: { campaignId: string; onNav
 
         entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setItems(entries);
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoading(false);
     })();
   }, [campaignId]);
@@ -1402,7 +1415,7 @@ function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campai
           const data = await res.json();
           setCustomTemplates(data.data?.customization?.templates ?? []);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoadingCustom(false);
     })();
   }, [campaignId]);
@@ -1574,7 +1587,7 @@ function AutomationsTab({ campaignId }: { campaignId: string }) {
           const automations = data.data?.customization?.automations ?? data.customization?.automations ?? {};
           setActiveAutomations(automations);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoading(false);
     })();
   }, []);
@@ -1591,7 +1604,7 @@ function AutomationsTab({ campaignId }: { campaignId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ customization: { automations: updated } }),
       });
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setToggling(null);
   }
 
@@ -1675,7 +1688,7 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
         const data = await res.json();
         setItems(data.data ?? []);
       }
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setLoading(false);
   }, [campaignId]);
 
@@ -1688,7 +1701,7 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
       if (res.ok) {
         await fetchScheduled();
       }
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setCancelling(null);
   }
 
@@ -1761,7 +1774,7 @@ function HistoryTab({ campaignId, channelFilter }: { campaignId: string; channel
           const data = await res.json();
           setHistory(data.data ?? []);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoading(false);
     })();
   }, [campaignId]);
@@ -1864,7 +1877,7 @@ function AudiencesTab({
         body: JSON.stringify({ campaignId, channel }),
       });
       if (res.ok) setAudience(await res.json());
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setLoading(false);
   }, [campaignId, channel]);
 
@@ -1879,7 +1892,7 @@ function AudiencesTab({
           const data = await res.json();
           setSavedSegments(data.data?.customization?.segments ?? []);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
     })();
   }, [campaignId]);
 
@@ -1907,7 +1920,7 @@ function AudiencesTab({
           const data = await res.json();
           setSegPreviewCount(data.count ?? 0);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setSegPreviewLoading(false);
     }, 400);
     return () => clearTimeout(timer);
@@ -1958,7 +1971,7 @@ function AudiencesTab({
         setSegHasPhone(false);
         setSegPreviewCount(null);
       }
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setSavingSegment(false);
   }
 
@@ -2263,7 +2276,7 @@ function SubscribersTab({ campaignId }: { campaignId: string }) {
           const signs = (data.data ?? data ?? []).filter((s: Record<string, unknown>) => s.status === "requested");
           setSignRequests(signs);
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       setLoading(false);
     })();
   }, [campaignId]);

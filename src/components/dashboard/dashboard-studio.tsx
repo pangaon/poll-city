@@ -220,12 +220,12 @@ function loadPrefsFromLS(campaignId: string): DashboardPreferences {
   try {
     const raw = localStorage.getItem(`${PREFS_LS_KEY}-${campaignId}`);
     if (raw) return JSON.parse(raw) as DashboardPreferences;
-  } catch {}
+  } catch (e) { /* graceful degradation */ }
   return DEFAULT_PREFS;
 }
 
 function savePrefsToLS(campaignId: string, prefs: DashboardPreferences) {
-  try { localStorage.setItem(`${PREFS_LS_KEY}-${campaignId}`, JSON.stringify(prefs)); } catch {}
+  try { localStorage.setItem(`${PREFS_LS_KEY}-${campaignId}`, JSON.stringify(prefs)); } catch (e) { /* graceful degradation */ }
 }
 
 /* ── Empty states ─────────────────────────────────── */
@@ -351,7 +351,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
             return;
           }
         }
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       if (!cancelled) {
         setPrefs(loadPrefsFromLS(campaignId));
         setPrefsLoaded(true);
@@ -389,7 +389,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dashboardPreferences: newPrefs }),
       });
-    } catch {}
+    } catch (e) { /* graceful degradation */ }
     setSavingPrefs(false);
   }, [campaignId]);
 
@@ -458,7 +458,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           grade: health?.grade ?? prev.grade,
         }));
         setLastRefresh(new Date());
-      } catch {}
+      } catch (e) { /* graceful degradation */ }
       if (!cancelled) setLoading(false);
     }
     pull();
