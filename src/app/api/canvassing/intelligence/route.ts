@@ -32,6 +32,11 @@ export async function GET(req: NextRequest) {
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const intel = await prisma.activityLog.findMany({
     where: { campaignId: campaignId!, action: "sign_intelligence" },
     orderBy: { createdAt: "desc" },
@@ -95,6 +100,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { campaignId, address, lat, lng, signType, notes } = parsed.data;
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const log = await prisma.activityLog.create({
     data: {

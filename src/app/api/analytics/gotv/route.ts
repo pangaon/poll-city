@@ -11,8 +11,13 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "gotv:read");
   if (error) return error;
 
-  const campaignId = session.user.activeCampaignId as string;
+  const campaignId = req.nextUrl.searchParams.get("campaignId") || (session.user.activeCampaignId as string);
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [totalContacts, totalVoted, supporterVoted, totalSupporters] = await Promise.all([
     prisma.contact.count({ where: { campaignId } }),

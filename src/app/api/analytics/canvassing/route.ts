@@ -10,8 +10,13 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "analytics:read");
   if (error) return error;
 
-  const campaignId = session.user.activeCampaignId as string;
+  const campaignId = req.nextUrl.searchParams.get("campaignId") || (session.user.activeCampaignId as string);
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const days = Number(req.nextUrl.searchParams.get("days") || "30");
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
