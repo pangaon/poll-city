@@ -471,105 +471,102 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
 
   return (
     <div
-      className={isDark ? "min-h-screen" : "min-h-screen bg-slate-50"}
+      className={isDark ? "rounded-xl -m-3 sm:-m-4 md:-m-6 p-4 min-h-full" : "space-y-4"}
       style={isDark ? { background: mode === "war-room" ? WAR_BG : "#0D1117", color: "#F0F6FC" } : undefined}
     >
       {/* ─── Header ──────────────────────────────────────── */}
-      <div className={isDark ? "border-b border-white/10" : "border-b border-slate-200 bg-white"}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              {campaignLogoUrl ? (
-                <img src={campaignLogoUrl} alt={campaignName} className="h-11 w-11 rounded-xl object-cover shadow-sm border border-slate-200/50" />
-              ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm" style={{ backgroundColor: currentModeInfo.color }}>
-                  {campaignName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div>
-                <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
-                  {campaignName}
-                </h1>
-                <div className="flex items-center gap-3 mt-0.5">
-                  <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                    {daysUntilElection()} days to election
+      <div className={isDark
+        ? "rounded-xl border border-white/10 bg-white/5 p-4"
+        : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      }>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {campaignLogoUrl ? (
+              <img src={campaignLogoUrl} alt={campaignName} className="h-11 w-11 rounded-xl object-cover shadow-sm border border-slate-200/50" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm" style={{ backgroundColor: currentModeInfo.color }}>
+                {campaignName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-slate-900"}`}>
+                {campaignName}
+              </h1>
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                  {daysUntilElection()} days to election
+                </span>
+                {lastRefresh && (
+                  <span className={`text-[10px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                    Updated {lastRefresh.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  {lastRefresh && (
-                    <span className={`text-[10px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                      Updated {lastRefresh.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Live
-                  </span>
-                </div>
+                )}
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Live
+                </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowWidgetBuilder(true)}
-                className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  isDark
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Widget
-              </button>
-              <button
-                onClick={() => setShowCustomize(true)}
-                className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  isDark
-                    ? "border border-white/10 text-slate-300 hover:bg-white/10"
-                    : "border border-slate-200 text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Customize
-              </button>
-              <select
-                value={mode}
-                onChange={(e) => switchMode(e.target.value as DashboardMode)}
-                className="block sm:hidden h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-              >
-                {MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowWidgetBuilder(true)}
+              className="flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Widget
+            </button>
+            <button
+              onClick={() => setShowCustomize(true)}
+              className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                isDark
+                  ? "border border-white/10 text-slate-300 hover:bg-white/10"
+                  : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Customize
+            </button>
+            <select
+              value={mode}
+              onChange={(e) => switchMode(e.target.value as DashboardMode)}
+              className="block sm:hidden h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+            >
+              {MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </div>
+        </div>
 
-          {/* Mode Tabs */}
-          <div className="mt-3 -mb-px hidden gap-1 overflow-x-auto sm:flex">
-            {MODES.map((m) => {
-              const Icon = m.icon;
-              const active = mode === m.id;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => switchMode(m.id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold rounded-t-lg border-b-2 transition-all ${
-                    active
-                      ? isDark
-                        ? "border-white text-white bg-white/5"
-                        : "text-white"
-                      : isDark
-                        ? "border-transparent text-slate-500 hover:text-slate-300 hover:border-white/20"
-                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                  }`}
-                  style={active && !isDark ? { backgroundColor: m.color, borderColor: m.color } : undefined}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
+        {/* Mode Tabs */}
+        <div className="mt-3 hidden gap-1 overflow-x-auto sm:flex">
+          {MODES.map((m) => {
+            const Icon = m.icon;
+            const active = mode === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => switchMode(m.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  active
+                    ? isDark
+                      ? "bg-white/10 text-white"
+                      : "text-white shadow-sm"
+                    : isDark
+                      ? "text-slate-500 hover:text-slate-300 hover:bg-white/5"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                }`}
+                style={active && !isDark ? { backgroundColor: m.color } : undefined}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {m.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ─── Body ────────────────────────────────────────── */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div>
         {/* Customize Panel */}
         <AnimatePresence>
           {showCustomize && (
