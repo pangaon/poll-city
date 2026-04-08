@@ -19,7 +19,7 @@ interface Contact {
   doNotContact: boolean; signRequested: boolean; signPlaced: boolean; volunteerInterest: boolean;
   issues: string[]; lastContactedAt: string | Date | null; followUpNeeded: boolean; followUpDate: string | Date | null;
   tags: { tag: { id: string; name: string; color: string } }[];
-  interactions: { id: string; type: string; notes: string | null; supportLevel: string | null; createdAt: string | Date; user: { id: string; name: string | null } }[];
+  interactions: { id: string; type: string; notes: string | null; supportLevel: string | null; createdAt: string | Date; user: { id: string; name: string | null } | null }[];
   tasks: { id: string; title: string; status: string; priority: string; dueDate: string | Date | null; createdAt: string | Date; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
 }
 
@@ -110,7 +110,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
       id: `interaction-${i.id}`,
       kind: "interaction",
       title: INTERACTION_TYPE_LABELS[i.type as InteractionType] ?? i.type,
-      subtitle: [i.notes, i.user.name ?? "Unknown"].filter(Boolean).join(" · "),
+      subtitle: [i.notes, i.user?.name ?? "Unknown"].filter(Boolean).join(" · "),
       createdAt: toDate(i.createdAt),
       badge: i.supportLevel ?? undefined,
     }));
@@ -340,7 +340,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
                             {i.supportLevel && <SupportLevelBadge level={i.supportLevel as SupportLevel} />}
                           </div>
                           {i.notes && <p className="text-sm text-gray-600 mt-1">{i.notes}</p>}
-                          <p className="text-xs text-gray-400 mt-1">{i.user.name ?? "Unknown"} · {formatDateTime(i.createdAt)}</p>
+                          <p className="text-xs text-gray-400 mt-1">{i.user?.name ?? "Unknown"} · {formatDateTime(i.createdAt)}</p>
                         </div>
                       </div>
                     </div>

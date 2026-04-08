@@ -901,7 +901,7 @@ model CanvassAssignment {
 model Interaction {
   id                String          @id @default(cuid())
   contactId         String
-  userId            String
+  userId            String?
   type              InteractionType
   notes             String?
   supportLevel      SupportLevel?
@@ -917,7 +917,7 @@ model Interaction {
   createdAt         DateTime        @default(now())
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
 
   @@index([contactId])
   @@index([userId])

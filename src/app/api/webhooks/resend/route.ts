@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import prisma from "@/lib/db/prisma";
 
 /**
@@ -17,8 +18,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Read raw body once — needed for both signature verification and JSON parsing.
+  const rawBody = await req.text();
+
   // Signature guard: validate against RESEND_WEBHOOK_SECRET when configured.
-  // Resend uses the Svix signing library — header is svix-signature.
+  // Resend uses the Svix signing scheme: HMAC-SHA256 over "{svix-id}.{svix-timestamp}.{body}",
+  // secret is base64-encoded after stripping the "whsec_" prefix.
   const resendSecret = process.env.RESEND_WEBHOOK_SECRET;
   if (resendSecret) {
     const svixSignature = req.headers.get("svix-signature");
@@ -26,78 +31,87 @@ export async function POST(req: NextRequest) {
     if (!svixSignature || !svixId || !svixTimestamp) {
       return NextResponse.json({ error: "Missing webhook signature headers" }, { status: 401 });
     }
-    // Full Svix HMAC verification is left for when the svix package is added.
-    // For now: presence of all three Svix headers is enforced.
-    // TODO: npm install svix and verify with new Webhook(resendSecret).verify(body, headers)
+
+    const secretBytes = Buffer.from(resendSecret.replace(/^whsec_/, ""), "base64");
+    const toSign = `${svixId}.${svixTimestamp}.${rawBody}`;
+    const computed = createHmac("sha256", secretBytes).update(toSign).digest("base64");
+
+    // svix-signature header is "v1,<sig1> v1,<sig2>" — any matching sig passes
+    const sigs = svixSignature.split(" ").map((s) => s.replace(/^v1,/, ""));
+    const valid = sigs.some((sig) => {
+      try {
+        return timingSafeEqual(Buffer.from(sig, "base64"), Buffer.from(computed, "base64"));
+      } catch {
+        return false;
+      }
+    });
+    if (!valid) {
+      return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+    }
   }
 
   try {
-    const event = await req.json();
-    const type = event.type as string;
-    const data = event.data as Record<string, unknown>;
-
-    // Extract email recipient
-    const toEmail = Array.isArray(data.to) ? (data.to[0] as string) : (data.to as string);
-
-    switch (type) {
-      case "email.delivered": {
-        // Update contact lastContactedAt
-        if (toEmail) {
-          await prisma.contact.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { lastContactedAt: new Date() },
-          });
-        }
-        break;
-      }
-
-      case "email.bounced": {
-        // Mark contact as bounced — set doNotContact for hard bounces
-        if (toEmail) {
-          await prisma.contact.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { doNotContact: true },
-          });
-          // Also unsubscribe newsletter
-          await prisma.newsletterSubscriber.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { status: "bounced" },
-          });
-        }
-        break;
-      }
-
-      case "email.complained": {
-        // Spam complaint — immediate DNC
-        if (toEmail) {
-          await prisma.contact.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { doNotContact: true },
-          });
-          await prisma.newsletterSubscriber.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { status: "unsubscribed", unsubscribedAt: new Date() },
-          });
-        }
-        break;
-      }
-
-      case "email.opened":
-      case "email.clicked": {
-        // Track engagement — update lastContactedAt
-        if (toEmail) {
-          await prisma.contact.updateMany({
-            where: { email: { equals: toEmail, mode: "insensitive" } },
-            data: { lastContactedAt: new Date() },
-          });
-        }
-        break;
-      }
-    }
-
-    return NextResponse.json({ received: true });
+    const event = JSON.parse(rawBody) as { type: string; data: Record<string, unknown> };
+    return await handleEvent(event.type, event.data);
   } catch (err) {
     console.error("Resend webhook error:", err);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
+}
+
+async function handleEvent(type: string, data: Record<string, unknown>): Promise<NextResponse> {
+  const toEmail = Array.isArray(data.to) ? (data.to[0] as string) : (data.to as string);
+
+  switch (type) {
+    case "email.delivered": {
+      if (toEmail) {
+        await prisma.contact.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { lastContactedAt: new Date() },
+        });
+      }
+      break;
+    }
+
+    case "email.bounced": {
+      if (toEmail) {
+        await prisma.contact.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { doNotContact: true },
+        });
+        await prisma.newsletterSubscriber.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { status: "bounced" },
+        });
+      }
+      break;
+    }
+
+    case "email.complained": {
+      if (toEmail) {
+        await prisma.contact.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { doNotContact: true },
+        });
+        await prisma.newsletterSubscriber.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { status: "unsubscribed", unsubscribedAt: new Date() },
+        });
+      }
+      break;
+    }
+
+    case "email.opened":
+    case "email.clicked": {
+      if (toEmail) {
+        await prisma.contact.updateMany({
+          where: { email: { equals: toEmail, mode: "insensitive" } },
+          data: { lastContactedAt: new Date() },
+        });
+      }
+      break;
+    }
+  }
+
+  return NextResponse.json({ received: true });
 }

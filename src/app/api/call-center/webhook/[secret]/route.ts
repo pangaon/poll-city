@@ -72,15 +72,11 @@ export async function POST(req: NextRequest, { params }: { params: { secret: str
     await prisma.interaction.create({
       data: {
         contactId,
-        // userId is required by schema but unavailable for webhook-created interactions.
-        // This will fail the FK constraint; .catch() below handles it gracefully.
-        // TODO: add a system user or make Interaction.userId optional.
-        userId: "system",
         type: InteractionType.phone_call,
         supportLevel: mappedSupport,
         notes: `Call center (${integration.provider}): ${result ?? "completed"}`,
       },
-    }).catch(() => {});
+    });
 
     // Update support level if we got one
     if (mappedSupport) {
