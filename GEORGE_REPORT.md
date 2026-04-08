@@ -280,10 +280,13 @@ IP_HASH_SALT                    # random string for rate limiting
 | Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
 |---------|--------|-----------|-------|----------------------|------------|
 | Chat interface | ✅ | 🟢 | Streaming, conversation UI | — | |
-| Tool use (24 tools) | ✅ | 🟢 | Contacts, tasks, donations, stats, tags | — | |
+| Tool use (24 tools) | ✅ | 🟢 | ALL tools execute real DB operations. Admin has full permissions. | — | |
+| draft_email | ✅ | 🟢 | Creates real NotificationLog draft. Shows in Scheduled tab. | — | |
+| draft_social_post | ✅ | 🟢 | Creates real SocialPost draft. Shows in Social tab. | — | |
 | Content generation | ✅ | 🟢 | 7 types: press, scripts, social, email, video, pamphlet, calendar | — | |
 | Sentiment classification | ✅ | 🟢 | Classifies inbound as positive/negative/media-inquiry | — | |
 | Prompt injection defense | ✅ | 🟢 | Detection + deflection | — | |
+| Auto-execute | ✅ | 🟢 | Defaults ON. Admin=all permissions. Campaign can disable in settings. | — | |
 
 ### 10. RESOURCE LIBRARY
 
