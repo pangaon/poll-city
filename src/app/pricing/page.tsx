@@ -193,9 +193,7 @@ export default function PricingPage() {
       <nav className="border-b border-slate-200 bg-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-              <span className="text-white font-black text-[10px]">PC</span>
-            </div>
+            <img src="/logo.png" alt="Poll City" className="w-7 h-7 rounded-lg object-contain" />
             <span className="font-bold text-slate-900">Poll City</span>
           </Link>
           <div className="flex items-center gap-3">
