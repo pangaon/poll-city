@@ -43,10 +43,12 @@ interface LeaderboardEntry {
 
 interface Shift {
   id: string;
-  title: string;
+  name: string;
   startTime: string;
   endTime: string;
   location?: string | null;
+  signupCount?: number;
+  capacity?: number | null;
 }
 
 interface VolunteerStats {
@@ -764,33 +766,87 @@ export default function VolunteersClient({ campaignId }: Props) {
       {/* Assign Shift modal */}
       <Modal open={showAssignShift} onClose={() => setShowAssignShift(false)} title="Assign to Shift" size="md">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Assigning {shiftTargets.length} volunteer{shiftTargets.length !== 1 ? "s" : ""} to a shift.
-          </p>
-          {shiftsLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
+          {/* Who is being assigned */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              {shiftTargets.length} volunteer{shiftTargets.length !== 1 ? "s" : ""} selected
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {shiftTargets.map((t) => (
+                <span key={t.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-sm text-gray-700">
+                  <span className="w-5 h-5 rounded-full bg-[#1D9E75] text-white text-xs flex items-center justify-center font-medium">
+                    {(t.user?.name ?? t.contact?.firstName ?? "?")[0].toUpperCase()}
+                  </span>
+                  {t.user?.name ?? `${t.contact?.firstName ?? ""} ${t.contact?.lastName ?? ""}`.trim()}
+                </span>
+              ))}
             </div>
-          ) : shifts.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">No upcoming shifts found.</p>
-          ) : (
-            <FormField label="Select shift">
-              <Select value={selectedShiftId} onChange={(e) => setSelectedShiftId(e.target.value)} className="min-h-[44px]">
-                <option value="">-- Choose a shift --</option>
-                {shifts.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title} — {s.startTime}
-                    {s.location ? ` @ ${s.location}` : ""}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-          )}
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-            <Button variant="secondary" onClick={() => setShowAssignShift(false)} className="min-h-[44px]">Cancel</Button>
-            <Button onClick={submitAssignShift} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]" disabled={!selectedShiftId}>
-              <UserCheck className="w-4 h-4" /> Assign
-            </Button>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            {shiftsLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />)}
+              </div>
+            ) : shifts.length === 0 ? (
+              <div className="text-center py-6 space-y-3">
+                <p className="text-sm text-gray-500">No upcoming shifts found.</p>
+                <a
+                  href="/volunteers/shifts"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
+                  style={{ background: "#1D9E75" }}
+                  onClick={() => setShowAssignShift(false)}
+                >
+                  Create a shift
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Choose a shift</p>
+                {shifts.map((s) => {
+                  const start = new Date(s.startTime);
+                  const spotsLeft = s.capacity != null ? s.capacity - (s.signupCount ?? 0) : null;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedShiftId(s.id)}
+                      className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
+                        selectedShiftId === s.id
+                          ? "border-[#1D9E75] bg-[#1D9E75]/5"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm text-gray-900">{s.name}</span>
+                        {spotsLeft !== null && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${spotsLeft > 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            {spotsLeft > 0 ? `${spotsLeft} spots left` : "Full"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {start.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" })}
+                        {" · "}
+                        {start.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}
+                        {s.location ? ` · ${s.location}` : ""}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+            <a href="/volunteers/shifts" className="text-sm text-[#1D9E75] hover:underline" onClick={() => setShowAssignShift(false)}>
+              + New shift
+            </a>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowAssignShift(false)} className="min-h-[44px]">Cancel</Button>
+              <Button onClick={submitAssignShift} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]" disabled={!selectedShiftId || shifts.length === 0}>
+                <UserCheck className="w-4 h-4" /> Assign {shiftTargets.length > 1 ? `${shiftTargets.length} volunteers` : ""}
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
