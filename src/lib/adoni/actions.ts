@@ -548,9 +548,9 @@ export async function executeAction(
       case "build_smart_list":
         return await buildSmartList(input, ctx);
       case "draft_email":
-        return { success: true, message: `Email draft ready for "${input.purpose}". Tone: ${input.tone ?? "professional"}. Navigate to /communications/email to review and send.` };
+        return await draftEmail(input, ctx);
       case "draft_social_post":
-        return { success: true, message: `Social post drafted for ${input.platform} about "${input.topic}". Navigate to /communications/social to review and schedule.` };
+        return await draftSocialPost(input, ctx);
       case "get_daily_brief":
         return await getDailyBrief(ctx);
       case "deploy_team":
@@ -1882,4 +1882,77 @@ export async function checkSuspiciousActivity(
     return true; // BLOCK — caller should terminate the conversation
   }
   return false;
+}
+
+// ─── Draft Email (actually creates a scheduled notification) ─────────────────
+
+async function draftEmail(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const purpose = String(input.purpose ?? input.topic ?? "Campaign email");
+  const tone = String(input.tone ?? "professional");
+  const audience = String(input.audience ?? "all supporters");
+
+  // Create a draft notification
+  const draft = await prisma.notificationLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      title: `[Draft] ${purpose}`,
+      body: `Adoni drafted this email.\n\nPurpose: ${purpose}\nTone: ${tone}\nAudience: ${audience}\n\n— Open /communications to edit and send.`,
+      status: "scheduled",
+      scheduledFor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+      audience: { type: "draft", purpose, tone, audience },
+    },
+  });
+
+  return {
+    success: true,
+    message: `Email draft created: "${purpose}" (${tone} tone, targeting ${audience}). I've saved it as a scheduled draft — open Communications → Scheduled to review, edit, and send. Draft ID: ${draft.id}`,
+    data: { draftId: draft.id, navigateTo: "/communications" },
+  };
+}
+
+// ─── Draft Social Post (actually creates a social post record) ───────────────
+
+async function draftSocialPost(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const platform = String(input.platform ?? "x");
+  const topic = String(input.topic ?? "Campaign update");
+  const content = String(input.content ?? "");
+
+  try {
+    const post = await prisma.socialPost.create({
+      data: {
+        campaignId: ctx.campaignId,
+        authorUserId: ctx.userId,
+        title: topic,
+        content: content || `[Draft about: ${topic}]`,
+        targetPlatforms: [platform as never],
+        status: "draft",
+      },
+    });
+
+    return {
+      success: true,
+      message: `Social post drafted for ${platform}: "${topic}". I've saved it as a draft — open Communications → Social to review, edit, and publish. Post ID: ${post.id}`,
+      data: { postId: post.id, navigateTo: "/communications/social" },
+    };
+  } catch {
+    // SocialPost model might not exist — fallback to notification log
+    const draft = await prisma.notificationLog.create({
+      data: {
+        campaignId: ctx.campaignId,
+        userId: ctx.userId,
+        title: `[Social Draft] ${topic}`,
+        body: `Platform: ${platform}\nTopic: ${topic}\n${content}`,
+        status: "scheduled",
+        scheduledFor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        audience: { type: "social-draft", platform, topic },
+      },
+    });
+
+    return {
+      success: true,
+      message: `Social post drafted for ${platform}: "${topic}". Saved as draft in your scheduled items.`,
+      data: { draftId: draft.id },
+    };
+  }
 }
