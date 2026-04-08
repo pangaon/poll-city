@@ -162,6 +162,9 @@ export type CandidatePageData = {
   electionHistory: ElectionHistoryRecord[];
   events: CandidateEvent[];
   customization: CandidatePageCustomization;
+  // Per-campaign tracking
+  gaId?: string | null;
+  metaPixelId?: string | null;
 };
 
 interface CandidatePageClientProps {
@@ -676,6 +679,43 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
   const [submitting, setSubmitting] = useState<string | null>(null);
 
   const formAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Track page view + load per-campaign analytics ──
+  useEffect(() => {
+    // Increment page view counter
+    fetch(`/api/campaigns/${campaign.id}/customization`, { method: "POST" }).catch(() => {});
+
+    // Per-campaign Google Analytics
+    if (campaign.gaId && typeof window !== "undefined") {
+      const script = document.createElement("script");
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${campaign.gaId}`;
+      script.async = true;
+      document.head.appendChild(script);
+      const w = window as unknown as Record<string, unknown>;
+      w.dataLayer = (w.dataLayer as unknown[]) || [];
+      const gtag = (...args: unknown[]) => { (w.dataLayer as unknown[]).push(args); };
+      gtag("js", new Date());
+      gtag("config", campaign.gaId);
+    }
+
+    // Per-campaign Meta Pixel
+    if (campaign.metaPixelId && typeof window !== "undefined") {
+      const w = window as unknown as Record<string, unknown>;
+      if (!w.fbq) {
+        const script = document.createElement("script");
+        script.src = "https://connect.facebook.net/en_US/fbevents.js";
+        script.async = true;
+        document.head.appendChild(script);
+        script.onload = () => {
+          const fbq = w.fbq as ((...args: unknown[]) => void) | undefined;
+          if (fbq) {
+            fbq("init", campaign.metaPixelId);
+            fbq("track", "PageView");
+          }
+        };
+      }
+    }
+  }, [campaign.id, campaign.gaId, campaign.metaPixelId]);
 
   const primary = campaign.primaryColor || NAVY;
   const accent = campaign.accentColor || GREEN;

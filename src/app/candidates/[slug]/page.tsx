@@ -122,6 +122,8 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
       instagramHandle: true,
       customization: true,
       isPublic: true,
+      gaId: true,
+      metaPixelId: true,
       officialId: true,
       official: {
         select: {
@@ -267,6 +269,8 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
       rsvpCount: event._count.rsvps,
     })),
     customization,
+    gaId: campaign.gaId ?? null,
+    metaPixelId: campaign.metaPixelId ?? null,
   };
 }
 

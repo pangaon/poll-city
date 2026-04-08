@@ -56,6 +56,7 @@ const FINANCE_CONTENT_SECTION: NavSection = {
     { href: "/budget", icon: DollarSign, label: "Budget" },
     { href: "/resources", icon: BookOpen, label: "Resources" },
     { href: "/print", icon: Printer, label: "Print" },
+    { href: "/settings/public-page", icon: Globe, label: "Website" },
   ],
 };
 

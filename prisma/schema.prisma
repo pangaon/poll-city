@@ -427,6 +427,15 @@ model Campaign {
   isActive               Boolean      @default(true)
   customization          Json?
   pageViews              Int          @default(0)
+  // Per-campaign tracking IDs — campaigns paste their own analytics codes
+  gaId                   String?      // Google Analytics 4 (G-XXXXXXXXXX)
+  metaPixelId            String?      // Meta/Facebook Pixel ID
+  googleAdsId            String?      // Google Ads tag (AW-XXXXXXXXXX)
+  linkedinPartnerId      String?      // LinkedIn Insight Tag
+  tiktokPixelId          String?      // TikTok Pixel
+  // Domain verification
+  domainStatus           String       @default("not_connected") // not_connected | pending | verified | live
+  domainVerifiedAt       DateTime?
   votedDisplayMode       String       @default("strikethrough")
   onboardingComplete     Boolean      @default(false)
   // Campaign-level security enforcement
