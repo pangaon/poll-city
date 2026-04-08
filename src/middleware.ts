@@ -43,6 +43,7 @@ const PUBLIC_PATHS = [
   "/sentiment",
   "/api/polls/verify-receipt",
   "/demo",
+  "/unsubscribe",
   "/api/resources",
   "/api/health",
   "/reset-password",

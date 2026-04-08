@@ -66,6 +66,7 @@ type Tab =
   | "scheduled"
   | "history"
   | "audiences"
+  | "subscribers"
   | "settings";
 
 type Channel = "email" | "sms" | "all";
@@ -131,6 +132,7 @@ const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ classNam
   { id: "scheduled", label: "Scheduled", icon: Clock },
   { id: "history", label: "History", icon: History },
   { id: "audiences", label: "Audiences", icon: Target },
+  { id: "subscribers", label: "Subscribers", icon: UserCircle },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -357,6 +359,9 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
         {activeTab === "audiences" && (
           <AudiencesTab campaignId={campaignId} tags={tags} wards={wards} />
         )}
+        {activeTab === "subscribers" && (
+          <SubscribersTab campaignId={campaignId} />
+        )}
         {activeTab === "settings" && (
           <SettingsTab />
         )}
@@ -430,24 +435,25 @@ function OverviewTab({ campaignId, channelFilter, onNavigate }: { campaignId: st
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Send Email", desc: "Compose and send to segments", icon: Mail, tab: "compose" as Tab, color: "bg-blue-50 text-blue-600" },
-          { label: "Send SMS", desc: "Text blast with scheduling", icon: MessageSquare, tab: "compose" as Tab, color: "bg-violet-50 text-violet-600" },
-          { label: "View Inbox", desc: "Messages, mentions, replies", icon: Inbox, tab: "inbox" as Tab, color: "bg-emerald-50 text-emerald-600" },
+          { label: "Send Email", desc: "Compose to segments", icon: Mail, tab: "compose" as Tab, color: "bg-blue-50 text-blue-600" },
+          { label: "Send SMS", desc: "Text blast", icon: MessageSquare, tab: "compose" as Tab, color: "bg-violet-50 text-violet-600" },
+          { label: "View Inbox", desc: "Messages + replies", icon: Inbox, tab: "inbox" as Tab, color: "bg-emerald-50 text-emerald-600" },
+          { label: "Subscribers", desc: "Newsletter + questions", icon: UserCircle, tab: "subscribers" as Tab, color: "bg-amber-50 text-amber-600" },
         ].map((a) => {
           const Icon = a.icon;
           return (
             <button
               key={a.label}
               onClick={() => onNavigate(a.tab)}
-              className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition-all text-left"
+              className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:shadow-md transition-all text-left"
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${a.color}`}>
-                <Icon className="w-5 h-5" />
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${a.color}`}>
+                <Icon className="w-4 h-4" />
               </div>
-              <p className="font-semibold text-sm text-slate-900">{a.label}</p>
-              <p className="text-xs text-slate-500 mt-1">{a.desc}</p>
+              <p className="font-semibold text-xs text-slate-900">{a.label}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{a.desc}</p>
             </button>
           );
         })}
@@ -2177,6 +2183,173 @@ function AudiencesTab({
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TAB: SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: SUBSCRIBERS — Newsletter subscribers, questions, sign requests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function SubscribersTab({ campaignId }: { campaignId: string }) {
+  const [subscribers, setSubscribers] = useState<Array<{ id: string; email: string; firstName: string | null; lastName: string | null; status: string; createdAt: string }>>([]);
+  const [questions, setQuestions] = useState<Array<{ id: string; name: string | null; email: string | null; question: string; createdAt: string }>>([]);
+  const [signRequests, setSignRequests] = useState<Array<{ id: string; name: string; address: string; email: string | null; status: string; createdAt: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<"subscribers" | "questions" | "signs">("subscribers");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [subRes, qRes, signRes] = await Promise.all([
+          fetch(`/api/newsletters/subscribers?campaignId=${campaignId}`),
+          fetch(`/api/public/candidates/questions?campaignId=${campaignId}`).catch(() => null),
+          fetch(`/api/signs?campaignId=${campaignId}&pageSize=50`).catch(() => null),
+        ]);
+        if (subRes.ok) {
+          const data = await subRes.json();
+          setSubscribers(data.data ?? data ?? []);
+        }
+        if (qRes?.ok) {
+          const data = await qRes.json();
+          setQuestions(data.data ?? data ?? []);
+        }
+        if (signRes?.ok) {
+          const data = await signRes.json();
+          const signs = (data.data ?? data ?? []).filter((s: Record<string, unknown>) => s.status === "requested");
+          setSignRequests(signs);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, [campaignId]);
+
+  if (loading) {
+    return <div className="bg-white rounded-xl border border-slate-200 p-12 text-center"><Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Section pills */}
+      <div className="flex gap-2">
+        {([
+          { id: "subscribers" as const, label: "Newsletter Subscribers", count: subscribers.length },
+          { id: "questions" as const, label: "Questions", count: questions.length },
+          { id: "signs" as const, label: "Sign Requests", count: signRequests.length },
+        ]).map((s) => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeSection === s.id ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"}`}>
+            {s.label} <span className="ml-1 tabular-nums text-xs opacity-70">{s.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Newsletter Subscribers */}
+      {activeSection === "subscribers" && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-900">Newsletter Subscribers</h3>
+              <span className="text-xs text-slate-400">{subscribers.length} total</span>
+            </div>
+            <p className="text-[10px] text-slate-400">From campaign website signup forms</p>
+          </div>
+          {subscribers.length === 0 ? (
+            <div className="p-10 text-center">
+              <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="font-semibold text-slate-700">No subscribers yet</p>
+              <p className="text-xs text-slate-500 mt-1">Visitors who subscribe on your campaign website will appear here.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              <div className="grid grid-cols-[1fr_120px_100px_100px] gap-4 px-4 py-2 bg-slate-50">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Name</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Signed Up</span>
+              </div>
+              {subscribers.map((s) => (
+                <div key={s.id} className="grid grid-cols-[1fr_120px_100px_100px] gap-4 px-4 py-2.5 hover:bg-slate-50">
+                  <p className="text-sm font-medium text-slate-900 truncate">{s.email}</p>
+                  <p className="text-xs text-slate-600 truncate">{[s.firstName, s.lastName].filter(Boolean).join(" ") || "—"}</p>
+                  <div>{statusBadge(s.status)}</div>
+                  <p className="text-xs text-slate-500">{formatDate(s.createdAt)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Questions from Website */}
+      {activeSection === "questions" && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-violet-600" />
+            <h3 className="text-sm font-bold text-slate-900">Questions from Visitors</h3>
+            <span className="text-xs text-slate-400">{questions.length} total</span>
+          </div>
+          {questions.length === 0 ? (
+            <div className="p-10 text-center">
+              <MessageCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="font-semibold text-slate-700">No questions yet</p>
+              <p className="text-xs text-slate-500 mt-1">Questions submitted on your campaign website will appear here for review and reply.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {questions.map((q) => (
+                <div key={q.id} className="px-4 py-3 hover:bg-slate-50">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-slate-900">{q.name || "Anonymous"} {q.email && <span className="text-slate-400 font-normal">· {q.email}</span>}</p>
+                    <p className="text-[10px] text-slate-400">{formatDate(q.createdAt)}</p>
+                  </div>
+                  <p className="text-sm text-slate-700">{q.question}</p>
+                  {q.email && (
+                    <a href={`mailto:${q.email}?subject=Re: Your question to our campaign&body=Thank you for reaching out. `}
+                      className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                      <Mail className="w-3 h-3" /> Reply via email
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sign Requests */}
+      {activeSection === "signs" && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+            <Target className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-sm font-bold text-slate-900">Lawn Sign Requests</h3>
+            <span className="text-xs text-slate-400">{signRequests.length} pending</span>
+          </div>
+          {signRequests.length === 0 ? (
+            <div className="p-10 text-center">
+              <Target className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="font-semibold text-slate-700">No pending sign requests</p>
+              <p className="text-xs text-slate-500 mt-1">Lawn sign requests from your campaign website will appear here.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {signRequests.map((s) => (
+                <div key={s.id} className="px-4 py-3 hover:bg-slate-50 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                    <p className="text-xs text-slate-500">{s.address} {s.email && `· ${s.email}`}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusBadge(s.status)}
+                    <p className="text-[10px] text-slate-400">{formatDate(s.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function SettingsTab() {
