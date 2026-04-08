@@ -1,5 +1,5 @@
 # Poll City — Live Build Plan
-Last updated: 2026-04-08
+Last updated: 2026-04-08 (session 2)
 
 This is the single source of truth. Everything done, everything next, nothing forgotten.
 
@@ -76,6 +76,12 @@ Full pen test: after 100 users, before Series A.
 ### Mobile
 - [x] poll-city-mobile/ standalone repo initialized
 - [x] mobile/ scaffold inside web repo (tabs, offline store, EAS config)
+- [x] Real-API turf list screen (canvassing/index.tsx → /api/canvassing/turfs)
+- [x] Real-API walk list screen (walk-list.tsx → /api/canvassing/walk) with offline cache
+- [x] Maps deep link on every door (📍 → Apple Maps / Google Maps fallback)
+- [x] JWT auth endpoints (/api/auth/mobile/token + refresh) — dual-mode guard
+- [x] app.config.js with ca.pollcity.canvasser bundle ID, EAS ready
+- [x] APPSTORE.md — App Store submission guide
 
 ---
 
@@ -90,7 +96,8 @@ Full pen test: after 100 users, before Series A.
 - [ ] Campaign health score algorithm — not built
 - [ ] Print marketplace (Canva-like + Printful) — not built
 - [ ] Adoni full-screen structured output panel — partial
-- [ ] Contact inline cell editing (click-to-edit in table) — not built
+- [x] Contact inline cell editing — click any cell (Name/Phone/Email/Ward/Notes/Follow-up) to edit in place, optimistic update + revert
+- [x] Bulk actions bar — select contacts → Change Support / Mark Contacted / Delete (500 max, selectAllPages flag)
 
 ### Social
 - [ ] Virtual townhalls — designed, not built
@@ -101,37 +108,30 @@ Full pen test: after 100 users, before Series A.
 
 ## WHAT IS NOT BUILT YET (priority order)
 
-### P0 — Blocks sales (build this week)
-1. **Demo modes** — /demo/candidate, /demo/party, /demo/media
-   - Ward 20 Toronto seed data, shareable 7-day token links
-   - Without this: cannot demo asynchronously to prospects
-   - Estimate: 1 day
-
-2. **Contacts inline editing + bulk actions**
-   - Click any cell to edit in place
-   - Select 50 contacts → change support level / assign / SMS in one action
-   - The mayor's feedback. Legitimate competitive gap.
-   - Estimate: 1 day
+### P0 — DONE ✅
+1. ~~**Demo modes**~~ — LIVE at /demo/candidate, /demo/party, /demo/media
+   - Ward 20 Toronto seed data, shareable token links via /ops/demo-tokens
+2. ~~**Contacts inline editing + bulk actions**~~ — LIVE
+   - Click any cell to edit; sticky bulk bar for support change / contacted / delete
+3. ~~**Maps deep link**~~ — LIVE in mobile walk list (📍 → Apple Maps / Google Maps)
+4. ~~**ISR on public pages**~~ — LIVE (sentiment ✓, officials ✓, social ✓ — revalidate=60)
 
 ### P1 — Canvasser App Store deadline (May 2026 = ~3 weeks)
-3. **Canvasser mobile app** — real API integration, offline queue, TestFlight
-   - Scaffold exists. Needs wiring to actual API.
-   - App Store review takes 1-2 weeks on top of build
-   - Estimate: 3-4 days
+- ~~Mobile walk list + turf list wired to real API~~ — DONE
+- **Next:** EAS init + `eas build --platform ios` — needs Apple Developer account + team ID in app.config.js
+- **App Store assets needed:** app icon (1024×1024 PNG), splash screen, 3× screenshots per device
+- **Demo seed accounts** (admin@pollcity.dev / password123) exist in DB via `prisma db seed`
 
 ### P2 — Makes platform sticky for Social users
 4. **Virtual townhalls** — Daily.co embed + question upvote queue + live polls
    - Estimate: 2 days
 
-5. **Maps deep link + vCard export** — native iPhone feel for canvassers
-   - Estimate: half day
-
-6. **Civic calendar .ics feed** — unions/ratepayers subscribe their whole org
+5. **Civic calendar .ics feed** — unions/ratepayers subscribe their whole org
    - Estimate: half day
 
 ### P3 — Performance (before first 1,000 users)
-7. **ISR on public pages** — one line per page, eliminates DB hit on every load
-   - Estimate: 2 hours
+6. **Upstash Redis** — caching hot queries, 200ms → 8ms
+   - Estimate: 1 day
 
 8. **Upstash Redis** — caching hot queries, 200ms → 8ms
    - Estimate: 1 day

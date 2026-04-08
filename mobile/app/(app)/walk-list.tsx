@@ -19,6 +19,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -161,6 +163,21 @@ export default function WalkListScreen() {
     loadStops();
   }, [loadStops]);
 
+  // Open native maps app with the contact's address
+  const openMaps = useCallback((stop: WalkStop) => {
+    const addr = [stop.contact.address1, stop.contact.city].filter(Boolean).join(", ");
+    if (!addr) return;
+    const encoded = encodeURIComponent(addr);
+    const url =
+      Platform.OS === "ios"
+        ? `maps://?q=${encoded}`
+        : `geo:0,0?q=${encoded}`;
+    Linking.openURL(url).catch(() => {
+      // Fall back to Google Maps web if native app not available
+      Linking.openURL(`https://maps.google.com/?q=${encoded}`);
+    });
+  }, []);
+
   // Navigate to door screen
   const openDoor = useCallback(
     (stop: WalkStop) => {
@@ -231,6 +248,19 @@ export default function WalkListScreen() {
           <View style={[styles.supportBadge, { backgroundColor: supportColor }]}>
             <Text style={styles.supportBadgeText}>{supportLabel}</Text>
           </View>
+
+          {/* Maps deep link */}
+          {item.contact.address1 && (
+            <Pressable
+              style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
+              onPress={(e) => { e.stopPropagation?.(); openMaps(item); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open map for ${item.contact.firstName} ${item.contact.lastName}`}
+              hitSlop={8}
+            >
+              <Text style={styles.mapIcon}>📍</Text>
+            </Pressable>
+          )}
         </Pressable>
       );
     },
@@ -410,6 +440,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   supportBadgeText: { color: "#ffffff", fontSize: 11, fontWeight: "700" },
+
+  mapButton: {
+    marginLeft: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#eff6ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapButtonPressed: { backgroundColor: "#dbeafe" },
+  mapIcon: { fontSize: 18 },
 
   emptyState: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#334155" },

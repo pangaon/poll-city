@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Follow local officials, vote in flash polls, sign petitions, and track election promises. Your civic life starts here.",
 };
 
+export const revalidate = 60;
+
 export default function Page() {
   return <SocialDiscover />;
 }
