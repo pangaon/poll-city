@@ -680,3 +680,26 @@ These files in the web app contain logic that directly informs or is reusable in
 | `src/app/api/export/walklist/route.ts` | Shape of walk list data returned by the API |
 | `src/app/api/gotv/route.ts` | GOTV stats shape — use for the command centre screen in v2 |
 | `src/lib/operations/metrics-truth.ts` | `calculateWinThreshold` — pure function, reuse in mobile if showing GOTV progress |
+
+---
+
+## Scaffold Status
+
+**Created: 2026-04-08**
+
+The Expo React Native scaffold has been created at `c:\Users\14168\Documents\Projects\poll-city-mobile\`.
+
+Files created:
+- `app.json` — Expo config (SDK 51, iOS bundle `ca.pollcity.app`, Android package `ca.pollcity.app`)
+- `package.json` — dependencies: expo-router, expo-secure-store, expo-location, expo-camera, @react-navigation, @tanstack/react-query, zod
+- `tsconfig.json`, `babel.config.js`, `.env.example`
+- `src/api/client.ts` — fetch wrapper with SecureStore session cookie injection
+- `src/auth/useAuth.ts` — NextAuth credentials flow (CSRF → callback → cookie storage)
+- `src/theme/colors.ts` — exact color tokens from web app
+- `src/screens/LoginScreen.tsx` — email/password form with loading + error states
+- `src/screens/DashboardScreen.tsx` — active contacts, doors knocked, supporters (TanStack Query)
+- `src/screens/WalkListScreen.tsx` — contact list with support-level dots, street filter chips, pull-to-refresh
+- `src/screens/ContactScreen.tsx` — support level buttons, notes, Mark Voted, PATCH /api/contacts/[id]
+- `src/navigation/AppNavigator.tsx` — bottom tabs (Dashboard / Walk List / Profile) with auth gate
+
+Next step: `cd poll-city-mobile && npm install && npx expo start`
