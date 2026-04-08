@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     where: { userId: session!.user.id },
     include: {
       campaign: {
-        include: { _count: { select: { contacts: true, tasks: true } } },
+        include: { _count: { select: { contacts: { where: { deletedAt: null } }, tasks: { where: { deletedAt: null } } } } },
       },
     },
     orderBy: { joinedAt: "desc" },
