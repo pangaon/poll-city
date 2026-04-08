@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "sonner";
 import PwaRegister from "@/components/pwa/pwa-register";
 import Analytics from "@/components/tracking/analytics";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: { default: "Poll City", template: "%s | Poll City" },
@@ -92,6 +94,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PwaRegister />
           </AuthProvider>
         </ThemeProvider>
+        <VercelAnalytics />
+        <SpeedInsights />
       </body>
     </html>
   );
