@@ -199,6 +199,116 @@ export default function MarketingClient() {
       </section>
 
       {/* ═══════════════════════════════════════════════════
+         CAMPAIGN WEBSITE — THE DIFFERENTIATOR
+         ═══════════════════════════════════════════════════ */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-1">
+              <SectionLabel>What Nobody Else Gives You</SectionLabel>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                Your Campaign Website.
+                <br />
+                <span className="text-blue-600">Built In. Live Day One.</span>
+              </h2>
+              <p className="mt-4 text-base text-slate-500 leading-relaxed">
+                Every other platform makes you build a website somewhere else. Poll City gives you a fully branded, mobile-ready campaign website that&apos;s connected to everything — supporters sign up, donors contribute, volunteers register, and it all flows directly into your CRM.
+              </p>
+              <p className="mt-3 text-base text-slate-500 leading-relaxed">
+                Forward your own domain (votegeorge.ca) and visitors see a professional campaign site. Nobody knows it&apos;s Poll City — unless you want them to.
+              </p>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {[
+                  "Hero with photo & tagline",
+                  "Platform & issues section",
+                  "Endorsements with logos",
+                  "Stripe-powered donations",
+                  "Volunteer signup forms",
+                  "Lawn sign requests",
+                  "Event RSVP system",
+                  "Interactive ward map",
+                  "Q&A / live questions",
+                  "Custom domain support",
+                  "6 themes & 5 font pairs",
+                  "SEO + social sharing",
+                ].map((f) => (
+                  <div key={f} className="flex items-center gap-2 text-sm text-slate-700">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                    {f}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/candidates/demo-campaign-2026" target="_blank" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
+                  <Globe className="w-4 h-4" />
+                  See a Live Campaign Website
+                  <ArrowUpRight className="w-4 h-4" />
+                </Link>
+                <Link href="/demo" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                  <Eye className="w-4 h-4" />
+                  Explore the Builder
+                </Link>
+              </div>
+            </div>
+
+            {/* Browser mockup */}
+            <div className="lg:w-[440px] shrink-0">
+              <div className="rounded-xl border-2 border-slate-200 bg-white shadow-2xl overflow-hidden">
+                <div className="bg-slate-100 px-3 py-2 flex items-center gap-2 border-b border-slate-200">
+                  <div className="flex gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-red-400" />
+                    <span className="w-3 h-3 rounded-full bg-amber-400" />
+                    <span className="w-3 h-3 rounded-full bg-green-400" />
+                  </div>
+                  <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> votegeorge.ca
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Hero */}
+                  <div className="h-24 rounded-lg bg-gradient-to-r from-blue-700 to-blue-900 flex items-end p-4">
+                    <div>
+                      <p className="text-white font-black text-lg leading-tight">George Hatzis</p>
+                      <p className="text-blue-200 text-xs">for City Council — Ward 20</p>
+                    </div>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    {["Support", "Volunteer", "Donate", "Events"].map((btn, i) => (
+                      <div key={btn} className={`flex-1 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${
+                        i === 0 ? "bg-blue-600" : i === 1 ? "bg-emerald-600" : i === 2 ? "bg-amber-600" : "bg-violet-600"
+                      }`}>{btn}</div>
+                    ))}
+                  </div>
+                  {/* Sections */}
+                  <div className="space-y-2">
+                    {[
+                      { label: "Platform & Issues", sub: "Transit · Housing · Community Safety" },
+                      { label: "About George", sub: "12 years in the community" },
+                      { label: "Endorsements", sub: "Local Business Association + 4 more" },
+                      { label: "Upcoming Events", sub: "Coffee Chat — Saturday 10am" },
+                      { label: "Interactive Ward Map", sub: "Boundary, events, office" },
+                    ].map((s) => (
+                      <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 group">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">{s.label}</p>
+                          <p className="text-[10px] text-slate-500">{s.sub}</p>
+                        </div>
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-center text-slate-400">Powered by Poll City · All forms feed your CRM</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════
          WHAT YOU GET — DAY ONE
          ═══════════════════════════════════════════════════ */}
       <section id="product" className="py-20 bg-white">
