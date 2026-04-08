@@ -348,7 +348,7 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
           <TemplatesTab campaignId={campaignId} channelFilter={channelFilter} onNavigateCompose={navigateToCompose} />
         )}
         {activeTab === "automations" && (
-          <AutomationsTab />
+          <AutomationsTab campaignId={campaignId} />
         )}
         {activeTab === "scheduled" && (
           <ScheduledTab campaignId={campaignId} />
@@ -1559,52 +1559,100 @@ function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campai
 // TAB: AUTOMATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function AutomationsTab() {
+function AutomationsTab({ campaignId }: { campaignId: string }) {
+  const [activeAutomations, setActiveAutomations] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  // Load saved automation states from campaign customization
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/campaigns/current");
+        if (res.ok) {
+          const data = await res.json();
+          const automations = data.data?.customization?.automations ?? data.customization?.automations ?? {};
+          setActiveAutomations(automations);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  async function toggleAutomation(id: string) {
+    setToggling(id);
+    const newState = !activeAutomations[id];
+    const updated = { ...activeAutomations, [id]: newState };
+    setActiveAutomations(updated);
+
+    try {
+      await fetch("/api/campaigns/current", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customization: { automations: updated } }),
+      });
+    } catch {}
+    setToggling(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h3 className="text-base font-bold text-slate-900">Automation Workflows</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Set up triggered messages that send automatically</p>
+          <p className="text-xs text-slate-500 mt-0.5">Triggered messages and tasks that run automatically when events occur</p>
         </div>
-        <button className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" />
-          New Automation
-        </button>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {Object.values(activeAutomations).filter(Boolean).length} active</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" /> {AUTOMATION_PRESETS.length - Object.values(activeAutomations).filter(Boolean).length} inactive</span>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 flex items-start gap-3">
+        <Zap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-800">
+          <p className="font-semibold">How automations work</p>
+          <p className="mt-1 leading-relaxed">Active automations run via the daily lifecycle cron job at 8am, plus real-time triggers on form submissions. When a trigger fires, the system creates tasks, sends notifications, and updates contact records automatically.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {AUTOMATION_PRESETS.map((auto) => (
-          <div key={auto.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-                <Zap className="w-5 h-5 text-amber-600" />
+        {AUTOMATION_PRESETS.map((auto) => {
+          const isActive = activeAutomations[auto.id] ?? false;
+          const isToggling = toggling === auto.id;
+          return (
+            <div key={auto.id} className={`bg-white rounded-xl border p-4 transition-all ${isActive ? "border-green-200 shadow-sm" : "border-slate-200"}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-green-50" : "bg-slate-100"}`}>
+                  <Zap className={`w-5 h-5 ${isActive ? "text-green-600" : "text-slate-400"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm text-slate-900">{auto.name}</p>
+                    {/* Toggle switch */}
+                    <button
+                      onClick={() => toggleAutomation(auto.id)}
+                      disabled={isToggling}
+                      className={`relative w-10 h-5.5 rounded-full transition-colors ${isActive ? "bg-green-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${isActive ? "left-[22px]" : "left-0.5"}`} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{auto.description}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-slate-900">{auto.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{auto.description}</p>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Clock className="w-3 h-3" />
+                  <span>{auto.trigger}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-semibold uppercase">{auto.channel}</span>
+                </div>
+                {statusBadge(isActive ? "active" : "draft")}
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Clock className="w-3 h-3" />
-                <span>{auto.trigger}</span>
-                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-semibold uppercase">{auto.channel}</span>
-              </div>
-              {statusBadge("draft")}
-            </div>
-            <div className="mt-2 flex gap-1.5">
-              <button className="h-7 px-2.5 rounded-md text-[11px] font-semibold text-blue-600 hover:bg-blue-50 flex items-center gap-1 transition-colors">
-                <Pencil className="w-3 h-3" />
-                Configure
-              </button>
-              <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-green-50 hover:text-green-700 flex items-center gap-1 transition-colors">
-                <Play className="w-3 h-3" />
-                Activate
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

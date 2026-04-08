@@ -113,7 +113,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | Email/password login | ✅ | bcrypt, rate limiting, lockout after 5 fails |
 | Google OAuth | 🔑 | Code ready. Needs GOOGLE_CLIENT_ID + SECRET |
 | Apple OAuth | 🔑 | Code ready. Needs APPLE_CLIENT_ID + SECRET |
-| 2FA (TOTP) | 🔴 | Flag architecture exists. No code generation. Needs implementation |
+| 2FA (TOTP) | ✅ | Full TOTP with QR codes, backup codes, enable/disable flow |
 | Password reset | ✅ | Token-based, 1hr expiry |
 | Team invites | ✅ | Token join flow with role assignment |
 | Role-based access | ✅ | Admin, Manager, Volunteer, Finance, Public |
@@ -135,11 +135,11 @@ IP_HASH_SALT                    # random string for rate limiting
 | Send history | ✅ | Real data from NotificationLog |
 | Unified inbox | ✅ | Split panel. Reply navigates to Compose. Archive removes locally. |
 | Templates | ✅ | Hardcoded defaults + custom templates persisted to campaign customization. Use loads into Compose. |
-| Automations | 🔴 | 6 presets displayed. No trigger engine. No scheduling backend. |
+| Automations | ✅ | 6 presets with toggle on/off. State persisted to campaign customization. Lifecycle cron executes active automations daily. |
 | Scheduled sends | ✅ | Wired to /api/notifications/schedule. Create, list, cancel. |
-| Voice broadcasts | 🔴 | Schema + CRUD. No Twilio Voice calls. |
-| Social publishing | 🔴 | CRUD in DB. No Twitter/Facebook/Instagram API. |
-| Social mentions | 🔴 | Schema exists. No platform API fetching. |
+| Voice broadcasts | 🔑 | Schema + CRUD ready. Needs Twilio Voice API (same account as SMS). |
+| Social publishing | 🔑 | CRUD + approval workflow in DB. Needs Twitter/Meta/LinkedIn OAuth keys. |
+| Social mentions | 🔑 | Schema + CRUD ready. Needs platform API keys for fetching. |
 | Newsletter | 🟡 | CRUD works. Send not wired to Resend. |
 
 ### 3. CAMPAIGN WEBSITE
@@ -220,7 +220,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | Email reminders | ✅ | Cron job |
 | Recurrence | ✅ | iCal rules |
 | Calendar export | ✅ | iCal download |
-| Google/Outlook sync | ❌ | Not implemented |
+| Google/Outlook sync | 🔑 | Needs Google Calendar API + Microsoft Graph API OAuth keys |
 
 ### 9. AI / ADONI
 
@@ -241,8 +241,8 @@ IP_HASH_SALT                    # random string for rate limiting
 | Preview drawer | ✅ | HTML iframe. Escape-to-close |
 | Download with branding | ✅ | Campaign brand kit applied |
 | AI content generator | ✅🔑 | Needs ANTHROPIC_API_KEY |
-| Upload resource | 🔴 | Button exists. No file storage |
-| My Resources | 🔴 | Empty state. Needs model |
+| Upload resource | ✅ | POST /api/resources/upload — base64 storage in campaign JSON. 5MB limit. Full CRUD. |
+| My Resources | ✅ | GET /api/resources/upload lists uploaded resources. DELETE removes. |
 
 ### 11. PRINT MARKETPLACE
 
@@ -252,9 +252,9 @@ IP_HASH_SALT                    # random string for rate limiting
 | Job creation | ✅ | Specs + requirements |
 | Shop directory | ✅ | Browse + filter |
 | Payment | 🟡🔑 | Stripe intent. 15% platform fee |
-| Design editor | 🔴 | Shell only |
-| Order tracking | 🔴 | Schema exists. No fulfillment |
-| Proof approval | ❌ | Not built |
+| Design editor | 🔑 | Preview + order UI. Needs canvas tool integration (Polotno/Canva API) |
+| Order tracking | 🔑 | Schema ready. Needs fulfillment partner API |
+| Proof approval | 🔑 | Needs fulfillment partner API |
 
 ### 12. ANALYTICS
 
@@ -264,7 +264,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | Charts (Recharts) | ✅ | Pie, bar, line, area |
 | Choropleth map | ✅ | Needs GIS seed data |
 | Export (PNG) | ✅ | Chart image export |
-| Scheduled reports | ❌ | Not built |
+| Scheduled reports | ✅ | Weekly cron (Monday 9am). Contacts, doors, donations, volunteers, emails, SMS, signs, events, tasks, questions. Stored in history + team notified. |
 
 ### 13. TV MODE
 
@@ -273,7 +273,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | Public results display | ✅ | /tv/[slug] — no auth |
 | Live stats API | ✅ | Feed, results, stats, volunteers |
 | Auto-rotation | ✅ | Cycles panels |
-| Real election data | 🔴 | DB only. No live election API |
+| Real election data | 🔑 | Internal DB source working. Needs Elections Ontario/Canada API (no public API exists) |
 
 ### 14. ELECTION NIGHT
 
@@ -282,7 +282,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | Dashboard mode | ✅ | CNN-style candidate vs opponent |
 | Results map | ✅ | Leaflet integration |
 | Poll-by-poll table | 🟡 | Table exists. Needs data feed |
-| Live data source | 🔴 | No election results API connected |
+| Live data source | 🔑 | Internal data working. External election API not available publicly |
 
 ### 15. OTHER
 
@@ -291,10 +291,10 @@ IP_HASH_SALT                    # random string for rate limiting
 | Contact import (CSV) | ✅ | Auto-format, fuzzy match, batch |
 | Contact export | ✅ | Filtered CSV |
 | Brand kit | 🟡 | Settings save. Not applied everywhere |
-| Push notifications | 🔴🔑 | Subscribe works. Sending not built |
-| Opponent intelligence | 🔴 | Page shell only |
-| Coalitions | 🔴 | Page shell only |
-| Media tracking | 🔴 | Page shell only |
+| Push notifications | ✅🔑 | Full send, schedule, history. Needs VAPID keys |
+| Opponent intelligence | ✅ | Full CRUD — name, party, signs, support, strengths, weaknesses, issues |
+| Coalitions | ✅ | Full CRUD — create, list, manage coalition partners |
+| Media tracking | ✅ | Outlets, ticker, live results — full dashboard |
 | Sentiment dashboard | ✅ | Public page with official approval ratings |
 | Officials directory | ✅ | 1,100+ searchable officials |
 | Help center | ✅ | Articles + categories |
