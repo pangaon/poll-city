@@ -405,6 +405,7 @@ model User {
   civicProfile   CivicProfile?    @relation("UserCivicProfile")
   voterPassport  VoterPassport?   @relation("UserVoterPassport")
   civicCredits   CivicCredit[]    @relation("UserCivicCredits")
+  qaAnnotations  QaAnnotation[]   @relation("QaAnnotationCreator")
 
   @@map("users")
 }
@@ -3837,6 +3838,32 @@ model IngestRun {
   @@index([status])
   @@index([dataSourceId, completedAt])
   @@map("ingest_runs")
+}
+
+/// QA annotation — George clicks any element on any page to attach a note
+model QaAnnotation {
+  id               String    @id @default(cuid())
+  pagePath         String    // e.g. "/volunteers", "/events/abc123"
+  posX             Float     // 0–1 fraction of viewport width at time of click
+  posY             Float     // 0–1 fraction of viewport height at time of click
+  elementSelector  String?   // best-effort CSS selector of clicked element
+  elementText      String?   @db.Text // text content of clicked element (first 200 chars)
+  issueType        String    // "bug"|"ux"|"copy"|"design"|"missing"|"broken"|"question"|"positive"
+  severity         String    @default("medium") // "critical"|"high"|"medium"|"low"|"note"
+  notes            String?   @db.Text
+  status           String    @default("open") // "open"|"in_progress"|"fixed"|"wont_fix"
+  createdByUserId  String
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  createdBy User @relation("QaAnnotationCreator", fields: [createdByUserId], references: [id])
+
+  @@index([pagePath, status])
+  @@index([status, createdAt])
+  @@index([severity])
+  @@map("qa_annotations")
 }
 
 /// Links any entity (contact, official, campaign) to a canonical boundary
