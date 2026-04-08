@@ -30,7 +30,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchWalkList, type WalkStop } from "../../lib/api";
+import { fetchWalkList, vcardUrl, type WalkStop } from "../../lib/api";
 import { getQueueStats } from "../../lib/sync";
 import { OfflineIndicator } from "../../components/offline-indicator";
 
@@ -261,6 +261,20 @@ export default function WalkListScreen() {
               <Text style={styles.mapIcon}>📍</Text>
             </Pressable>
           )}
+
+          {/* Save to Contacts (vCard) */}
+          <Pressable
+            style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              Linking.openURL(vcardUrl(item.contactId)).catch(() => {});
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Save ${item.contact.firstName} ${item.contact.lastName} to contacts`}
+            hitSlop={8}
+          >
+            <Text style={styles.mapIcon}>👤</Text>
+          </Pressable>
         </Pressable>
       );
     },

@@ -279,6 +279,18 @@ export async function createInteraction(
 }
 
 // ---------------------------------------------------------------------------
+// vCard export
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the full URL to download a contact's vCard (.vcf).
+ * Use with Linking.openURL() — iOS will prompt "Add to Contacts".
+ */
+export function vcardUrl(contactId: string): string {
+  return `${BASE_URL}/api/contacts/${contactId}/vcard`;
+}
+
+// ---------------------------------------------------------------------------
 // Shift summary
 // ---------------------------------------------------------------------------
 
