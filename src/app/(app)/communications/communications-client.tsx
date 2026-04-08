@@ -102,6 +102,23 @@ interface HistoryItem {
   createdAt: string;
 }
 
+interface ScheduledItem {
+  id: string;
+  title: string;
+  body: string;
+  scheduledFor: string;
+  status?: string;
+}
+
+interface CustomTemplate {
+  slug: string;
+  name: string;
+  channel: "email" | "sms";
+  subject?: string;
+  body: string;
+  createdAt: string;
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -193,6 +210,14 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<Channel>("all");
+
+  // Compose pre-fill state (for Reply / Use Template navigation)
+  const [composePrefill, setComposePrefill] = useState<{ channel?: "email" | "sms"; subject?: string; body?: string } | null>(null);
+
+  function navigateToCompose(prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) {
+    if (prefill) setComposePrefill(prefill);
+    setActiveTab("compose");
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -297,19 +322,28 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
       {/* ─── Body ──────────────────────────────────────────── */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === "overview" && (
-          <OverviewTab campaignId={campaignId} channelFilter={channelFilter} />
+          <OverviewTab campaignId={campaignId} channelFilter={channelFilter} onNavigate={setActiveTab} />
         )}
         {activeTab === "compose" && (
-          <ComposeTab campaignId={campaignId} campaignName={campaignName} tags={tags} wards={wards} channelFilter={channelFilter} />
+          <ComposeTab
+            campaignId={campaignId}
+            campaignName={campaignName}
+            tags={tags}
+            wards={wards}
+            channelFilter={channelFilter}
+            prefill={composePrefill}
+            onPrefillConsumed={() => setComposePrefill(null)}
+            onNavigate={setActiveTab}
+          />
         )}
         {activeTab === "campaigns" && (
           <CampaignsTab campaignId={campaignId} channelFilter={channelFilter} />
         )}
         {activeTab === "inbox" && (
-          <InboxTab campaignId={campaignId} />
+          <InboxTab campaignId={campaignId} onNavigateCompose={navigateToCompose} />
         )}
         {activeTab === "templates" && (
-          <TemplatesTab channelFilter={channelFilter} />
+          <TemplatesTab campaignId={campaignId} channelFilter={channelFilter} onNavigateCompose={navigateToCompose} />
         )}
         {activeTab === "automations" && (
           <AutomationsTab />
@@ -335,30 +369,38 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
 // TAB: OVERVIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ campaignId, channelFilter }: { campaignId: string; channelFilter: Channel }) {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+function OverviewTab({ campaignId, channelFilter, onNavigate }: { campaignId: string; channelFilter: Channel; onNavigate: (tab: Tab) => void }) {
+  const [stats, setStats] = useState<{ total: number; delivered: number; failed: number; deliveryRate: number }>({ total: 0, delivered: 0, failed: 0, deliveryRate: 0 });
+  const [recentSends, setRecentSends] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/notifications?campaignId=${campaignId}&limit=20`);
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data.data ?? data ?? []);
+        const [statsRes, historyRes] = await Promise.all([
+          fetch(`/api/notifications/stats?campaignId=${campaignId}`),
+          fetch(`/api/notifications/history?campaignId=${campaignId}&limit=10`),
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const t = statsData.data?.totals ?? { total: 0, delivered: 0, failed: 0 };
+          setStats({
+            total: t.total ?? 0,
+            delivered: t.delivered ?? 0,
+            failed: t.failed ?? 0,
+            deliveryRate: statsData.data?.deliveryRate ?? 0,
+          });
+        }
+
+        if (historyRes.ok) {
+          const histData = await historyRes.json();
+          setRecentSends(histData.data ?? []);
         }
       } catch {}
       setLoading(false);
     })();
   }, [campaignId]);
-
-  const stats = useMemo(() => {
-    const total = history.length;
-    const delivered = history.reduce((s, h) => s + h.deliveredCount, 0);
-    const failed = history.reduce((s, h) => s + h.failedCount, 0);
-    const recipients = history.reduce((s, h) => s + h.totalSubscribers, 0);
-    return { total, delivered, failed, recipients };
-  }, [history]);
 
   return (
     <div className="space-y-6">
@@ -366,7 +408,7 @@ function OverviewTab({ campaignId, channelFilter }: { campaignId: string; channe
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Total Sends", value: stats.total, icon: Send, color: "text-blue-600 bg-blue-50" },
-          { label: "Recipients", value: stats.recipients.toLocaleString(), icon: Users, color: "text-emerald-600 bg-emerald-50" },
+          { label: "Delivery Rate", value: `${(stats.deliveryRate * 100).toFixed(1)}%`, icon: TrendingUp, color: "text-emerald-600 bg-emerald-50" },
           { label: "Delivered", value: stats.delivered.toLocaleString(), icon: CheckCircle2, color: "text-green-600 bg-green-50" },
           { label: "Failed", value: stats.failed.toLocaleString(), icon: AlertTriangle, color: "text-red-600 bg-red-50" },
         ].map((m) => {
@@ -398,9 +440,7 @@ function OverviewTab({ campaignId, channelFilter }: { campaignId: string; channe
           return (
             <button
               key={a.label}
-              onClick={() => {
-                // Navigate via parent — this is a display-only overview
-              }}
+              onClick={() => onNavigate(a.tab)}
               className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition-all text-left"
             >
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${a.color}`}>
@@ -420,7 +460,7 @@ function OverviewTab({ campaignId, channelFilter }: { campaignId: string; channe
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
             <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
           </div>
-        ) : history.length === 0 ? (
+        ) : recentSends.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
             <Send className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="font-semibold text-slate-700">No sends yet</p>
@@ -436,7 +476,7 @@ function OverviewTab({ campaignId, channelFilter }: { campaignId: string; channe
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Failed</span>
             </div>
             <div className="divide-y divide-slate-100">
-              {history.slice(0, 10).map((h) => (
+              {recentSends.slice(0, 10).map((h) => (
                 <div key={h.id} className="grid grid-cols-[1fr_100px_80px_80px_80px] gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-slate-900 truncate">{h.title || "Untitled"}</p>
@@ -466,12 +506,18 @@ function ComposeTab({
   tags,
   wards,
   channelFilter,
+  prefill,
+  onPrefillConsumed,
+  onNavigate,
 }: {
   campaignId: string;
   campaignName: string;
   tags: Array<{ id: string; name: string; color: string | null }>;
   wards: string[];
   channelFilter: Channel;
+  prefill: { channel?: "email" | "sms"; subject?: string; body?: string } | null;
+  onPrefillConsumed: () => void;
+  onNavigate: (tab: Tab) => void;
 }) {
   const [channel, setChannel] = useState<"email" | "sms">(channelFilter === "sms" ? "sms" : "email");
   const [subject, setSubject] = useState("");
@@ -483,10 +529,22 @@ function ComposeTab({
   const [audience, setAudience] = useState<AudienceResult | null>(null);
   const [audienceLoading, setAudienceLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string } | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string; message?: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [showMergeFields, setShowMergeFields] = useState(false);
+
+  // Apply prefill when it changes
+  useEffect(() => {
+    if (prefill) {
+      if (prefill.channel) setChannel(prefill.channel);
+      if (prefill.subject !== undefined) setSubject(prefill.subject);
+      if (prefill.body !== undefined) setBody(prefill.body);
+      onPrefillConsumed();
+    }
+  }, [prefill, onPrefillConsumed]);
 
   // Live audience count
   useEffect(() => {
@@ -531,6 +589,77 @@ function ComposeTab({
     setShowMergeFields(false);
   }
 
+  async function saveDraft() {
+    if (!body) return;
+    setSavingDraft(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/notifications/schedule", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          title: subject || "SMS",
+          body,
+          scheduledFor: new Date(Date.now() + 86400000).toISOString(),
+        }),
+      });
+      if (res.ok) {
+        setResult({ message: "Draft saved as scheduled send (tomorrow). View it in the Scheduled tab." });
+      } else {
+        const data = await res.json();
+        setResult({ error: data.error ?? "Failed to save draft" });
+      }
+    } catch {
+      setResult({ error: "Network error saving draft" });
+    }
+    setSavingDraft(false);
+  }
+
+  async function saveAsTemplate() {
+    if (!body) return;
+    setSavingTemplate(true);
+    setResult(null);
+    try {
+      // Load current campaign customization to get existing templates
+      const campaignRes = await fetch(`/api/campaigns/current`);
+      let existingTemplates: CustomTemplate[] = [];
+      if (campaignRes.ok) {
+        const campaignData = await campaignRes.json();
+        existingTemplates = campaignData.data?.customization?.templates ?? [];
+      }
+
+      const newTemplate: CustomTemplate = {
+        slug: `custom-${Date.now()}`,
+        name: subject || `${channel.toUpperCase()} Template ${existingTemplates.length + 1}`,
+        channel,
+        subject: channel === "email" ? subject : undefined,
+        body,
+        createdAt: new Date().toISOString(),
+      };
+
+      const res = await fetch("/api/campaigns/current", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customization: {
+            templates: [...existingTemplates, newTemplate],
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setResult({ message: "Template saved. View it in the Templates tab." });
+      } else {
+        const data = await res.json();
+        setResult({ error: data.error ?? "Failed to save template" });
+      }
+    } catch {
+      setResult({ error: "Network error saving template" });
+    }
+    setSavingTemplate(false);
+  }
+
   async function send(testOnly: boolean) {
     if (channel === "email" && (!subject || !body)) {
       setResult({ error: "Subject and body required" });
@@ -562,7 +691,15 @@ function ComposeTab({
       if (!res.ok) {
         setResult({ error: data.error ?? "Send failed" });
       } else {
-        setResult({ sent: data.sent, failed: data.failed });
+        const sentCount = data.sent ?? data.delivered ?? 0;
+        const failedCount = data.failed ?? 0;
+        setResult({
+          sent: sentCount,
+          failed: failedCount,
+          message: testOnly
+            ? `Test send complete: ${sentCount} delivered.`
+            : `Successfully sent to ${sentCount} recipient${sentCount !== 1 ? "s" : ""} via ${channel.toUpperCase()}.${failedCount ? ` ${failedCount} failed.` : " All delivered."}`,
+        });
       }
     } catch {
       setResult({ error: "Network error" });
@@ -708,7 +845,9 @@ function ComposeTab({
             }`}>
               {result.error
                 ? result.error
-                : `Sent to ${result.sent} recipients. ${result.failed ? `${result.failed} failed.` : "All delivered."}`}
+                : result.message
+                  ? result.message
+                  : `Sent to ${result.sent} recipients. ${result.failed ? `${result.failed} failed.` : "All delivered."}`}
             </div>
           )}
 
@@ -730,16 +869,24 @@ function ComposeTab({
               Test Send
             </button>
             <button
-              disabled={!body}
+              onClick={saveDraft}
+              disabled={!body || savingDraft}
               className="h-11 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
-              Save Draft
+              {savingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Draft"}
+            </button>
+            <button
+              onClick={saveAsTemplate}
+              disabled={!body || savingTemplate}
+              className="h-11 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            >
+              {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FileText className="w-3.5 h-3.5" /> Save as Template</>}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Right: Audience Panel ───────────────��──────────── */}
+      {/* ── Right: Audience Panel ─────────────────────────── */}
       <div className="lg:w-80 shrink-0 space-y-4">
         {/* Audience count */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -944,7 +1091,7 @@ function CampaignsTab({ campaignId, channelFilter }: { campaignId: string; chann
 // TAB: INBOX
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function InboxTab({ campaignId }: { campaignId: string }) {
+function InboxTab({ campaignId, onNavigateCompose }: { campaignId: string; onNavigateCompose: (prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) => void }) {
   const [items, setItems] = useState<Array<{ id: string; type: string; title: string; body: string; date: string; meta: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -1005,6 +1152,22 @@ function InboxTab({ campaignId }: { campaignId: string }) {
     if (type === "mention") return <Globe className="w-4 h-4 text-emerald-600" />;
     return <MessageCircle className="w-4 h-4 text-slate-400" />;
   };
+
+  function handleReply() {
+    if (!selectedItem) return;
+    const channel = selectedItem.type === "sms" ? "sms" : "email";
+    onNavigateCompose({
+      channel: channel as "email" | "sms",
+      subject: channel === "email" ? `Re: ${selectedItem.title}` : undefined,
+      body: "",
+    });
+  }
+
+  function handleArchive() {
+    if (!selectedItem) return;
+    setItems((prev) => prev.filter((i) => i.id !== selectedItem.id));
+    setSelected(null);
+  }
 
   if (loading) {
     return (
@@ -1068,11 +1231,17 @@ function InboxTab({ campaignId }: { campaignId: string }) {
               <p className="text-sm text-slate-700 leading-relaxed">{selectedItem.body}</p>
             </div>
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex gap-2">
-              <button className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5">
+              <button
+                onClick={handleReply}
+                className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              >
                 <Send className="w-3.5 h-3.5" />
                 Reply
               </button>
-              <button className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5">
+              <button
+                onClick={handleArchive}
+                className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+              >
                 <Archive className="w-3.5 h-3.5" />
                 Archive
               </button>
@@ -1100,10 +1269,28 @@ function InboxTab({ campaignId }: { campaignId: string }) {
 // TAB: TEMPLATES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function TemplatesTab({ channelFilter }: { channelFilter: Channel }) {
+function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campaignId: string; channelFilter: Channel; onNavigateCompose: (prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) => void }) {
   const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [loadingCustom, setLoadingCustom] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/campaigns/current`);
+        if (res.ok) {
+          const data = await res.json();
+          setCustomTemplates(data.data?.customization?.templates ?? []);
+        }
+      } catch {}
+      setLoadingCustom(false);
+    })();
+  }, [campaignId]);
+
   const emailT = channelFilter !== "sms" ? EMAIL_TEMPLATES : [];
   const smsT = channelFilter !== "email" ? SMS_TEMPLATES : [];
+  const customEmailT = channelFilter !== "sms" ? customTemplates.filter((t) => t.channel === "email") : [];
+  const customSmsT = channelFilter !== "email" ? customTemplates.filter((t) => t.channel === "sms") : [];
 
   return (
     <div className="space-y-6">
@@ -1133,6 +1320,13 @@ function TemplatesTab({ channelFilter }: { channelFilter: Channel }) {
                   >
                     <Eye className="w-3 h-3" />
                     Preview
+                  </button>
+                  <button
+                    onClick={() => onNavigateCompose({ channel: "email", subject: t.subject, body: t.body })}
+                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Send className="w-3 h-3" />
+                    Use
                   </button>
                   <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors">
                     <Copy className="w-3 h-3" />
@@ -1168,8 +1362,11 @@ function TemplatesTab({ channelFilter }: { channelFilter: Channel }) {
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-violet-50 hover:text-violet-600 flex items-center gap-1 transition-colors">
-                    <Copy className="w-3 h-3" />
+                  <button
+                    onClick={() => onNavigateCompose({ channel: "sms", body: t.body })}
+                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-violet-50 hover:text-violet-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Send className="w-3 h-3" />
                     Use
                   </button>
                   <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors">
@@ -1180,6 +1377,58 @@ function TemplatesTab({ channelFilter }: { channelFilter: Channel }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Custom / Saved Templates */}
+      {(customEmailT.length > 0 || customSmsT.length > 0) && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <h3 className="text-base font-bold text-slate-900">Custom Templates</h3>
+            <span className="text-xs text-slate-400">{customEmailT.length + customSmsT.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {[...customEmailT, ...customSmsT].map((t) => (
+              <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-amber-200 hover:shadow-md transition-all">
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${t.channel === "email" ? "bg-blue-50" : "bg-violet-50"}`}>
+                    {t.channel === "email" ? <Mail className="w-4 h-4 text-blue-600" /> : <MessageSquare className="w-4 h-4 text-violet-600" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-slate-900">{t.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{t.subject || t.body?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Saved {formatDate(t.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <button
+                    onClick={() => setPreviewSlug(previewSlug === t.slug ? null : t.slug)}
+                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => onNavigateCompose({ channel: t.channel, subject: t.subject, body: t.body })}
+                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-1 transition-colors"
+                  >
+                    <Send className="w-3 h-3" />
+                    Use
+                  </button>
+                </div>
+                {previewSlug === t.slug && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 prose prose-xs max-w-none" dangerouslySetInnerHTML={{ __html: t.body }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loadingCustom && (
+        <div className="text-center py-4">
+          <Loader2 className="w-5 h-5 text-slate-400 animate-spin mx-auto" />
         </div>
       )}
     </div>
@@ -1246,13 +1495,84 @@ function AutomationsTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function ScheduledTab({ campaignId }: { campaignId: string }) {
+  const [items, setItems] = useState<ScheduledItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const fetchScheduled = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/notifications/schedule?campaignId=${campaignId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.data ?? []);
+      }
+    } catch {}
+    setLoading(false);
+  }, [campaignId]);
+
+  useEffect(() => { fetchScheduled(); }, [fetchScheduled]);
+
+  async function cancelScheduled(id: string) {
+    setCancelling(id);
+    try {
+      const res = await fetch(`/api/notifications/schedule?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchScheduled();
+      }
+    } catch {}
+    setCancelling(null);
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
+        <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+        <p className="text-lg font-bold text-slate-700">No scheduled sends</p>
+        <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
+          When you schedule a message for later, it will appear here. You can pause, cancel, or reschedule from this view.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
-      <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-      <p className="text-lg font-bold text-slate-700">No scheduled sends</p>
-      <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-        When you schedule a message for later, it will appear here. You can pause, cancel, or reschedule from this view.
-      </p>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="grid grid-cols-[1fr_1fr_140px_100px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Title</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Message</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Scheduled For</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Actions</span>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {items.map((item) => (
+          <div key={item.id} className="grid grid-cols-[1fr_1fr_140px_100px] gap-4 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-slate-900 truncate">{item.title || "Untitled"}</p>
+            </div>
+            <p className="text-xs text-slate-500 truncate">{item.body?.replace(/<[^>]*>/g, "").slice(0, 80)}</p>
+            <p className="text-xs text-slate-600 tabular-nums">{formatDate(item.scheduledFor)}</p>
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => cancelScheduled(item.id)}
+                disabled={cancelling === item.id}
+                className="h-7 px-3 rounded-md text-[11px] font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1 transition-colors disabled:opacity-50"
+              >
+                {cancelling === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                Cancel
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1268,10 +1588,10 @@ function HistoryTab({ campaignId, channelFilter }: { campaignId: string; channel
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/notifications?campaignId=${campaignId}&limit=100`);
+        const res = await fetch(`/api/notifications/history?campaignId=${campaignId}&limit=100`);
         if (res.ok) {
           const data = await res.json();
-          setHistory(data.data ?? data ?? []);
+          setHistory(data.data ?? []);
         }
       } catch {}
       setLoading(false);
