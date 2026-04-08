@@ -38,7 +38,7 @@ export default function TermsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:py-14">
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Terms of Service</h1>
-          <p className="mt-2 text-sm text-gray-500">Effective date: April 2026 &nbsp;·&nbsp; Governing law: Ontario, Canada</p>
+          <p className="mt-2 text-sm text-gray-500">Effective date: April 8, 2026 &nbsp;·&nbsp; Last updated: April 8, 2026 &nbsp;·&nbsp; Governing law: Ontario, Canada</p>
           <p className="mt-4 text-gray-600 leading-relaxed">
             These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and use of Poll City (&ldquo;Service,&rdquo; &ldquo;Platform,&rdquo;
             &ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;). By creating an account or using the Service, you agree to be bound by these Terms.

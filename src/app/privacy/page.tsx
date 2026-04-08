@@ -37,7 +37,7 @@ export default function PrivacyPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 lg:py-14">
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-gray-500">Effective date: April 2026 &nbsp;·&nbsp; Governing law: Ontario, Canada</p>
+          <p className="mt-2 text-sm text-gray-500">Effective date: April 8, 2026 &nbsp;·&nbsp; Last updated: April 8, 2026 &nbsp;·&nbsp; Governing law: Ontario, Canada</p>
           <p className="mt-4 text-gray-600 leading-relaxed">
             Poll City (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) is committed to protecting the privacy of campaign staff,
             volunteers, and the individuals whose data is managed through our platform. This Privacy Policy explains what
@@ -270,7 +270,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="text-gray-700 leading-relaxed mt-4">
               To exercise any of these rights, please contact us at{" "}
-              <a href="mailto:support@poll.city" className="text-blue-600 hover:underline">support@poll.city</a>.
+              <a href="mailto:privacy@pollcity.ca" className="text-blue-600 hover:underline">privacy@pollcity.ca</a>.
               We will respond to requests within 30 days. Note that voter contact records entered by a campaign are
               owned by that campaign; individuals seeking access to or deletion of records held by a campaign should
               contact the campaign directly.
@@ -308,7 +308,7 @@ export default function PrivacyPage() {
             </p>
             <div className="mt-4 p-5 bg-gray-50 rounded-xl border border-gray-200 text-gray-700">
               <p className="font-semibold text-gray-900 mb-1">Poll City Privacy Office</p>
-              <p>Email: <a href="mailto:support@poll.city" className="text-blue-600 hover:underline">support@poll.city</a></p>
+              <p>Email: <a href="mailto:privacy@pollcity.ca" className="text-blue-600 hover:underline">privacy@pollcity.ca</a></p>
               <p className="mt-2 text-sm text-gray-500">
                 Governing Law: This Privacy Policy is governed by the laws of the Province of Ontario and the federal
                 laws of Canada applicable therein, including the <em>Personal Information Protection and Electronic
@@ -333,7 +333,7 @@ export default function PrivacyPage() {
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-gray-700 transition-colors font-medium text-gray-700">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-            <a href="mailto:support@poll.city" className="hover:text-gray-700 transition-colors">support@poll.city</a>
+            <a href="mailto:privacy@pollcity.ca" className="hover:text-gray-700 transition-colors">privacy@pollcity.ca</a>
           </div>
         </div>
       </footer>

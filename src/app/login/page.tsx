@@ -172,6 +172,13 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+
+        {/* Legal links */}
+        <div className="text-center mt-6 flex items-center justify-center gap-4 text-xs text-blue-200">
+          <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+          <span className="opacity-40">·</span>
+          <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+        </div>
       </div>
     </div>
   );
