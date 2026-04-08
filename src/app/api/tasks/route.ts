@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
 
   const where = {
     campaignId,
+    deletedAt: null,
     ...(status && { status }),
     ...(assignedToId && { assignedToId }),
     ...(mine && { assignedToId: session!.user.id }),

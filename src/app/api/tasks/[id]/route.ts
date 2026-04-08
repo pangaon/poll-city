@@ -53,7 +53,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const { forbidden } = await guardCampaignRoute(session!.user.id, task.campaignId, "tasks:write");
   if (forbidden) return forbidden;
 
-  await prisma.task.delete({ where: { id: params.id } });
+  await prisma.task.update({
+    where: { id: params.id },
+    data: { deletedAt: new Date(), deletedById: session!.user.id },
+  });
 
   await audit(prisma, 'task.delete', {
     campaignId: task.campaignId,

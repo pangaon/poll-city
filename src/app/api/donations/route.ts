@@ -4,6 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parsePagination } from "@/lib/utils";
 import { audit } from "@/lib/audit";
+import { updateDonationSchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   const status = sp.get("status");
   const search = sp.get("search")?.trim();
-  const baseWhere: any = { campaignId };
+  const baseWhere: any = { campaignId, deletedAt: null };
   if (status) baseWhere.status = status;
   if (search) {
     baseWhere.OR = [
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     prisma.donation.count({ where: baseWhere }),
     prisma.donation.groupBy({
       by: ["status"],
-      where: { campaignId },
+      where: { campaignId, deletedAt: null },
       _count: { amount: true },
       _sum: { amount: true },
     }),
@@ -60,8 +61,11 @@ export async function PATCH(req: NextRequest) {
   const donationId = req.nextUrl.searchParams.get("id");
   if (!donationId) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+
+  const parsed = updateDonationSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
 
   const donation = await prisma.donation.findUnique({ where: { id: donationId }, select: { campaignId: true } });
   if (!donation || !donation.campaignId) return NextResponse.json({ error: "Donation not found" }, { status: 404 });
@@ -73,11 +77,7 @@ export async function PATCH(req: NextRequest) {
 
   const updated = await prisma.donation.update({
     where: { id: donationId },
-    data: {
-      status: typeof body.status === "string" ? body.status : undefined,
-      notes: typeof body.notes === "string" ? body.notes.trim() || null : undefined,
-      method: typeof body.method === "string" ? body.method.trim() || null : undefined,
-    },
+    data: parsed.data,
     include: {
       contact: { select: { id: true, firstName: true, lastName: true } },
       recordedBy: { select: { id: true, name: true, email: true } },

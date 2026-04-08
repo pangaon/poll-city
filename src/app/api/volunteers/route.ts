@@ -75,6 +75,9 @@ export async function POST(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!["CAMPAIGN_MANAGER", "ADMIN", "SUPER_ADMIN"].includes(membership.role)) {
+    return NextResponse.json({ error: "Forbidden — requires Campaign Manager or higher" }, { status: 403 });
+  }
 
   const created = await prisma.volunteerProfile.create({
     data: {
@@ -134,6 +137,9 @@ export async function PATCH(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId: profile.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!["CAMPAIGN_MANAGER", "ADMIN", "SUPER_ADMIN"].includes(membership.role)) {
+    return NextResponse.json({ error: "Forbidden — requires Campaign Manager or higher" }, { status: 403 });
+  }
 
   const updated = await prisma.volunteerProfile.update({
     where: { id: profileId },

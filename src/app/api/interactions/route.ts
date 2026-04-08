@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, mobileApiAuth } from "@/lib/auth/helpers";
+import { rateLimit } from "@/lib/rate-limit";
 import { createInteractionSchema } from "@/lib/validators";
 import { sanitizeUserText } from "@/lib/security/monitor";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const [batch, total] = await Promise.all([
     prisma.interaction.findMany({
-      where: { contact: { campaignId } },
+      where: { contact: { campaignId, deletedAt: null } },
       include: {
         contact: { select: { id: true, firstName: true, lastName: true, address1: true } },
         user: { select: { id: true, name: true, email: true } },
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       take: pageSize + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     }),
-    prisma.interaction.count({ where: { contact: { campaignId } } }),
+    prisma.interaction.count({ where: { contact: { campaignId, deletedAt: null } } }),
   ]);
 
   const hasMore = batch.length > pageSize;
@@ -60,6 +61,9 @@ export async function GET(req: NextRequest) {
  * Accepts both NextAuth cookie sessions (web) and mobile Bearer JWT tokens.
  */
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await rateLimit(req, "form");
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { session, error } = await mobileApiAuth(req);
   if (error) return error;
 

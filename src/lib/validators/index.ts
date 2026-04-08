@@ -6,6 +6,7 @@ import {
   TaskStatus,
   TaskPriority,
   Role,
+  DonationStatus,
 } from "@prisma/client";
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -139,6 +140,14 @@ export const createTaskSchema = z.object({
 export const updateTaskSchema = createTaskSchema
   .omit({ campaignId: true })
   .partial();
+
+// ─── Donation ─────────────────────────────────────────────────────────────
+
+export const updateDonationSchema = z.object({
+  status: z.nativeEnum(DonationStatus).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+  method: z.enum(["cash", "cheque", "credit", "e-transfer"]).optional().nullable(),
+});
 
 // ─── Canvass List ─────────────────────────────────────────────────────────
 
