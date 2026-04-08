@@ -1,7 +1,8 @@
 "use client";
-import { useState, useMemo } from "react";
-import { Palette, Check, Upload, Wand2 } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Palette, Check, Upload, Wand2, Loader2, X } from "lucide-react";
 import { AVAILABLE_FONTS, fontCss, PARTY_PRESETS, type BrandKit } from "@/lib/brand/brand-kit";
+import { toast } from "sonner";
 
 interface Props {
   campaignId: string;
@@ -14,12 +15,53 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const font = useMemo(() => fontCss(brand.fontPrimary), [brand.fontPrimary]);
 
   function update<K extends keyof BrandKit>(key: K, value: BrandKit[K]) {
     setBrand((b) => ({ ...b, [key]: value }));
     setSaved(false);
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("File must be an image (PNG, JPG, SVG, WebP)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File must be under 5 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("uploadType", "logo");
+
+      const res = await fetch("/api/upload/logo", {
+        method: "POST",
+        headers: { "x-campaign-id": campaignId },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Upload failed");
+        return;
+      }
+      update("logoUrl", data.url);
+      toast.success("Logo uploaded — save your brand kit to apply it");
+    } catch {
+      toast.error("Upload failed — check your connection");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   function applyPreset(presetKey: keyof typeof PARTY_PRESETS) {
@@ -109,22 +151,57 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
           {/* Logo */}
           <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 space-y-3">
             <h2 className="font-bold text-slate-900">Logo</h2>
-            <p className="text-xs text-slate-500">PNG or SVG, transparent background, max 5 MB. Paste an HTTPS URL for now — file upload coming soon.</p>
-            <input
-              type="url"
-              inputMode="url"
-              placeholder="https://..."
-              value={brand.logoUrl ?? ""}
-              onChange={(e) => update("logoUrl", e.target.value)}
-              className="w-full h-12 px-3 border-2 border-slate-300 rounded-lg focus:border-blue-600 focus:outline-none"
-            />
-            <button
-              type="button"
-              className="h-11 w-full md:w-auto px-4 rounded-lg border-2 border-slate-300 text-slate-700 font-semibold flex items-center justify-center gap-2 opacity-60"
-              disabled
-            >
-              <Upload className="w-4 h-4" /> Upload file (soon)
-            </button>
+            <p className="text-xs text-slate-500">PNG, JPG, SVG or WebP. Transparent background recommended. Max 5 MB.</p>
+
+            {/* Current logo preview */}
+            {brand.logoUrl && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={brand.logoUrl} alt="Campaign logo" className="h-12 max-w-[120px] object-contain" />
+                <button
+                  type="button"
+                  onClick={() => update("logoUrl", "")}
+                  className="ml-auto text-slate-400 hover:text-red-500 transition-colors"
+                  title="Remove logo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Upload button */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                className="sr-only"
+                onChange={handleLogoUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="h-11 px-4 rounded-lg border-2 border-blue-600 text-blue-700 font-semibold flex items-center justify-center gap-2 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+              >
+                {uploading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                ) : (
+                  <><Upload className="w-4 h-4" /> Upload file</>
+                )}
+              </button>
+
+              <span className="flex items-center text-xs text-slate-400 px-1">or</span>
+
+              <input
+                type="url"
+                inputMode="url"
+                placeholder="Paste logo URL…"
+                value={brand.logoUrl ?? ""}
+                onChange={(e) => update("logoUrl", e.target.value)}
+                className="flex-1 h-11 px-3 border-2 border-slate-300 rounded-lg focus:border-blue-600 focus:outline-none text-sm"
+              />
+            </div>
           </section>
 
           {/* Typography */}

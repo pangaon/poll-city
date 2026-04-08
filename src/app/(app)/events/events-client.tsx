@@ -540,15 +540,51 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
     window.open(`/api/events/${eventId}/calendar`, "_blank");
   }
 
-  /* ---- Reminder / follow-up stubs ---- */
-  function sendReminder() {
+  /* ---- Reminder / follow-up ---- */
+  async function sendReminder() {
     if (!selectedEvent) return;
-    toast.success(`Reminder queued for ${selectedEvent.name}`);
+    const toastId = toast.loading(`Sending reminders for ${selectedEvent.name}…`);
+    try {
+      const res = await fetch(`/api/events/${selectedEvent.id}/remind`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send reminders", { id: toastId });
+        return;
+      }
+      if (data.sent === 0) {
+        toast.info(data.message ?? "No confirmed RSVPs to remind.", { id: toastId });
+      } else {
+        toast.success(
+          `Reminder sent to ${data.sent} attendee${data.sent !== 1 ? "s" : ""}${data.failed > 0 ? ` (${data.failed} failed)` : ""}`,
+          { id: toastId }
+        );
+      }
+    } catch {
+      toast.error("Network error — reminders not sent", { id: toastId });
+    }
   }
 
-  function sendFollowUp() {
+  async function sendFollowUp() {
     if (!selectedEvent) return;
-    toast.success(`Follow-up queued for ${selectedEvent.name}`);
+    const toastId = toast.loading(`Sending follow-ups for ${selectedEvent.name}…`);
+    try {
+      const res = await fetch(`/api/events/${selectedEvent.id}/followup`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send follow-ups", { id: toastId });
+        return;
+      }
+      if (data.sent === 0) {
+        toast.info(data.message ?? "All RSVPs already received a follow-up.", { id: toastId });
+      } else {
+        toast.success(
+          `Follow-up sent to ${data.sent} attendee${data.sent !== 1 ? "s" : ""}${data.failed > 0 ? ` (${data.failed} failed)` : ""}`,
+          { id: toastId }
+        );
+      }
+    } catch {
+      toast.error("Network error — follow-ups not sent", { id: toastId });
+    }
   }
 
   /* ---- Bulk event selection helpers ---- */

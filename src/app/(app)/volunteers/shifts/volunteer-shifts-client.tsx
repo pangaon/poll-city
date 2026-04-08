@@ -181,14 +181,30 @@ export default function VolunteerShiftsClient({ campaignId }: Props) {
   }
 
   async function sendReminders() {
+    const toastId = toast.loading("Sending shift reminders…");
     try {
-      await fetch("/api/volunteers/shifts/reminders", {
+      const res = await fetch("/api/volunteers/shifts/reminders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
-      toast.success("Reminders sent");
-    } catch { toast.error("Failed to send reminders"); }
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send reminders", { id: toastId });
+        return;
+      }
+      const { sent, shiftsChecked, skipped } = data.data ?? {};
+      if (sent === 0) {
+        toast.info(
+          skipped > 0
+            ? `No shifts in the next 24 hours with email addresses (${skipped} skipped).`
+            : `No shifts starting in the next 24 hours.`,
+          { id: toastId }
+        );
+      } else {
+        toast.success(`Sent ${sent} reminder email${sent !== 1 ? "s" : ""} across ${shiftsChecked} upcoming shift${shiftsChecked !== 1 ? "s" : ""}`, { id: toastId });
+      }
+    } catch { toast.error("Network error — reminders not sent", { id: toastId }); }
   }
 
   function navCalendar(dir: -1 | 1) {
