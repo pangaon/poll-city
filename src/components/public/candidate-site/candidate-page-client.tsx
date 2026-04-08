@@ -717,6 +717,21 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
     }
   }, [campaign.id, campaign.gaId, campaign.metaPixelId]);
 
+  // Fire tracking events to GA4 + Meta Pixel
+  const fireTrackingEvent = (eventName: string, params?: Record<string, unknown>) => {
+    try {
+      // GA4 event
+      const w = window as unknown as Record<string, unknown>;
+      if (typeof w.gtag === "function") {
+        (w.gtag as (...args: unknown[]) => void)("event", eventName, params);
+      }
+      // Meta Pixel event
+      if (typeof w.fbq === "function") {
+        (w.fbq as (...args: unknown[]) => void)("track", eventName, params);
+      }
+    } catch {}
+  };
+
   const primary = campaign.primaryColor || NAVY;
   const accent = campaign.accentColor || GREEN;
   const heroPhoto = campaign.customization.candidatePhotoUrl || campaign.logoUrl;
@@ -838,6 +853,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
     }, "support");
     if (!result) return;
     toast.success("Support recorded. Thank you.");
+    fireTrackingEvent("Lead", { content_name: "supporter_signup" });
     setSupportForm({ name: "", email: "", phone: "", postalCode: "", wantsSign: false, wantsVolunteer: false, updates: true, consent: false });
     setOpenForm(null);
   }
@@ -853,6 +869,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
     }, "volunteer");
     if (!result) return;
     toast.success("Volunteer request received.");
+    fireTrackingEvent("Lead", { content_name: "volunteer_signup" });
     setVolunteerForm({ name: "", email: "", phone: "", weekends: false, evenings: false, flexible: true, canvassing: false, driving: false, dataEntry: false, socialMedia: false, events: false, consent: false });
     setOpenForm(null);
   }
@@ -869,6 +886,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
     if (result.checkoutUrl) {
       window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
       toast.success("Opening secure checkout.");
+      fireTrackingEvent("Purchase", { content_name: "donation", value: normalizedAmount, currency: "CAD" });
     }
     setOpenForm(null);
   }
