@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
+import { audit } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -81,6 +82,13 @@ export async function PATCH(req: NextRequest) {
       where: { id: eventId },
       data: { success: true },
     });
+    audit(prisma, "admin.security_event.resolved", {
+      campaignId: "system",
+      userId: session!.user.id,
+      entityId: eventId,
+      entityType: "SecurityEvent",
+      ip: req.headers.get("x-forwarded-for"),
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -88,6 +96,13 @@ export async function PATCH(req: NextRequest) {
     await prisma.adoniSuspiciousActivity.update({
       where: { id: eventId },
       data: { reviewed: true },
+    });
+    audit(prisma, "admin.adoni_activity.reviewed", {
+      campaignId: "system",
+      userId: session!.user.id,
+      entityId: eventId,
+      entityType: "AdoniSuspiciousActivity",
+      ip: req.headers.get("x-forwarded-for"),
     });
     return NextResponse.json({ ok: true });
   }

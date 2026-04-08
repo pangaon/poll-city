@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { updateContactSchema } from "@/lib/validators";
+import { rateLimit } from "@/lib/rate-limit";
 
 async function verifyContactAccess(contactId: string, userId: string) {
   const contact = await prisma.contact.findUnique({
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 /** PATCH /api/contacts/[id] */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const contactAccess = await verifyContactAccess(params.id, session!.user.id);
@@ -82,6 +86,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 /** DELETE /api/contacts/[id] */
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const contact = await verifyContactAccess(params.id, session!.user.id);

@@ -4,6 +4,7 @@ import { switchCampaign, getUserCampaigns } from "@/lib/auth/campaign-resolver";
 import prisma from "@/lib/db/prisma";
 import type { Role } from "@prisma/client";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const switchSchema = z.object({
   campaignId: z.string().min(1),
@@ -58,11 +59,26 @@ export async function POST(req: NextRequest) {
     const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { id: true } });
     if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     await prisma.user.update({ where: { id: user.id }, data: { activeCampaignId: campaignId } });
+    audit(prisma, "campaign.switch", {
+      campaignId,
+      userId: user.id,
+      entityId: campaignId,
+      entityType: "Campaign",
+      ip: req.headers.get("x-forwarded-for"),
+      details: { switchedBy: "SUPER_ADMIN" },
+    });
     return NextResponse.json({ data: { activeCampaignId: campaignId, message: "Campaign switched successfully." } });
   }
 
   const success = await switchCampaign(session!.user.id, campaignId);
   if (!success) return NextResponse.json({ error: "You are not a member of that campaign" }, { status: 403 });
 
+  audit(prisma, "campaign.switch", {
+    campaignId,
+    userId: session!.user.id,
+    entityId: campaignId,
+    entityType: "Campaign",
+    ip: req.headers.get("x-forwarded-for"),
+  });
   return NextResponse.json({ data: { activeCampaignId: campaignId, message: "Campaign switched successfully." } });
 }

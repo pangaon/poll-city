@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { executeAction, type ActionKey } from "@/lib/operations/action-engine";
+import { internalError } from "@/lib/api/errors";
 
 const ACTION_PERMISSION_MAP: Record<ActionKey, string> = {
   "tasks.create": "tasks:write",
@@ -44,11 +45,11 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ data: result });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Action failed";
-    if (message === "Forbidden") {
+    // Check for explicit Forbidden sentinel thrown by action engine
+    if (e instanceof Error && e.message === "Forbidden") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    return NextResponse.json({ error: message }, { status: 400 });
+    return internalError(e, "actions/execute");
   }
 }
 

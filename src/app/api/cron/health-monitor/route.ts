@@ -37,7 +37,8 @@ export async function GET(req: NextRequest) {
       issues.push(`${recentFailures} deploy failures in last hour`);
     }
   } catch (e) {
-    issues.push(`DB health check failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+    console.error("[health-monitor] DB health check failed:", e);
+    issues.push("DB health check failed");
   }
 
   if (issues.length > 0) {

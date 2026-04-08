@@ -7,12 +7,19 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 import { targetedExportSchema } from "@/lib/validators/permissions";
+import { rateLimit } from "@/lib/rate-limit";
+import { anomaly } from "@/lib/security/anomaly";
 
 type ExportType = "contacts" | "walklist" | "signs" | "gotv" | "volunteers" | "donations";
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, resolved, error } = await apiAuthWithPermission(req, "contacts:export");
   if (error) return error;
+
+  anomaly.suspiciousExport(session.user.id as string);
 
   const campaignId = session.user.activeCampaignId as string;
   if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });

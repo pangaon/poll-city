@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth-options";
 import { rateLimit } from "@/lib/rate-limit";
+import { anomaly } from "@/lib/security/anomaly";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,11 @@ export async function POST(
 
   const session = await getServerSession(authOptions);
   const sessionUserId = session?.user?.id ?? null;
-  const ipHash = hashIp(getIp(req));
+  const ip = getIp(req);
+  const ipHash = hashIp(ip);
+
+  // Anomaly: track rapid voting from the same IP
+  if (ip !== "unknown") anomaly.rapidPollVote(ip);
 
   // Anonymous vote hash: prevents double-voting without storing identity.
   // If we have neither a session userId nor a hashed IP, we cannot reliably

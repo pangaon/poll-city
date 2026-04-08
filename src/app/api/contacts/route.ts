@@ -6,6 +6,7 @@ import { createContactSchema } from "@/lib/validators";
 import { parsePagination, slugify } from "@/lib/utils";
 import { getContactIdsByCustomFilters, type CustomFieldFilter } from "@/lib/db/custom-fields";
 import { SupportLevel } from "@prisma/client";
+import { rateLimit } from "@/lib/rate-limit";
 
 const SORT_FIELD_MAP: Record<string, string[]> = {
   name: ["lastName", "firstName"],
@@ -62,7 +63,9 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { page, pageSize } = parsePagination(sp);
+  const { page } = parsePagination(sp);
+  const rawPageSize = parseInt(sp.get("pageSize") ?? "25", 10);
+  const pageSize = Math.min(isNaN(rawPageSize) ? 25 : rawPageSize, 1000);
   const cursor = sp.get("cursor")?.trim() || undefined;
   const search = sp.get("search")?.trim();
   const supportLevels = sp.get("supportLevels")?.split(",").filter(Boolean) as SupportLevel[] | undefined;
@@ -156,6 +159,9 @@ export async function GET(req: NextRequest) {
  * Create a new contact
  */
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, error } = await apiAuth(req);
   if (error) return error;
   let body: unknown;

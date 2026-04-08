@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import { PollType } from "@prisma/client";
+import { audit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,14 @@ export async function POST(
         reviewedByUserId: user?.id ?? null,
         reviewedAt: new Date(),
       },
+    });
+    audit(prisma, "autonomous.content.rejected", {
+      campaignId: "system",
+      userId: user?.id ?? "unknown",
+      entityId: id,
+      entityType: "AutonomousContent",
+      ip: req.headers.get("x-forwarded-for"),
+      details: { notes },
     });
     return NextResponse.json({ success: true, action: "rejected" });
   }
@@ -113,6 +122,15 @@ export async function POST(
       reviewedByUserId: user?.id ?? null,
       reviewedAt: new Date(),
     },
+  });
+
+  audit(prisma, "autonomous.content.approved", {
+    campaignId: "system",
+    userId: user?.id ?? "unknown",
+    entityId: id,
+    entityType: "AutonomousContent",
+    ip: req.headers.get("x-forwarded-for"),
+    details: { pollId: poll.id, notes },
   });
 
   return NextResponse.json({ success: true, action: "approved", pollId: poll.id });

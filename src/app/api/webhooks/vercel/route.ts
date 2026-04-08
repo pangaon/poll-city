@@ -11,6 +11,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Replay attack protection: reject webhooks with a timestamp older than 5 minutes
+  const webhookTimestamp = req.headers.get("x-webhook-timestamp");
+  if (webhookTimestamp) {
+    const ts = parseInt(webhookTimestamp, 10);
+    if (isNaN(ts) || Math.abs(Date.now() - ts * 1000) > 5 * 60 * 1000) {
+      return NextResponse.json({ error: "Webhook timestamp expired" }, { status: 400 });
+    }
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();

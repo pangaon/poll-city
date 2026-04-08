@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, trainedAt: new Date().toISOString() });
   } catch (e) {
     console.error("[cron/adoni-train] failed:", e);
-    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Training failed" }, { status: 500 });
   }
 }

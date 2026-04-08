@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const notifySchema = z.object({
   type: z.string().min(1, "type is required"),
@@ -14,6 +15,7 @@ const notifySchema = z.object({
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req, [Role.ADMIN, Role.SUPER_ADMIN]);
   if (error) return error;
+
 
   let rawBody: unknown;
   try {
@@ -34,6 +36,15 @@ export async function POST(req: NextRequest) {
       body: parsed.data.body,
       data: parsed.data.data as object ?? undefined,
     },
+  });
+
+  audit(prisma, "admin.notification.created", {
+    campaignId: "system",
+    userId: session!.user.id,
+    entityId: notification.id,
+    entityType: "OperatorNotification",
+    ip: req.headers.get("x-forwarded-for"),
+    details: { type: notification.type, title: notification.title },
   });
 
   return NextResponse.json({ data: notification }, { status: 201 });

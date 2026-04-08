@@ -4,10 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { sendEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, "auth");
+  if (limited) return limited;
+
   try {
     const body = await req.json().catch(() => null);
     const token = typeof body?.token === "string" ? body.token.trim() : "";

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import { createHmac } from "crypto";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   guestToken: z.string().optional(),
@@ -27,6 +28,9 @@ function hashGuestToken(raw: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 

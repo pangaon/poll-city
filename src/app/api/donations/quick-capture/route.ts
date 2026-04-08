@@ -62,6 +62,20 @@ export async function POST(req: NextRequest) {
     resolvedContactId = contact.id;
   }
 
+  // Duplicate submission guard (30-second window) — prevents double-tap / network retry double-write
+  const recentDuplicate = await prisma.donation.findFirst({
+    where: {
+      campaignId,
+      contactId: resolvedContactId ?? null,
+      amount,
+      createdAt: { gte: new Date(Date.now() - 30_000) },
+    },
+    select: { id: true },
+  });
+  if (recentDuplicate) {
+    return NextResponse.json({ data: { id: recentDuplicate.id }, deduplicated: true }, { status: 200 });
+  }
+
   const donation = await prisma.donation.create({
     data: {
       campaignId,

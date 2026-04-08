@@ -3,6 +3,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { loadBrandKit } from "@/lib/brand/brand-kit";
+import { sanitizePrompt } from "@/lib/ai/sanitize-prompt";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -47,14 +48,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const kind = body.kind as GenKind;
-  const brief = (body.brief ?? "").toString().slice(0, 1000).trim();
+  const rawBrief = (body.brief ?? "").toString().trim();
   const campaignId = body.campaignId;
 
   if (!PROMPTS[kind]) {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }
-  if (!brief) {
+  if (!rawBrief) {
     return NextResponse.json({ error: "Brief is required" }, { status: 400 });
+  }
+
+  // Sanitize brief before building the AI prompt
+  const brief = sanitizePrompt(rawBrief, 1000);
+  if (brief === null) {
+    return NextResponse.json({ error: "Invalid prompt content" }, { status: 422 });
   }
 
   // Build campaign context

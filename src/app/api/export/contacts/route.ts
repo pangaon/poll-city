@@ -3,13 +3,20 @@ import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
 import type { Prisma, SupportLevel } from "@prisma/client";
+import { rateLimit } from "@/lib/rate-limit";
+import { anomaly } from "@/lib/security/anomaly";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, "form");
+    if (limited) return limited;
+
     const { session, error } = await apiAuth(req);
     if (error) return error;
+
+    anomaly.suspiciousExport(session!.user.id);
     const permError = requirePermission(session!.user.role as string, "contacts:export");
     if (permError) return permError;
 

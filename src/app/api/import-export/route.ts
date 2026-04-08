@@ -10,6 +10,7 @@ import {
   parseCustomFieldFromCsv,
   setContactCustomFields,
 } from "@/lib/db/custom-fields";
+import { rateLimit } from "@/lib/rate-limit";
 
 const VALID_SUPPORT_LEVELS = Object.values(SupportLevel);
 const MAX_IMPORT_ROWS = 5000;
@@ -57,6 +58,9 @@ function parseBoolean(value?: string | null): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const permError = requirePermission(session!.user.role as string, "import_export:read");
@@ -161,6 +165,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimit(req, "form");
+  if (limited) return limited;
+
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const permError2 = requirePermission(session!.user.role as string, "import_export:write");

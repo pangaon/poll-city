@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { Role } from "@prisma/client";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 
 const demoSchema = z.object({
   type: z.string().min(1, "type is required"),
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await apiAuth(req, [Role.ADMIN, Role.SUPER_ADMIN]);
+  const { session, error } = await apiAuth(req, [Role.ADMIN, Role.SUPER_ADMIN]);
   if (error) return error;
 
   let rawBody: unknown;
@@ -47,6 +48,15 @@ export async function POST(req: NextRequest) {
       prospectEmail: parsed.data.prospectEmail ?? null,
       expiresAt,
     },
+  });
+
+  audit(prisma, "admin.demo.created", {
+    campaignId: "system",
+    userId: session!.user.id,
+    entityId: demo.id,
+    entityType: "DemoToken",
+    ip: req.headers.get("x-forwarded-for"),
+    details: { type: demo.type, prospectEmail: demo.prospectEmail },
   });
 
   return NextResponse.json({ data: demo }, { status: 201 });

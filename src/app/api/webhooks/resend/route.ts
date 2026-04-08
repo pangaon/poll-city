@@ -7,6 +7,30 @@ import prisma from "@/lib/db/prisma";
  * Configure in Resend dashboard → Webhooks → https://poll.city/api/webhooks/resend
  */
 export async function POST(req: NextRequest) {
+  // Replay attack protection: Resend sends svix-timestamp (Unix seconds).
+  // Reject if older than 5 minutes.
+  const svixTimestamp = req.headers.get("svix-timestamp");
+  if (svixTimestamp) {
+    const ts = parseInt(svixTimestamp, 10);
+    if (isNaN(ts) || Math.abs(Date.now() - ts * 1000) > 5 * 60 * 1000) {
+      return NextResponse.json({ error: "Webhook timestamp expired" }, { status: 400 });
+    }
+  }
+
+  // Signature guard: validate against RESEND_WEBHOOK_SECRET when configured.
+  // Resend uses the Svix signing library — header is svix-signature.
+  const resendSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (resendSecret) {
+    const svixSignature = req.headers.get("svix-signature");
+    const svixId = req.headers.get("svix-id");
+    if (!svixSignature || !svixId || !svixTimestamp) {
+      return NextResponse.json({ error: "Missing webhook signature headers" }, { status: 401 });
+    }
+    // Full Svix HMAC verification is left for when the svix package is added.
+    // For now: presence of all three Svix headers is enforced.
+    // TODO: npm install svix and verify with new Webhook(resendSecret).verify(body, headers)
+  }
+
   try {
     const event = await req.json();
     const type = event.type as string;
