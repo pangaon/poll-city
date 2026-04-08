@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/providers/auth-provider";
 import { Toaster } from "sonner";
 import PwaRegister from "@/components/pwa/pwa-register";
+import Analytics from "@/components/tracking/analytics";
 
 export const metadata: Metadata = {
   title: { default: "Poll City", template: "%s | Poll City" },
@@ -81,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="msapplication-TileColor" content="#1e40af" />
         <meta name="msapplication-TileImage" content="/apple-touch-icon.png" />
       </head>
+      <Analytics />
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
