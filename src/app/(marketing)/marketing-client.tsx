@@ -1,27 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
-  Menu, X, ArrowRight, Shield, MapPin, Users, BarChart3, Bell,
-  Printer, Star, Zap, Globe, ChevronDown, Check, Phone,
-  Mail, MessageSquare, Target, Monitor, Smartphone,
-  Award, TrendingUp, FileText, Calendar, DollarSign,
-  Layers, Bot, Upload, Palette, Vote, BookOpen, Lock,
-  Play, CheckCircle2, ArrowUpRight, Sparkles, Radio,
-  Eye, Heart, Megaphone, Search, Settings, Map,
+  Menu, X, ArrowRight, Shield, MapPin, Users, BarChart3,
+  Globe, ChevronDown, Check, Phone, Mail, MessageSquare,
+  Target, Bot, Lock, Play, CheckCircle2, ArrowUpRight,
+  Zap, Calendar, BookOpen, Printer, DollarSign, Vote,
+  Eye, Layers,
 } from "lucide-react";
 
-/* ─── Navigation ─────────────────────────────────────────────────────────── */
-
-const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Solutions", href: "#solutions" },
-  { label: "Compare", href: "#compare" },
-  { label: "Help", href: "/help" },
-];
+/* ─── Navbar ─────────────────────────────────────────────────────────────── */
 
 function Navbar() {
   const [open, setOpen] = useState(false);
@@ -41,44 +30,38 @@ function Navbar() {
             <img src="/logo.png" alt="Poll City" className="w-8 h-8 rounded-lg object-contain" />
             <span className={`font-bold text-lg ${scrolled ? "text-slate-900" : "text-white"}`}>Poll City</span>
           </Link>
-
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
+            {[
+              { label: "How It Works", href: "#system" },
+              { label: "Pricing", href: "/pricing" },
+              { label: "Demo", href: "/demo" },
+            ].map((link) => (
               <Link key={link.label} href={link.href} className={`text-sm font-medium transition-colors ${scrolled ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>
                 {link.label}
               </Link>
             ))}
           </div>
-
           <div className="hidden md:flex items-center gap-3">
             <Link href="/demo" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
-              Explore Demo
+              Explore Platform
             </Link>
-            <Link href="/login" className="text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm">
+            <Link href="/login" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
               Start Your Campaign
             </Link>
           </div>
-
-          {/* Mobile toggle */}
           <button onClick={() => setOpen(!open)} className={`md:hidden ${scrolled ? "text-slate-900" : "text-white"}`}>
             {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
-
-      {/* Mobile Menu */}
       {open && (
         <div className="md:hidden bg-white border-t border-slate-200 shadow-lg">
           <div className="px-4 py-4 space-y-1">
-            {NAV_LINKS.map((link) => (
-              <Link key={link.label} href={link.href} onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                {link.label}
-              </Link>
-            ))}
+            <Link href="#system" onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">How It Works</Link>
+            <Link href="/pricing" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Pricing</Link>
+            <Link href="/demo" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Demo</Link>
             <hr className="my-2" />
-            <Link href="/demo" className="block px-3 py-2.5 text-sm font-semibold text-blue-600">Explore Demo</Link>
-            <Link href="/login" className="block px-3 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
+            <Link href="/login" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
           </div>
         </div>
       )}
@@ -86,342 +69,300 @@ function Navbar() {
   );
 }
 
-/* ─── Section Components ─────────────────────────────────────────────────── */
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">{children}</p>;
-}
-
-/* ─── Main Component ─────────────────────────────────────────────────────── */
+/* ─── Main ──────────────────────────────────────────────────────────────── */
 
 export default function MarketingClient() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
 
-      {/* ═══════════════════════════════════════════════════
-         HERO
-         ═══════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden pt-16" style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)" }}>
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative">
-          <div className="max-w-4xl mx-auto text-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-              <span className="text-xs font-semibold text-blue-300">Campaign Operating System for Canadian Elections</span>
-            </div>
-
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1]">
-              Run Your Entire Campaign
-              <br />
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Including Your Website</span>
-              <br />
-              From One Platform
+      {/* ══════════════════════════════════════════════════════════════════
+         1. OPENING — The Hook
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden pt-16" style={{ background: "linear-gradient(145deg, #0B1120 0%, #162037 40%, #0B1120 100%)" }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 md:pt-28 md:pb-12 relative">
+          <div className="max-w-3xl">
+            <h1 className="text-[clamp(2.5rem,6vw,4.5rem)] font-black text-white leading-[1.05] tracking-tight">
+              The campaign operating system
+              <span className="block text-blue-400">that&nbsp;includes&nbsp;your&nbsp;website.</span>
             </h1>
-
-            <p className="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Campaign software, communications, field operations, and a fully built campaign website — ready from day one. No other platform gives you this.
+            <p className="mt-5 text-base md:text-lg text-slate-400 max-w-xl leading-relaxed">
+              One platform replaces your CRM, your website builder, your email tool, your canvassing app, and your spreadsheets. Everything connected. Ready from day one.
             </p>
-
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/login" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/25">
-                Start Your Campaign
-                <ArrowRight className="w-5 h-5" />
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/login" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+                Start Your Campaign <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/demo" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-white/10 text-white font-bold text-base hover:bg-white/15 transition-colors border border-white/10">
-                <Play className="w-4 h-4" />
-                Explore the Platform
+              <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+                <Play className="w-4 h-4" /> Explore the Platform
               </Link>
             </div>
-
-            {/* Trust signals */}
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
-              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-green-400" /> PIPEDA Compliant</span>
-              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-blue-400" /> Canadian Hosted</span>
-              <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-amber-400" /> AI-Powered</span>
-              <span className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-cyan-400" /> Campaign Website Included</span>
-            </div>
           </div>
         </div>
 
-        {/* Gradient fade to white */}
-        <div className="h-24 bg-gradient-to-b from-transparent to-white" />
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         PROBLEM
-         ═══════════════════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>The Problem</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Campaigns Run on Broken Tools</h2>
-            <p className="mt-4 text-lg text-slate-500">Most campaigns piece together 5-10 disconnected systems. Data gets lost, teams waste time, and voters fall through the cracks.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: Layers, title: "Fragmented Systems", desc: "Spreadsheets, random apps, paper lists — nothing talks to anything else." },
-              { icon: MessageSquare, title: "Disconnected Messaging", desc: "Email in one tool, SMS in another, social in a third. No unified view." },
-              { icon: Eye, title: "Poor Visibility", desc: "Campaign managers can't see what's happening in real time. Decisions lag." },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-xl border border-red-100 bg-red-50/50 p-6">
-                  <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 text-red-600" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
-                  <p className="text-sm text-slate-600 mt-2 leading-relaxed">{item.desc}</p>
+        {/* Product visual — website + dashboard side by side */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Campaign website preview */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+                <div className="flex gap-1"><span className="w-2 h-2 rounded-full bg-white/20" /><span className="w-2 h-2 rounded-full bg-white/20" /><span className="w-2 h-2 rounded-full bg-white/20" /></div>
+                <div className="flex-1 bg-white/5 rounded px-2 py-0.5 text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> votegeorge.ca
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         SOLUTION
-         ═══════════════════════════════════════════════════ */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>The Solution</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">One Platform. Total Campaign Control.</h2>
-            <p className="mt-4 text-lg text-slate-500">Everything connected. Nothing wasted. From your first contact to election night.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         CAMPAIGN WEBSITE — THE DIFFERENTIATOR
-         ═══════════════════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="flex-1">
-              <SectionLabel>What Nobody Else Gives You</SectionLabel>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                Your Campaign Website.
-                <br />
-                <span className="text-blue-600">Built In. Live Day One.</span>
-              </h2>
-              <p className="mt-4 text-base text-slate-500 leading-relaxed">
-                Every other platform makes you build a website somewhere else. Poll City gives you a fully branded, mobile-ready campaign website that&apos;s connected to everything — supporters sign up, donors contribute, volunteers register, and it all flows directly into your CRM.
-              </p>
-              <p className="mt-3 text-base text-slate-500 leading-relaxed">
-                Forward your own domain (votegeorge.ca) and visitors see a professional campaign site. Nobody knows it&apos;s Poll City — unless you want them to.
-              </p>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {[
-                  "Hero with photo & tagline",
-                  "Platform & issues section",
-                  "Endorsements with logos",
-                  "Stripe-powered donations",
-                  "Volunteer signup forms",
-                  "Lawn sign requests",
-                  "Event RSVP system",
-                  "Interactive ward map",
-                  "Q&A / live questions",
-                  "Custom domain support",
-                  "6 themes & 5 font pairs",
-                  "SEO + social sharing",
-                ].map((f) => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-slate-700">
-                    <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                    {f}
-                  </div>
-                ))}
+                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">Your Website</span>
               </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/candidates/demo-campaign-2026" target="_blank" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
-                  <Globe className="w-4 h-4" />
-                  See a Live Campaign Website
-                  <ArrowUpRight className="w-4 h-4" />
-                </Link>
-                <Link href="/demo" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                  <Eye className="w-4 h-4" />
-                  Explore the Builder
-                </Link>
-              </div>
-            </div>
-
-            {/* Browser mockup */}
-            <div className="lg:w-[440px] shrink-0">
-              <div className="rounded-xl border-2 border-slate-200 bg-white shadow-2xl overflow-hidden">
-                <div className="bg-slate-100 px-3 py-2 flex items-center gap-2 border-b border-slate-200">
-                  <div className="flex gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-red-400" />
-                    <span className="w-3 h-3 rounded-full bg-amber-400" />
-                    <span className="w-3 h-3 rounded-full bg-green-400" />
-                  </div>
-                  <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> votegeorge.ca
+              <div className="p-4 space-y-3">
+                <div className="h-16 rounded-lg bg-gradient-to-r from-blue-600 to-blue-800 flex items-end p-3">
+                  <div>
+                    <p className="text-white font-black text-sm">George Hatzis for Council</p>
+                    <p className="text-blue-200 text-[10px]">Ward 20 · Toronto</p>
                   </div>
                 </div>
-                <div className="p-5 space-y-4">
-                  {/* Hero */}
-                  <div className="h-24 rounded-lg bg-gradient-to-r from-blue-700 to-blue-900 flex items-end p-4">
-                    <div>
-                      <p className="text-white font-black text-lg leading-tight">George Hatzis</p>
-                      <p className="text-blue-200 text-xs">for City Council — Ward 20</p>
+                <div className="flex gap-1.5">
+                  {["Support", "Volunteer", "Donate", "Events"].map((b, i) => (
+                    <div key={b} className={`flex-1 h-7 rounded flex items-center justify-center text-[9px] font-bold text-white ${["bg-blue-600","bg-emerald-600","bg-amber-600","bg-violet-600"][i]}`}>{b}</div>
+                  ))}
+                </div>
+                <div className="space-y-1.5">
+                  {["Platform & Issues", "About", "Endorsements", "Events", "Ward Map"].map((s) => (
+                    <div key={s} className="px-2.5 py-1.5 rounded bg-white/5 flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-slate-400">{s}</span>
+                      <ChevronDown className="w-2.5 h-2.5 text-slate-600" />
                     </div>
-                  </div>
-                  {/* Action buttons */}
-                  <div className="flex gap-2">
-                    {["Support", "Volunteer", "Donate", "Events"].map((btn, i) => (
-                      <div key={btn} className={`flex-1 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${
-                        i === 0 ? "bg-blue-600" : i === 1 ? "bg-emerald-600" : i === 2 ? "bg-amber-600" : "bg-violet-600"
-                      }`}>{btn}</div>
-                    ))}
-                  </div>
-                  {/* Sections */}
-                  <div className="space-y-2">
-                    {[
-                      { label: "Platform & Issues", sub: "Transit · Housing · Community Safety" },
-                      { label: "About George", sub: "12 years in the community" },
-                      { label: "Endorsements", sub: "Local Business Association + 4 more" },
-                      { label: "Upcoming Events", sub: "Coffee Chat — Saturday 10am" },
-                      { label: "Interactive Ward Map", sub: "Boundary, events, office" },
-                    ].map((s) => (
-                      <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 group">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800">{s.label}</p>
-                          <p className="text-[10px] text-slate-500">{s.sub}</p>
-                        </div>
-                        <ChevronDown className="w-3 h-3 text-slate-400" />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[9px] text-center text-slate-400">Powered by Poll City · All forms feed your CRM</p>
+                  ))}
                 </div>
+                <p className="text-[8px] text-center text-slate-600">Every form feeds your CRM · Custom domain · Donations via Stripe</p>
+              </div>
+            </div>
+
+            {/* Dashboard preview */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+              <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+                <div className="flex gap-1"><span className="w-2 h-2 rounded-full bg-white/20" /><span className="w-2 h-2 rounded-full bg-white/20" /><span className="w-2 h-2 rounded-full bg-white/20" /></div>
+                <div className="flex-1 bg-white/5 rounded px-2 py-0.5 text-[10px] text-slate-500 font-mono">poll.city/dashboard</div>
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Your Dashboard</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Supporters", val: "2,847", color: "text-emerald-400" },
+                    { label: "Doors Today", val: "142", color: "text-blue-400" },
+                    { label: "Days Left", val: "203", color: "text-amber-400" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-lg bg-white/5 p-2.5 text-center">
+                      <p className={`text-lg font-black ${m.color}`}>{m.val}</p>
+                      <p className="text-[9px] text-slate-500 font-medium">{m.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-lg bg-white/5 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">The Gap</span>
+                    <span className="text-[9px] text-emerald-400 font-bold">312 to go</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: "68%" }} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {[
+                    "Jane K. knocked 12 doors on Elm St — 2m ago",
+                    "$250 donation from Sarah L. — 15m ago",
+                    "New volunteer signup: Alex R. — 22m ago",
+                  ].map((a) => (
+                    <div key={a} className="px-2.5 py-1.5 rounded bg-white/5 text-[9px] text-slate-500">{a}</div>
+                  ))}
+                </div>
+                <p className="text-[8px] text-center text-slate-600">Live data · Auto-refresh · Custom widgets · 6 modes</p>
               </div>
             </div>
           </div>
         </div>
+
+        <div className="h-20 bg-gradient-to-b from-transparent to-white" />
       </section>
 
-      {/* ═══════════════════════════════════════════════════
-         WHAT YOU GET — DAY ONE
-         ═══════════════════════════════════════════════════ */}
-      <section id="product" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>What You Get Day One</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Everything a Campaign Needs. Built In.</h2>
-          </div>
+      {/* ══════════════════════════════════════════════════════════════════
+         2. THE CORE TRUTH — One sentence per capability
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-sm font-bold text-blue-600 uppercase tracking-widest mb-4">This replaces everything</p>
+          <h2 className="text-center text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-12">
+            One login. One system. One source of truth.
+          </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 max-w-4xl mx-auto">
             {[
-              { icon: Globe, title: "Campaign Website", desc: "Live immediately. Custom domain. Branded to your campaign.", highlight: true },
-              { icon: Users, title: "Voter & Contact CRM", desc: "Import, tag, score, and segment every contact." },
-              { icon: Mail, title: "Email Campaigns", desc: "Compose, segment, schedule. CASL compliance built in." },
-              { icon: Phone, title: "SMS & Text Blasts", desc: "Bulk SMS with scheduling, templates, and delivery tracking." },
-              { icon: MapPin, title: "Canvassing", desc: "Turfs, walk lists, GPS tracking, door-knock scripts." },
-              { icon: Calendar, title: "Calendar & Events", desc: "Campaign calendar, event RSVP, volunteer scheduling." },
-              { icon: CheckCircle2, title: "Tasks & Team", desc: "Assign, track, complete. Everyone knows what to do." },
-              { icon: BarChart3, title: "Analytics & Reports", desc: "Real-time dashboards, support funnel, canvassing pace." },
-              { icon: BookOpen, title: "Resource Studio", desc: "Templates, scripts, guides — preview, download, generate." },
-              { icon: Printer, title: "Print & Logistics", desc: "Lawn signs, door hangers, flyers — design and order." },
-              { icon: Bot, title: "AI Operator (Adoni)", desc: "Generate content, analyze data, run queries by voice." },
-              { icon: Target, title: "GOTV Engine", desc: "Priority lists, vote tracking, supporter turnout in real time." },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className={`rounded-xl border p-5 transition-all hover:shadow-md ${item.highlight ? "border-blue-200 bg-blue-50/50 ring-1 ring-blue-100" : "border-slate-200 bg-white"}`}>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${item.highlight ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-600"}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm">{item.title}</h3>
-                  {item.highlight && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">Included Free</span>}
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{item.desc}</p>
+              { label: "Campaign website", detail: "Live from day one. Custom domain. Forms feed your CRM.", color: "bg-blue-600" },
+              { label: "Voter CRM", detail: "Import, tag, score, segment. Every contact in one place.", color: "bg-slate-800" },
+              { label: "Canvassing", detail: "Turfs, walk lists, GPS tracking, door-knock scripts.", color: "bg-emerald-600" },
+              { label: "Communications", detail: "Email and SMS campaigns. CASL compliant. One inbox.", color: "bg-violet-600" },
+              { label: "GOTV engine", detail: "Priority lists, vote tracking, real-time turnout.", color: "bg-red-600" },
+              { label: "Fundraising", detail: "Stripe donations. Budget tracking. Expense reporting.", color: "bg-amber-600" },
+              { label: "Analytics", detail: "Live dashboards. Custom widgets. Election night mode.", color: "bg-cyan-600" },
+              { label: "AI operator", detail: "Generate content, analyze data, run commands.", color: "bg-pink-600" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-3 py-1">
+                <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${item.color}`} />
+                <div>
+                  <p className="font-bold text-slate-900">{item.label}</p>
+                  <p className="text-sm text-slate-500">{item.detail}</p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════
-         CAMPAIGN FLOW
-         ═══════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════════
+         3. THE WEBSITE — Deep showcase
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-slate-950 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mb-12">
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">The differentiator</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">
+              Your campaign website isn&apos;t an add-on.
+              <span className="text-blue-400"> It&apos;s built into the system.</span>
+            </h2>
+            <p className="mt-4 text-slate-400 leading-relaxed">
+              Every other tool makes you build a website somewhere else. With Poll City, your website is part of the platform — supporters sign up, donors contribute, volunteers register, and every action flows directly into your operations. Point your domain and go.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              "Hero section with candidate photo",
+              "Platform & issues with details",
+              "Endorsements from organizations",
+              "Stripe-powered donations",
+              "Volunteer signup → CRM",
+              "Lawn sign requests → tasks",
+              "Event calendar with RSVP",
+              "Interactive ward boundary map",
+              "Live Q&A from constituents",
+              "Custom domain (votegeorge.ca)",
+              "6 themes · 5 font pairs",
+              "SEO + social sharing meta",
+            ].map((f) => (
+              <div key={f} className="flex items-start gap-2 py-2">
+                <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <span className="text-sm text-slate-300">{f}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link href="/candidates/demo-campaign-2026" target="_blank" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors">
+              <Globe className="w-4 h-4" /> See a Live Campaign Website <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link href="/demo" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl border border-white/15 text-white font-bold text-sm hover:bg-white/5 transition-colors">
+              <Eye className="w-4 h-4" /> See the Website Builder
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+         4. HOW CAMPAIGNS ACTUALLY RUN — System walkthrough
+         ══════════════════════════════════════════════════════════════════ */}
+      <section id="system" className="py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">How campaigns run on Poll City</p>
+          <h2 className="text-center text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-16">
+            From announcement to election night
+          </h2>
+
+          <div className="space-y-16">
+            {[
+              {
+                phase: "Launch",
+                headline: "Website live. CRM loaded. Team invited.",
+                body: "Import your contact list, your website goes live, your team gets access. From zero to operational in under an hour.",
+                capabilities: ["Campaign website", "Contact import", "Team invites", "Brand kit"],
+              },
+              {
+                phase: "Build",
+                headline: "Knock doors. Make calls. Send messages. Track everything.",
+                body: "Canvassers work walk lists on their phones. Every door knocked, every call made, every message sent — all visible in real time on your dashboard.",
+                capabilities: ["Canvassing + GPS", "SMS + Email campaigns", "Volunteer scheduling", "Live activity feed"],
+              },
+              {
+                phase: "Grow",
+                headline: "Supporters donate. Volunteers multiply. Data compounds.",
+                body: "Your website collects supporters and donations 24/7. Your CRM auto-tags, auto-segments, and auto-prioritizes. Nothing falls through the cracks.",
+                capabilities: ["Stripe donations", "Auto-tagging", "Budget tracking", "Print marketplace"],
+              },
+              {
+                phase: "Win",
+                headline: "GOTV on election day. Results on election night.",
+                body: "Priority call lists. Ride coordination. Real-time vote tracking. War room dashboard. Poll-by-poll results streaming in. This is what you built for.",
+                capabilities: ["GOTV engine", "War room mode", "Election night dashboard", "Live results map"],
+              },
+            ].map((stage, i) => (
+              <div key={stage.phase} className="flex gap-6 md:gap-10">
+                <div className="shrink-0 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-sm">{i + 1}</div>
+                  {i < 3 && <div className="w-px flex-1 bg-blue-100 mt-2" />}
+                </div>
+                <div className="pb-4">
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{stage.phase}</p>
+                  <h3 className="text-xl font-black text-slate-900 mt-1">{stage.headline}</h3>
+                  <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-lg">{stage.body}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {stage.capabilities.map((c) => (
+                      <span key={c} className="px-2.5 py-1 rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+         5. COMPARISON — Positioned as obvious
+         ══════════════════════════════════════════════════════════════════ */}
       <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>How It Works</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">From Launch to Election Night</h2>
-          </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-center text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-10">
+            Other platforms make you assemble.
+            <span className="text-blue-600"> Poll City is already assembled.</span>
+          </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl mx-auto">
-            {[
-              { step: "01", label: "Capture", desc: "Import contacts, collect supporters", icon: Upload },
-              { step: "02", label: "Organize", desc: "Tag, segment, assign turfs", icon: Layers },
-              { step: "03", label: "Execute", desc: "Canvass, call, message, fundraise", icon: Zap },
-              { step: "04", label: "Track", desc: "Dashboards, reports, real-time data", icon: BarChart3 },
-              { step: "05", label: "Win", desc: "GOTV, election night, results", icon: Award },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.step} className="text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mx-auto mb-3">
-                    <Icon className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{item.step}</p>
-                  <p className="font-bold text-slate-900 mt-1">{item.label}</p>
-                  <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         DIFFERENTIATION / COMPARE
-         ═══════════════════════════════════════════════════ */}
-      <section id="compare" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>Why Poll City</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Everything Connected. Nothing Wasted.</h2>
-            <p className="mt-4 text-lg text-slate-500">Compare Poll City to the alternatives.</p>
-          </div>
-
-          <div className="max-w-4xl mx-auto overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-4 font-bold text-slate-900">Feature</th>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="text-left py-3 px-4 font-bold text-slate-900 w-[200px]">Capability</th>
                   <th className="text-center py-3 px-4 font-bold text-blue-600">Poll City</th>
-                  <th className="text-center py-3 px-4 font-bold text-slate-400">NationBuilder</th>
-                  <th className="text-center py-3 px-4 font-bold text-slate-400">NGP VAN</th>
-                  <th className="text-center py-3 px-4 font-bold text-slate-400">Ecanvasser</th>
+                  <th className="text-center py-3 px-4 text-slate-400">NationBuilder</th>
+                  <th className="text-center py-3 px-4 text-slate-400">NGP VAN</th>
+                  <th className="text-center py-3 px-4 text-slate-400">Ecanvasser</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { feature: "Campaign Website Included", pc: true, nb: true, ngp: false, ec: false },
-                  { feature: "Voter CRM", pc: true, nb: true, ngp: true, ec: true },
-                  { feature: "Mobile Canvassing", pc: true, nb: false, ngp: true, ec: true },
-                  { feature: "SMS & Email Campaigns", pc: true, nb: true, ngp: false, ec: false },
-                  { feature: "AI Content Generator", pc: true, nb: false, ngp: false, ec: false },
-                  { feature: "Print Marketplace", pc: true, nb: false, ngp: false, ec: false },
-                  { feature: "GOTV Engine", pc: true, nb: false, ngp: true, ec: false },
-                  { feature: "Real-time Dashboards", pc: true, nb: false, ngp: false, ec: false },
-                  { feature: "Canadian Data Compliance", pc: true, nb: false, ngp: false, ec: false },
-                  { feature: "Custom Widget Builder", pc: true, nb: false, ngp: false, ec: false },
-                ].map((row) => (
-                  <tr key={row.feature} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-2.5 px-4 font-medium text-slate-700">{row.feature}</td>
-                    <td className="text-center py-2.5 px-4">{row.pc ? <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}</td>
-                    <td className="text-center py-2.5 px-4">{row.nb ? <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}</td>
-                    <td className="text-center py-2.5 px-4">{row.ngp ? <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}</td>
-                    <td className="text-center py-2.5 px-4">{row.ec ? <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}</td>
+                  ["Campaign website included", true, true, false, false],
+                  ["Custom domain", true, true, false, false],
+                  ["Voter CRM", true, true, true, true],
+                  ["Mobile canvassing", true, false, true, true],
+                  ["SMS + email campaigns", true, true, false, false],
+                  ["GOTV engine", true, false, true, false],
+                  ["AI content generation", true, false, false, false],
+                  ["Real-time dashboards", true, false, false, false],
+                  ["Canadian compliance", true, false, false, false],
+                ].map(([feature, ...vals]) => (
+                  <tr key={feature as string} className="border-b border-slate-100">
+                    <td className="py-2.5 px-4 font-medium text-slate-700 text-xs">{feature as string}</td>
+                    {vals.map((v, j) => (
+                      <td key={j} className="text-center py-2.5 px-4">
+                        {v ? <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /> : <X className="w-3.5 h-3.5 text-slate-300 mx-auto" />}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -430,106 +371,48 @@ export default function MarketingClient() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════
-         SOLUTIONS BY ROLE
-         ═══════════════════════════════════════════════════ */}
-      <section id="solutions" className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <SectionLabel>Solutions</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Built for Every Level of Government</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
-            {[
-              { role: "School Board Trustee", desc: "Low-cost, high-impact. Website + CRM + canvassing for under-resourced campaigns.", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-              { role: "City Councillor", desc: "Ward-level operations. Turfs, walk lists, door-knock scripts, voter tracking.", color: "bg-blue-50 border-blue-200 text-blue-700" },
-              { role: "Regional Councillor", desc: "Multi-ward management. Team coordination, advanced reporting, budget tracking.", color: "bg-violet-50 border-violet-200 text-violet-700" },
-              { role: "Mayor", desc: "City-wide campaign. Full communications suite, print marketplace, war room.", color: "bg-amber-50 border-amber-200 text-amber-700" },
-              { role: "MPP", desc: "Provincial-scale operations. Riding management, polling integration, compliance.", color: "bg-rose-50 border-rose-200 text-rose-700" },
-              { role: "MP", desc: "Federal campaigns. Multi-riding, national messaging, advanced GOTV, API access.", color: "bg-slate-100 border-slate-300 text-slate-700" },
-            ].map((item) => (
-              <div key={item.role} className={`rounded-xl border p-6 ${item.color}`}>
-                <h3 className="font-bold text-lg">{item.role}</h3>
-                <p className="text-sm mt-2 opacity-80">{item.desc}</p>
-                <Link href="/pricing" className="inline-flex items-center gap-1 text-xs font-semibold mt-4 opacity-70 hover:opacity-100 transition-opacity">
-                  View plan <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         DEMO CTA
-         ═══════════════════════════════════════════════════ */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <SectionLabel>Try It Now</SectionLabel>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Explore a Live Campaign</h2>
-            <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">No signup required. Log into a pre-built demo campaign and see everything working with real data.</p>
-
-            <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-              {[
-                { label: "Councillor Setup", desc: "Ward-level campaign with 2,500 contacts", href: "/demo" },
-                { label: "Mayor Setup", desc: "City-wide campaign with full communications", href: "/demo" },
-                { label: "MP Setup", desc: "Federal riding with multi-team operations", href: "/demo" },
-              ].map((d) => (
-                <Link key={d.label} href={d.href} className="rounded-xl border border-slate-200 bg-white p-5 hover:border-blue-300 hover:shadow-md transition-all text-left group">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-                    <Play className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <p className="font-bold text-slate-900 text-sm">{d.label}</p>
-                  <p className="text-xs text-slate-500 mt-1">{d.desc}</p>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 mt-3 group-hover:gap-2 transition-all">
-                    Explore <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════
-         FINAL CTA
-         ═══════════════════════════════════════════════════ */}
-      <section className="py-24" style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)" }}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-            Stop Managing Tools.
-            <br />
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Start Running Your Campaign.</span>
+      {/* ══════════════════════════════════════════════════════════════════
+         6. DECISION — Clear paths
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-24" style={{ background: "linear-gradient(145deg, #0B1120 0%, #162037 100%)" }}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+            Stop assembling tools.
+            <span className="block text-blue-400">Start running your campaign.</span>
           </h2>
-          <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto">
-            Join the campaigns that have already switched to Poll City. One platform, total control, day one.
+          <p className="mt-5 text-slate-400 max-w-xl mx-auto">
+            Campaign website, CRM, canvassing, communications, GOTV — one platform, one login, ready now.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/login" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/25">
+            <Link href="/login" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
               Start Your Campaign <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link href="/pricing" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-white/10 text-white font-bold text-base hover:bg-white/15 transition-colors border border-white/10">
-              View Pricing
+            <Link href="/demo" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl border border-white/15 text-white font-bold text-base hover:bg-white/10 transition-colors">
+              <Play className="w-4 h-4" /> Explore Platform
             </Link>
+            <Link href="/pricing" className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+              View Pricing →
+            </Link>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-5 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><Shield className="w-3.5 h-3.5 text-green-400" /> PIPEDA Compliant</span>
+            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-blue-400" /> Canadian Hosted</span>
+            <span>14-day free trial · No credit card</span>
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════
-         FOOTER
-         ═══════════════════════════════════════════════════ */}
+      {/* ── Footer ───────────────────────────────────────────────────── */}
       <footer className="bg-slate-950 text-slate-400 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
               <h4 className="text-sm font-bold text-white mb-4">Product</h4>
               <div className="space-y-2 text-sm">
-                <Link href="#product" className="block hover:text-white transition-colors">Features</Link>
+                <Link href="#system" className="block hover:text-white transition-colors">How It Works</Link>
                 <Link href="/pricing" className="block hover:text-white transition-colors">Pricing</Link>
                 <Link href="/demo" className="block hover:text-white transition-colors">Demo</Link>
-                <Link href="#compare" className="block hover:text-white transition-colors">Compare</Link>
+                <Link href="/candidates/demo-campaign-2026" className="block hover:text-white transition-colors">Campaign Website</Link>
               </div>
             </div>
             <div>
@@ -555,7 +438,7 @@ export default function MarketingClient() {
               <div className="space-y-2 text-sm">
                 <Link href="/terms" className="block hover:text-white transition-colors">Terms of Service</Link>
                 <Link href="/privacy-policy" className="block hover:text-white transition-colors">Privacy Policy</Link>
-                <p className="text-xs text-slate-600 mt-4">PIPEDA Compliant<br />Canadian Data Hosting</p>
+                <p className="text-xs text-slate-600 mt-4">PIPEDA Compliant · Canadian Data Hosting</p>
               </div>
             </div>
           </div>
