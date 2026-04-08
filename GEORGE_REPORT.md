@@ -357,3 +357,4 @@ IP_HASH_SALT                    # random string for rate limiting
 | 2026-04-07 | Claude Opus 4.6 | Domain verification API + per-campaign tracking fields |
 | 2026-04-07 | Claude Opus 4.6 | Campaign website premium rebuild |
 | 2026-04-07 | Claude Opus 4.6 | Communications suite — all tabs fully wired (overview stats, inbox reply, templates CRUD, scheduled CRUD, compose save draft/template, history pagination, cross-tab navigation) |
+| 2026-04-07 | Claude Opus 4.6 | Communications enterprise upgrade — Adoni AI Write in compose, enriched audience filters (volunteer/email/phone/last contacted), segment builder in Audiences tab, removed AI Assistant from nav |
