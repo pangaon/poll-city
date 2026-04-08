@@ -96,5 +96,12 @@ export async function PATCH(req: NextRequest) {
     ip: req.headers.get('x-forwarded-for'),
   });
 
+  // Tier 2: Notify supporter when sign is installed
+  if (body.status === "installed" && sign.status !== "installed") {
+    import("@/lib/automation/inbound-engine").then(({ notifySignInstalled }) => {
+      notifySignInstalled(signId).catch(() => {});
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ data: updated });
 }

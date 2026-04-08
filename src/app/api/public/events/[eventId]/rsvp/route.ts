@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
 import { EventRsvpStatus } from "@prisma/client";
+import { findOrCreateContact, autoTagContact, logWebInteraction, updateEngagement } from "@/lib/automation/inbound-engine";
 
 export async function POST(req: NextRequest, { params }: { params: { eventId: string } }) {
   const rateLimitResponse = await rateLimit(req, "form");
@@ -93,6 +94,27 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
           source: "public",
         },
       });
+
+  // Inbound automation — fire-and-forget, never blocks the response
+  try {
+    const contact = await findOrCreateContact({
+      campaignId: event.campaignId,
+      email,
+      firstName: body.name.trim().split(" ")[0] || "",
+      lastName: body.name.trim().split(" ").slice(1).join(" ") || "",
+      phone: body.phone?.trim() || undefined,
+      source: "website-rsvp",
+    });
+
+    if (contact) {
+      await prisma.eventRsvp.update({ where: { id: rsvp.id }, data: { contactId: contact.id } }).catch(() => {});
+      await autoTagContact(event.campaignId, contact.id, "event-rsvp", "#7C3AED");
+      await logWebInteraction(event.campaignId, contact.id, "note", `RSVP'd to event (${effectiveStatus})`);
+      await updateEngagement(contact.id, "website-rsvp");
+    }
+  } catch (automationError) {
+    console.error("RSVP automation error (non-blocking):", automationError);
+  }
 
   return NextResponse.json({ data: rsvp }, { status: existing ? 200 : 201 });
 }

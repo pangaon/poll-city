@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { newsletterSubscribeSchema } from "@/lib/validators/newsletter";
+import { findOrCreateContact, autoTagContact, updateEngagement } from "@/lib/automation/inbound-engine";
 
 export async function POST(req: NextRequest) {
   const rateLimitResponse = await rateLimit(req, "form");
@@ -35,6 +36,26 @@ export async function POST(req: NextRequest) {
         consentIp: ip,
       },
     });
+
+    // Inbound automation — fire-and-forget, never blocks the response
+    try {
+      if (campaignId) {
+        const contact = await findOrCreateContact({
+          campaignId,
+          email: email.trim().toLowerCase(),
+          firstName: firstName?.trim() || undefined,
+          lastName: lastName?.trim() || undefined,
+          postalCode: postalCode?.trim() || undefined,
+          source: "website-newsletter",
+        });
+        if (contact) {
+          await autoTagContact(campaignId, contact.id, "newsletter-subscriber", "#2563EB");
+          await updateEngagement(contact.id, "website-newsletter");
+        }
+      }
+    } catch (automationError) {
+      console.error("Newsletter automation error (non-blocking):", automationError);
+    }
 
     return NextResponse.json({ ok: true, id: subscriber.id });
   } catch (e: any) {

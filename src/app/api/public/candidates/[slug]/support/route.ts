@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { publicCandidateSupportSchema } from "@/lib/validators";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
+import { autoTagContact, autoCreateTask, logWebInteraction, updateEngagement } from "@/lib/automation/inbound-engine";
 
 interface RouteParams {
   params: { slug: string };
@@ -79,6 +80,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           notes: `Household size: ${parsed.data.householdCount ?? "unknown"}`,
         },
       });
+    }
+
+    // Inbound automation — fire-and-forget, never blocks the response
+    try {
+      await prisma.contact.update({ where: { id: contact.id }, data: { source: contact.source || "website-support" } }).catch(() => {});
+      await autoTagContact(campaign.id, contact.id, "website-supporter", "#16A34A");
+      await logWebInteraction(campaign.id, contact.id, "note", "Signed up as supporter via campaign website");
+      await updateEngagement(contact.id, "website-support");
+      await autoCreateTask({ campaignId: campaign.id, contactId: contact.id, title: `Welcome new supporter: ${parsed.data.name}`, description: "New supporter signed up on campaign website. Send welcome message.", priority: "low" });
+    } catch (automationError) {
+      console.error("Support automation error (non-blocking):", automationError);
     }
 
     return NextResponse.json({ success: true, contactId: contact.id });

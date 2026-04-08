@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { publicCandidateQuestionSchema } from "@/lib/validators";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyTurnstileToken, isTurnstileEnabled } from "@/lib/security/turnstile";
+import { findOrCreateContact, autoTagContact, autoCreateTask, logWebInteraction, classifyInbound, updateEngagement, notifyCampaignTeam } from "@/lib/automation/inbound-engine";
 
 interface RouteParams {
   params: { slug: string };
@@ -61,6 +62,35 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         question: parsed.data.question.trim(),
       },
     });
+
+    // Inbound automation — fire-and-forget, never blocks the response
+    try {
+      const contact = await findOrCreateContact({
+        campaignId: campaign.id,
+        email: parsed.data.email.trim(),
+        firstName: parsed.data.name.split(" ")[0] || "",
+        lastName: parsed.data.name.split(" ").slice(1).join(" ") || "",
+        source: "website-question",
+      });
+
+      if (contact) {
+        await autoTagContact(campaign.id, contact.id, "asked-question", "#8B5CF6");
+        await logWebInteraction(campaign.id, contact.id, "note", `Question submitted: ${parsed.data.question.trim().slice(0, 200)}`);
+        await updateEngagement(contact.id, "website-question");
+
+        const sentiment = classifyInbound(parsed.data.question);
+        if (sentiment === "media-inquiry") {
+          await autoCreateTask({ campaignId: campaign.id, contactId: contact.id, title: `MEDIA INQUIRY from ${parsed.data.name}`, description: `Possible media inquiry: "${parsed.data.question.slice(0, 300)}"`, priority: "urgent" });
+          await notifyCampaignTeam(campaign.id, "Media Inquiry Detected", `${parsed.data.name} may be a journalist. Review their question immediately.`, "high");
+        } else if (sentiment === "negative") {
+          await autoCreateTask({ campaignId: campaign.id, contactId: contact.id, title: `Review negative message from ${parsed.data.name}`, description: `Negative sentiment detected: "${parsed.data.question.slice(0, 300)}"`, priority: "high" });
+        } else {
+          await autoCreateTask({ campaignId: campaign.id, contactId: contact.id, title: `Reply to question from ${parsed.data.name}`, description: `"${parsed.data.question.slice(0, 300)}"`, priority: "medium" });
+        }
+      }
+    } catch (automationError) {
+      console.error("Question automation error (non-blocking):", automationError);
+    }
 
     return NextResponse.json({ success: true, questionId: questionRecord.id });
   } catch (error) {

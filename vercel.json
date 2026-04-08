@@ -62,6 +62,10 @@
     {
       "path": "/api/cron/data-retention",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/lifecycle-automations",
+      "schedule": "0 8 * * *"
     }
   ]
 }
