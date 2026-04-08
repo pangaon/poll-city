@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/public/unsubscribe
@@ -7,6 +8,9 @@ import prisma from "@/lib/db/prisma";
  * No auth required — this is a public CASL compliance endpoint.
  */
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await rateLimit(req, "form");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const { contactId, email } = await req.json();
 

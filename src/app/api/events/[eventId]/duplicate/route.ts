@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     where: { id: params.eventId },
     include: { reminders: true },
   });
-  if (!source) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (!source || source.deletedAt) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const membership = await ensureMembership(session!.user.id, source.campaignId);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
