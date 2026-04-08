@@ -14,7 +14,10 @@ const ASSIGNABLE_ROLES: Role[] = [
 
 const updateRoleSchema = z.object({
   campaignId: z.string().min(1),
-  role: z.enum(["ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER", "VOLUNTEER"]),
+  role: z.enum(["ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER", "VOLUNTEER"]).optional(),
+  status: z.enum(["active", "suspended"]).optional(),
+}).refine((d) => d.role !== undefined || d.status !== undefined, {
+  message: "Provide role or status",
 });
 
 async function requireAdmin(campaignId: string, userId: string) {
@@ -38,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { campaignId, role } = parsed.data;
+  const { campaignId, role, status } = parsed.data;
   const forbidden = await requireAdmin(campaignId, session!.user.id);
   if (forbidden) return forbidden;
 
@@ -48,25 +51,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
   if (target.userId === session!.user.id) {
-    return NextResponse.json({ error: "You cannot change your own role" }, { status: 400 });
+    return NextResponse.json({ error: "You cannot change your own membership" }, { status: 400 });
   }
-  if (!ASSIGNABLE_ROLES.includes(role as Role)) {
+  if (role !== undefined && !ASSIGNABLE_ROLES.includes(role as Role)) {
     return NextResponse.json({ error: "Role not assignable" }, { status: 400 });
   }
 
   try {
+    const updateData: Record<string, unknown> = {};
+    if (role !== undefined) updateData.role = role as Role;
+    if (status !== undefined) updateData.status = status;
+
     const updated = await prisma.membership.update({
       where: { id: params.id },
-      data: { role: role as Role },
+      data: updateData,
     });
 
-    await audit(prisma, 'team.updateRole', {
+    const action = status === "suspended" ? "team.suspend"
+                 : status === "active"    ? "team.reinstate"
+                 : "team.updateRole";
+
+    await audit(prisma, action, {
       campaignId,
       userId: session!.user.id,
       entityId: params.id,
       entityType: 'Membership',
       ip: req.headers.get('x-forwarded-for'),
-      details: { targetUserId: target.userId, newRole: role },
+      details: { targetUserId: target.userId, newRole: role, newStatus: status },
     });
 
     return NextResponse.json({ data: updated });

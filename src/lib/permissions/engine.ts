@@ -43,6 +43,11 @@ export async function resolvePermissions(
     return { permissions: [], trustLevel: 1, roleSlug: "none", roleName: "None", campaignRoleId: null };
   }
 
+  // Suspended members lose all permissions — they still exist in the DB for audit purposes
+  if (membership.status === "suspended") {
+    return { permissions: [], trustLevel: 0, roleSlug: "suspended", roleName: "Suspended", campaignRoleId: null };
+  }
+
   // If membership has a CampaignRole, use its permissions
   if (membership.campaignRole) {
     const cached = getCachedPermissions(membership.campaignRole.id);
@@ -135,6 +140,9 @@ export async function guardCampaignRoute(
   const resolved = await resolvePermissions(userId, campaignId);
   if (!resolved || resolved.roleSlug === "none") {
     return { resolved: null, forbidden: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  if (resolved.roleSlug === "suspended") {
+    return { resolved: null, forbidden: NextResponse.json({ error: "Your access to this campaign has been suspended. Contact the campaign administrator.", code: "SUSPENDED" }, { status: 403 }) };
   }
   if (requiredPerms.length > 0 && !resolved.permissions.includes("*")) {
     const hasAny = requiredPerms.some((p) => hasPermission(resolved.permissions as Permission[], p));

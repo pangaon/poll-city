@@ -12,23 +12,63 @@ async function main() {
   const passwordHash = await bcrypt.hash("password123", 12);
 
   // ── Users ──────────────────────────────────────────────────────────────────
+  // ── Platform owner (demo login — George's real account is created via scripts/create-owner.ts)
   const admin = await prisma.user.upsert({
     where: { email: "admin@pollcity.dev" }, update: {},
-    create: { email: "admin@pollcity.dev", name: "Alex Admin", passwordHash, role: Role.ADMIN, phone: "416-555-0100", postalCode: "M4C 1A1", ward: "Ward 12", riding: "Toronto—Danforth" },
+    create: { email: "admin@pollcity.dev", name: "George Hatzis", passwordHash, role: Role.SUPER_ADMIN, phone: "416-555-0100", postalCode: "M4C 1A1", ward: "Ward 12", riding: "Toronto—Danforth" },
   });
+
+  // ── Typical municipal campaign team ───────────────────────────────────────────
+  // Campaign Manager — runs the day-to-day operation
   const manager = await prisma.user.upsert({
     where: { email: "manager@pollcity.dev" }, update: {},
-    create: { email: "manager@pollcity.dev", name: "Morgan Manager", passwordHash, role: Role.CAMPAIGN_MANAGER, phone: "416-555-0101", postalCode: "M4C 2B2", ward: "Ward 12", riding: "Toronto—Danforth" },
+    create: { email: "manager@pollcity.dev", name: "Rachel Dubois", passwordHash, role: Role.CAMPAIGN_MANAGER, phone: "416-555-0101", postalCode: "M4C 2B2", ward: "Ward 12", riding: "Toronto—Danforth" },
   });
+  // Communications Director — media, social, messaging
+  const comms = await prisma.user.upsert({
+    where: { email: "comms@pollcity.dev" }, update: {},
+    create: { email: "comms@pollcity.dev", name: "Marcus Chen", passwordHash, role: Role.CAMPAIGN_MANAGER, phone: "416-555-0103", postalCode: "M4K 1A1", ward: "Ward 14", riding: "Toronto—Danforth" },
+  });
+  // Field Director / Canvassing Captain — owns doors and turf
+  const field = await prisma.user.upsert({
+    where: { email: "field@pollcity.dev" }, update: {},
+    create: { email: "field@pollcity.dev", name: "Priya Okonkwo", passwordHash, role: Role.VOLUNTEER_LEADER, phone: "416-555-0104", postalCode: "M4J 2B3", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Data Manager — voter list, imports, data integrity
+  const data = await prisma.user.upsert({
+    where: { email: "data@pollcity.dev" }, update: {},
+    create: { email: "data@pollcity.dev", name: "Sanjay Patel", passwordHash, role: Role.CAMPAIGN_MANAGER, phone: "416-555-0105", postalCode: "M4C 3C3", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Volunteer Coordinator — shifts, onboarding, retention
+  const volcoord = await prisma.user.upsert({
+    where: { email: "volunteers@pollcity.dev" }, update: {},
+    create: { email: "volunteers@pollcity.dev", name: "Amara Osei", passwordHash, role: Role.VOLUNTEER_LEADER, phone: "416-555-0106", postalCode: "M4E 1P5", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Treasurer — donations, receipts, financial reporting (legally required in Canada)
+  const treasurer = await prisma.user.upsert({
+    where: { email: "treasurer@pollcity.dev" }, update: {},
+    create: { email: "treasurer@pollcity.dev", name: "Linda Kowalski", passwordHash, role: Role.CAMPAIGN_MANAGER, phone: "416-555-0107", postalCode: "M4B 3R2", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Events Coordinator — townhalls, meet-and-greets, door events
+  const events = await prisma.user.upsert({
+    where: { email: "events@pollcity.dev" }, update: {},
+    create: { email: "events@pollcity.dev", name: "Carlos Beaumont", passwordHash, role: Role.VOLUNTEER_LEADER, phone: "416-555-0108", postalCode: "M4C 4S7", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Canvassers (field volunteers)
   const volunteer1 = await prisma.user.upsert({
     where: { email: "volunteer@pollcity.dev" }, update: {},
-    create: { email: "volunteer@pollcity.dev", name: "Val Volunteer", passwordHash, role: Role.VOLUNTEER, phone: "416-555-0102", postalCode: "M4J 1C3", ward: "Ward 12", riding: "Toronto—Danforth" },
+    create: { email: "volunteer@pollcity.dev", name: "Val Morrison", passwordHash, role: Role.VOLUNTEER, phone: "416-555-0102", postalCode: "M4J 1C3", ward: "Ward 12", riding: "Toronto—Danforth" },
   });
+  const volunteer2 = await prisma.user.upsert({
+    where: { email: "volunteer2@pollcity.dev" }, update: {},
+    create: { email: "volunteer2@pollcity.dev", name: "James Fontaine", passwordHash, role: Role.VOLUNTEER, phone: "416-555-0109", postalCode: "M4C 2K8", ward: "Ward 12", riding: "Toronto—Danforth" },
+  });
+  // Public voter (for Social app testing)
   const publicUser = await prisma.user.upsert({
     where: { email: "voter@pollcity.dev" }, update: {},
     create: { email: "voter@pollcity.dev", name: "Pat Public", passwordHash, role: Role.PUBLIC_USER, postalCode: "M4C 3D4", ward: "Ward 12", riding: "Toronto—Danforth", emailVerified: true },
   });
-  console.log("✅ Users created (4)");
+  console.log("✅ Users created (10 — full campaign team)");
 
   // ── Geo Districts ──────────────────────────────────────────────────────────
   const geoRows = [
@@ -66,10 +106,21 @@ async function main() {
     where: { slug: "ward-12-2026" }, update: {},
     create: { name: "Ward 12 — City Council 2026", slug: "ward-12-2026", description: "Municipal election campaign for Ward 12 City Council seat.", electionType: ElectionType.municipal, jurisdiction: "City of Toronto — Ward 12", electionDate: new Date("2026-10-26"), candidateName: "Sam Rivera", candidateTitle: "Candidate for City Council, Ward 12", candidateBio: "Sam Rivera is a longtime Ward 12 resident with 15 years of experience in housing and transit advocacy.", candidateEmail: "sam@ward12campaign.ca", candidatePhone: "416-555-0200", primaryColor: "#1e40af" },
   });
-  for (const { userId, role } of [{ userId: admin.id, role: Role.ADMIN }, { userId: manager.id, role: Role.CAMPAIGN_MANAGER }, { userId: volunteer1.id, role: Role.VOLUNTEER }]) {
+  for (const { userId, role } of [
+    { userId: admin.id,      role: Role.ADMIN },
+    { userId: manager.id,    role: Role.CAMPAIGN_MANAGER },
+    { userId: comms.id,      role: Role.CAMPAIGN_MANAGER },
+    { userId: field.id,      role: Role.VOLUNTEER_LEADER },
+    { userId: data.id,       role: Role.CAMPAIGN_MANAGER },
+    { userId: volcoord.id,   role: Role.VOLUNTEER_LEADER },
+    { userId: treasurer.id,  role: Role.CAMPAIGN_MANAGER },
+    { userId: events.id,     role: Role.VOLUNTEER_LEADER },
+    { userId: volunteer1.id, role: Role.VOLUNTEER },
+    { userId: volunteer2.id, role: Role.VOLUNTEER },
+  ]) {
     await prisma.membership.upsert({ where: { userId_campaignId: { userId, campaignId: campaign.id } }, update: {}, create: { userId, campaignId: campaign.id, role } });
   }
-  console.log("✅ Campaign + memberships created");
+  console.log("✅ Campaign + memberships created (10 members)");
 
   // Provision built-in field definitions for this campaign
   const BUILT_IN = [
@@ -252,9 +303,9 @@ async function main() {
       electionType: ElectionType.municipal,
       jurisdiction: "Ward 1",
       electionDate: new Date("2026-10-26"),
-      candidateName: "Alex Admin",
+      candidateName: "Demo Candidate",
       candidateTitle: "Candidate",
-      candidateBio: "Alex Admin is running for Ward 1 council to demonstrate the full capabilities of Poll City.",
+      candidateBio: "Demo Candidate is running for Ward 1 council to demonstrate the full capabilities of Poll City.",
       primaryColor: "#1e40af",
       isPublic: true,
       isActive: true,
@@ -278,11 +329,18 @@ async function main() {
 
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
-  console.log("CAMPAIGN APP:  admin@pollcity.dev / password123");
-  console.log("               manager@pollcity.dev / password123");
-  console.log("               volunteer@pollcity.dev / password123");
-  console.log("SOCIAL APP:    voter@pollcity.dev / password123\n");
-  console.log("3 officials · 10 contacts · 3 polls · signs · tasks");
+  console.log("CAMPAIGN APP:  admin@pollcity.dev      / password123  (George Hatzis — SUPER_ADMIN)");
+  console.log("               manager@pollcity.dev    / password123  (Rachel Dubois — Campaign Manager)");
+  console.log("               comms@pollcity.dev      / password123  (Marcus Chen — Comms Director)");
+  console.log("               field@pollcity.dev      / password123  (Priya Okonkwo — Field Director)");
+  console.log("               data@pollcity.dev       / password123  (Sanjay Patel — Data Manager)");
+  console.log("               volunteers@pollcity.dev / password123  (Amara Osei — Volunteer Coord)");
+  console.log("               treasurer@pollcity.dev  / password123  (Linda Kowalski — Treasurer)");
+  console.log("               events@pollcity.dev     / password123  (Carlos Beaumont — Events)");
+  console.log("               volunteer@pollcity.dev  / password123  (Val Morrison — Volunteer)");
+  console.log("               volunteer2@pollcity.dev / password123  (James Fontaine — Volunteer)");
+  console.log("SOCIAL APP:    voter@pollcity.dev      / password123  (Pat Public)\n");
+  console.log("3 officials · 10 contacts · 10 team members · 3 polls · signs · tasks");
   console.log("════════════════════════════════════════════════════");
 }
 
