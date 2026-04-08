@@ -37,7 +37,7 @@ const RED = "#E24B4A";
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 /* ── types ──────────────────────────────────────────────────── */
-type Tab = "health" | "alerts" | "customers" | "demo" | "platform";
+type Tab = "health" | "alerts" | "customers" | "demo" | "platform" | "clients";
 
 interface HealthMetric {
   id: string;
@@ -69,6 +69,27 @@ interface DemoToken {
   type: string;
   token: string;
   expiresAt: string;
+}
+
+interface ClientRecord {
+  id: string;
+  name: string;
+  slug: string;
+  candidateName: string | null;
+  electionType: string;
+  electionDate: string | null;
+  daysToElection: number | null;
+  isActive: boolean;
+  tier: string;
+  createdAt: string;
+  lastActivity: string | null;
+  memberCount: number;
+  contactCount: number;
+  adminEmail: string | null;
+  onboardingComplete: boolean;
+  healthIndicator: "green" | "amber" | "red";
+  featuresUsed: string[];
+  electionSoon: boolean;
 }
 
 interface RecentCampaign {
@@ -191,6 +212,9 @@ export default function OpsClient() {
   );
   const [loading, setLoading] = useState(true);
   const [generatingDemo, setGeneratingDemo] = useState<string | null>(null);
+  const [clientsData, setClientsData] = useState<ClientRecord[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -307,6 +331,23 @@ export default function OpsClient() {
     void loadData();
   }, [loadData]);
 
+  const loadClients = useCallback(async () => {
+    if (clientsLoaded) return;
+    setClientsLoading(true);
+    try {
+      const res = await fetch("/api/platform/clients");
+      if (res.ok) {
+        const json = (await res.json()) as { data: ClientRecord[] };
+        setClientsData(json.data ?? []);
+        setClientsLoaded(true);
+      }
+    } catch (err) {
+      console.error("Failed to load clients:", err);
+    } finally {
+      setClientsLoading(false);
+    }
+  }, [clientsLoaded]);
+
   function resolveAlert(id: string) {
     setAlerts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, resolved: true } : a)),
@@ -334,11 +375,17 @@ export default function OpsClient() {
 
   const tabs: { id: Tab; label: string; icon: typeof Activity }[] = [
     { id: "platform", label: "Platform", icon: BarChart3 },
+    { id: "clients", label: "Clients", icon: Building2 },
     { id: "health", label: "Health", icon: Activity },
     { id: "alerts", label: "Alerts", icon: AlertTriangle },
     { id: "customers", label: "Customers", icon: Users },
     { id: "demo", label: "Demo", icon: QrCode },
   ];
+
+  function handleTabChange(id: Tab) {
+    setTab(id);
+    if (id === "clients") void loadClients();
+  }
 
   const unresolvedCount = alerts.filter((a) => !a.resolved).length;
   const totalMrr = campaigns.reduce((s, c) => s + c.mrr, 0);
@@ -380,7 +427,7 @@ export default function OpsClient() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => handleTabChange(t.id)}
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap min-h-[44px]",
               tab === t.id
@@ -423,7 +470,12 @@ export default function OpsClient() {
             exit={{ opacity: 0, y: -10 }}
             transition={spring}
           >
-            {tab === "platform" && <PlatformTab stats={platformStats} />}
+            {tab === "platform" && (
+              <PlatformTab stats={platformStats} clients={clientsData} onLoadClients={() => void loadClients()} />
+            )}
+            {tab === "clients" && (
+              <ClientsTab data={clientsData} loading={clientsLoading} />
+            )}
             {tab === "health" && <HealthTab metrics={health} />}
             {tab === "alerts" && (
               <AlertsTab alerts={alerts} onResolve={resolveAlert} />
@@ -446,7 +498,20 @@ export default function OpsClient() {
 }
 
 /* ── Platform Tab ───────────────────────────────────────────── */
-function PlatformTab({ stats }: { stats: PlatformStats | null }) {
+function PlatformTab({
+  stats,
+  clients,
+  onLoadClients,
+}: {
+  stats: PlatformStats | null;
+  clients: ClientRecord[];
+  onLoadClients: () => void;
+}) {
+  useEffect(() => {
+    if (clients.length === 0) onLoadClients();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!stats) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
@@ -533,6 +598,74 @@ function PlatformTab({ stats }: { stats: PlatformStats | null }) {
           );
         })}
       </div>
+
+      {/* Clients needing attention */}
+      {clients.length > 0 && (() => {
+        const needsAttention = clients.filter(
+          (c) => c.healthIndicator === "red" || c.healthIndicator === "amber",
+        );
+        if (needsAttention.length === 0) return null;
+        return (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" style={{ color: AMBER }} />
+                <h2 className="text-sm font-bold text-gray-900">
+                  Clients needing attention
+                </h2>
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: `${RED}18`, color: RED }}
+                >
+                  {needsAttention.length}
+                </span>
+              </div>
+              <span className="text-xs text-gray-400">morning check</span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {needsAttention.slice(0, 8).map((c) => (
+                <div
+                  key={c.id}
+                  className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{
+                      background:
+                        c.healthIndicator === "red" ? RED : AMBER,
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-900 truncate">
+                      {c.name}
+                    </span>
+                    {c.candidateName && (
+                      <span className="text-xs text-gray-400 ml-2">
+                        {c.candidateName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {c.adminEmail && (
+                      <a
+                        href={`mailto:${c.adminEmail}`}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        {c.adminEmail}
+                      </a>
+                    )}
+                    {c.daysToElection !== null && c.daysToElection > 0 && (
+                      <span className="text-xs text-gray-400">
+                        {c.daysToElection}d to election
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Recent campaigns table */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -623,6 +756,358 @@ function PlatformTab({ stats }: { stats: PlatformStats | null }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Clients Tab ────────────────────────────────────────────── */
+const HEALTH_COLORS: Record<"green" | "amber" | "red", string> = {
+  green: GREEN,
+  amber: AMBER,
+  red: RED,
+};
+
+const ELECTION_TYPE_STYLES: Record<string, string> = {
+  municipal: "bg-blue-100 text-blue-700",
+  provincial: "bg-purple-100 text-purple-700",
+  federal: "bg-red-100 text-red-700",
+  school: "bg-green-100 text-green-700",
+  by_election: "bg-orange-100 text-orange-700",
+};
+
+const FEATURE_LABELS: Record<string, string> = {
+  contacts: "CRM",
+  polls: "Polls",
+  donations: "Donations",
+  volunteers: "Vols",
+  signs: "Signs",
+  events: "Events",
+};
+
+function relativeTime(isoStr: string | null): string {
+  if (!isoStr) return "Never";
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+function ClientsTab({
+  data,
+  loading,
+}: {
+  data: ClientRecord[];
+  loading: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [detailData, setDetailData] = useState<Record<string, { name: string | null; email: string | null; role: string; lastLogin: string | null }[]>>({});
+  const [detailLoading, setDetailLoading] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const filtered = data.filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.slug.toLowerCase().includes(q) ||
+      (c.candidateName ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const activeCount = data.filter((c) => c.isActive).length;
+  const soonCount = data.filter((c) => c.electionSoon).length;
+  const attentionCount = data.filter(
+    (c) => c.healthIndicator === "red" || c.healthIndicator === "amber",
+  ).length;
+
+  async function toggleExpand(id: string) {
+    if (expanded === id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(id);
+    if (!detailData[id]) {
+      setDetailLoading(id);
+      try {
+        const res = await fetch(`/api/platform/clients/${id}`);
+        if (res.ok) {
+          const json = (await res.json()) as { members: { name: string | null; email: string | null; role: string; lastLogin: string | null }[] };
+          setDetailData((prev) => ({ ...prev, [id]: json.members }));
+        }
+      } catch {
+        // ignore
+      } finally {
+        setDetailLoading(null);
+      }
+    }
+  }
+
+  function copyLink(slug: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/c/${slug}/dashboard`);
+    setCopied(slug);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Shimmer key={i} className="h-16" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary row */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-wrap gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ background: GREEN }}
+          />
+          <span className="text-sm font-medium text-gray-900">
+            {activeCount} active campaigns
+          </span>
+        </div>
+        <div className="text-gray-300">·</div>
+        <div className="text-sm text-gray-600">
+          {soonCount} elections within 90 days
+        </div>
+        <div className="text-gray-300">·</div>
+        <div className="flex items-center gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5" style={{ color: AMBER }} />
+          <span className="text-sm font-medium" style={{ color: attentionCount > 0 ? RED : "inherit" }}>
+            {attentionCount} need attention
+          </span>
+        </div>
+        <div className="ml-auto text-xs text-gray-400">{data.length} total</div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search campaigns, slugs, candidates…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-4 py-2.5 pl-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+        />
+        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      </div>
+
+      {/* Campaigns list */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+          <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500">No campaigns found</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((c, i) => {
+            const isExpanded = expanded === c.id;
+            const members = detailData[c.id];
+            return (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...spring, delay: Math.min(i * 0.02, 0.3) }}
+                className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
+              >
+                {/* Row */}
+                <button
+                  onClick={() => void toggleExpand(c.id)}
+                  className="w-full px-5 py-4 flex items-center gap-3 hover:bg-gray-50 text-left"
+                >
+                  {/* Health dot */}
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ background: HEALTH_COLORS[c.healthIndicator] }}
+                  />
+
+                  {/* Name + slug */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {c.name}
+                      </span>
+                      <code className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {c.slug}
+                      </code>
+                      {c.candidateName && (
+                        <span className="text-xs text-gray-500">
+                          {c.candidateName}
+                        </span>
+                      )}
+                    </div>
+                    {/* Feature pills */}
+                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                      {c.featuresUsed.map((f) => (
+                        <span
+                          key={f}
+                          className="text-xs px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium"
+                        >
+                          {FEATURE_LABELS[f] ?? f}
+                        </span>
+                      ))}
+                      {c.featuresUsed.length === 0 && (
+                        <span className="text-xs text-gray-300">No data yet</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-xs text-gray-500">
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium",
+                        ELECTION_TYPE_STYLES[c.electionType] ?? "bg-gray-100 text-gray-600",
+                      )}
+                    >
+                      {c.electionType.replace(/_/g, " ")}
+                    </span>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900">{c.contactCount.toLocaleString()}</div>
+                      <div>contacts</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900">{c.memberCount}</div>
+                      <div>members</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900">
+                        {c.daysToElection !== null && c.daysToElection > 0
+                          ? `${c.daysToElection}d`
+                          : c.daysToElection !== null && c.daysToElection <= 0
+                          ? "Passed"
+                          : "—"}
+                      </div>
+                      <div>to election</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900">
+                        {relativeTime(c.lastActivity)}
+                      </div>
+                      <div>last activity</div>
+                    </div>
+                  </div>
+
+                  {/* Onboarding */}
+                  <div className="flex-shrink-0 hidden lg:block">
+                    {c.onboardingComplete ? (
+                      <CheckCircle className="w-4 h-4" style={{ color: GREEN }} />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-gray-300" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expanded panel */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={spring}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-5 pt-0 border-t border-gray-100 bg-gray-50">
+                        <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Member list */}
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                              Team Members
+                            </p>
+                            {detailLoading === c.id ? (
+                              <Shimmer className="h-20" />
+                            ) : members && members.length > 0 ? (
+                              <div className="space-y-1.5">
+                                {members.map((m, mi) => (
+                                  <div key={mi} className="flex items-center gap-2 text-xs">
+                                    <span
+                                      className={cn(
+                                        "px-1.5 py-0.5 rounded text-xs font-bold",
+                                        m.role === "ADMIN"
+                                          ? "bg-amber-100 text-amber-700"
+                                          : "bg-gray-100 text-gray-600",
+                                      )}
+                                    >
+                                      {m.role.replace(/_/g, " ")}
+                                    </span>
+                                    <span className="text-gray-700 truncate">{m.name ?? m.email}</span>
+                                    {m.lastLogin && (
+                                      <span className="text-gray-400 ml-auto flex-shrink-0">
+                                        {relativeTime(m.lastLogin)}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400">No members found</p>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                              Actions
+                            </p>
+                            <div className="space-y-2">
+                              {c.adminEmail && (
+                                <a
+                                  href={`mailto:${c.adminEmail}?subject=Poll City Support — ${c.name}`}
+                                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                                >
+                                  <Users className="w-3.5 h-3.5" />
+                                  Contact Admin: {c.adminEmail}
+                                </a>
+                              )}
+                              <button
+                                onClick={() => copyLink(c.slug)}
+                                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                              >
+                                {copied === c.slug ? (
+                                  <CheckCircle className="w-3.5 h-3.5" style={{ color: GREEN }} />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                                Copy Dashboard Link
+                              </button>
+                              <div className="pt-1">
+                                <p className="text-xs font-bold text-gray-400 uppercase mb-1.5">Features</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {c.featuresUsed.length > 0 ? c.featuresUsed.map((f) => (
+                                    <span
+                                      key={f}
+                                      className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium"
+                                    >
+                                      {FEATURE_LABELS[f] ?? f}
+                                    </span>
+                                  )) : (
+                                    <span className="text-xs text-gray-400">None yet</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
