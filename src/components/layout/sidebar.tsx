@@ -38,6 +38,7 @@ const FIELD_OPS_SECTION: NavSection = {
   icon: Map,
   items: [
     { href: "/canvassing", icon: Map, label: "Canvassing" },
+    { href: "/canvassing/print-walk-list", icon: Printer, label: "Print Walk List" },
     { href: "/gotv", icon: Target, label: "GOTV" },
     { href: "/election-night", icon: Gauge, label: "Election Night" },
     { href: "/signs", icon: Map, label: "Signs" },
