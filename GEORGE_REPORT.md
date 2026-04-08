@@ -126,10 +126,10 @@ IP_HASH_SALT                    # random string for rate limiting
 | SMS compose + send | ✅🔑 | Twilio. 2K recipients. CASL footer. |
 | Audience calculator | ✅ | Real-time by support level, ward, tags, DNC |
 | Send history | ✅ | Real data from NotificationLog |
-| Unified inbox | ✅ | Aggregates notifications + social mentions. Split panel. |
-| Templates | ✅ | Email + SMS templates with preview. DB-persisted via campaign customization. |
+| Unified inbox | ✅ | Split panel. Reply navigates to Compose. Archive removes locally. |
+| Templates | ✅ | Hardcoded defaults + custom templates persisted to campaign customization. Use loads into Compose. |
 | Automations | 🔴 | 6 presets displayed. No trigger engine. No scheduling backend. |
-| Scheduled sends | 🔴 | Schedule date field exists. No deferred queue. |
+| Scheduled sends | ✅ | Wired to /api/notifications/schedule. Create, list, cancel. |
 | Voice broadcasts | 🔴 | Schema + CRUD. No Twilio Voice calls. |
 | Social publishing | 🔴 | CRUD in DB. No Twitter/Facebook/Instagram API. |
 | Social mentions | 🔴 | Schema exists. No platform API fetching. |
@@ -356,4 +356,4 @@ IP_HASH_SALT                    # random string for rate limiting
 | 2026-04-07 | Claude Opus 4.6 | Tracking: GA4, Meta Pixel, Clarity, Google Ads + per-campaign |
 | 2026-04-07 | Claude Opus 4.6 | Domain verification API + per-campaign tracking fields |
 | 2026-04-07 | Claude Opus 4.6 | Campaign website premium rebuild |
-| 2026-04-07 | Claude Opus 4.6 | Communications suite — inbox, templates, compose fully wired |
+| 2026-04-07 | Claude Opus 4.6 | Communications suite — all tabs fully wired (overview stats, inbox reply, templates CRUD, scheduled CRUD, compose save draft/template, history pagination, cross-tab navigation) |
