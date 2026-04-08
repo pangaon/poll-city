@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { assignCanvassSchema } from "@/lib/validators";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:manage");
-  if (permError) return permError;
-
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 

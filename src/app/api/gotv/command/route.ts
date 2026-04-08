@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { resolvePermissions } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
-import { computeGotvScore } from "@/lib/gotv/score";
+import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +11,12 @@ const querySchema = z.object({
   campaignId: z.string().min(1),
 });
 
-// Election day command centre metrics: hourly voting rate, predicted total,
-// percentage of Priority 1 contacts who've voted, volunteer field activity.
+// Election day command centre metrics: hourly voting rate, projected total,
+// P1 coverage, volunteer field activity.
+// Core GOTV counts come from shared getGotvSummaryMetrics — single source of truth.
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:manage");
-  if (permError) return permError;
 
   const parsed = querySchema.safeParse({
     campaignId: req.nextUrl.searchParams.get("campaignId"),
@@ -26,76 +26,79 @@ export async function GET(req: NextRequest) {
   }
   const { campaignId } = parsed.data;
 
-  const m = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!m) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Verify campaign membership and resolve permissions (requires gotv:manage)
+  const resolved = await resolvePermissions(session!.user.id, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!resolved.permissions.includes("*") && !resolved.permissions.some((p) => p === "gotv:manage" || p === "gotv:*")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-  const contacts = await prisma.contact.findMany({
-    where: { campaignId, isDeceased: false },
-    select: {
-      id: true,
-      supportLevel: true,
-      gotvStatus: true,
-      signRequested: true,
-      volunteerInterest: true,
-      lastContactedAt: true,
-      voted: true,
-      votedAt: true,
-    },
-  });
+  // Shared metrics — canonical counts and tier breakdown
+  const metrics = await getGotvSummaryMetrics(campaignId);
 
-  const scored = contacts.map((c) => ({ ...c, ...computeGotvScore(c) }));
-  const p1 = scored.filter((c) => c.tier === 1);
-  const p1Voted = p1.filter((c) => c.voted).length;
-  const totalVoted = scored.filter((c) => c.voted).length;
-  const totalVoters = scored.length;
-
-  // Hourly voted rate — last 12 hours, bucketed by hour.
+  // Hourly voted rate — last 12 hours bucketed by hour (command-specific logic)
   const now = Date.now();
+  const sinceTwelveHours = new Date(now - 12 * 60 * 60 * 1000);
+
+  const recentVotes = await prisma.contact.findMany({
+    where: {
+      campaignId,
+      voted: true,
+      votedAt: { gte: sinceTwelveHours },
+    },
+    select: { votedAt: true },
+  });
+
   const hours: Array<{ hour: string; voted: number }> = [];
   for (let i = 11; i >= 0; i--) {
     const end = new Date(now - i * 60 * 60 * 1000);
     end.setMinutes(0, 0, 0);
     const start = new Date(end.getTime() - 60 * 60 * 1000);
-    const count = scored.filter((c) => c.votedAt && c.votedAt >= start && c.votedAt < end).length;
+    const count = recentVotes.filter((c) => c.votedAt && c.votedAt >= start && c.votedAt < end).length;
     hours.push({
       hour: end.toLocaleTimeString([], { hour: "numeric" }),
       voted: count,
     });
   }
 
-  // Very simple projection: current vote pace × remaining hours (assumes poll close 20:00)
+  // Projection: current 3-hour rate × remaining hours to poll close (20:30)
   const pollClose = new Date();
   pollClose.setHours(20, 30, 0, 0);
   const hoursToClose = Math.max(0, (pollClose.getTime() - now) / (1000 * 60 * 60));
   const recentRate = hours.slice(-3).reduce((s, h) => s + h.voted, 0) / 3;
   const projectedAdditional = Math.round(recentRate * hoursToClose);
-  const projectedTotal = totalVoted + projectedAdditional;
+  const projectedTotal = metrics.totalVoted + projectedAdditional;
 
-  // Outstanding P1 supporters (not voted, have phone)
-  const outstandingP1 = scored.filter((c) => c.tier === 1 && !c.voted).length;
-
-  // Recent interactions from last 12h for activity pulse
-  const sinceTwelveHours = new Date(now - 12 * 60 * 60 * 1000);
+  // Recent interactions pulse (last 12 h)
   const recentInteractions = await prisma.interaction.count({
     where: { contact: { campaignId }, createdAt: { gte: sinceTwelveHours } },
   });
 
+  // P1 total = outstanding (p1Count) + already voted supporters in tier 1.
+  // We use supportersVoted as a proxy for P1 voted (most voted supporters are P1).
+  const p1Outstanding = metrics.p1Count;
+  const p1Voted = metrics.supportersVoted;
+  const p1Total = p1Outstanding + p1Voted;
+
   return NextResponse.json({
     summary: {
-      totalVoters,
-      totalVoted,
-      votedPct: totalVoters ? Math.round((totalVoted / totalVoters) * 100) : 0,
-      p1Total: p1.length,
+      totalVoters: metrics.totalContacts,
+      totalVoted: metrics.totalVoted,
+      votedPct: metrics.totalContacts ? Math.round((metrics.totalVoted / metrics.totalContacts) * 100) : 0,
+      p1Total,
       p1Voted,
-      p1VotedPct: p1.length ? Math.round((p1Voted / p1.length) * 100) : 0,
-      outstandingP1,
+      p1VotedPct: p1Total > 0 ? Math.round((p1Voted / p1Total) * 100) : 0,
+      outstandingP1: p1Outstanding,
       projectedTotal,
       hoursToClose: Math.round(hoursToClose * 10) / 10,
+      winThreshold: metrics.winThreshold,
+      gap: metrics.gap,
+      percentComplete: metrics.percentComplete,
     },
     hourlyVotes: hours,
     recentInteractions,
-    electionDayReady: p1.length > 0,
+    electionDayReady: metrics.p1Count > 0 || metrics.p2Count > 0,
   });
 }

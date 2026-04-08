@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { resolvePermissions } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { computeGotvScore, type GotvTier } from "@/lib/gotv/score";
+import { calculateWinThreshold, MAX_CONTACT_SCAN } from "@/lib/operations/metrics-truth";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +15,10 @@ const querySchema = z.object({
 
 // GET /api/gotv/tiers?campaignId=...&tier=1
 // Returns contacts in the requested tier (or all tiers grouped if no tier).
+// Win threshold computed by shared calculateWinThreshold — single source of truth.
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:read");
-  if (permError) return permError;
 
   const parsed = querySchema.safeParse({
     campaignId: req.nextUrl.searchParams.get("campaignId"),
@@ -27,10 +28,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const { campaignId, tier: tierFilter } = parsed.data;
-  const m = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!m) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Verify campaign membership and resolve enterprise permissions
+  const resolved = await resolvePermissions(session!.user.id, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!resolved.permissions.includes("*") && !resolved.permissions.some((p) => p.startsWith("gotv:"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const contacts = await prisma.contact.findMany({
     where: { campaignId, isDeceased: false, doNotContact: false },
@@ -49,7 +55,7 @@ export async function GET(req: NextRequest) {
       voted: true,
       votedAt: true,
     },
-    take: 5000,
+    take: MAX_CONTACT_SCAN,
   });
 
   const scored = contacts.map((c) => {
@@ -57,10 +63,12 @@ export async function GET(req: NextRequest) {
     return { ...c, gotvScore: b.score, tier: b.tier };
   });
 
-  // Summary counts by tier + voted breakdown
+  // Summary counts — win threshold from shared formula
+  const winThreshold = calculateWinThreshold(scored.length);
   const summary = {
     totals: { t1: 0, t2: 0, t3: 0, t4: 0, all: scored.length },
     voted: { t1: 0, t2: 0, t3: 0, t4: 0, all: 0 },
+    winThreshold,
   };
   for (const c of scored) {
     const key = (`t${c.tier}` as keyof typeof summary.totals);
@@ -79,7 +87,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Sort highest score first, skip voted unless asking for everyone
+  // Sort highest score first, deprioritise already-voted
   filtered.sort((a, b) => {
     if (a.voted !== b.voted) return a.voted ? 1 : -1;
     return b.gotvScore - a.gotvScore;

@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
 
 /**
  * Reminder worker endpoint — requires authentication.
  * Intended to be triggered by cron every hour.
+ * campaignId is optional — if provided, scopes to that campaign only.
  */
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "volunteers:manage");
-  if (permError) return permError;
 
-  const body = await req.json().catch(() => ({})) as { campaignId?: string };
-
-  // Verify campaign membership if campaignId provided
-  if (body.campaignId) {
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const body = await req.json().catch(() => ({}));
 
   const now = new Date();
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);

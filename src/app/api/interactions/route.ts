@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { createInteractionSchema } from "@/lib/validators";
+import { sanitizeUserText } from "@/lib/security/monitor";
+import { advanceFunnel } from "@/lib/operations/funnel-engine";
+import { FunnelStage } from "@prisma/client";
 
 /**
  * GET /api/interactions
@@ -85,7 +88,7 @@ export async function POST(req: NextRequest) {
       contactId: data.contactId,
       userId: session!.user.id,
       type: data.type,
-      notes: data.notes,
+      notes: sanitizeUserText(data.notes) ?? undefined,
       supportLevel: data.supportLevel ?? undefined,
       issues: data.issues ?? [],
       signRequested: data.signRequested ?? false,
@@ -110,6 +113,12 @@ export async function POST(req: NextRequest) {
   if (data.followUpDate) contactUpdate.followUpDate = new Date(data.followUpDate);
 
   await prisma.contact.update({ where: { id: data.contactId }, data: contactUpdate });
+
+  // Advance funnel stage
+  const funnelTarget = data.volunteerInterest ? FunnelStage.volunteer
+    : data.signRequested ? FunnelStage.supporter
+    : FunnelStage.contact;
+  await advanceFunnel(data.contactId, funnelTarget, `interaction:${data.type}`, session!.user.id);
 
   // Log activity
   await prisma.activityLog.create({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 
@@ -57,8 +58,6 @@ const saveSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:read");
-  if (permError) return permError;
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
@@ -89,9 +88,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:write");
-  if (permError) return permError;
-
   const raw = await req.json().catch(() => null);
   const parsed = saveSchema.safeParse(raw);
   if (!parsed.success) {

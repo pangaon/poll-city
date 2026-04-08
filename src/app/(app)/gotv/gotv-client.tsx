@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Target, Upload, Radio, ListOrdered, Phone, MapPin, Check, Clock, Bell, AlertTriangle, Megaphone } from "lucide-react";
 import { tierColor } from "@/lib/gotv/score";
+import { WIN_THRESHOLD_RATIO } from "@/lib/gotv/constants";
 import dynamic from "next/dynamic";
 import {
   AnimatedCounter,
@@ -153,7 +154,7 @@ export default function GotvClient({ campaignId }: Props) {
         }
 
         const nextPrecincts = Array.from(grouped.entries()).slice(0, 12).map(([ward, stats]) => {
-          const targetVotes = Math.max(1, Math.ceil(stats.total * 0.35));
+          const targetVotes = Math.max(1, Math.ceil(stats.total * WIN_THRESHOLD_RATIO));
           const gap = Math.max(0, targetVotes - stats.voted);
           return {
             id: ward,

@@ -14,7 +14,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 const createOpponentSchema = z.object({
@@ -36,9 +37,6 @@ const createOpponentSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "intelligence:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
@@ -53,9 +51,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "intelligence:write");
-  if (permError) return permError;
-
   const body = await req.json();
   const parsed = createOpponentSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });

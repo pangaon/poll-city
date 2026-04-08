@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -18,16 +19,11 @@ const updateSchema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "budget:write");
-  if (permError) return permError;
-
   const rule = await prisma.budgetRule.findUnique({ where: { id: params.id } });
   if (!rule) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: rule.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, rule.campaignId, "budget:write");
+  if (forbidden) return forbidden;
 
   const raw = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(raw);
@@ -70,16 +66,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "budget:write");
-  if (permError2) return permError2;
-
   const rule = await prisma.budgetRule.findUnique({ where: { id: params.id } });
   if (!rule) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: rule.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, rule.campaignId, "budget:write");
+  if (forbidden) return forbidden;
 
   try {
     await prisma.budgetRule.delete({ where: { id: params.id } });

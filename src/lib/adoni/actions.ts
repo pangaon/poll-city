@@ -1843,7 +1843,9 @@ async function getElectionCalendar(): Promise<ActionResult> {
   };
 }
 
-// Suspicious activity detection — called by chat route for low-permission roles
+// Suspicious activity detection — called by chat route for low-permission roles.
+// Checks BOTH the current conversation AND recent DB history for this user so
+// spreading queries across multiple short conversations doesn't bypass detection.
 // Returns true if suspicious AND blocks the conversation.
 export async function checkSuspiciousActivity(
   userId: string,
@@ -1864,14 +1866,56 @@ export async function checkSuspiciousActivity(
     "what is our budget",
     "campaign strategy",
     "opponent intel",
+    "export contacts",
+    "all contacts",
+    "full list",
+    "everyone in the database",
+    "analytics",
+    "budget breakdown",
   ];
 
   const userMessages = conversationHistory.filter((m) => m.role === "user");
-  const sensitiveCount = userMessages.filter((m) =>
+  const currentSensitiveCount = userMessages.filter((m) =>
     sensitivePatterns.some((p) => m.content.toLowerCase().includes(p)),
   ).length;
 
-  if (sensitiveCount >= 3) {
+  // Cross-session check: look at recent conversations from this user (last 24h)
+  // to catch probing spread across multiple sessions
+  let priorSensitiveCount = 0;
+  try {
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentConvos = await (prisma as unknown as {
+      adoniConversation: {
+        findMany: (args: {
+          where: { userId: string; campaignId: string; createdAt: { gte: Date } };
+          select: { messages: true };
+          take: number;
+          orderBy: { createdAt: string };
+        }) => Promise<Array<{ messages: unknown }>>;
+      };
+    }).adoniConversation.findMany({
+      where: { userId, campaignId, createdAt: { gte: since24h } },
+      select: { messages: true },
+      take: 50,
+      orderBy: { createdAt: "desc" },
+    });
+
+    for (const convo of recentConvos) {
+      const msg = convo.messages as Record<string, unknown> | null;
+      if (!msg) continue;
+      const userText = typeof msg.user === "string" ? msg.user.toLowerCase() : "";
+      if (sensitivePatterns.some((p) => userText.includes(p))) {
+        priorSensitiveCount++;
+      }
+    }
+  } catch {
+    // Non-fatal — proceed with current-session count only
+  }
+
+  const totalSensitiveCount = currentSensitiveCount + priorSensitiveCount;
+
+  // Block if current session has 3+ OR cross-session total reaches 5
+  if (currentSensitiveCount >= 3 || totalSensitiveCount >= 5) {
     await prisma.adoniSuspiciousActivity.create({
       data: {
         campaignId,
@@ -1918,41 +1962,31 @@ async function draftSocialPost(input: Record<string, unknown>, ctx: ActionContex
   const topic = String(input.topic ?? "Campaign update");
   const content = String(input.content ?? "");
 
-  try {
-    const post = await prisma.socialPost.create({
-      data: {
-        campaignId: ctx.campaignId,
-        authorUserId: ctx.userId,
-        title: topic,
-        content: content || `[Draft about: ${topic}]`,
-        targetPlatforms: [platform as never],
-        status: "draft",
-      },
-    });
+  const post = await prisma.socialPost.create({
+    data: {
+      campaignId: ctx.campaignId,
+      authorUserId: ctx.userId,
+      title: topic,
+      content: content || `[Draft about: ${topic}]`,
+      targetPlatforms: [platform as never],
+      status: "draft",
+    },
+  });
 
-    return {
-      success: true,
-      message: `Social post drafted for ${platform}: "${topic}". I've saved it as a draft — open Communications → Social to review, edit, and publish. Post ID: ${post.id}`,
-      data: { postId: post.id, navigateTo: "/communications/social" },
-    };
-  } catch {
-    // SocialPost model might not exist — fallback to notification log
-    const draft = await prisma.notificationLog.create({
-      data: {
-        campaignId: ctx.campaignId,
-        userId: ctx.userId,
-        title: `[Social Draft] ${topic}`,
-        body: `Platform: ${platform}\nTopic: ${topic}\n${content}`,
-        status: "scheduled",
-        scheduledFor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        audience: { type: "social-draft", platform, topic },
-      },
-    });
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "social_post_drafted_via_adoni",
+      entityType: "social_post",
+      entityId: post.id,
+      details: { platform, topic },
+    },
+  }).catch(() => {});
 
-    return {
-      success: true,
-      message: `Social post drafted for ${platform}: "${topic}". Saved as draft in your scheduled items.`,
-      data: { draftId: draft.id },
-    };
-  }
+  return {
+    success: true,
+    message: `Social post drafted for ${platform}: "${topic}". I've saved it as a draft — open Communications → Social to review, edit, and publish. Post ID: ${post.id}`,
+    data: { postId: post.id, navigateTo: "/communications/social" },
+  };
 }

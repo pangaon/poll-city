@@ -42,8 +42,8 @@ export interface PriorityListResult {
   pages: number;
 }
 
-const WIN_THRESHOLD_RATIO = 0.35;
-const MAX_CONTACT_SCAN = 10_000;
+import { WIN_THRESHOLD_RATIO } from "@/lib/gotv/constants";
+export const MAX_CONTACT_SCAN = 10_000;
 
 export function calculateWinThreshold(totalContacts: number): number {
   return Math.ceil(totalContacts * WIN_THRESHOLD_RATIO);

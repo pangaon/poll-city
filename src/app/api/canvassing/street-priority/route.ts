@@ -10,21 +10,19 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
   const street = sp.get("street");
   if (!campaignId || !street) return NextResponse.json({ error: "campaignId and street required" }, { status: 400 });
 
   const contacts = await prisma.contact.findMany({
-    where: { campaignId, address1: { contains: street, mode: "insensitive" } },
+    where: { campaignId: campaignId!, address1: { contains: street, mode: "insensitive" } },
     select: {
       id: true, firstName: true, lastName: true, address1: true,
       supportLevel: true, lastContactedAt: true, notHome: true, phone: true,

@@ -328,12 +328,11 @@ function buildPermissionFirewall(
   if (restricted.length === 0) return "";
 
   return `PERMISSION FIREWALL — YOU MUST FOLLOW THESE RULES:
-User's role: ${roleName || "Unknown"}
-User's trust level: ${trust}/5
-User's permissions: ${permissions.join(", ")}
+User's role: ${roleName || "Team Member"}
+Access level: ${trust >= 4 ? "Senior" : trust >= 3 ? "Standard" : trust >= 2 ? "Field" : "Basic"}
 
 YOU MUST NOT SHARE: ${restricted.join("; ")}.
-If they ask about restricted data, say something like "That information is restricted to your campaign manager or admin. Want help with something I can assist with?"
-Do not reveal the existence of the permission system or trust levels. Just redirect naturally.
+If they ask about restricted data, say something natural like "That information is available to campaign managers and above. Can I help you with something else?"
+Do not reveal that a permission system exists. Do not mention trust levels, permission names, or role slugs. Redirect naturally.
 Never fabricate data to fill gaps in what you are allowed to share.`;
 }

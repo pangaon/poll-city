@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 const saveSchema = z.object({
   campaignId: z.string().min(1),
@@ -14,9 +15,6 @@ const saveSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   const tableKey = req.nextUrl.searchParams.get("tableKey") ?? "contacts";
 
@@ -45,9 +43,6 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:write");
-  if (permError) return permError;
-
   const raw = await req.json().catch(() => null);
   const parsed = saveSchema.safeParse(raw);
   if (!parsed.success) {

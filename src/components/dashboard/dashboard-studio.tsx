@@ -116,7 +116,8 @@ type StudioWidgetId = "gap" | "stat-cards" | "activity" | "canvassers" | "turf" 
   | "gotv-countdown" | "voted-counter" | "p1p4-breakdown" | "support-pie" | "priority-calls"
   | "war-numbers" | "war-gap" | "war-grid" | "war-ticker"
   | "election-polls" | "election-result" | "election-countdown"
-  | "live-map" | "health-score" | "quick-actions";
+  | "live-map" | "health-score" | "quick-actions" | "funnel";
+
 
 interface StudioWidget {
   id: StudioWidgetId;
@@ -153,6 +154,7 @@ const ALL_STUDIO_WIDGETS: StudioWidget[] = [
   { id: "election-polls", label: "Polls Reporting", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
   { id: "election-result", label: "Election Results", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
   { id: "election-countdown", label: "Election Counter", mode: "election-night", relevance: ["municipal", "provincial", "federal", "by_election"] },
+  { id: "funnel", label: "Campaign Funnel", mode: "overview", relevance: ["municipal", "provincial", "federal", "by_election", "other"] },
 ];
 
 /* ── Custom Widget Types ──────────────────────────── */
@@ -284,6 +286,7 @@ type DashboardData = {
   pollResults: PollResult[];
   healthScore: number;
   grade: string;
+  funnelData: { stage: string; count: number; pct: number }[] | null;
 };
 
 type ActivityItem = { id: string; text: string; time: string; type: "door" | "call" | "donation" | "signup" };
@@ -309,6 +312,7 @@ const FALLBACK: DashboardData = {
   candidateName: "Our Candidate", opponentName: "Opponent",
   pollsReporting: 0, totalPolls: 0, pollResults: [],
   healthScore: 0, grade: "–",
+  funnelData: null,
 };
 
 /* ── Quick Actions ────────────────────────────────── */
@@ -398,7 +402,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
     let cancelled = false;
     async function pull() {
       try {
-        const [health, gotv, election, morning, volunteers, donations, signs] = await Promise.all([
+        const [health, gotv, election, morning, volunteers, donations, signs, activity, turfs, callList, priorityList, funnel] = await Promise.all([
           fetch(`/api/briefing/health-score?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/gotv/summary?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/election-night?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
@@ -406,9 +410,15 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           fetch(`/api/volunteers/performance?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/donations?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
           fetch(`/api/signs?campaignId=${campaignId}&pageSize=100`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/activity/live-feed?campaignId=${campaignId}&limit=20`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/turf?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/call-list?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/gotv/priority-list?campaignId=${campaignId}&tier=P1&limit=10`).then((r) => r.ok ? r.json() : null),
+          fetch(`/api/funnel/metrics?campaignId=${campaignId}`).then((r) => r.ok ? r.json() : null),
         ]);
         if (cancelled) return;
 
+        // ── Donations ───────────────────────────────────────────
         const donationRecords: any[] = donations?.data ?? [];
         const receivedGroup = donations?.totalsByStatus?.find((g: any) => g.status === "received");
         const computedDonationTotal = Number(receivedGroup?._sum?.amount ?? 0);
@@ -430,8 +440,73 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           .sort((a, b) => b.total - a.total)
           .slice(0, 5);
 
+        // Donation chart — group received donations by month (last 6 months)
+        const now = new Date();
+        const computedDonationChart: ChartPoint[] = Array.from({ length: 6 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+          const label = d.toLocaleString("default", { month: "short" });
+          const amount = donationRecords
+            .filter((r: any) => {
+              const rd = new Date(r.createdAt);
+              return rd.getFullYear() === d.getFullYear() && rd.getMonth() === d.getMonth();
+            })
+            .reduce((sum: number, r: any) => sum + Number(r.amount ?? 0), 0);
+          return { label, amount };
+        });
+
+        // ── Signs ────────────────────────────────────────────────
         const signRecords: any[] = signs?.data ?? [];
         const computedSignsPending = signRecords.filter((s: any) => s.status === "requested").length;
+
+        // ── Activity feed ────────────────────────────────────────
+        const feedItems: any[] = activity?.feed ?? [];
+        const computedActivity: ActivityItem[] = feedItems.slice(0, 20).map((f: any) => ({
+          id: f.id,
+          text: f.message,
+          time: relativeTime(f.time),
+          type: (f.category === "donation" ? "donation" : f.category === "gotv" ? "door" : f.category === "canvass" ? "door" : "signup") as ActivityItem["type"],
+        }));
+
+        // ── Volunteers / Field Ops ────────────────────────────────
+        const leaderboard: any[] = volunteers?.leaderboard ?? [];
+        const computedCanvassersSummary: CanvasserSummary[] = leaderboard.slice(0, 8).map((v: any) => ({
+          name: v.name ?? "Unknown",
+          doors: v.doorsThisWeek ?? v.doorsTotal ?? 0,
+          ids: v.supportersFound ?? 0,
+          commits: v.doorsTotal > 0 ? Math.round(((v.supportersFound ?? 0) / v.doorsTotal) * 100) : 0,
+        }));
+
+        const computedWalkListProgress: WalkListRow[] = leaderboard.slice(0, 6).map((v: any) => ({
+          volunteer: v.name ?? "Unknown",
+          assigned: v.doorsTotal ?? 0,
+          completed: v.doorsThisWeek ?? 0,
+        }));
+
+        // ── Turf completion ──────────────────────────────────────
+        const turfRecords: any[] = turfs?.data ?? [];
+        const computedTurfCompletion: TurfRow[] = turfRecords.slice(0, 8).map((t: any) => {
+          const pct = t.status === "completed" ? 100 : t.status === "in_progress" ? 50 : t.status === "assigned" ? 10 : 0;
+          return { name: t.name ?? t.ward ?? "Turf", percent: pct };
+        });
+
+        // ── Call list stats ──────────────────────────────────────
+        const callRecords: any[] = callList?.data ?? [];
+        const computedCallListStats = {
+          total: callRecords.length,
+          completed: callRecords.filter((c: any) => c.status === "completed").length,
+          reached: callRecords.filter((c: any) => c.status === "completed" || c.status === "reached").length,
+        };
+
+        // ── Priority call list (P1 + P2 contacts with phones) ────
+        const p1Contacts: any[] = priorityList?.contacts ?? priorityList?.data ?? [];
+        const computedPriorityCallList: CallItem[] = p1Contacts
+          .filter((c: any) => c.phone)
+          .slice(0, 10)
+          .map((c: any) => ({
+            name: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Unknown",
+            phone: c.phone,
+            priority: (c.tier === 1 ? "P1" : "P2") as "P1" | "P2",
+          }));
 
         setData((prev) => ({
           ...prev,
@@ -439,14 +514,21 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           supportersVoted: gotv?.supportersVoted ?? election?.supportersVoted ?? prev.supportersVoted,
           confirmedSupporters: gotv?.confirmedSupporters ?? election?.confirmedSupporters ?? prev.confirmedSupporters,
           doorsToday: morning?.yesterday?.doorsKnocked ?? prev.doorsToday,
-          volunteersActive: volunteers?.summary?.active ?? prev.volunteersActive,
+          volunteersActive: volunteers?.summary?.active ?? (leaderboard.filter((v: any) => v.status === "active" || v.status === "star").length || prev.volunteersActive),
           signRequestsPending: computedSignsPending || prev.signRequestsPending,
+          recentActivity: computedActivity.length > 0 ? computedActivity : prev.recentActivity,
+          canvassersSummary: computedCanvassersSummary.length > 0 ? computedCanvassersSummary : prev.canvassersSummary,
+          turfCompletion: computedTurfCompletion.length > 0 ? computedTurfCompletion : prev.turfCompletion,
+          walkListProgress: computedWalkListProgress.length > 0 ? computedWalkListProgress : prev.walkListProgress,
+          callListStats: computedCallListStats.total > 0 ? computedCallListStats : prev.callListStats,
+          donationChart: computedDonationChart,
           p1Count: gotv?.p1Count ?? prev.p1Count,
           p2Count: gotv?.p2Count ?? prev.p2Count,
           p3Count: gotv?.p3Count ?? prev.p3Count,
           p4Count: gotv?.p4Count ?? prev.p4Count,
           totalVoted: gotv?.supportersVoted ?? prev.totalVoted,
           totalSupporters: gotv?.confirmedSupporters ?? prev.totalSupporters,
+          priorityCallList: computedPriorityCallList.length > 0 ? computedPriorityCallList : prev.priorityCallList,
           candidateVotes: election?.candidateVotes ?? prev.candidateVotes,
           opponentVotes: election?.opponentVotes ?? prev.opponentVotes,
           pollsReporting: election?.pollsReporting ?? prev.pollsReporting,
@@ -456,6 +538,7 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
           topDonors: computedTopDonors.length > 0 ? computedTopDonors : prev.topDonors,
           healthScore: health?.healthScore ?? prev.healthScore,
           grade: health?.grade ?? prev.grade,
+          funnelData: funnel?.stages ?? prev.funnelData,
         }));
         setLastRefresh(new Date());
       } catch (e) { /* graceful degradation */ }
@@ -626,6 +709,59 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
 }
 
 /* ════════════════════════════════════════════════════════
+   FUNNEL WIDGET
+   ════════════════════════════════════════════════════════ */
+const FUNNEL_COLORS: Record<string, string> = {
+  unknown: "#94a3b8",
+  contact: "#3b82f6",
+  supporter: "#10b981",
+  volunteer: "#8b5cf6",
+  donor: "#f59e0b",
+  voter: "#ef4444",
+};
+const FUNNEL_LABELS: Record<string, string> = {
+  unknown: "Unknown",
+  contact: "Contact",
+  supporter: "Supporter",
+  volunteer: "Volunteer",
+  donor: "Donor",
+  voter: "Voter",
+};
+
+function FunnelWidget({ data, campaignId }: { data: DashboardData; campaignId: string }) {
+  const stages = data.funnelData;
+  if (!stages) return <EmptyWidget id="funnel" compact />;
+  const maxCount = Math.max(...stages.map((s) => s.count), 1);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Campaign Funnel</p>
+        <a href={`/contacts?campaignId=${campaignId}`} className="text-[10px] text-blue-500 hover:underline">View all →</a>
+      </div>
+      <div className="space-y-2">
+        {stages.filter((s) => s.stage !== "unknown").map((s) => (
+          <a key={s.stage} href={`/contacts?campaignId=${campaignId}&funnelStage=${s.stage}`} className="block group">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-[10px] font-semibold text-slate-500 w-16 flex-shrink-0">{FUNNEL_LABELS[s.stage] ?? s.stage}</span>
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full transition-all group-hover:opacity-80"
+                  style={{ backgroundColor: FUNNEL_COLORS[s.stage] ?? "#6b7280" }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round((s.count / maxCount) * 100)}%` }}
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                />
+              </div>
+              <span className="text-[11px] font-bold text-slate-700 w-10 text-right">{s.count.toLocaleString()}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
    MODE 1: OVERVIEW — Enterprise Command View
    ════════════════════════════════════════════════════════ */
 function OverviewMode({ data, campaignId, hidden, customWidgets, onRemoveWidget }: { data: DashboardData; campaignId: string; hidden: (id: StudioWidgetId) => boolean; customWidgets: CustomWidget[]; onRemoveWidget: (id: string) => void }) {
@@ -714,6 +850,14 @@ function OverviewMode({ data, campaignId, hidden, customWidgets, onRemoveWidget 
             <CustomWidgetCard key={cw.id} widget={cw} data={data} onRemove={() => onRemoveWidget(cw.id)} />
           ))}
         </div>
+      )}
+
+      {/* Funnel Widget */}
+      {!hidden("funnel") && (
+        <motion.div key="funnel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={springEnter}
+          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm col-span-full lg:col-span-2">
+          <FunnelWidget data={data} campaignId={campaignId} />
+        </motion.div>
       )}
 
       {/* Map + Activity — reflow based on visibility */}

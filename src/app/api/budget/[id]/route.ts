@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -33,9 +34,6 @@ async function getAuthorisedItem(req: NextRequest, id: string, userId: string) {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "budget:write");
-  if (permError) return permError;
-
   const result = await getAuthorisedItem(req, params.id, session!.user.id);
   if (result.status === 404) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (result.status === 403) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -92,9 +90,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "budget:write");
-  if (permError2) return permError2;
-
   const result = await getAuthorisedItem(req, params.id, session!.user.id);
   if (result.status === 404) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (result.status === 403) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

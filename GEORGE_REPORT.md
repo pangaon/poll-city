@@ -410,3 +410,7 @@ IP_HASH_SALT                    # random string for rate limiting
 | 2026-04-08 | Claude Opus 4.6 | 4-tier automation engine: inbound → Contact + tag + task + scoring. Lifecycle cron. |
 | 2026-04-08 | Claude Opus 4.6 | All green: Automations wired. Weekly report cron. Resource upload. |
 | 2026-04-08 | Claude Opus 4.6 | George Report v2: Added Enterprise column + Enrichment Process. Defined what 🟢 means. |
+| 2026-04-08 | Claude Sonnet 4.6 | GOTV metrics truth — tiers/command/precinct-race/gap/summary/priority-list all use shared calculateWinThreshold + guardCampaignRoute |
+| 2026-04-08 | Claude Sonnet 4.6 | Adoni hardening — multilingual (14 languages), Unicode-normalized injection detection, indirect injection sanitization, cross-session suspicious activity, permission obfuscation in logs |
+| 2026-04-08 | Claude Sonnet 4.6 | Dashboard — all 8 empty fields wired: activity feed, canvassers, turfs, walk lists, call stats, donation chart, priority call list |
+| 2026-04-08 | Claude Sonnet 4.6 | Security — election-night + timeline membership guards added. guardCampaignRoute utility created. Write-time sanitization on interactions/debrief/intelligence/donations notes. |

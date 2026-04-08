@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 const createScriptSchema = z.object({
@@ -17,23 +18,17 @@ const createScriptSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "canvassing:read");
+  if (forbidden) return forbidden;
 
-  const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId } } });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const scripts = await prisma.canvassingScript.findMany({ where: { campaignId }, orderBy: { updatedAt: "desc" } });
+  const scripts = await prisma.canvassingScript.findMany({ where: { campaignId: campaignId! }, orderBy: { updatedAt: "desc" } });
   return NextResponse.json({ data: scripts });
 }
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:manage");
-  if (permError) return permError;
   const raw = await req.json().catch(() => null);
   const parsed = createScriptSchema.safeParse(raw);
   if (!parsed.success) {
@@ -41,10 +36,8 @@ export async function POST(req: NextRequest) {
   }
   const body = parsed.data;
 
-  const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } } });
-  if (!membership || !["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "VOLUNTEER_LEADER"].includes(membership.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const { forbidden } = await guardCampaignRoute(session!.user.id, body.campaignId, "canvassing:manage");
+  if (forbidden) return forbidden;
 
   const script = await prisma.canvassingScript.create({
     data: {

@@ -8,7 +8,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 const dropSchema = z.object({
@@ -25,14 +26,11 @@ const dropSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
   const drops = await prisma.activityLog.findMany({
-    where: { campaignId, action: "literature_drop" },
+    where: { campaignId: campaignId!, action: "literature_drop" },
     orderBy: { createdAt: "desc" },
     take: 100,
     include: { user: { select: { name: true } } },
@@ -52,9 +50,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:write");
-  if (permError) return permError;
-
   const body = await req.json();
   const parsed = dropSchema.safeParse(body);
   if (!parsed.success) {

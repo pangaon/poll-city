@@ -107,6 +107,44 @@ export function hasAnyPermission(permissions: Permission[], required: Permission
   return required.some((p) => hasPermission(permissions, p));
 }
 
+// ─── Route guard helper ──────────────────────────────────────────────────────
+
+import { NextResponse } from "next/server";
+
+/**
+ * Drop-in replacement for the legacy two-step pattern:
+ *   requirePermission(session.user.role, "perm") + membership.findUnique
+ *
+ * Usage:
+ *   const { resolved, forbidden } = await guardCampaignRoute(userId, campaignId, "contacts:read");
+ *   if (forbidden) return forbidden;
+ *
+ * Returns `forbidden` (a 403 NextResponse) when:
+ *   - User is not a member of the campaign
+ *   - User lacks the required permission in their campaign role
+ * Returns `resolved` with full permission context when access is granted.
+ */
+export async function guardCampaignRoute(
+  userId: string,
+  campaignId: string | null | undefined,
+  ...requiredPerms: Permission[]
+): Promise<{ resolved: Awaited<ReturnType<typeof resolvePermissions>>; forbidden: null } | { resolved: null; forbidden: NextResponse }> {
+  if (!campaignId) {
+    return { resolved: null, forbidden: NextResponse.json({ error: "campaignId required" }, { status: 400 }) };
+  }
+  const resolved = await resolvePermissions(userId, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return { resolved: null, forbidden: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  if (requiredPerms.length > 0 && !resolved.permissions.includes("*")) {
+    const hasAny = requiredPerms.some((p) => hasPermission(resolved.permissions as Permission[], p));
+    if (!hasAny) {
+      return { resolved: null, forbidden: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+  }
+  return { resolved, forbidden: null };
+}
+
 // ─── Seed default roles for a campaign ──────────────────────────────────────
 
 export async function seedDefaultRoles(campaignId: string): Promise<void> {

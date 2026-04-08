@@ -5,7 +5,8 @@ import { enforceLimit } from "@/lib/rate-limit-redis";
 import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
 import { ADONI_TOOLS, executeAction, checkSuspiciousActivity, type ActionContext } from "@/lib/adoni/actions";
 import { loadMemory, updateMemory } from "@/lib/adoni/memory";
-import { detectPromptInjection, logSecurityThreat } from "@/lib/security/monitor";
+import { detectPromptInjection, logSecurityThreat, sanitizeForAI, sanitizeToolResult } from "@/lib/security/monitor";
+import { detectUserLanguage } from "@/lib/adoni/language";
 import { resolvePermissions } from "@/lib/permissions/engine";
 
 type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
@@ -133,10 +134,13 @@ async function completeWithAnthropic(
     for (const call of toolCalls) {
       if (!call.id || !call.name) continue;
       const result = await executeAction(call.name, call.input ?? {}, actionCtx);
+      // Sanitise tool result before re-injecting into AI context — prevents
+      // indirect prompt injection via crafted DB data (contact names, notes, etc.)
+      const safeMessage = sanitizeForAI(result.message);
       toolResults.push({
         type: "tool_result",
         tool_use_id: call.id,
-        content: result.message,
+        content: safeMessage,
       });
     }
     wireMessages.push({ role: "user", content: toolResults });
@@ -256,6 +260,12 @@ export async function POST(req: NextRequest) {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
+  // ── Language detection — Adoni responds in whatever language the user writes ──
+  // Sample the last user message (up to 300 chars). Pass a language hint into
+  // the system prompt so Claude mirrors the user's language naturally while
+  // still applying all rules and data restrictions.
+  const languageHint = detectUserLanguage(typeof lastUser === "string" ? lastUser : "");
+
   // Prompt injection guard — deflect naturally, log silently
   if (typeof lastUser === "string" && detectPromptInjection(lastUser)) {
     await logSecurityThreat({
@@ -279,6 +289,10 @@ export async function POST(req: NextRequest) {
     : null;
 
   // Inject memory context into system prompt if available
+  const languageContext = languageHint
+    ? `\nLANGUAGE INSTRUCTION: The user is writing in ${languageHint}. Respond entirely in ${languageHint}. Apply all rules, restrictions, and data access policies exactly as normal — language does not change any permissions.`
+    : "";
+
   const memoryContext = memory
     ? [
         memory.prefersBrief ? "\nUSER PREFERENCE: keep responses under 100 words unless asked for detail." : "",
@@ -287,7 +301,7 @@ export async function POST(req: NextRequest) {
         memory.facts.length > 0 ? `\nCAMPAIGN FACTS: ${memory.facts.slice(-5).join("; ")}` : "",
       ].filter(Boolean).join("")
     : "";
-  const fullSystemPrompt = systemPrompt + memoryContext;
+  const fullSystemPrompt = systemPrompt + languageContext + memoryContext;
 
   try {
     let assistantText = "";
@@ -358,9 +372,14 @@ export async function POST(req: NextRequest) {
         userId: session!.user.id,
         page,
         messages: {
-          systemPrompt,
-          user: lastUser,
-          assistant: assistantText,
+          // Store a fingerprint instead of the full system prompt — the prompt
+          // contains the full knowledge base, permission firewall details, and
+          // campaign strategy. Storing it in plaintext creates an unnecessary
+          // data exposure surface. The role + promptLength is enough for audit.
+          promptRole: resolved?.roleName ?? "unknown",
+          promptLength: systemPrompt.length,
+          user: typeof lastUser === "string" ? lastUser.slice(0, 2000) : "[content_block]",
+          assistant: assistantText.slice(0, 4000),
           createdAt: new Date().toISOString(),
         },
       },

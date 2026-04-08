@@ -100,6 +100,7 @@ export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
   note: "Note",
   follow_up: "Follow-up",
   field_encounter: "Field Encounter",
+  funnel_transition: "Funnel Transition",
 };
 
 export const ELECTION_TYPE_LABELS: Record<ElectionType, string> = {

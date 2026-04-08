@@ -1,7 +1,8 @@
-import { TaskPriority, TaskStatus } from "@prisma/client";
+import { TaskPriority, TaskStatus, FunnelStage } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { audit } from "@/lib/audit";
 import { createBackboneTask } from "./task-backbone";
+import { advanceFunnel } from "./funnel-engine";
 
 export type ActionKey =
   | "tasks.create"
@@ -78,6 +79,8 @@ export async function executeAction(
         where: { id: contactId },
         data: { voted: true, votedAt: new Date() },
       });
+      // Advance funnel: voted → voter (highest stage)
+      await advanceFunnel(contactId, FunnelStage.voter, "marked_voted", ctx.actorUserId);
     }
 
     await audit(prisma, "action.gotv_mark_voted", {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { SYSTEM_BUDGET_TEMPLATES, findTemplate } from "@/lib/budget/templates";
 import { z } from "zod";
 
@@ -20,24 +21,18 @@ const applySchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "budget:read");
-  if (permError) return permError;
 
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  const electionLevel = req.nextUrl.searchParams.get("electionLevel");
+  const sp = req.nextUrl.searchParams;
+  const campaignId = sp.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "budget:read");
+  if (forbidden) return forbidden;
 
-  let customTemplates: Awaited<ReturnType<typeof prisma.budgetTemplate.findMany>> = [];
-  if (campaignId) {
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const electionLevel = sp.get("electionLevel");
 
-    customTemplates = await prisma.budgetTemplate.findMany({
-      where: { campaignId },
-      orderBy: { createdAt: "desc" },
-    });
-  }
+  const customTemplates = await prisma.budgetTemplate.findMany({
+    where: { campaignId: campaignId! },
+    orderBy: { createdAt: "desc" },
+  });
 
   const filteredSystem = electionLevel
     ? SYSTEM_BUDGET_TEMPLATES.filter((t) => t.electionLevel === electionLevel)
@@ -54,9 +49,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "budget:write");
-  if (permError2) return permError2;
-
   const raw = await req.json().catch(() => null);
   const parsed = applySchema.safeParse(raw);
   if (!parsed.success) {
@@ -64,10 +56,8 @@ export async function POST(req: NextRequest) {
   }
   const { campaignId, templateId, replaceExisting } = parsed.data;
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "budget:write");
+  if (forbidden2) return forbidden2;
 
   const template = findTemplate(templateId);
   if (!template) {
@@ -80,7 +70,7 @@ export async function POST(req: NextRequest) {
     const items = custom.items as Array<{ category: string; percentOfTotal: number; priority: number; notes?: string }>;
 
     if (replaceExisting) {
-      await prisma.budgetRule.deleteMany({ where: { campaignId } });
+      await prisma.budgetRule.deleteMany({ where: { campaignId: campaignId! } });
     }
 
     const created = await Promise.all(
@@ -103,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   // System template
   if (replaceExisting) {
-    await prisma.budgetRule.deleteMany({ where: { campaignId } });
+    await prisma.budgetRule.deleteMany({ where: { campaignId: campaignId! } });
   }
 
   const created = await Promise.all(

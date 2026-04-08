@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { parseBudgetXlsx } from "@/lib/budget/xlsx-parser";
 
@@ -21,9 +22,6 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "budget:write");
-  if (permError) return permError;
-
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("multipart/form-data")) {
     return NextResponse.json({ error: "multipart/form-data required" }, { status: 400 });

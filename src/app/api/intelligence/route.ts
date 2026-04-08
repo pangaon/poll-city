@@ -1,27 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "intelligence:read");
-  if (permError) return permError;
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "intelligence:read");
+  if (forbidden) return forbidden;
 
-  const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId } } });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const entries = await prisma.opponentIntel.findMany({ where: { campaignId }, orderBy: { createdAt: "desc" } });
+  const entries = await prisma.opponentIntel.findMany({ where: { campaignId: campaignId! }, orderBy: { createdAt: "desc" } });
   return NextResponse.json({ data: entries });
 }
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "intelligence:write");
-  if (permError2) return permError2;
   const body = await req.json().catch(() => null) as {
     campaignId?: string; type?: "sign" | "event" | "media" | "note"; title?: string; details?: string;
     lat?: number; lng?: number; eventDate?: string;
@@ -31,8 +26,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } } });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, body.campaignId, "intelligence:write");
+  if (forbidden) return forbidden;
 
   const created = await prisma.opponentIntel.create({
     data: {

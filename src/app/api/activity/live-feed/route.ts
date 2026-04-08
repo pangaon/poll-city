@@ -10,22 +10,22 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "analytics:read");
-  if (permError) return permError;
 
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
   const limit = Math.min(50, Math.max(1, Number(sp.get("limit") || "20")));
   const since = sp.get("since"); // ISO timestamp — only return activities after this
 
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "analytics:read");
+  if (forbidden) return forbidden;
 
-  const where: Record<string, unknown> = { campaignId };
+  const where: Record<string, unknown> = { campaignId: campaignId! };
   if (since) where.createdAt = { gt: new Date(since) };
 
   const activities = await prisma.activityLog.findMany({

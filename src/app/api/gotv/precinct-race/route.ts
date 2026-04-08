@@ -16,18 +16,27 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { resolvePermissions } from "@/lib/permissions/engine";
+import { calculateWinThreshold } from "@/lib/operations/metrics-truth";
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
 
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+
+  // Verify campaign membership and resolve enterprise permissions
+  const resolved = await resolvePermissions(session!.user.id, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!resolved.permissions.includes("*") && !resolved.permissions.some((p) => p.startsWith("gotv:"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // Get all contacts grouped by poll
   const contacts = await prisma.contact.findMany({
@@ -53,7 +62,7 @@ export async function GET(req: NextRequest) {
 
   // Build precinct race data
   const precincts = Array.from(polls.entries()).map(([name, p]) => {
-    const winThreshold = Math.ceil(p.total * 0.35);
+    const winThreshold = calculateWinThreshold(p.total);
     const gap = Math.max(0, winThreshold - p.supportersVoted);
     const turnoutPct = p.total > 0 ? Math.round((p.totalVoted / p.total) * 100) : 0;
     const supporterTurnoutPct = p.supporters > 0 ? Math.round((p.supportersVoted / p.supporters) * 100) : 0;

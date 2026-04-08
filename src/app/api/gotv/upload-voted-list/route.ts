@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { calculateWinThreshold } from "@/lib/operations/metrics-truth";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
     }).catch(() => {}),
   ]);
 
-  const winThreshold = Math.ceil(totalContacts * 0.35);
+  const winThreshold = calculateWinThreshold(totalContacts);
   const newGap = Math.max(0, winThreshold - supportersVoted);
 
   return NextResponse.json({

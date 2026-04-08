@@ -10,9 +10,11 @@
  * These answers go to the field director.
  * They appear in Adoni's morning brief."
  */
+import { sanitizeUserText } from "@/lib/security/monitor";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 
 const debriefSchema = z.object({
@@ -29,14 +31,11 @@ const debriefSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
   const debriefs = await prisma.activityLog.findMany({
-    where: { campaignId, action: "canvass_debrief" },
+    where: { campaignId: campaignId!, action: "canvass_debrief" },
     orderBy: { createdAt: "desc" },
     take: 50,
     include: { user: { select: { name: true } } },
@@ -56,9 +55,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:write");
-  if (permError) return permError;
-
   const body = await req.json();
   const parsed = debriefSchema.safeParse(body);
   if (!parsed.success) {
@@ -82,10 +78,10 @@ export async function POST(req: NextRequest) {
       entityId: turfId ?? campaignId,
       details: {
         feeling,
-        streetsNeedFollowUp: streetsNeedFollowUp ?? null,
-        unusualNotes: unusualNotes ?? null,
+        streetsNeedFollowUp: sanitizeUserText(streetsNeedFollowUp),
+        unusualNotes: sanitizeUserText(unusualNotes),
         doorsKnocked: doorsKnocked ?? null,
-        bestMoment: bestMoment ?? null,
+        bestMoment: sanitizeUserText(bestMoment),
         turfId: turfId ?? null,
       },
     },

@@ -12,20 +12,21 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "analytics:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "analytics:read");
+  if (forbidden) return forbidden;
 
+  const cid = campaignId!;
   const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+    where: { id: cid },
     select: { electionDate: true, spendingLimit: true },
   });
 
@@ -42,15 +43,15 @@ export async function GET(req: NextRequest) {
     totalSigns,
     totalSpent,
   ] = await Promise.all([
-    prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { not: SupportLevel.unknown } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId: cid } }),
+    prisma.contact.count({ where: { campaignId: cid, supportLevel: { not: SupportLevel.unknown } } }),
+    prisma.contact.count({ where: { campaignId: cid, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
     prisma.interaction.count({
-      where: { contact: { campaignId }, createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      where: { contact: { campaignId: cid }, createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     }),
-    prisma.volunteerProfile.count({ where: { campaignId } }),
-    prisma.sign.count({ where: { campaignId } }),
-    prisma.budgetItem.aggregate({ where: { campaignId, itemType: "expense" }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0)),
+    prisma.volunteerProfile.count({ where: { campaignId: cid } }),
+    prisma.sign.count({ where: { campaignId: cid } }),
+    prisma.budgetItem.aggregate({ where: { campaignId: cid, itemType: "expense" }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0)),
   ]);
 
   // Scoring (each 0-100, then weighted)

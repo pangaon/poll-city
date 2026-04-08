@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "canvassing:read");
+  if (forbidden) return forbidden;
 
   // Get all team members
   const members = await prisma.membership.findMany({
-    where: { campaignId },
+    where: { campaignId: campaignId! },
     include: { user: { select: { id: true, name: true, email: true } } },
   });
 
@@ -26,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   // Door knocks per canvasser — get contactIds for campaign first, then group
   const campaignContactIds = await prisma.contact.findMany({
-    where: { campaignId },
+    where: { campaignId: campaignId! },
     select: { id: true },
   }).then((rows) => rows.map((r) => r.id));
 
@@ -42,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   // Turf stats per canvasser
   const turfs = await prisma.turf.findMany({
-    where: { campaignId, assignedUserId: { not: null } },
+    where: { campaignId: campaignId!, assignedUserId: { not: null } },
     select: {
       assignedUserId: true,
       status: true,

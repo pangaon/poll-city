@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Pencil, Search, ChevronLeft, ChevronRight, Users, CheckCircle2, XCircle,
-  Trophy, DoorOpen, Car, Filter,
+  Trophy, DoorOpen, Car, Filter, Mail, MessageSquare, ClipboardList, Download,
+  UserCheck, Phone, ExternalLink, ChevronDown,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, Checkbox, FormField, Input, Label,
@@ -39,6 +40,21 @@ interface LeaderboardEntry {
   status: "star" | "active" | "new" | "quiet" | "inactive";
 }
 
+interface Shift {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  location?: string | null;
+}
+
+interface VolunteerStats {
+  total: number;
+  active: number;
+  totalHours: number;
+  withVehicle: number;
+}
+
 interface Props { campaignId: string }
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
@@ -72,6 +88,97 @@ function ShimmerRows({ cols }: { cols: number }) {
   );
 }
 
+/* ─── Row action dropdown ────────────────────────────────────────────── */
+function RowActions({
+  volunteer,
+  onEdit,
+  onAssignShift,
+  onSendMessage,
+  onCreateTask,
+}: {
+  volunteer: VolunteerProfileRow;
+  onEdit: () => void;
+  onAssignShift: () => void;
+  onSendMessage: () => void;
+  onCreateTask: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const phone = volunteer.user?.phone ?? volunteer.contact?.phone ?? null;
+  const contactId = volunteer.contact?.id ?? null;
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setOpen((v) => !v)}
+        className="min-h-[44px] flex items-center gap-1"
+      >
+        Actions <ChevronDown className="w-3 h-3" />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { setOpen(false); onEdit(); }}
+          >
+            <Pencil className="w-3.5 h-3.5 text-gray-500" /> Edit profile
+          </button>
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { setOpen(false); onAssignShift(); }}
+          >
+            <UserCheck className="w-3.5 h-3.5 text-gray-500" /> Assign to shift
+          </button>
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { setOpen(false); onSendMessage(); }}
+          >
+            <Mail className="w-3.5 h-3.5 text-gray-500" /> Send message
+          </button>
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { setOpen(false); onCreateTask(); }}
+          >
+            <ClipboardList className="w-3.5 h-3.5 text-gray-500" /> Create task
+          </button>
+          {contactId && (
+            <a
+              href={`/contacts/${contactId}`}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+              onClick={() => setOpen(false)}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-gray-500" /> View contact
+            </a>
+          )}
+          {phone && (
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+              onClick={() => {
+                setOpen(false);
+                navigator.clipboard.writeText(phone).then(() => toast.success("Phone copied")).catch(() => toast.error("Copy failed"));
+              }}
+            >
+              <Phone className="w-3.5 h-3.5 text-gray-500" /> Copy phone
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VolunteersClient({ campaignId }: Props) {
   const [volunteers, setVolunteers] = useState<VolunteerProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +197,130 @@ export default function VolunteersClient({ campaignId }: Props) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
+  /* ─── Stats ─────────────────────────────────────────────────────────── */
+  const [stats, setStats] = useState<VolunteerStats | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/volunteers/stats?campaignId=${campaignId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setStats(d); })
+      .catch(() => {});
+  }, [campaignId]);
+
+  /* ─── Shift modal ─────────────────────────────────────────────────── */
+  const [showAssignShift, setShowAssignShift] = useState(false);
+  const [shiftTargets, setShiftTargets] = useState<VolunteerProfileRow[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+  const [selectedShiftId, setSelectedShiftId] = useState("");
+
+  function openAssignShift(targets: VolunteerProfileRow[]) {
+    setShiftTargets(targets);
+    setSelectedShiftId("");
+    setShowAssignShift(true);
+    setShiftsLoading(true);
+    fetch(`/api/volunteers/shifts?campaignId=${campaignId}`)
+      .then((r) => r.ok ? r.json() : { shifts: [] })
+      .then((d) => setShifts(d.shifts ?? d.data ?? []))
+      .catch(() => setShifts([]))
+      .finally(() => setShiftsLoading(false));
+  }
+
+  async function submitAssignShift() {
+    if (!selectedShiftId) { toast.error("Select a shift"); return; }
+    try {
+      const res = await fetch(`/api/volunteers/shifts/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shiftId: selectedShiftId, volunteerIds: shiftTargets.map((v) => v.id), campaignId }),
+      });
+      if (!res.ok) throw new Error("Failed to assign shift");
+      toast.success(`Assigned ${shiftTargets.length} volunteer${shiftTargets.length !== 1 ? "s" : ""} to shift`);
+      setShowAssignShift(false);
+      setSelectedVolunteers([]);
+    } catch (error) { toast.error((error as Error).message); }
+  }
+
+  /* ─── Message modal ──────────────────────────────────────────────── */
+  const [showSendMessage, setShowSendMessage] = useState(false);
+  const [messageTargets, setMessageTargets] = useState<VolunteerProfileRow[]>([]);
+  const [messageForm, setMessageForm] = useState({ subject: "", body: "" });
+
+  function openSendMessage(targets: VolunteerProfileRow[]) {
+    setMessageTargets(targets);
+    setMessageForm({ subject: "", body: "" });
+    setShowSendMessage(true);
+  }
+
+  async function submitSendMessage() {
+    if (!messageForm.subject.trim() || !messageForm.body.trim()) { toast.error("Subject and message are required"); return; }
+    const contactIds = messageTargets
+      .map((v) => v.contact?.id)
+      .filter((id): id is string => Boolean(id));
+    try {
+      const res = await fetch("/api/communications/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, subject: messageForm.subject, bodyHtml: messageForm.body, contactIds }),
+      });
+      if (!res.ok) throw new Error("Failed to send message");
+      toast.success(`Message sent to ${messageTargets.length} volunteer${messageTargets.length !== 1 ? "s" : ""}`);
+      setShowSendMessage(false);
+      setSelectedVolunteers([]);
+    } catch (error) { toast.error((error as Error).message); }
+  }
+
+  /* ─── Task modal ─────────────────────────────────────────────────── */
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [taskTargets, setTaskTargets] = useState<VolunteerProfileRow[]>([]);
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", dueDate: "" });
+
+  function openCreateTask(targets: VolunteerProfileRow[]) {
+    setTaskTargets(targets);
+    setTaskForm({ title: "", description: "", dueDate: "" });
+    setShowCreateTask(true);
+  }
+
+  async function submitCreateTask() {
+    if (!taskForm.title.trim()) { toast.error("Task title is required"); return; }
+    try {
+      await Promise.all(
+        taskTargets.map((v) =>
+          fetch("/api/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              campaignId,
+              title: taskForm.title,
+              description: taskForm.description,
+              assignedToId: v.user?.id ?? null,
+              dueDate: taskForm.dueDate || null,
+            }),
+          })
+        )
+      );
+      toast.success(`Task created for ${taskTargets.length} volunteer${taskTargets.length !== 1 ? "s" : ""}`);
+      setShowCreateTask(false);
+      setSelectedVolunteers([]);
+    } catch (error) { toast.error((error as Error).message || "Failed to create tasks"); }
+  }
+
+  /* ─── Export ─────────────────────────────────────────────────────── */
+  function handleExport() {
+    const ids = selectedVolunteers.join(",");
+    const url = `/api/export/volunteers?campaignId=${campaignId}&ids=${ids}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "volunteers.csv";
+    a.click();
+  }
+
+  /* ─── Selected volunteer objects ────────────────────────────────── */
+  const selectedObjects = useMemo(
+    () => volunteers.filter((v) => selectedVolunteers.includes(v.id)),
+    [volunteers, selectedVolunteers]
+  );
 
   const loadVolunteers = useCallback(async () => {
     setLoading(true);
@@ -187,6 +418,33 @@ export default function VolunteersClient({ campaignId }: Props) {
         actions={<Button onClick={() => openEditor()} className="bg-[#0A2342] hover:bg-[#0A2342]/90 min-h-[44px]"><Users className="w-4 h-4" />New volunteer</Button>}
       />
 
+      {/* Stats row */}
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Total Volunteers", value: stats.total, icon: Users },
+            { label: "Active", value: stats.active, icon: CheckCircle2 },
+            { label: "Total Hours", value: `${stats.totalHours.toFixed(0)}h`, icon: Filter },
+            { label: "Have Vehicle", value: stats.withVehicle, icon: Car },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <Card key={s.label}>
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">{s.label}</p>
+                      <p className="text-lg font-bold text-gray-900">{s.value}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
         {(["roster", "leaderboard"] as const).map((t) => (
@@ -238,11 +496,11 @@ export default function VolunteersClient({ campaignId }: Props) {
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring}>
                 <Card className="border-blue-200 bg-blue-50/50">
                   <CardContent className="py-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-medium text-blue-900">
                         {selectedVolunteers.length} volunteer{selectedVolunteers.length !== 1 ? "s" : ""} selected
                       </span>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" className="min-h-[44px]" onClick={async () => {
                           try {
                             const res = await fetch("/api/volunteers/bulk-activate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selectedVolunteers }) });
@@ -262,6 +520,21 @@ export default function VolunteersClient({ campaignId }: Props) {
                           } catch (error) { toast.error((error as Error).message); }
                         }}>
                           <XCircle className="w-4 h-4" /> Deactivate
+                        </Button>
+                        <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => openAssignShift(selectedObjects)}>
+                          <UserCheck className="w-4 h-4" /> Assign Shift
+                        </Button>
+                        <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => openSendMessage(selectedObjects)}>
+                          <Mail className="w-4 h-4" /> Send Message
+                        </Button>
+                        <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => openCreateTask(selectedObjects)}>
+                          <ClipboardList className="w-4 h-4" /> Create Task
+                        </Button>
+                        <Button size="sm" variant="outline" className="min-h-[44px]" onClick={handleExport}>
+                          <Download className="w-4 h-4" /> Export
+                        </Button>
+                        <Button size="sm" variant="secondary" className="min-h-[44px]" onClick={() => setSelectedVolunteers([])}>
+                          Clear
                         </Button>
                       </div>
                     </div>
@@ -348,9 +621,13 @@ export default function VolunteersClient({ campaignId }: Props) {
                         <td className="px-4 py-3 font-medium text-gray-900">{(v.totalHours ?? 0).toFixed(1)}h</td>
                         <td className="px-4 py-3"><Badge variant={v.isActive ? "success" : "warning"}>{v.isActive ? "Active" : "Inactive"}</Badge></td>
                         <td className="px-4 py-3">
-                          <Button size="sm" variant="outline" onClick={() => openEditor(v)} className="min-h-[44px]">
-                            <Pencil className="w-3.5 h-3.5" /> Edit
-                          </Button>
+                          <RowActions
+                            volunteer={v}
+                            onEdit={() => openEditor(v)}
+                            onAssignShift={() => openAssignShift([v])}
+                            onSendMessage={() => openSendMessage([v])}
+                            onCreateTask={() => openCreateTask([v])}
+                          />
                         </td>
                       </motion.tr>
                     ))
@@ -469,6 +746,110 @@ export default function VolunteersClient({ campaignId }: Props) {
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setOpenEdit(false)} className="min-h-[44px]"><XCircle className="w-4 h-4" /> Cancel</Button>
             <Button onClick={saveProfile} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]"><CheckCircle2 className="w-4 h-4" /> Save</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Assign Shift modal */}
+      <Modal open={showAssignShift} onClose={() => setShowAssignShift(false)} title="Assign to Shift" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Assigning {shiftTargets.length} volunteer{shiftTargets.length !== 1 ? "s" : ""} to a shift.
+          </p>
+          {shiftsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
+            </div>
+          ) : shifts.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">No upcoming shifts found.</p>
+          ) : (
+            <FormField label="Select shift">
+              <Select value={selectedShiftId} onChange={(e) => setSelectedShiftId(e.target.value)} className="min-h-[44px]">
+                <option value="">-- Choose a shift --</option>
+                {shifts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title} — {new Date(s.startTime).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}
+                    {s.location ? ` @ ${s.location}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          )}
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setShowAssignShift(false)} className="min-h-[44px]">Cancel</Button>
+            <Button onClick={submitAssignShift} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]" disabled={!selectedShiftId}>
+              <UserCheck className="w-4 h-4" /> Assign
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Send Message modal */}
+      <Modal open={showSendMessage} onClose={() => setShowSendMessage(false)} title="Send Message" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Sending to {messageTargets.length} volunteer{messageTargets.length !== 1 ? "s" : ""}.
+          </p>
+          <FormField label="Subject">
+            <Input
+              value={messageForm.subject}
+              onChange={(e) => setMessageForm((s) => ({ ...s, subject: e.target.value }))}
+              placeholder="Subject line"
+              className="min-h-[44px]"
+            />
+          </FormField>
+          <FormField label="Message">
+            <Textarea
+              value={messageForm.body}
+              onChange={(e) => setMessageForm((s) => ({ ...s, body: e.target.value }))}
+              placeholder="Write your message here..."
+              rows={5}
+            />
+          </FormField>
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setShowSendMessage(false)} className="min-h-[44px]">Cancel</Button>
+            <Button onClick={submitSendMessage} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]">
+              <Mail className="w-4 h-4" /> Send
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Task modal */}
+      <Modal open={showCreateTask} onClose={() => setShowCreateTask(false)} title="Create Task" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Creating task for {taskTargets.length} volunteer{taskTargets.length !== 1 ? "s" : ""}.
+          </p>
+          <FormField label="Title">
+            <Input
+              value={taskForm.title}
+              onChange={(e) => setTaskForm((s) => ({ ...s, title: e.target.value }))}
+              placeholder="Task title"
+              className="min-h-[44px]"
+            />
+          </FormField>
+          <FormField label="Description">
+            <Textarea
+              value={taskForm.description}
+              onChange={(e) => setTaskForm((s) => ({ ...s, description: e.target.value }))}
+              placeholder="Task description (optional)"
+              rows={3}
+            />
+          </FormField>
+          <FormField label="Due Date">
+            <Input
+              type="date"
+              value={taskForm.dueDate}
+              onChange={(e) => setTaskForm((s) => ({ ...s, dueDate: e.target.value }))}
+              className="min-h-[44px]"
+            />
+          </FormField>
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setShowCreateTask(false)} className="min-h-[44px]">Cancel</Button>
+            <Button onClick={submitCreateTask} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]">
+              <ClipboardList className="w-4 h-4" /> Create
+            </Button>
           </div>
         </div>
       </Modal>

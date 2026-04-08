@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
+import { sanitizeUserText } from "@/lib/security/monitor";
+import { advanceFunnel } from "@/lib/operations/funnel-engine";
+import { FunnelStage } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "donations:write");
-  if (permError) return permError;
-
   let body: {
     campaignId?: string;
     contactId?: string;
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
       recordedById: session!.user.id,
       amount,
       method: body.method?.trim() || "cash",
-      notes: body.notes?.trim() || null,
+      notes: sanitizeUserText(body.notes),
       status: "pledged",
     },
   });
@@ -83,6 +84,11 @@ export async function POST(req: NextRequest) {
       details: { amount, method: body.method || "cash" },
     },
   });
+
+  // Advance funnel: donation → donor
+  if (resolvedContactId) {
+    await advanceFunnel(resolvedContactId, FunnelStage.donor, "donation", session!.user.id);
+  }
 
   return NextResponse.json({ data: donation }, { status: 201 });
 }

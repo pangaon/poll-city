@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 const MANAGER_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "MANAGER"]);
 
@@ -13,9 +14,6 @@ function isAllowedTransition(from: string, to: string): boolean {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "budget:manage");
-  if (permError) return permError;
-
   let body: { status?: string; notes?: string | null };
   try {
     body = await req.json();

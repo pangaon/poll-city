@@ -13,7 +13,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { resolvePermissions } from "@/lib/permissions/engine";
 import { InteractionType } from "@prisma/client";
 
 interface Milestone {
@@ -28,11 +29,18 @@ interface Milestone {
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "analytics:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+
+  // Verify campaign membership + enterprise permission
+  const resolved = await resolvePermissions(session!.user.id, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!resolved.permissions.includes("*") && !resolved.permissions.some((p) => p.startsWith("analytics:"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const milestones: Milestone[] = [];
 

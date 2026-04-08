@@ -43,6 +43,16 @@ enum InteractionType {
   note
   follow_up
   field_encounter
+  funnel_transition
+}
+
+enum FunnelStage {
+  unknown
+  contact
+  supporter
+  volunteer
+  donor
+  voter
 }
 
 enum ElectionType {
@@ -721,6 +731,7 @@ model Contact {
   ward                 String?
   riding               String?
   supportLevel         SupportLevel @default(unknown)
+  funnelStage          FunnelStage  @default(unknown)
   notes                String?
   preferredLanguage    String       @default("en")
   languagePreference   String?

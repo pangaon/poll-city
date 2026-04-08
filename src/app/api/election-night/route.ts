@@ -9,7 +9,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { resolvePermissions } from "@/lib/permissions/engine";
+import { calculateWinThreshold } from "@/lib/operations/metrics-truth";
 import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
@@ -17,11 +19,18 @@ export async function GET(req: NextRequest) {
 
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+
+  // Verify campaign membership + enterprise permission
+  const resolved = await resolvePermissions(session!.user.id, campaignId);
+  if (!resolved || resolved.roleSlug === "none") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!resolved.permissions.includes("*") && !resolved.permissions.some((p) => p.startsWith("gotv:"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -61,7 +70,7 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const winThreshold = Math.ceil(totalContacts * 0.35);
+  const winThreshold = calculateWinThreshold(totalContacts);
   const gap = Math.max(0, winThreshold - supportersVoted);
   const supporterTurnout = confirmedSupporters > 0 ? Math.round((supportersVoted / confirmedSupporters) * 100) : 0;
   const overallTurnout = totalContacts > 0 ? Math.round((totalVoted / totalContacts) * 100) : 0;

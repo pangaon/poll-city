@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-  const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-  const membership = await prisma.membership.findUnique({ where: { userId_campaignId: { userId: session!.user.id, campaignId } } });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "canvassing:read");
+  if (forbidden) return forbidden;
   // Auto-generate call list from: donation pledges, volunteer interests, sign requests, follow-ups
   const [followUps, volunteers, donations] = await Promise.all([
-    prisma.contact.findMany({ where: { campaignId, followUpNeeded: true, phone: { not: null }, isDeceased: false }, take: 30, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
-    prisma.contact.findMany({ where: { campaignId, volunteerInterest: true, phone: { not: null }, isDeceased: false }, take: 20, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
-    prisma.donation.findMany({ where: { campaignId, status: "pledged" }, take: 20, include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true, address1: true, supportLevel: true } } } }),
+    prisma.contact.findMany({ where: { campaignId: campaignId!, followUpNeeded: true, phone: { not: null }, isDeceased: false }, take: 30, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
+    prisma.contact.findMany({ where: { campaignId: campaignId!, volunteerInterest: true, phone: { not: null }, isDeceased: false }, take: 20, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
+    prisma.donation.findMany({ where: { campaignId: campaignId!, status: "pledged" }, take: 20, include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true, address1: true, supportLevel: true } } } }),
   ]);
   const calls = [
     ...followUps.map(c => ({ id: `fu-${c.id}`, contactId: c.id, firstName: c.firstName, lastName: c.lastName, phone: c.phone!, address: c.address1 ?? "", reason: "follow_up_needed", reasonNote: c.notes ?? "", priority: "high" as const, staffNote: c.notes ?? "", supportLevel: c.supportLevel, status: "pending" as const })),
