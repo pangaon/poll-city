@@ -12,6 +12,7 @@ import {
 } from "@/components/ui";
 import { toast } from "sonner";
 import { fullName, formatPhone } from "@/lib/utils";
+import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
 
 /* ─── types ─────────────────────────────────────────────────────────── */
 interface VolunteerProfileRow {
@@ -416,6 +417,16 @@ export default function VolunteersClient({ campaignId }: Props) {
         title="Volunteers"
         description="Manage volunteer profiles, skills, availability, and performance."
         actions={<Button onClick={() => openEditor()} className="bg-[#0A2342] hover:bg-[#0A2342]/90 min-h-[44px]"><Users className="w-4 h-4" />New volunteer</Button>}
+      />
+
+      <AdoniPageAssist
+        pageKey="volunteers"
+        prompts={[
+          "Who are my most active volunteers this week?",
+          "Which volunteers have vehicles and are available weekends?",
+          "Draft a thank-you message for all active volunteers",
+          "Which canvassers haven't logged activity in 7 days?",
+        ]}
       />
 
       {/* Stats row */}

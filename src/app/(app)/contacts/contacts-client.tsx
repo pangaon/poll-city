@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X } from "lucide-react";
 import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
+import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
 import { useForm } from "react-hook-form";
@@ -523,6 +524,53 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
     }
   };
 
+  const handleCallListSelected = async () => {
+    try {
+      const ids = selectedContacts.join(",");
+      const url = `/api/export/contacts?campaignId=${campaignId}&ids=${encodeURIComponent(ids)}&format=call`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(err?.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `call-list-${Date.now()}.csv`;
+      a.click();
+      toast.success("Call list downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
+
+  const handleCallListFiltered = async () => {
+    try {
+      const params = new URLSearchParams({ campaignId, format: "call" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
+      if (followUp) params.set("followUpNeeded", "true");
+      if (volunteerOnly) params.set("volunteerInterest", "true");
+      if (signOnly) params.set("signRequested", "true");
+      if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+      if (wards.length > 0) params.set("wards", wards.join(","));
+      const url = `/api/export/contacts?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(err?.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `call-list-filtered-${Date.now()}.csv`;
+      a.click();
+      toast.success("Call list downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
+
   const handleExportSelected = async () => {
     try {
       const ids = selectedContacts.join(",");
@@ -628,6 +676,16 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             )}
           </div>
         }
+      />
+
+      <AdoniPageAssist
+        pageKey="contacts"
+        prompts={[
+          "Who are my strongest supporters not yet contacted?",
+          "Find all volunteers with no follow-up scheduled",
+          "Create a walk list for strong supporters in ward 3",
+          "Which contacts requested a sign but haven't been visited?",
+        ]}
       />
 
       {/* Search + filters bar */}
@@ -911,6 +969,15 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={handleCallListSelected}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    Call List
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={handleSendEmail}
                     className="border-blue-300 hover:bg-blue-100 text-blue-800"
                   >
@@ -994,6 +1061,15 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                   >
                     <Send className="w-3.5 h-3.5" />
                     Email This List
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCallListFiltered}
+                    className="text-slate-700"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    Call List
                   </Button>
                 </div>
               </Card>

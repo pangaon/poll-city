@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
+import type { Prisma, SupportLevel } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,8 +13,8 @@ export async function GET(req: NextRequest) {
     const permError = requirePermission(session!.user.role as string, "contacts:export");
     if (permError) return permError;
 
-    const { searchParams } = new URL(req.url);
-    const campaignId = searchParams.get("campaignId");
+    const sp = req.nextUrl.searchParams;
+    const campaignId = sp.get("campaignId");
     if (!campaignId) {
       return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
     }
@@ -28,12 +31,95 @@ export async function GET(req: NextRequest) {
       select: { slug: true },
     });
 
+    // Build where clause
+    const where: Prisma.ContactWhereInput = { campaignId };
+
+    // ID-based selection
+    const rawIds = sp.get("ids");
+    if (rawIds) {
+      const ids = rawIds.split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length > 0) where.id = { in: ids };
+    }
+
+    // Filter-based selection (used by "Export Filtered" in contacts page)
+    const search = sp.get("search");
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    const supportLevels = sp.get("supportLevels");
+    if (supportLevels) {
+      where.supportLevel = { in: supportLevels.split(",").filter(Boolean) as SupportLevel[] };
+    }
+    if (sp.get("followUpNeeded") === "true") where.followUpNeeded = true;
+    if (sp.get("volunteerInterest") === "true") where.volunteerInterest = true;
+    if (sp.get("signRequested") === "true") where.signRequested = true;
+    const rawWards = sp.get("wards");
+    if (rawWards) {
+      const wards = rawWards.split(",").filter(Boolean);
+      if (wards.length > 0) where.ward = { in: wards };
+    }
+
+    const format = sp.get("format"); // "full" (default) | "call"
+
     const contacts = await prisma.contact.findMany({
-      where: { campaignId },
+      where,
       include: { tags: { include: { tag: true } } },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
+    const suffix = format === "call" ? "call-list" : "contacts";
+
+    if (format === "call") {
+      // Phone banking / call list — compact, phone-first format
+      const rows = contacts
+        .filter((c) => c.phone) // only contacts with phone numbers
+        .map((c) => ({
+          firstName: c.firstName ?? "",
+          lastName: c.lastName ?? "",
+          phone: c.phone ?? "",
+          supportLevel: c.supportLevel ?? "",
+          address1: c.address1 ?? "",
+          city: c.city ?? "",
+          ward: c.ward ?? "",
+          notes: c.notes ?? "",
+          followUpNeeded: c.followUpNeeded ? "yes" : "no",
+          doNotContact: c.doNotContact ? "yes" : "no",
+        }));
+
+      const csv = rowsToCsv(rows, [
+        { key: "firstName", header: "First Name" },
+        { key: "lastName", header: "Last Name" },
+        { key: "phone", header: "Phone" },
+        { key: "supportLevel", header: "Support Level" },
+        { key: "address1", header: "Address" },
+        { key: "city", header: "City" },
+        { key: "ward", header: "Ward" },
+        { key: "notes", header: "Notes" },
+        { key: "followUpNeeded", header: "Follow-up Needed" },
+        { key: "doNotContact", header: "Do Not Call" },
+      ]);
+
+      const filename = exportFilename(campaign?.slug ?? "campaign", suffix);
+
+      await prisma.exportLog.create({
+        data: {
+          campaignId,
+          userId: session!.user.id,
+          exportType: "contacts",
+          format: "csv",
+          recordCount: rows.length,
+        },
+      });
+
+      return csvResponse(csv, filename);
+    }
+
+    // Default full export
     const rows = contacts.map((c) => ({
       firstName: c.firstName ?? "",
       lastName: c.lastName ?? "",
@@ -74,7 +160,7 @@ export async function GET(req: NextRequest) {
       { key: "lastContactedAt", header: "lastContactedAt" },
     ]);
 
-    const filename = exportFilename(campaign?.slug ?? "campaign", "contacts");
+    const filename = exportFilename(campaign?.slug ?? "campaign", suffix);
 
     await prisma.exportLog.create({
       data: {
@@ -92,5 +178,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }
 }
-
-export const dynamic = "force-dynamic";

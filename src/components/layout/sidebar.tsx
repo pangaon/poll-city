@@ -38,26 +38,23 @@ const FIELD_OPS_SECTION: NavSection = {
   icon: Map,
   items: [
     { href: "/canvassing", icon: Map, label: "Canvassing" },
-    { href: "/canvassing/walk", icon: Map, label: "Walk List" },
     { href: "/gotv", icon: Target, label: "GOTV" },
     { href: "/election-night", icon: Gauge, label: "Election Night" },
     { href: "/signs", icon: Map, label: "Signs" },
     { href: "/events", icon: CalendarDays, label: "Events" },
-    { href: "/lookup", icon: Search, label: "Lookup" },
     { href: "/polls", icon: BarChart3, label: "Polls" },
+    { href: "/lookup", icon: Search, label: "Voter Lookup" },
   ],
 };
 
-const FINANCE_CONTENT_SECTION: NavSection = {
-  id: "finance-content",
-  label: "Finance & Content",
+const FINANCE_SECTION: NavSection = {
+  id: "finance",
+  label: "Finance",
   icon: DollarSign,
   items: [
     { href: "/donations", icon: DollarSign, label: "Donations" },
     { href: "/budget", icon: DollarSign, label: "Budget" },
-    { href: "/resources", icon: BookOpen, label: "Resources" },
-    { href: "/print", icon: Printer, label: "Print" },
-    { href: "/settings/public-page", icon: Globe, label: "Website" },
+    { href: "/billing", icon: CreditCard, label: "Billing" },
   ],
 };
 
@@ -69,18 +66,21 @@ const COMMUNICATIONS_SECTION: NavSection = {
     { href: "/communications", icon: Mail, label: "Email & SMS" },
     { href: "/communications/social", icon: Globe, label: "Social Media" },
     { href: "/notifications", icon: MessageSquare, label: "Voter Outreach" },
+    { href: "/print", icon: Printer, label: "Print & Design" },
+    { href: "/settings/public-page", icon: Globe, label: "Campaign Website" },
   ],
 };
 
-const ANALYTICS_SECTION: NavSection = {
-  id: "analytics",
-  label: "Analytics",
+const INTELLIGENCE_SECTION: NavSection = {
+  id: "intelligence",
+  label: "Analytics & Intel",
   icon: BarChart3,
   items: [
     { href: "/analytics", icon: BarChart3, label: "Analytics" },
     { href: "/reports", icon: FileText, label: "Reports" },
+    { href: "/resources", icon: BookOpen, label: "Resource Library" },
     { href: "/officials", icon: Landmark, label: "Officials" },
-    { href: "/media", icon: Globe, label: "Media" },
+    { href: "/media", icon: Globe, label: "Media Contacts" },
     { href: "/coalitions", icon: Globe, label: "Coalitions" },
     { href: "/intelligence", icon: Shield, label: "Opponent Intel" },
   ],
@@ -95,8 +95,7 @@ const SETTINGS_ADMIN_SECTION: NavSection = {
     { href: "/settings/brand", icon: Palette, label: "Brand Kit" },
     { href: "/settings/team", icon: Users, label: "Team" },
     { href: "/settings/security", icon: Lock, label: "Security" },
-    { href: "/billing", icon: CreditCard, label: "Billing" },
-    { href: "/import-export", icon: Upload, label: "Import/Export" },
+    { href: "/import-export", icon: Upload, label: "Import / Export" },
     { href: "/help", icon: HelpCircle, label: "Help" },
   ],
 };
@@ -174,9 +173,9 @@ export default function Sidebar() {
     return [
       HEADQUARTERS_SECTION,
       FIELD_OPS_SECTION,
-      FINANCE_CONTENT_SECTION,
+      FINANCE_SECTION,
       COMMUNICATIONS_SECTION,
-      ANALYTICS_SECTION,
+      INTELLIGENCE_SECTION,
       {
         ...SETTINGS_ADMIN_SECTION,
         items: settingsItems,
