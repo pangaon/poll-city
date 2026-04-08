@@ -43,7 +43,6 @@ const MORE_GROUPS = [
     items: [
       { href: "/communications", label: "Communications" },
       { href: "/communications/social", label: "Social Media" },
-      { href: "/ai-assist", label: "AI Assistant" },
     ],
   },
   {

@@ -67,7 +67,6 @@ const COMMUNICATIONS_SECTION: NavSection = {
   items: [
     { href: "/communications", icon: Mail, label: "Communications" },
     { href: "/communications/social", icon: Globe, label: "Social Media" },
-    { href: "/ai-assist", icon: Bot, label: "AI Assistant" },
     { href: "/alerts", icon: Bell, label: "Alerts" },
   ],
 };

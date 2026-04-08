@@ -535,6 +535,39 @@ function ComposeTab({
   const [showPreview, setShowPreview] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [showMergeFields, setShowMergeFields] = useState(false);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [volunteerOnly, setVolunteerOnly] = useState(false);
+  const [hasEmail, setHasEmail] = useState(false);
+  const [hasPhone, setHasPhone] = useState(false);
+  const [lastContactedFilter, setLastContactedFilter] = useState("");
+
+  async function generateWithAi() {
+    if (!aiPrompt.trim()) return;
+    setAiGenerating(true);
+    try {
+      const kind = channel === "email" ? "fundraising-email" : "social-post";
+      const res = await fetch("/api/adoni/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kind, brief: aiPrompt, campaignId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          setBody(data.text);
+          if (channel === "email" && !subject) {
+            const firstLine = data.text.split("\n")[0].replace(/<[^>]*>/g, "").slice(0, 100);
+            setSubject(firstLine);
+          }
+        }
+      }
+    } catch {}
+    setAiGenerating(false);
+    setShowAiPrompt(false);
+    setAiPrompt("");
+  }
 
   // Apply prefill when it changes
   useEffect(() => {
@@ -561,6 +594,10 @@ function ComposeTab({
             wards: wardFilter.length ? wardFilter : undefined,
             tagIds: tagFilter.length ? tagFilter : undefined,
             excludeDnc,
+            volunteerOnly: volunteerOnly || undefined,
+            hasEmail: hasEmail || undefined,
+            hasPhone: hasPhone || undefined,
+            lastContactedDays: lastContactedFilter || undefined,
           }),
         });
         if (res.ok) setAudience(await res.json());
@@ -568,7 +605,7 @@ function ComposeTab({
       setAudienceLoading(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [campaignId, channel, supportLevels, wardFilter, tagFilter, excludeDnc]);
+  }, [campaignId, channel, supportLevels, wardFilter, tagFilter, excludeDnc, volunteerOnly, hasEmail, hasPhone, lastContactedFilter]);
 
   function toggle(arr: string[], val: string, setter: (v: string[]) => void) {
     setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -765,6 +802,13 @@ function ComposeTab({
                   </div>
                 )}
               </div>
+              {/* AI Write */}
+              <button
+                onClick={() => setShowAiPrompt(!showAiPrompt)}
+                className="h-7 px-2.5 rounded-md text-[11px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 hover:bg-violet-100 flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" /> AI Write
+              </button>
               {/* Template picker */}
               <select
                 onChange={(e) => { if (e.target.value) loadTemplate(e.target.value); e.target.value = ""; }}
@@ -778,6 +822,27 @@ function ComposeTab({
               </select>
             </div>
           </div>
+
+          {showAiPrompt && (
+            <div className="flex gap-2 p-3 rounded-lg bg-violet-50 border border-violet-200">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Tell Adoni what to write..."
+                className="flex-1 h-9 px-3 rounded-lg border border-violet-200 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none bg-white"
+                onKeyDown={(e) => e.key === "Enter" && generateWithAi()}
+              />
+              <button
+                onClick={generateWithAi}
+                disabled={aiGenerating || !aiPrompt.trim()}
+                className="h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {aiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Generate
+              </button>
+            </div>
+          )}
 
           {channel === "email" && (
             <input
@@ -992,6 +1057,55 @@ function ComposeTab({
             />
             <span className="text-xs text-slate-600">Exclude Do-Not-Contact</span>
           </label>
+
+          {/* Volunteer only */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={volunteerOnly}
+              onChange={(e) => setVolunteerOnly(e.target.checked)}
+              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-slate-600">Volunteers only</span>
+          </label>
+
+          {/* Has email / Has phone */}
+          <div className="flex gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasEmail}
+                onChange={(e) => setHasEmail(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-600">Has email</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasPhone}
+                onChange={(e) => setHasPhone(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-600">Has phone</span>
+            </label>
+          </div>
+
+          {/* Last contacted */}
+          <div>
+            <p className="text-xs font-semibold text-slate-600 mb-1.5">Last Contacted</p>
+            <select
+              value={lastContactedFilter}
+              onChange={(e) => setLastContactedFilter(e.target.value)}
+              className="w-full h-8 px-2 rounded-md border border-slate-200 text-xs"
+            >
+              <option value="">Any time</option>
+              <option value="7">Within 7 days</option>
+              <option value="30">Within 30 days</option>
+              <option value="90">Within 90 days</option>
+              <option value="never">Never contacted</option>
+            </select>
+          </div>
         </div>
 
         {/* Live Preview (email) */}
@@ -1644,6 +1758,18 @@ function HistoryTab({ campaignId, channelFilter }: { campaignId: string; channel
 // TAB: AUDIENCES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+interface SavedSegment {
+  id: string;
+  name: string;
+  supportLevels: string[];
+  wards: string[];
+  tagIds: string[];
+  volunteerOnly: boolean;
+  hasEmail: boolean;
+  hasPhone: boolean;
+  count?: number;
+}
+
 function AudiencesTab({
   campaignId,
   tags,
@@ -1656,6 +1782,24 @@ function AudiencesTab({
   const [channel, setChannel] = useState<"email" | "sms">("email");
   const [audience, setAudience] = useState<AudienceResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Create segment form state
+  const [segName, setSegName] = useState("");
+  const [segSupportLevels, setSegSupportLevels] = useState<string[]>([]);
+  const [segWards, setSegWards] = useState<string[]>([]);
+  const [segTags, setSegTags] = useState<string[]>([]);
+  const [segVolunteerOnly, setSegVolunteerOnly] = useState(false);
+  const [segHasEmail, setSegHasEmail] = useState(false);
+  const [segHasPhone, setSegHasPhone] = useState(false);
+  const [segPreviewCount, setSegPreviewCount] = useState<number | null>(null);
+  const [segPreviewLoading, setSegPreviewLoading] = useState(false);
+  const [savingSegment, setSavingSegment] = useState(false);
+
+  function segToggle(arr: string[], val: string, setter: (v: string[]) => void) {
+    setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
+  }
 
   const fetchAudience = useCallback(async () => {
     setLoading(true);
@@ -1671,6 +1815,109 @@ function AudiencesTab({
   }, [campaignId, channel]);
 
   useEffect(() => { fetchAudience(); }, [fetchAudience]);
+
+  // Load saved segments from campaign customization
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/campaigns/current");
+        if (res.ok) {
+          const data = await res.json();
+          setSavedSegments(data.data?.customization?.segments ?? []);
+        }
+      } catch {}
+    })();
+  }, [campaignId]);
+
+  // Live preview count for segment builder
+  useEffect(() => {
+    if (!showCreateForm) return;
+    const timer = setTimeout(async () => {
+      setSegPreviewLoading(true);
+      try {
+        const res = await fetch("/api/communications/audience", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            channel,
+            supportLevels: segSupportLevels.length ? segSupportLevels : undefined,
+            wards: segWards.length ? segWards : undefined,
+            tagIds: segTags.length ? segTags : undefined,
+            volunteerOnly: segVolunteerOnly || undefined,
+            hasEmail: segHasEmail || undefined,
+            hasPhone: segHasPhone || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSegPreviewCount(data.count ?? 0);
+        }
+      } catch {}
+      setSegPreviewLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [campaignId, channel, showCreateForm, segSupportLevels, segWards, segTags, segVolunteerOnly, segHasEmail, segHasPhone]);
+
+  async function saveSegment() {
+    if (!segName.trim()) return;
+    setSavingSegment(true);
+    try {
+      const campaignRes = await fetch("/api/campaigns/current");
+      let existingSegments: SavedSegment[] = [];
+      if (campaignRes.ok) {
+        const campaignData = await campaignRes.json();
+        existingSegments = campaignData.data?.customization?.segments ?? [];
+      }
+
+      const newSegment: SavedSegment = {
+        id: `seg-${Date.now()}`,
+        name: segName.trim(),
+        supportLevels: segSupportLevels,
+        wards: segWards,
+        tagIds: segTags,
+        volunteerOnly: segVolunteerOnly,
+        hasEmail: segHasEmail,
+        hasPhone: segHasPhone,
+        count: segPreviewCount ?? undefined,
+      };
+
+      const res = await fetch("/api/campaigns/current", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customization: {
+            segments: [...existingSegments, newSegment],
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setSavedSegments((prev) => [...prev, newSegment]);
+        setShowCreateForm(false);
+        setSegName("");
+        setSegSupportLevels([]);
+        setSegWards([]);
+        setSegTags([]);
+        setSegVolunteerOnly(false);
+        setSegHasEmail(false);
+        setSegHasPhone(false);
+        setSegPreviewCount(null);
+      }
+    } catch {}
+    setSavingSegment(false);
+  }
+
+  function segmentFilterSummary(seg: SavedSegment): string {
+    const parts: string[] = [];
+    if (seg.supportLevels.length) parts.push(`${seg.supportLevels.length} support level${seg.supportLevels.length > 1 ? "s" : ""}`);
+    if (seg.wards.length) parts.push(`${seg.wards.length} ward${seg.wards.length > 1 ? "s" : ""}`);
+    if (seg.tagIds.length) parts.push(`${seg.tagIds.length} tag${seg.tagIds.length > 1 ? "s" : ""}`);
+    if (seg.volunteerOnly) parts.push("volunteers");
+    if (seg.hasEmail) parts.push("has email");
+    if (seg.hasPhone) parts.push("has phone");
+    return parts.length ? parts.join(" · ") : "All contacts";
+  }
 
   return (
     <div className="space-y-6">
@@ -1707,9 +1954,178 @@ function AudiencesTab({
         </div>
       </div>
 
-      {/* Segments overview */}
+      {/* Saved Segments */}
       <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Available Segments</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-slate-900">Saved Segments</h3>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Segment
+          </button>
+        </div>
+
+        {savedSegments.length === 0 && !showCreateForm && (
+          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
+            <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="font-semibold text-slate-700">No saved segments</p>
+            <p className="text-sm text-slate-500 mt-1">Create reusable audience segments for quick targeting.</p>
+          </div>
+        )}
+
+        {savedSegments.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {savedSegments.map((seg) => (
+              <div key={seg.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <Target className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-slate-900">{seg.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{segmentFilterSummary(seg)}</p>
+                    {seg.count !== undefined && (
+                      <p className="text-xs font-medium text-blue-600 mt-0.5">{seg.count.toLocaleString()} contacts</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Segment Form */}
+      {showCreateForm && (
+        <div className="bg-white rounded-xl border border-blue-200 p-5 space-y-4">
+          <p className="text-sm font-bold text-slate-900">New Segment</p>
+
+          <input
+            type="text"
+            value={segName}
+            onChange={(e) => setSegName(e.target.value)}
+            placeholder="Segment name..."
+            className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          />
+
+          {/* Support levels */}
+          <div>
+            <p className="text-xs font-semibold text-slate-600 mb-1.5">Support Level</p>
+            <div className="flex flex-wrap gap-1">
+              {SUPPORT_LEVELS.map((sl) => (
+                <button
+                  key={sl.value}
+                  onClick={() => segToggle(segSupportLevels, sl.value, setSegSupportLevels)}
+                  className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                    segSupportLevels.includes(sl.value)
+                      ? "bg-blue-50 border-blue-200 text-blue-700"
+                      : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
+                  }`}
+                >
+                  {sl.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Wards */}
+          {wards.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-600 mb-1.5">Ward</p>
+              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                {wards.map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => segToggle(segWards, w, setSegWards)}
+                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                      segWards.includes(w)
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
+                    }`}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-600 mb-1.5">Tags</p>
+              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                {tags.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => segToggle(segTags, t.id, setSegTags)}
+                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                      segTags.includes(t.id)
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Toggles */}
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={segVolunteerOnly} onChange={(e) => setSegVolunteerOnly(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              <span className="text-xs text-slate-600">Volunteers only</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={segHasEmail} onChange={(e) => setSegHasEmail(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              <span className="text-xs text-slate-600">Has email</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={segHasPhone} onChange={(e) => setSegHasPhone(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              <span className="text-xs text-slate-600">Has phone</span>
+            </label>
+          </div>
+
+          {/* Live count preview */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <Target className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-semibold text-slate-700">
+              {segPreviewLoading ? (
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin inline" />
+              ) : (
+                segPreviewCount?.toLocaleString() ?? "—"
+              )}
+            </span>
+            <span className="text-xs text-slate-500">matching contacts</span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={saveSegment}
+              disabled={!segName.trim() || savingSegment}
+              className="h-10 px-5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {savingSegment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Save Segment
+            </button>
+            <button
+              onClick={() => setShowCreateForm(false)}
+              className="h-10 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Available Segments overview */}
+      <div>
+        <h3 className="text-base font-bold text-slate-900 mb-3">Available Filters</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {SUPPORT_LEVELS.map((sl) => (
             <div key={sl.value} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
