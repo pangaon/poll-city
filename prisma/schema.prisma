@@ -2077,6 +2077,11 @@ model Event {
   requiresApproval  Boolean         @default(false)
   isVirtual         Boolean         @default(false)
   virtualUrl        String?
+  isTownhall        Boolean         @default(false)
+  townhallStatus    String?
+  townhallRoomUrl   String?
+  questionVoting    Boolean         @default(true)
+  maxQuestions      Int?            @default(50)
   recurrenceRule    String?
   followUpMessage   String?
   checkInQrSecret   String?
@@ -2089,9 +2094,10 @@ model Event {
   deletedAt         DateTime?
   deletedById       String?
 
-  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign  Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   rsvps     EventRsvp[]
   reminders EventReminder[]
+  questions TownhallQuestion[]
 
   @@index([campaignId, eventDate])
   @@index([campaignId, status])
@@ -2141,6 +2147,24 @@ model EventReminder {
   @@index([eventId, scheduledFor])
   @@index([status, scheduledFor])
   @@map("event_reminders")
+}
+
+model TownhallQuestion {
+  id           String    @id @default(cuid())
+  eventId      String
+  askedByName  String
+  askedByEmail String?
+  text         String
+  upvotes      Int       @default(0)
+  isAnswered   Boolean   @default(false)
+  isHidden     Boolean   @default(false)
+  answeredAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, upvotes])
+  @@map("townhall_questions")
 }
 
 model DebugSession {

@@ -81,6 +81,9 @@ interface EventRow {
   eventType?: string | null;
   virtualUrl?: string | null;
   isVirtual?: boolean;
+  isTownhall?: boolean;
+  townhallStatus?: string | null;
+  slug?: string | null;
   allowPublicRsvp?: boolean;
   requiresApproval?: boolean;
   totals?: {
@@ -950,11 +953,24 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                             <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
                               {ev.name}
                             </p>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(ev.status)}`}
-                            >
-                              {ev.status}
-                            </span>
+                            <div className="flex shrink-0 items-center gap-1">
+                              {ev.isTownhall && ev.townhallStatus === "live" && (
+                                <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                                  LIVE
+                                </span>
+                              )}
+                              {ev.isTownhall && ev.townhallStatus !== "live" && (
+                                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                                  Townhall
+                                </span>
+                              )}
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(ev.status)}`}
+                              >
+                                {ev.status}
+                              </span>
+                            </div>
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${type.color}`}>
@@ -1610,6 +1626,17 @@ function EventDetail({
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(ev.status)}`}>
               {ev.status}
             </span>
+            {ev.isTownhall && ev.townhallStatus === "live" && (
+              <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                LIVE
+              </span>
+            )}
+            {ev.isTownhall && ev.townhallStatus !== "live" && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                Townhall
+              </span>
+            )}
             {ev.isPublic && (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
                 Public
