@@ -633,6 +633,7 @@ export default function AdoniChat() {
   const [structured, setStructured] = useState<StructuredData>({ mode: "none" });
   const [isMobile, setIsMobile] = useState(false);
   const [campaignId] = useState("default");
+  const [panelBlocking, setPanelBlocking] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo(() => contextualSuggestions(pathname), [pathname]);
@@ -670,6 +671,18 @@ export default function AdoniChat() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile]);
+
+  /* Hide bubble when a right-side panel is open (widget builder, etc.) */
+  useEffect(() => {
+    const open = () => setPanelBlocking(true);
+    const close = () => setPanelBlocking(false);
+    window.addEventListener("pollcity:right-panel-open", open);
+    window.addEventListener("pollcity:right-panel-close", close);
+    return () => {
+      window.removeEventListener("pollcity:right-panel-open", open);
+      window.removeEventListener("pollcity:right-panel-close", close);
+    };
+  }, []);
 
   /* Auto-scroll */
   useEffect(() => {
@@ -787,6 +800,7 @@ export default function AdoniChat() {
               backgroundColor: NAVY,
               minWidth: 44,
               minHeight: 44,
+              display: panelBlocking ? "none" : undefined,
             }}
             aria-label="Open Adoni chat"
           >

@@ -24,6 +24,7 @@ const HEADQUARTERS_SECTION: NavSection = {
   items: [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/command-center", icon: Activity, label: "Command Center" },
+    { href: "/alerts", icon: Bell, label: "Alerts" },
     { href: "/contacts", icon: Users, label: "Contacts" },
     { href: "/volunteers", icon: Users, label: "Volunteers" },
     { href: "/tasks", icon: CheckCircle2, label: "Tasks" },
@@ -65,9 +66,9 @@ const COMMUNICATIONS_SECTION: NavSection = {
   label: "Communications",
   icon: Mail,
   items: [
-    { href: "/communications", icon: Mail, label: "Communications" },
+    { href: "/communications", icon: Mail, label: "Email & SMS" },
     { href: "/communications/social", icon: Globe, label: "Social Media" },
-    { href: "/alerts", icon: Bell, label: "Alerts" },
+    { href: "/notifications", icon: MessageSquare, label: "Voter Outreach" },
   ],
 };
 

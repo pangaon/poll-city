@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X } from "lucide-react";
 import { Button, Input, Select, Card, PageHeader, EmptyState, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, Badge, ContactAutocomplete, MultiSelect, Spinner } from "@/components/ui";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
@@ -385,6 +386,11 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [slideOverContactId, setSlideOverContactId] = useState<string | null>(null);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  // Task modal state
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskAssignSelf, setTaskAssignSelf] = useState(true);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedContacts(checked ? contacts.map(c => c.id) : []);
@@ -459,6 +465,153 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Export failed");
     }
+  };
+
+  // --- Enterprise action bar handlers ---
+
+  const handleCreateWalkList = async () => {
+    setBulkSubmitting(true);
+    try {
+      const res = await fetch("/api/canvass/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, contactIds: selectedContacts }),
+      });
+      const data = await res.json().catch(() => ({})) as { url?: string; id?: string };
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? "Failed to create walk list");
+      toast.success("Walk list created");
+      if (data.url) window.open(data.url, "_blank");
+      else if (data.id) window.open(`/canvass/${data.id}`, "_blank");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create walk list");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleSendEmail = () => {
+    const ids = selectedContacts.join(",");
+    router.push(`/communications/email?contactIds=${encodeURIComponent(ids)}&campaignId=${campaignId}`);
+  };
+
+  const handleSendSMS = () => {
+    const ids = selectedContacts.join(",");
+    router.push(`/communications/sms?contactIds=${encodeURIComponent(ids)}&campaignId=${campaignId}`);
+  };
+
+  const handleCreateTasks = async () => {
+    if (!taskTitle.trim()) { toast.error("Task title required"); return; }
+    setTaskSubmitting(true);
+    try {
+      const results = await Promise.allSettled(
+        selectedContacts.map((contactId) =>
+          fetch("/api/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaignId, title: taskTitle.trim(), contactId }),
+          })
+        )
+      );
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      toast.success(`${succeeded} task${succeeded !== 1 ? "s" : ""} created`);
+      setShowTaskModal(false);
+      setTaskTitle("");
+    } catch {
+      toast.error("Failed to create tasks");
+    } finally {
+      setTaskSubmitting(false);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    try {
+      const ids = selectedContacts.join(",");
+      const url = `/api/export/contacts?campaignId=${campaignId}&ids=${encodeURIComponent(ids)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(err?.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `contacts-selected-${Date.now()}.csv`;
+      a.click();
+      toast.success("Export downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
+
+  const handleExportFiltered = async () => {
+    try {
+      const params = new URLSearchParams({ campaignId });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
+      if (followUp) params.set("followUpNeeded", "true");
+      if (volunteerOnly) params.set("volunteerInterest", "true");
+      if (signOnly) params.set("signRequested", "true");
+      if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+      if (wards.length > 0) params.set("wards", wards.join(","));
+      const url = `/api/export/contacts?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(err?.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `contacts-filtered-${Date.now()}.csv`;
+      a.click();
+      toast.success("Export downloaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  };
+
+  const handleWalkListFromFilter = async () => {
+    setBulkSubmitting(true);
+    try {
+      const params = new URLSearchParams({ campaignId, pageSize: "9999" });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
+      if (followUp) params.set("followUpNeeded", "true");
+      if (volunteerOnly) params.set("volunteerInterest", "true");
+      if (signOnly) params.set("signRequested", "true");
+      if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+      if (wards.length > 0) params.set("wards", wards.join(","));
+      const listRes = await fetch(`/api/contacts?${params.toString()}`);
+      const listData = await listRes.json() as { data?: { id: string }[] };
+      const ids = (listData.data ?? []).map((c) => c.id);
+      if (ids.length === 0) { toast.error("No contacts match current filters"); return; }
+      const res = await fetch("/api/canvass/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, contactIds: ids }),
+      });
+      const data = await res.json().catch(() => ({})) as { url?: string; id?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to create walk list");
+      toast.success(`Walk list created (${ids.length} contacts)`);
+      if (data.url) window.open(data.url, "_blank");
+      else if (data.id) window.open(`/canvass/${data.id}`, "_blank");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create walk list");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const handleEmailFiltered = () => {
+    const params = new URLSearchParams({ campaignId });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (supportLevels.length > 0) params.set("supportLevels", supportLevels.join(","));
+    if (followUp) params.set("followUpNeeded", "true");
+    if (volunteerOnly) params.set("volunteerInterest", "true");
+    if (signOnly) params.set("signRequested", "true");
+    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+    if (wards.length > 0) params.set("wards", wards.join(","));
+    router.push(`/communications/email?${params.toString()}`);
   };
 
   return (
@@ -706,40 +859,222 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         </Card>
       )}
 
-      {/* Bulk Actions */}
-      {selectedContacts.length > 0 && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckSquare className="w-5 h-5 text-blue-600" />
-              <span className="font-medium text-blue-900">
-                {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <Select
-                onChange={(e) => e.target.value && handleBulkUpdateSupport(e.target.value as SupportLevel)}
-                disabled={bulkSubmitting}
-              >
-                <option value="">Update support level</option>
-                {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </Select>
-              <MultiSelect
-                value={[]}
-                onChange={handleBulkTag}
-                options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
-                placeholder="Add tags"
-                disabled={bulkSubmitting}
-              />
-              <Button variant="outline" size="sm" onClick={() => setSelectedContacts([])} disabled={bulkSubmitting}>
-                Clear
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Enterprise Action Bar */}
+      <AnimatePresence>
+        {(selectedContacts.length > 0 || hasActiveFilters) && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
+            {selectedContacts.length > 0 ? (
+              /* ---- Selection mode ---- */
+              <Card className="p-3 bg-blue-50/60 border-blue-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 mr-1">
+                    <CheckSquare className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">
+                      {selectedContacts.length} selected
+                    </span>
+                  </div>
+                  {/* Existing bulk actions */}
+                  <Select
+                    onChange={(e) => e.target.value && handleBulkUpdateSupport(e.target.value as SupportLevel)}
+                    disabled={bulkSubmitting}
+                    className="h-8 text-xs"
+                  >
+                    <option value="">Update support…</option>
+                    {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </Select>
+                  <MultiSelect
+                    value={[]}
+                    onChange={handleBulkTag}
+                    options={tags.map(tag => ({ value: tag.id, label: tag.name }))}
+                    placeholder="Add tags"
+                    disabled={bulkSubmitting}
+                  />
+                  <div className="w-px h-6 bg-blue-200 mx-1" />
+                  {/* New enterprise actions */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCreateWalkList}
+                    disabled={bulkSubmitting}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <Route className="w-3.5 h-3.5" />
+                    Walk List
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSendEmail}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Email
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSendSMS}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    SMS
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowTaskModal(true)}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <ListChecks className="w-3.5 h-3.5" />
+                    Create Tasks
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExportSelected}
+                    className="border-blue-300 hover:bg-blue-100 text-blue-800"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export Selected
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedContacts([])}
+                    disabled={bulkSubmitting}
+                    className="ml-auto"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Clear
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              /* ---- Filter-only mode ---- */
+              <Card className="p-3 bg-slate-50 border-slate-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 mr-1">
+                    <Filter className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-medium text-slate-700">
+                      {total.toLocaleString()} contacts match this filter
+                    </span>
+                  </div>
+                  <div className="w-px h-5 bg-slate-300 mx-1" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExportFiltered}
+                    className="text-slate-700"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export Filtered
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleWalkListFromFilter}
+                    disabled={bulkSubmitting}
+                    className="text-slate-700"
+                  >
+                    <Route className="w-3.5 h-3.5" />
+                    Walk List from Filter
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleEmailFiltered}
+                    className="text-slate-700"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Email This List
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Inline task creation modal */}
+      <AnimatePresence>
+        {showTaskModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setShowTaskModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-5"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-base font-bold text-gray-900">Create Tasks</p>
+                <button
+                  type="button"
+                  onClick={() => setShowTaskModal(false)}
+                  className="rounded-lg p-1.5 hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Creates one task per selected contact ({selectedContacts.length} total)
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Task title</label>
+                  <Input
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="Follow up with contact…"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === "Enter") void handleCreateTasks(); }}
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={taskAssignSelf}
+                    onChange={(e) => setTaskAssignSelf(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Assign to me
+                </label>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowTaskModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => void handleCreateTasks()}
+                  loading={taskSubmitting}
+                  disabled={!taskTitle.trim() || taskSubmitting}
+                >
+                  Create Tasks
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile card view (below md) */}
       <div className="md:hidden space-y-2">

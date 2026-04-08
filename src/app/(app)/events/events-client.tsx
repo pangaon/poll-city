@@ -256,6 +256,12 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
   const [rsvpForm, setRsvpForm] = useState<RsvpFormState>(EMPTY_RSVP);
   const [rsvpSaving, setRsvpSaving] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Bulk selection
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  // Bulk check-in modal
+  const [bulkCheckInEventId, setBulkCheckInEventId] = useState<string | null>(null);
+  const [checkInStates, setCheckInStates] = useState<Record<string, boolean>>({});
 
   // Calendar state
   const now = new Date();
@@ -542,9 +548,109 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
     toast.success(`Follow-up queued for ${selectedEvent.name}`);
   }
 
+  /* ---- Bulk event selection helpers ---- */
+  function toggleEventSelection(id: string, checked: boolean) {
+    setSelectedEventIds((prev) => checked ? [...prev, id] : prev.filter((x) => x !== id));
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedEventIds(checked ? filteredEvents.map((ev) => ev.id) : []);
+  }
+
+  async function exportSignInSheet(eventId: string) {
+    try {
+      const url = `/api/export/events?campaignId=${campaignId}&eventId=${eventId}&format=signin`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `sign-in-sheet-${eventId}-${Date.now()}.csv`;
+      a.click();
+      toast.success("Sign-in sheet downloaded");
+    } catch {
+      toast.error("Export failed");
+    }
+  }
+
+  async function handleBulkExportSignIn() {
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(selectedEventIds.map((id) => exportSignInSheet(id)));
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }
+
+  async function handleBulkSendReminder() {
+    setBulkActionLoading(true);
+    try {
+      await Promise.allSettled(
+        selectedEventIds.map(async (eventId) => {
+          const ev = events.find((e) => e.id === eventId);
+          if (!ev) return;
+          const contactIds = ev.rsvps
+            .filter((r) => r.status === "going" || r.status === "checked_in")
+            .map((r) => r.id);
+          if (contactIds.length === 0) return;
+          return fetch("/api/communications/email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              campaignId,
+              subject: `Reminder: ${ev.name}`,
+              bodyHtml: `<p>This is a reminder that <strong>${ev.name}</strong> is coming up on ${displayDate(ev.eventDate)} at ${ev.location}.</p><p>We look forward to seeing you there!</p>`,
+              contactIds,
+            }),
+          });
+        })
+      );
+      toast.success(`Reminders queued for ${selectedEventIds.length} event${selectedEventIds.length !== 1 ? "s" : ""}`);
+      setSelectedEventIds([]);
+    } catch {
+      toast.error("Failed to send reminders");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }
+
+  function openBulkCheckIn(eventId: string) {
+    const ev = events.find((e) => e.id === eventId);
+    if (!ev) return;
+    const initial: Record<string, boolean> = {};
+    ev.rsvps.forEach((r) => { initial[r.id] = r.attended ?? false; });
+    setCheckInStates(initial);
+    setBulkCheckInEventId(eventId);
+  }
+
+  async function saveBulkCheckIn() {
+    if (!bulkCheckInEventId) return;
+    setBulkActionLoading(true);
+    try {
+      const rsvpIds = Object.entries(checkInStates)
+        .filter(([, checked]) => checked)
+        .map(([id]) => id);
+      const res = await fetch(`/api/events/${bulkCheckInEventId}/check-in`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rsvpIds }),
+      });
+      if (!res.ok) throw new Error("Bulk check-in failed");
+      toast.success("Check-ins saved");
+      setBulkCheckInEventId(null);
+      await loadEvents();
+    } catch {
+      toast.error("Failed to save check-ins");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }
+
   /* ================================================================ */
   /*  Render                                                           */
   /* ================================================================ */
+
+  const bulkCheckInEvent = bulkCheckInEventId ? events.find((e) => e.id === bulkCheckInEventId) ?? null : null;
 
   return (
     <div className="space-y-6">
@@ -643,6 +749,57 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
         </div>
       </div>
 
+      {/* ---- Bulk action bar ---- */}
+      <AnimatePresence>
+        {selectedEventIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3 flex flex-wrap items-center gap-2"
+          >
+            <UserCheck className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-semibold text-blue-900">
+              {selectedEventIds.length} event{selectedEventIds.length !== 1 ? "s" : ""} selected
+            </span>
+            <div className="w-px h-5 bg-blue-200 mx-1" />
+            <motion.button
+              {...springButton}
+              type="button"
+              disabled={bulkActionLoading}
+              onClick={() => void handleBulkExportSignIn()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+              style={{ minHeight: 36 }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export Sign-in Sheet{selectedEventIds.length > 1 ? "s" : ""}
+            </motion.button>
+            <motion.button
+              {...springButton}
+              type="button"
+              disabled={bulkActionLoading}
+              onClick={() => void handleBulkSendReminder()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+              style={{ minHeight: 36 }}
+            >
+              <Send className="h-3.5 w-3.5" />
+              Send Reminder{selectedEventIds.length > 1 ? "s" : ""}
+            </motion.button>
+            <motion.button
+              {...springButton}
+              type="button"
+              onClick={() => setSelectedEventIds([])}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              style={{ minHeight: 36 }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ---- Calendar View ---- */}
       {viewMode === "calendar" && (
         <motion.div {...fadeIn} className="rounded-2xl border border-gray-200 bg-white p-4">
@@ -726,7 +883,14 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
         <div className="grid gap-5 xl:grid-cols-[1.1fr_1fr]">
           {/* Event list panel */}
           <motion.div {...fadeIn} className="rounded-2xl border border-gray-200 bg-white">
-            <div className="border-b border-gray-100 px-4 py-3">
+            <div className="border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+              <input
+                type="checkbox"
+                aria-label="Select all events"
+                checked={filteredEvents.length > 0 && selectedEventIds.length === filteredEvents.length}
+                onChange={(e) => toggleSelectAll(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+              />
               <p className="text-sm font-semibold" style={{ color: NAVY }}>
                 Events ({filteredEvents.length})
               </p>
@@ -760,55 +924,93 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                 filteredEvents.map((ev) => {
                   const type = eventTypeMeta(ev.eventType);
                   const active = selectedEvent?.id === ev.id;
+                  const isChecked = selectedEventIds.includes(ev.id);
                   return (
-                    <motion.button
+                    <div
                       key={ev.id}
-                      whileHover={{ backgroundColor: "rgba(29, 158, 117, 0.04)" }}
-                      type="button"
-                      onClick={() => setSelectedId(ev.id)}
-                      className={`w-full border-b border-gray-100 p-4 text-left ${
-                        active ? "bg-[#0A2342]/5" : ""
-                      }`}
-                      style={{ minHeight: 44 }}
+                      className={`border-b border-gray-100 ${active ? "bg-[#0A2342]/5" : ""}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
-                          {ev.name}
-                        </p>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(ev.status)}`}
+                      <div className="flex items-start gap-2 px-4 pt-3 pb-1">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${ev.name}`}
+                          checked={isChecked}
+                          onChange={(e) => toggleEventSelection(ev.id, e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 accent-blue-600"
+                        />
+                        <motion.button
+                          whileHover={{ backgroundColor: "rgba(29, 158, 117, 0.04)" }}
+                          type="button"
+                          onClick={() => setSelectedId(ev.id)}
+                          className="min-w-0 flex-1 text-left rounded-lg -mx-1 px-1"
+                          style={{ minHeight: 44 }}
                         >
-                          {ev.status}
-                        </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
+                              {ev.name}
+                            </p>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(ev.status)}`}
+                            >
+                              {ev.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${type.color}`}>
+                              {type.icon} {type.label}
+                            </span>
+                            <span>{shortDay(ev.eventDate)} {displayDate(ev.eventDate)}</span>
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {ev.location}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500">
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {ev.totals?.goingCount ?? 0} going
+                            </span>
+                            {ev.capacity ? (
+                              <span>
+                                {ev.totals?.goingCount ?? 0}/{ev.capacity} capacity
+                              </span>
+                            ) : null}
+                            {(ev.totals?.checkInCount ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1" style={{ color: GREEN }}>
+                                <UserCheck className="h-3 w-3" />
+                                {ev.totals?.checkInCount} checked in
+                              </span>
+                            )}
+                          </div>
+                        </motion.button>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${type.color}`}>
-                          {type.icon} {type.label}
-                        </span>
-                        <span>{shortDay(ev.eventDate)} {displayDate(ev.eventDate)}</span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {ev.location}
-                        </span>
+                      {/* Per-event quick actions */}
+                      <div className="flex items-center gap-1.5 px-4 pb-2 pt-1">
+                        <motion.button
+                          {...springButton}
+                          type="button"
+                          title="Bulk check-in"
+                          onClick={() => openBulkCheckIn(ev.id)}
+                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                          style={{ minHeight: 28 }}
+                        >
+                          <UserCheck className="h-3 w-3" />
+                          Check-in
+                        </motion.button>
+                        <motion.button
+                          {...springButton}
+                          type="button"
+                          title="Export sign-in sheet"
+                          onClick={() => void exportSignInSheet(ev.id)}
+                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                          style={{ minHeight: 28 }}
+                        >
+                          <Download className="h-3 w-3" />
+                          Sign-in Sheet
+                        </motion.button>
                       </div>
-                      <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500">
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {ev.totals?.goingCount ?? 0} going
-                        </span>
-                        {ev.capacity ? (
-                          <span>
-                            {ev.totals?.goingCount ?? 0}/{ev.capacity} capacity
-                          </span>
-                        ) : null}
-                        {(ev.totals?.checkInCount ?? 0) > 0 && (
-                          <span className="inline-flex items-center gap-1" style={{ color: GREEN }}>
-                            <UserCheck className="h-3 w-3" />
-                            {ev.totals?.checkInCount} checked in
-                          </span>
-                        )}
-                      </div>
-                    </motion.button>
+                    </div>
                   );
                 })
               )}
@@ -1165,6 +1367,106 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                     style={{ backgroundColor: GREEN, minHeight: 44 }}
                   >
                     {rsvpSaving ? "Saving..." : "Add RSVP"}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---- Bulk Check-in modal ---- */}
+      <AnimatePresence>
+        {bulkCheckInEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setBulkCheckInEventId(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl bg-white shadow-2xl max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 shrink-0">
+                <div>
+                  <p className="text-base font-bold" style={{ color: NAVY }}>
+                    Bulk Check-in
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{bulkCheckInEvent.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBulkCheckInEventId(null)}
+                  className="rounded-lg p-2 hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-4">
+                {bulkCheckInEvent.rsvps.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8">No RSVPs for this event.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {bulkCheckInEvent.rsvps.map((rsvp) => (
+                      <label
+                        key={rsvp.id}
+                        className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checkInStates[rsvp.id] ?? false}
+                          onChange={(e) =>
+                            setCheckInStates((prev) => ({ ...prev, [rsvp.id]: e.target.checked }))
+                          }
+                          className="h-4 w-4 rounded border-gray-300 accent-emerald-600"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{rsvp.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{rsvp.email}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            (checkInStates[rsvp.id] ?? false) ? "bg-emerald-100 text-emerald-700" : rsvpBadge(rsvp.status)
+                          }`}
+                        >
+                          {(checkInStates[rsvp.id] ?? false) ? "checked in" : rsvp.status}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 px-5 py-4 flex items-center justify-between gap-3 shrink-0">
+                <p className="text-xs text-gray-500">
+                  {Object.values(checkInStates).filter(Boolean).length} of {bulkCheckInEvent.rsvps.length} checked in
+                </p>
+                <div className="flex gap-2">
+                  <motion.button
+                    {...springButton}
+                    type="button"
+                    onClick={() => setBulkCheckInEventId(null)}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                    style={{ minHeight: 40 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    {...springButton}
+                    type="button"
+                    disabled={bulkActionLoading}
+                    onClick={() => void saveBulkCheckIn()}
+                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ backgroundColor: GREEN, minHeight: 40 }}
+                  >
+                    {bulkActionLoading ? "Saving..." : "Save Check-ins"}
                   </motion.button>
                 </div>
               </div>
