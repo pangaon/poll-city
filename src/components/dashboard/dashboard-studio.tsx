@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  GripVertical,
   LayoutDashboard,
   Loader2,
   Map,
@@ -44,6 +45,21 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   BarChart,
   Bar,
@@ -209,19 +225,38 @@ const WIDGET_COLORS = [
 ];
 
 /* ── Preferences ──────────────────────────────────── */
+const OVERVIEW_DEFAULT_ORDER: StudioWidgetId[] = ["health-score", "gap", "stat-cards", "funnel", "live-map", "quick-actions", "activity"];
+
 interface DashboardPreferences {
   defaultMode: DashboardMode;
   hiddenWidgets: StudioWidgetId[];
   customWidgets: CustomWidget[];
+  widgetOrder: Partial<Record<DashboardMode, StudioWidgetId[]>>;
+  widgetSizes: Record<string, "half" | "full">;
 }
 
-const DEFAULT_PREFS: DashboardPreferences = { defaultMode: "overview", hiddenWidgets: [], customWidgets: [] };
+const DEFAULT_PREFS: DashboardPreferences = {
+  defaultMode: "overview",
+  hiddenWidgets: [],
+  customWidgets: [],
+  widgetOrder: { overview: OVERVIEW_DEFAULT_ORDER },
+  widgetSizes: {},
+};
 const PREFS_LS_KEY = "pc-dash-prefs";
 
 function loadPrefsFromLS(campaignId: string): DashboardPreferences {
   try {
     const raw = localStorage.getItem(`${PREFS_LS_KEY}-${campaignId}`);
-    if (raw) return JSON.parse(raw) as DashboardPreferences;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<DashboardPreferences>;
+      return {
+        defaultMode: parsed.defaultMode ?? DEFAULT_PREFS.defaultMode,
+        hiddenWidgets: Array.isArray(parsed.hiddenWidgets) ? parsed.hiddenWidgets : [],
+        customWidgets: Array.isArray(parsed.customWidgets) ? parsed.customWidgets : [],
+        widgetOrder: parsed.widgetOrder ?? { overview: OVERVIEW_DEFAULT_ORDER },
+        widgetSizes: parsed.widgetSizes ?? {},
+      };
+    }
   } catch (e) { /* graceful degradation */ }
   return DEFAULT_PREFS;
 }
@@ -348,6 +383,8 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
               defaultMode: stored.defaultMode ?? "overview",
               hiddenWidgets: Array.isArray(stored.hiddenWidgets) ? stored.hiddenWidgets : [],
               customWidgets: Array.isArray(stored.customWidgets) ? stored.customWidgets : [],
+              widgetOrder: stored.widgetOrder ?? { overview: OVERVIEW_DEFAULT_ORDER },
+              widgetSizes: stored.widgetSizes ?? {},
             };
             setPrefs(p);
             savePrefsToLS(campaignId, p);
@@ -694,7 +731,17 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
               exit={{ opacity: 0, y: -8 }}
               transition={springEnter}
             >
-              {mode === "overview" && <OverviewMode data={data} campaignId={campaignId} hidden={isWidgetHidden} customWidgets={prefs.customWidgets.filter((w) => w.mode === "overview")} onRemoveWidget={(id) => savePreferences({ ...prefs, customWidgets: prefs.customWidgets.filter((w) => w.id !== id) })} />}
+              {mode === "overview" && <OverviewMode
+                data={data}
+                campaignId={campaignId}
+                hidden={isWidgetHidden}
+                customWidgets={prefs.customWidgets.filter((w) => w.mode === "overview")}
+                onRemoveWidget={(id) => savePreferences({ ...prefs, customWidgets: prefs.customWidgets.filter((w) => w.id !== id) })}
+                widgetOrder={prefs.widgetOrder.overview ?? OVERVIEW_DEFAULT_ORDER}
+                widgetSizes={prefs.widgetSizes}
+                onReorder={(newOrder) => savePreferences({ ...prefs, widgetOrder: { ...prefs.widgetOrder, overview: newOrder } })}
+                onResize={(id, size) => savePreferences({ ...prefs, widgetSizes: { ...prefs.widgetSizes, [id]: size } })}
+              />}
               {mode === "field-ops" && <FieldOpsMode data={data} hidden={isWidgetHidden} customWidgets={prefs.customWidgets.filter((w) => w.mode === "field-ops")} onRemoveWidget={(id) => savePreferences({ ...prefs, customWidgets: prefs.customWidgets.filter((w) => w.id !== id) })} />}
               {mode === "finance" && <FinanceMode data={data} hidden={isWidgetHidden} customWidgets={prefs.customWidgets.filter((w) => w.mode === "finance")} onRemoveWidget={(id) => savePreferences({ ...prefs, customWidgets: prefs.customWidgets.filter((w) => w.id !== id) })} />}
               {mode === "gotv" && <GOTVMode data={data} hidden={isWidgetHidden} customWidgets={prefs.customWidgets.filter((w) => w.mode === "gotv")} onRemoveWidget={(id) => savePreferences({ ...prefs, customWidgets: prefs.customWidgets.filter((w) => w.id !== id) })} />}
@@ -762,53 +809,107 @@ function FunnelWidget({ data, campaignId }: { data: DashboardData; campaignId: s
 }
 
 /* ════════════════════════════════════════════════════════
+   SORTABLE WIDGET WRAPPER
+   ════════════════════════════════════════════════════════ */
+interface SortableWidgetProps {
+  id: StudioWidgetId;
+  size: "half" | "full";
+  onResize: (id: StudioWidgetId, size: "half" | "full") => void;
+  children: React.ReactNode;
+}
+
+function SortableWidget({ id, size, onResize, children }: SortableWidgetProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    gridColumn: size === "full" ? "1 / -1" : undefined,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      {/* Widget controls bar — visible on hover */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          type="button"
+          onClick={() => onResize(id, size === "full" ? "half" : "full")}
+          title={size === "full" ? "Shrink to half width" : "Expand to full width"}
+          className="flex items-center justify-center w-6 h-6 rounded-md bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          {size === "full" ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+        </button>
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          className="flex items-center justify-center w-6 h-6 rounded-md bg-white border border-slate-200 shadow-sm text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-3 h-3" />
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
    MODE 1: OVERVIEW — Enterprise Command View
    ════════════════════════════════════════════════════════ */
-function OverviewMode({ data, campaignId, hidden, customWidgets, onRemoveWidget }: { data: DashboardData; campaignId: string; hidden: (id: StudioWidgetId) => boolean; customWidgets: CustomWidget[]; onRemoveWidget: (id: string) => void }) {
+function OverviewMode({
+  data,
+  campaignId,
+  hidden,
+  customWidgets,
+  onRemoveWidget,
+  widgetOrder,
+  widgetSizes,
+  onReorder,
+  onResize,
+}: {
+  data: DashboardData;
+  campaignId: string;
+  hidden: (id: StudioWidgetId) => boolean;
+  customWidgets: CustomWidget[];
+  onRemoveWidget: (id: string) => void;
+  widgetOrder: StudioWidgetId[];
+  widgetSizes: Record<string, "half" | "full">;
+  onReorder: (newOrder: StudioWidgetId[]) => void;
+  onResize: (id: StudioWidgetId, size: "half" | "full") => void;
+}) {
   const days = daysUntilElection();
   const greeting = getGreeting();
   const hasData = data.confirmedSupporters > 0 || data.doorsToday > 0;
 
-  // Collect visible top-row widgets
-  const topRow: React.ReactNode[] = [];
-  if (!hidden("health-score")) {
-    topRow.push(
-      <motion.div key="health" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={springEnter}
-        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Campaign Health</p>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${data.healthScore >= 70 ? "bg-green-50 text-green-700" : data.healthScore >= 40 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>{data.grade}</span>
-        </div>
-        <AnimatedNumber value={data.healthScore} className="text-4xl font-black text-slate-900" />
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-          <motion.div className="h-full rounded-full" style={{ backgroundColor: data.healthScore >= 70 ? GREEN : data.healthScore >= 40 ? AMBER : RED }} initial={{ width: 0 }} animate={{ width: `${data.healthScore}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
-        </div>
-        <p className="mt-2 text-xs text-slate-500">{greeting} — {days} days to go</p>
-      </motion.div>
-    );
-  }
-  if (!hidden("gap")) {
-    topRow.push(
-      hasData ? (
-        <motion.div key="gap" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...springEnter, delay: 0.05 }}
-          className="rounded-xl p-5 text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1E293B 100%)` }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">The Gap</p>
-          <div className="flex items-end gap-4 mt-1">
-            <AnimatedNumber value={data.gap} className="text-6xl font-black leading-none" />
-            <div className="mb-1">
-              <p className="text-xs text-slate-400">{data.supportersVoted.toLocaleString()} voted / {data.confirmedSupporters.toLocaleString()} supporters</p>
-              <div className="mt-1.5 h-2 w-48 overflow-hidden rounded-full bg-white/10">
-                <motion.div className="h-full rounded-full" style={{ backgroundColor: data.gap > 500 ? RED : data.gap >= 100 ? AMBER : GREEN }} initial={{ width: 0 }} animate={{ width: `${Math.min(100, Math.round((data.supportersVoted / Math.max(1, data.confirmedSupporters)) * 100))}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      ) : <EmptyWidget key="gap-empty" id="gap" />
-    );
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
-  // Dynamic grid: fill columns based on visible count
-  const topGridCols = topRow.length === 1 ? "grid-cols-1" : topRow.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3";
+  // Build a full ordered list — any ids in the stored order first, then any new ones appended
+  const orderedIds = useMemo(() => {
+    const base = OVERVIEW_DEFAULT_ORDER;
+    const stored = widgetOrder;
+    const inOrder = stored.filter((id) => base.includes(id));
+    const missing = base.filter((id) => !inOrder.includes(id));
+    return [...inOrder, ...missing];
+  }, [widgetOrder]);
+
+  // Only the visible (non-hidden) ids
+  const visibleIds = useMemo(
+    () => orderedIds.filter((id) => !hidden(id as StudioWidgetId)),
+    [orderedIds, hidden]
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedIds.indexOf(active.id as StudioWidgetId);
+    const newIndex = orderedIds.indexOf(over.id as StudioWidgetId);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorder(arrayMove(orderedIds, oldIndex, newIndex));
+  }
 
   // Stat cards — filter to visible metrics
   const statCards: Array<{ label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }> = [];
@@ -819,31 +920,143 @@ function OverviewMode({ data, campaignId, hidden, customWidgets, onRemoveWidget 
     statCards.push({ label: "Sign Requests", value: data.signRequestsPending, icon: Activity, color: RED });
   }
 
-  // Bottom section: collect visible panels
-  const showMap = !hidden("live-map");
-  const showQuickActions = !hidden("quick-actions");
-  const showActivity = !hidden("activity");
-  const hasBottomRight = showQuickActions || showActivity;
+  function renderWidget(id: StudioWidgetId) {
+    const size = widgetSizes[id] ?? "half";
+
+    switch (id) {
+      case "health-score":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={springEnter}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm h-full">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Campaign Health</p>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${data.healthScore >= 70 ? "bg-green-50 text-green-700" : data.healthScore >= 40 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>{data.grade}</span>
+              </div>
+              <AnimatedNumber value={data.healthScore} className="text-4xl font-black text-slate-900" />
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                <motion.div className="h-full rounded-full" style={{ backgroundColor: data.healthScore >= 70 ? GREEN : data.healthScore >= 40 ? AMBER : RED }} initial={{ width: 0 }} animate={{ width: `${data.healthScore}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{greeting} — {days} days to go</p>
+            </motion.div>
+          </SortableWidget>
+        );
+
+      case "gap":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            {hasData ? (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...springEnter, delay: 0.05 }}
+                className="rounded-xl p-5 text-white relative overflow-hidden h-full" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1E293B 100%)` }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">The Gap</p>
+                <div className="flex items-end gap-4 mt-1">
+                  <AnimatedNumber value={data.gap} className="text-6xl font-black leading-none" />
+                  <div className="mb-1">
+                    <p className="text-xs text-slate-400">{data.supportersVoted.toLocaleString()} voted / {data.confirmedSupporters.toLocaleString()} supporters</p>
+                    <div className="mt-1.5 h-2 w-48 overflow-hidden rounded-full bg-white/10">
+                      <motion.div className="h-full rounded-full" style={{ backgroundColor: data.gap > 500 ? RED : data.gap >= 100 ? AMBER : GREEN }} initial={{ width: 0 }} animate={{ width: `${Math.min(100, Math.round((data.supportersVoted / Math.max(1, data.confirmedSupporters)) * 100))}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : <EmptyWidget id="gap" />}
+          </SortableWidget>
+        );
+
+      case "stat-cards":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <div>
+              {statCards.length > 0 ? (
+                <div className={`grid grid-cols-2 lg:grid-cols-${statCards.length} gap-3`}>
+                  {statCards.map((sc) => <MetricCard key={sc.label} label={sc.label} value={sc.value} icon={sc.icon} color={sc.color} />)}
+                </div>
+              ) : <EmptyWidget id="stat-cards" />}
+            </div>
+          </SortableWidget>
+        );
+
+      case "funnel":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={springEnter}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <FunnelWidget data={data} campaignId={campaignId} />
+            </motion.div>
+          </SortableWidget>
+        );
+
+      case "live-map":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Map className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Live Intelligence Map</h3>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Live</span>
+                </div>
+                <Link href="/canvassing" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">Full map <ArrowUpRight className="w-3 h-3" /></Link>
+              </div>
+              <div className="h-[380px]"><LiveInsightMap campaignId={campaignId} /></div>
+            </div>
+          </SortableWidget>
+        );
+
+      case "quick-actions":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Quick Actions</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_ACTIONS.map((a) => {
+                  const Icon = a.icon;
+                  return (
+                    <Link key={a.label} href={a.href} className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.color}`}><Icon className="w-4 h-4" /></div>
+                      <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">{a.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </SortableWidget>
+        );
+
+      case "activity":
+        return (
+          <SortableWidget key={id} id={id} size={size} onResize={onResize}>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Recent Activity</h3>
+                <Link href="/reports" className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">View all</Link>
+              </div>
+              {data.recentActivity.length === 0 ? <EmptyWidget id="activity" compact /> : (
+                <div className="space-y-1.5">
+                  {data.recentActivity.map((item, i) => (
+                    <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...springEnter, delay: i * 0.03 }}
+                      className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                      <ActivityDot type={item.type} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-800 leading-snug">{item.text}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{item.time}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </SortableWidget>
+        );
+
+      default:
+        return null;
+    }
+  }
 
   return (
     <div className="space-y-5">
-      {/* Top Row — reflows dynamically */}
-      {topRow.length > 0 && (
-        <div className={`grid grid-cols-1 ${topGridCols} gap-4`}>
-          {topRow}
-        </div>
-      )}
-
-      {/* Stat Cards */}
-      {!hidden("stat-cards") && (
-        statCards.length > 0 ? (
-          <div className={`grid grid-cols-2 lg:grid-cols-${statCards.length} gap-3`}>
-            {statCards.map((sc) => <MetricCard key={sc.label} label={sc.label} value={sc.value} icon={sc.icon} color={sc.color} />)}
-          </div>
-        ) : <EmptyWidget id="stat-cards" />
-      )}
-
-      {/* Custom Widgets */}
+      {/* Custom Widgets (not sortable with standard widgets) */}
       {customWidgets.length > 0 && (
         <div className={`grid grid-cols-2 ${customWidgets.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"} ${customWidgets.length >= 4 ? "xl:grid-cols-4" : ""} gap-3`}>
           {customWidgets.map((cw) => (
@@ -852,78 +1065,14 @@ function OverviewMode({ data, campaignId, hidden, customWidgets, onRemoveWidget 
         </div>
       )}
 
-      {/* Funnel Widget */}
-      {!hidden("funnel") && (
-        <motion.div key="funnel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={springEnter}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm col-span-full lg:col-span-2">
-          <FunnelWidget data={data} campaignId={campaignId} />
-        </motion.div>
-      )}
-
-      {/* Map + Activity — reflow based on visibility */}
-      {(showMap || hasBottomRight) && (
-        <div className={`grid grid-cols-1 ${showMap && hasBottomRight ? "lg:grid-cols-5" : ""} gap-4`}>
-          {showMap && (
-            <div className={hasBottomRight ? "lg:col-span-3" : ""}>
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Map className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-sm font-bold text-slate-900">Live Intelligence Map</h3>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Live</span>
-                  </div>
-                  <Link href="/canvassing" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">Full map <ArrowUpRight className="w-3 h-3" /></Link>
-                </div>
-                <div className="h-[380px]"><LiveInsightMap campaignId={campaignId} /></div>
-              </div>
-            </div>
-          )}
-
-          {hasBottomRight && (
-            <div className={`${showMap ? "lg:col-span-2" : ""} space-y-4`}>
-              {showQuickActions && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {QUICK_ACTIONS.map((a) => {
-                      const Icon = a.icon;
-                      return (
-                        <Link key={a.label} href={a.href} className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.color}`}><Icon className="w-4 h-4" /></div>
-                          <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">{a.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {showActivity && (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Recent Activity</h3>
-                    <Link href="/reports" className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">View all</Link>
-                  </div>
-                  {data.recentActivity.length === 0 ? <EmptyWidget id="activity" compact /> : (
-                    <div className="space-y-1.5">
-                      {data.recentActivity.map((item, i) => (
-                        <motion.div key={item.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...springEnter, delay: i * 0.03 }}
-                          className="flex items-start gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-                          <ActivityDot type={item.type} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-slate-800 leading-snug">{item.text}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{item.time}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Sortable standard widgets */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
+          <div className="grid grid-cols-2 gap-4">
+            {visibleIds.map((id) => renderWidget(id))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
