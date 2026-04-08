@@ -1,5 +1,5 @@
 # Poll City — Live Build Plan
-Last updated: 2026-04-08 (session 2)
+Last updated: 2026-04-08 (session 3 — all builds green)
 
 This is the single source of truth. Everything done, everything next, nothing forgotten.
 
@@ -79,9 +79,24 @@ Full pen test: after 100 users, before Series A.
 - [x] Real-API turf list screen (canvassing/index.tsx → /api/canvassing/turfs)
 - [x] Real-API walk list screen (walk-list.tsx → /api/canvassing/walk) with offline cache
 - [x] Maps deep link on every door (📍 → Apple Maps / Google Maps fallback)
+- [x] vCard export — 👤 button saves contact to native iOS/Android address book
 - [x] JWT auth endpoints (/api/auth/mobile/token + refresh) — dual-mode guard
 - [x] app.config.js with ca.pollcity.canvasser bundle ID, EAS ready
 - [x] APPSTORE.md — App Store submission guide
+
+### Intelligence + Briefing
+- [x] Campaign health score (0-100, 6 dimensions) — /api/campaign/health
+- [x] HealthScoreWidget — animated ring + dimension bars
+- [x] Morning briefing page wired to real data (/api/briefing)
+- [x] Dashboard Studio all 6 modes wired to real data (/api/dashboard/stats)
+- [x] Platform master control (/ops) — real campaign/user/contact counts, refresh
+
+### Social + Civic
+- [x] Civic calendar .ics feed (/api/calendar/[postalCode]) — subscribe from any calendar app
+- [x] CalendarSubscribeButton on /social and /officials pages
+- [x] Virtual townhalls — TownhallQuestion model, live question queue, upvotes, moderation
+- [x] Public townhall page (/townhall/[slug]) with embed + question submission
+- [x] TownhallModerator component for campaign-side control
 
 ---
 
@@ -123,15 +138,12 @@ Full pen test: after 100 users, before Series A.
 - **Demo seed accounts** (admin@pollcity.dev / password123) exist in DB via `prisma db seed`
 
 ### P2 — Makes platform sticky for Social users
-4. **Virtual townhalls** — Daily.co embed + question upvote queue + live polls
-   - Estimate: 2 days
-
-5. **Civic calendar .ics feed** — unions/ratepayers subscribe their whole org
-   - Estimate: half day
+- ~~**Virtual townhalls**~~ — DONE. Live question queue, upvotes, moderation, public embed page.
+- ~~**Civic calendar .ics feed**~~ — DONE. /api/calendar/[postalCode], subscribe button on social/officials.
 
 ### P3 — Performance (before first 1,000 users)
-6. **Upstash Redis** — caching hot queries, 200ms → 8ms
-   - Estimate: 1 day
+4. **Upstash Redis** — caching hot queries, 200ms → 8ms
+   - Estimate: 1 day (needs Upstash account + UPSTASH_REDIS_URL env var)
 
 8. **Upstash Redis** — caching hot queries, 200ms → 8ms
    - Estimate: 1 day
