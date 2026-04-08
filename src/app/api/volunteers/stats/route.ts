@@ -49,10 +49,12 @@ export async function GET(req: NextRequest) {
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
-  const [activeCount, profileAggregate, pendingExpensesAggregate, upcomingShiftCount, activeGroupsCount, weekSignups] =
+  const [totalCount, activeCount, profileAggregate, withVehicleCount, pendingExpensesAggregate, upcomingShiftCount, activeGroupsCount, weekSignups] =
     await Promise.all([
+      prisma.volunteerProfile.count({ where: { campaignId } }),
       prisma.volunteerProfile.count({ where: { campaignId, isActive: true } }),
       prisma.volunteerProfile.aggregate({ where: { campaignId }, _sum: { totalHours: true } }),
+      prisma.volunteerProfile.count({ where: { campaignId, hasVehicle: true } }),
       prisma.volunteerExpense.aggregate({ where: { campaignId, status: "pending" }, _count: { _all: true }, _sum: { amount: true } }),
       prisma.volunteerShift.count({ where: { campaignId, shiftDate: { gte: new Date() } } }),
       prisma.volunteerGroup.count({ where: { campaignId } }),
@@ -73,14 +75,16 @@ export async function GET(req: NextRequest) {
   ) / 100;
 
   return NextResponse.json({
-    data: {
-      activeVolunteers: activeCount,
-      totalHours: Math.round((profileAggregate._sum.totalHours ?? 0) * 100) / 100,
-      hoursThisWeek,
-      pendingExpensesCount: pendingExpensesAggregate._count._all,
-      pendingExpensesTotal: Math.round((pendingExpensesAggregate._sum.amount ?? 0) * 100) / 100,
-      upcomingShifts: upcomingShiftCount,
-      activeGroups: activeGroupsCount,
-    },
+    // Fields the volunteers client stats bar expects
+    total: totalCount,
+    active: activeCount,
+    totalHours: Math.round((profileAggregate._sum.totalHours ?? 0) * 100) / 100,
+    withVehicle: withVehicleCount,
+    // Extended data for future use
+    hoursThisWeek,
+    pendingExpensesCount: pendingExpensesAggregate._count._all,
+    pendingExpensesTotal: Math.round((pendingExpensesAggregate._sum.amount ?? 0) * 100) / 100,
+    upcomingShifts: upcomingShiftCount,
+    activeGroups: activeGroupsCount,
   });
 }

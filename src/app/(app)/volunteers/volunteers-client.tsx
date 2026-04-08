@@ -768,7 +768,7 @@ export default function VolunteersClient({ campaignId }: Props) {
                 <option value="">-- Choose a shift --</option>
                 {shifts.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.title} — {new Date(s.startTime).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}
+                    {s.title} — {s.startTime}
                     {s.location ? ` @ ${s.location}` : ""}
                   </option>
                 ))}
