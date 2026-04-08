@@ -308,6 +308,11 @@ export default function Sidebar() {
           <span>Search</span>
           <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-slate-400">Ctrl+K</kbd>
         </div>
+        <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600">
+          <Link href="/privacy" className="hover:text-slate-400 transition-colors">Privacy Policy</Link>
+          <span className="text-slate-700">&middot;</span>
+          <Link href="/terms" className="hover:text-slate-400 transition-colors">Terms</Link>
+        </div>
       </div>
     </div>
   );
