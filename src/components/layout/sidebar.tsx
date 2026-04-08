@@ -170,6 +170,7 @@ export default function Sidebar() {
     if (isSuperAdmin) {
       settingsItems.push(
         { href: "/ops/campaigns", icon: LayoutDashboard, label: "All Campaigns" },
+        { href: "/ops/content-review", icon: FileText, label: "Content Review" },
         { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" }
       );
     }
