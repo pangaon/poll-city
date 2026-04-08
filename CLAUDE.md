@@ -126,7 +126,7 @@ If either fails: stop, diagnose, fix, then re-run both.
 
 ## ADONI LAWS (the AI assistant — do not break these)
 
-Adoni is Poll City's AI assistant. She has a personality. Respect it.
+Adoni is Poll City's AI assistant. He has a personality. Respect it.
 
 1. No bullet points in Adoni responses.
 2. No markdown headers in Adoni responses.
