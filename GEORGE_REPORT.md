@@ -4,7 +4,7 @@
 > Every developer — human or AI — MUST read this file before making changes.
 > Update this file after every significant build session.
 
-**Last updated:** 2026-04-07
+**Last updated:** 2026-04-08
 **Updated by:** Claude Opus 4.6 + George Hatzis
 
 ---
@@ -16,6 +16,7 @@
 3. **If you add a feature**: Add it to the correct section with accurate status.
 4. **If you find something broken**: Update its status and add a note.
 5. **Never mark something ✅ unless it actually works end-to-end with real data.**
+6. **Never mark Enterprise as 🟢 unless the feature has gone through the ENRICHMENT PROCESS below.**
 
 ---
 
@@ -28,6 +29,64 @@
 | 🔴 | Shell only. UI exists but no real functionality behind it. |
 | ❌ | Missing entirely. Needs to be built from scratch. |
 | 🔑 | Needs env var / API key to function. |
+
+## ENTERPRISE LEVEL KEY
+
+| Icon | Meaning |
+|------|---------|
+| 🟢 | Enterprise-grade. Fully enriched. Passed the enrichment process. |
+| 🟠 | Functional but not enriched. Works but missing intelligence, automation, or data connections. |
+| 🔴 | Not enterprise-grade. Basic implementation only. |
+
+---
+
+## THE ENRICHMENT PROCESS (MANDATORY FOR 🟢)
+
+> This is how Communications went from basic to enterprise. Every module MUST go through this process before it can be marked 🟢. No exceptions.
+
+### Step 1: AUDIT
+- What exists? What's a shell? What's real?
+- What data flows in and out of this module?
+- What touches this module from other parts of the system?
+
+### Step 2: USER JOURNEY
+- Walk through every user action in this module
+- Ask: what should happen AFTER each action?
+- Ask: what data is being LOST or SILOED?
+- Ask: what would a campaign manager EXPECT to see?
+
+### Step 3: DATA CONNECTION
+- Every inbound touchpoint → creates or matches a Contact
+- Every form submission → tagged, scored, logged
+- Every action → visible in the right places (not just where it was created)
+- No data silos. No orphaned records.
+
+### Step 4: INTELLIGENCE
+- Adoni AI integrated where content is created or decisions are made
+- Sentiment classification on inbound messages
+- Auto-classification (media inquiry, negative, positive, spam)
+- Smart suggestions based on data patterns
+
+### Step 5: AUTOMATION
+- Auto-task creation on key events
+- Auto-notification to campaign team when action needed
+- Auto-escalation based on priority/sentiment
+- Lifecycle triggers (time-based follow-ups, milestones, reminders)
+- Engagement scoring that auto-updates support levels
+
+### Step 6: SURFACE EVERYTHING
+- All data visible in the right module (no hidden tables)
+- Dashboard metrics reflect this module's activity
+- Campaign manager never has to ask "where did that go?"
+
+### Step 7: HARDEN
+- Error handling on every path
+- No dead buttons, no broken links
+- Loading states, empty states, success states
+- Mobile-friendly
+- Verify TypeScript compiles clean
+
+**Only after ALL 7 steps → mark Enterprise as 🟢**
 
 ---
 
@@ -108,244 +167,223 @@ IP_HASH_SALT                    # random string for rate limiting
 
 ### 1. AUTHENTICATION
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Email/password login | ✅ | bcrypt, rate limiting, lockout after 5 fails |
-| Google OAuth | 🔑 | Code ready. Needs GOOGLE_CLIENT_ID + SECRET |
-| Apple OAuth | 🔑 | Code ready. Needs APPLE_CLIENT_ID + SECRET |
-| 2FA (TOTP) | ✅ | Full TOTP with QR codes, backup codes, enable/disable flow |
-| Password reset | ✅ | Token-based, 1hr expiry |
-| Team invites | ✅ | Token join flow with role assignment |
-| Role-based access | ✅ | Admin, Manager, Volunteer, Finance, Public |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Email/password login | ✅ | 🟢 | bcrypt, rate limiting, lockout after 5 fails | — | |
+| Google OAuth | 🔑 | 🟠 | Code ready. Needs GOOGLE_CLIENT_ID + SECRET | Provide API keys | |
+| Apple OAuth | 🔑 | 🟠 | Code ready. Needs APPLE_CLIENT_ID + SECRET | Provide API keys | |
+| 2FA (TOTP) | ✅ | 🟢 | Full TOTP with QR codes, backup codes, enable/disable flow | — | |
+| Password reset | ✅ | 🟢 | Token-based, 1hr expiry | — | |
+| Team invites | ✅ | 🟢 | Token join flow with role assignment | — | |
+| Role-based access | ✅ | 🟢 | Admin, Manager, Volunteer, Finance, Public | — | |
 
 ### 2. COMMUNICATIONS
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Email compose + send | ✅🔑 | Resend API. 5K recipients. CASL footer. |
-| SMS compose + send | ✅🔑 | Twilio. 2K recipients. CASL footer. |
-| Audience calculator | ✅ | Real-time by support level, ward, tags, DNC, volunteer, has email/phone, last contacted |
-| AI Write (Adoni) | ✅🔑 | Inline AI content generation in compose. Needs ANTHROPIC_API_KEY |
-| Unsubscribe page | ✅ | /unsubscribe — CASL compliant. Marks DNC + newsletter unsubscribe |
-| Resend webhooks | ✅ | /api/webhooks/resend — bounces → DNC, complaints, opens, clicks |
-| Newsletter subscribers | ✅ | Visible in Subscribers tab. From website signup forms |
-| Questions from website | ✅ | Visible in Subscribers tab. Mailto reply link |
-| Sign requests | ✅ | Visible in Subscribers tab with status |
-| Saved segments | ✅ | Create, save, use in compose. Persisted to campaign JSON |
-| Send history | ✅ | Real data from NotificationLog |
-| Unified inbox | ✅ | Split panel. Reply navigates to Compose. Archive removes locally. |
-| Templates | ✅ | Hardcoded defaults + custom templates persisted to campaign customization. Use loads into Compose. |
-| Automations | ✅ | 6 presets with toggle on/off. State persisted to campaign customization. Lifecycle cron executes active automations daily. |
-| Scheduled sends | ✅ | Wired to /api/notifications/schedule. Create, list, cancel. |
-| Voice broadcasts | 🔑 | Schema + CRUD ready. Needs Twilio Voice API (same account as SMS). |
-| Social publishing | 🔑 | CRUD + approval workflow in DB. Needs Twitter/Meta/LinkedIn OAuth keys. |
-| Social mentions | 🔑 | Schema + CRUD ready. Needs platform API keys for fetching. |
-| Newsletter | 🟡 | CRUD works. Send not wired to Resend. |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Email compose + send | ✅🔑 | 🟢 | Resend API. 5K recipients. CASL footer. AI Write. Merge fields. Templates. | — | |
+| SMS compose + send | ✅🔑 | 🟢 | Twilio. 2K recipients. CASL footer. AI Write. Merge fields. | — | |
+| Audience calculator | ✅ | 🟢 | Real-time by support level, ward, tags, DNC, volunteer, has email/phone, last contacted | — | |
+| AI Write (Adoni) | ✅🔑 | 🟢 | Inline AI content generation in compose | — | |
+| Unsubscribe page | ✅ | 🟢 | /unsubscribe — CASL compliant. Marks DNC + newsletter unsubscribe | — | |
+| Resend webhooks | ✅ | 🟢 | Bounces → DNC, complaints → unsubscribe, opens/clicks → lastContactedAt | — | |
+| Newsletter subscribers | ✅ | 🟢 | Visible in Subscribers tab. Linked to Contact. Tagged. | — | |
+| Questions from website | ✅ | 🟢 | Visible. Linked to Contact. Sentiment classified. Auto-task. Mailto reply. | — | |
+| Sign requests | ✅ | 🟢 | Visible. Linked to Contact. Tagged. Auto-task for deployment. | — | |
+| Saved segments | ✅ | 🟢 | Create, save, live count preview, use in compose. Persisted. | — | |
+| Send history | ✅ | 🟢 | Real data. Paginated. Delivery metrics. | — | |
+| Unified inbox | ✅ | 🟢 | Split panel. Reply → Compose. Archive. Cross-tab navigation. | — | |
+| Templates | ✅ | 🟢 | Defaults + custom. Save from Compose. Use loads content. | — | |
+| Automations | ✅ | 🟢 | Toggle on/off. Persisted. Lifecycle cron executes daily. | — | |
+| Scheduled sends | ✅ | 🟢 | Create, list, cancel. Save Draft wires here. | — | |
+| Voice broadcasts | 🔑 | 🟠 | Schema + CRUD ready. | Wire Twilio Voice API (same account as SMS) | |
+| Social publishing | 🔑 | 🔴 | CRUD + approval in DB. | Needs Twitter/Meta/LinkedIn OAuth + API integration | |
+| Social mentions | 🔑 | 🔴 | Schema ready. | Needs platform API keys + fetch integration | |
+| Newsletter send | 🟡 | 🟠 | CRUD works. | Wire send to Resend API (template exists) | |
 
 ### 3. CAMPAIGN WEBSITE
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Public candidate page | ✅ | Premium design. Hero, issues, endorsements, events, map, forms |
-| Support signup → CRM | ✅ | CAPTCHA protected. Creates Contact |
-| Volunteer signup → CRM | ✅ | Availability + skills. Tags contact |
-| Donations (Stripe) | ✅🔑 | Checkout works. $1,200 Ontario limit |
-| Lawn sign requests | ✅ | Creates SignRequest record |
-| Question form | ✅ | Creates Question for campaign review |
-| Event RSVP | ✅ | Going/maybe/declined status |
-| Custom domain routing | ✅ | Middleware → DB lookup → serves site |
-| Domain verification API | ✅ | DNS resolution + HTTPS check |
-| Website builder/editor | 🟡 | Settings page with themes/fonts/content. No drag-and-drop. |
-| Per-campaign GA4/Pixel | ✅ | Fields in DB. Fires on page load + form submit |
-| QR code generation | ✅ | PNG/SVG download |
-| SEO meta editing | ✅ | Title, description, OG tags |
-| Tracking events | ✅ | Lead (volunteer/support), Purchase (donation) |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Public candidate page | ✅ | 🟢 | Premium design. Hero, issues, endorsements, events, map, forms | — | |
+| Support signup → CRM | ✅ | 🟢 | CAPTCHA. Contact created. Tagged. Engagement scored. Welcome task. | — | |
+| Volunteer signup → CRM | ✅ | 🟢 | Contact created. Tagged. Engagement auto-escalates. | — | |
+| Donations (Stripe) | ✅🔑 | 🟢 | Checkout works. Contact created. Engagement scored. | — | |
+| Lawn sign requests | ✅ | 🟢 | Contact created. signRequested=true. Tagged. Deploy task. Notify on install. | — | |
+| Question form | ✅ | 🟢 | Contact created. Sentiment classified. Media → URGENT. Negative → HIGH. Reply task. | — | |
+| Newsletter subscribe | ✅ | 🟢 | Contact created. Tagged "newsletter-subscriber". Engagement scored. | — | |
+| Event RSVP | ✅ | 🟢 | Contact created. RSVP linked. Tagged "event-rsvp". Interaction logged. | — | |
+| Custom domain routing | ✅ | 🟢 | Middleware → DB lookup → serves site. DNS verification API. | — | |
+| Website builder/editor | 🟡 | 🟠 | Settings page with themes/fonts/content. | Needs drag-and-drop section reordering | |
+| Per-campaign tracking | ✅ | 🟢 | GA4 + Meta Pixel per campaign. Fires on page load + form submit. | — | |
+| Sign installed → notify | ✅ | 🟢 | Supporter notified when sign marked installed | — | |
 
 ### 4. DASHBOARD
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Overview mode | ✅ | Health, gap, stats, map, activity, quick actions |
-| Field Ops mode | ✅ | Canvassers, turfs, walk lists, calls |
-| Finance mode | ✅ | Donations, chart, donors, spending |
-| GOTV mode | ✅ | Countdown, voted, P1-P4, support pie, calls |
-| War Room mode | ✅ | Dark theme, giant gap, grid, ticker |
-| Election Night mode | ✅ | CNN-style results, map, poll table |
-| Custom widget builder | ✅ | 5 types, 22 sources, 8 colors, persisted |
-| Customize panel | ✅ | Toggle 27 widgets, set default mode |
-| Live Leaflet map | ✅ | Contact pins, heat circles, viewport loading |
-| Auto-refresh | ✅ | 10-second polling |
-| Widget reflow | ✅ | No blank gaps when widgets hidden |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Overview mode | ✅ | 🟢 | Health, gap, stats, map, activity, quick actions | — | |
+| Field Ops mode | ✅ | 🟠 | Canvassers, turfs, walk lists, calls | Enrich: connect canvass data to comms, auto-task on follow-ups | |
+| Finance mode | ✅ | 🟠 | Donations, chart, donors, spending | Enrich: receipt generation, donor communication history | |
+| GOTV mode | ✅ | 🟠 | Countdown, voted, P1-P4, support pie, calls | Enrich: auto-SMS to P1 not voted, ride request automation | |
+| War Room mode | ✅ | 🟠 | Dark theme, giant gap, grid, ticker | Enrich: real-time comms integration, team alerts | |
+| Election Night mode | ✅ | 🟠 | CNN-style results, map, poll table | Enrich: needs live data feed, auto-posting results | |
+| Custom widget builder | ✅ | 🟢 | 5 types, 22 sources, 8 colors, persisted | — | |
+| Widget reflow | ✅ | 🟢 | No blank gaps when widgets hidden | — | |
 
 ### 5. CANVASSING & FIELD
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Campaign map (Leaflet) | ✅ | Doors, turfs, signs, volunteers, routes |
-| Walk list | ✅ | Household + person, support badges, follow-ups |
-| GPS tracking | ✅ | 30s interval. Offline via IndexedDB |
-| Door-knock logging | ✅ | Result codes, support update, interaction record |
-| Turf management | 🟡 | Data model ready. Polygon drawing not implemented |
-| Signs management | ✅ | Map markers, request → schedule → install flow |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Campaign map (Leaflet) | ✅ | 🟠 | Doors, turfs, signs, volunteers, routes | Enrich: auto-suggest next turf, heat map by engagement | |
+| Walk list | ✅ | 🟠 | Household + person, support badges, follow-ups | Enrich: auto-create follow-up tasks from canvass, connect to comms | |
+| GPS tracking | ✅ | 🟢 | 30s interval. Offline via IndexedDB | — | |
+| Door-knock logging | ✅ | 🟠 | Result codes, support update, interaction record | Enrich: auto-tag based on result, trigger comms follow-up | |
+| Turf management | 🟡 | 🔴 | Data model ready. | Build polygon drawing + assignment UI | |
+| Signs management | ✅ | 🟢 | Map markers, request → schedule → install → notify flow | — | |
 
 ### 6. GOTV
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Priority list | ✅ | Auto-generated by support + voted status |
-| Mark voted | ✅ | Individual + batch upload |
-| Strike-off | ✅ | By contactId or name |
-| Rides coordination | ✅ | Request + dispatch |
-| Gap calculation | ✅ | Shared metrics: ceil(total * 0.35) |
-| P1-P4 breakdown | ✅ | From support levels |
-| Phone banking | ✅🔑 | Twilio token for browser calling |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Priority list | ✅ | 🟠 | Auto-generated by support + voted status | Enrich: auto-assign to phone bank, connect to comms for auto-dial | |
+| Mark voted | ✅ | 🟢 | Individual + batch upload. Stops outreach. | — | |
+| Strike-off | ✅ | 🟢 | By contactId or name | — | |
+| Rides coordination | ✅ | 🟠 | Request + dispatch | Enrich: auto-assign to driver volunteers, SMS confirmation | |
+| Gap calculation | ✅ | 🟢 | Shared metrics: ceil(total * 0.35) | — | |
+| Phone banking | ✅🔑 | 🟠 | Twilio token for browser calling | Enrich: auto-log call results, connect to contact timeline | |
 
 ### 7. FINANCE
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Donation logging | ✅ | Full CRUD. Contact linking |
-| Budget import (CSV) | ✅ | Validation + dry-run |
-| Expense tracking | 🟡 | CRUD exists. No dashboard chart |
-| Stripe donations | ✅🔑 | Checkout works. No receipt email |
-| Spending vs limit | ✅ | Dashboard widget |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Donation logging | ✅ | 🟢 | Full CRUD. Contact linking. Major donor → VIP task. | — | |
+| Budget import (CSV) | ✅ | 🟢 | Validation + dry-run | — | |
+| Expense tracking | 🟡 | 🔴 | CRUD exists. | Build dashboard chart, receipt upload, approval workflow | |
+| Stripe donations | ✅🔑 | 🟠 | Checkout works. | Add auto-receipt email, thank-you task, donor tag | |
+| Spending vs limit | ✅ | 🟠 | Dashboard widget | Enrich: alert at 80%/90%/100%, auto-freeze if over | |
+| Stale pledge follow-up | ✅ | 🟢 | 30+ day pledges → auto-create collection task (lifecycle cron) | — | |
 
 ### 8. EVENTS & CALENDAR
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Event CRUD | ✅ | Name, date, location, capacity, virtual |
-| RSVP system | ✅ | Going/maybe/declined/checked_in |
-| Check-in | ✅ | In-person tracking |
-| Email reminders | ✅ | Cron job |
-| Recurrence | ✅ | iCal rules |
-| Calendar export | ✅ | iCal download |
-| Google/Outlook sync | 🔑 | Needs Google Calendar API + Microsoft Graph API OAuth keys |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Event CRUD | ✅ | 🟢 | Name, date, location, capacity, virtual | — | |
+| RSVP system | ✅ | 🟢 | Going/maybe/declined/checked_in. Linked to Contact. | — | |
+| Check-in | ✅ | 🟢 | In-person tracking | — | |
+| Email reminders | ✅ | 🟢 | Cron job | — | |
+| Post-event follow-up | ✅ | 🟢 | Auto-task created 2 days after (lifecycle cron) | — | |
+| Google/Outlook sync | 🔑 | 🔴 | Not implemented | Needs Google Calendar API + Microsoft Graph OAuth | |
 
 ### 9. AI / ADONI
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Chat interface | ✅ | Streaming, conversation UI |
-| Tool use (24 tools) | ✅ | Contacts, tasks, donations, stats, tags |
-| Campaign context | ✅ | Name, days to election, counts |
-| Memory | ✅ | Preferences, decisions, open items |
-| Content generation | ✅ | 7 types: press, scripts, social, email, video, pamphlet, calendar |
-| Prompt injection defense | ✅ | Detection + deflection |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Chat interface | ✅ | 🟢 | Streaming, conversation UI | — | |
+| Tool use (24 tools) | ✅ | 🟢 | Contacts, tasks, donations, stats, tags | — | |
+| Content generation | ✅ | 🟢 | 7 types: press, scripts, social, email, video, pamphlet, calendar | — | |
+| Sentiment classification | ✅ | 🟢 | Classifies inbound as positive/negative/media-inquiry | — | |
+| Prompt injection defense | ✅ | 🟢 | Detection + deflection | — | |
 
 ### 10. RESOURCE LIBRARY
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Template catalog (18) | ✅ | 7 categories. Preview + download |
-| Preview drawer | ✅ | HTML iframe. Escape-to-close |
-| Download with branding | ✅ | Campaign brand kit applied |
-| AI content generator | ✅🔑 | Needs ANTHROPIC_API_KEY |
-| Upload resource | ✅ | POST /api/resources/upload — base64 storage in campaign JSON. 5MB limit. Full CRUD. |
-| My Resources | ✅ | GET /api/resources/upload lists uploaded resources. DELETE removes. |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Template catalog (18) | ✅ | 🟢 | 7 categories. Preview + download | — | |
+| Upload resource | ✅ | 🟠 | Base64 storage. 5MB limit. | Migrate to S3/Vercel Blob for production scale | |
+| AI content generator | ✅🔑 | 🟢 | Adoni writes press releases, scripts, emails, calendars | — | |
 
 ### 11. PRINT MARKETPLACE
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Product catalog | ✅ | 15 categories with pricing |
-| Job creation | ✅ | Specs + requirements |
-| Shop directory | ✅ | Browse + filter |
-| Payment | 🟡🔑 | Stripe intent. 15% platform fee |
-| Design editor | 🔑 | Preview + order UI. Needs canvas tool integration (Polotno/Canva API) |
-| Order tracking | 🔑 | Schema ready. Needs fulfillment partner API |
-| Proof approval | 🔑 | Needs fulfillment partner API |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Product catalog | ✅ | 🟠 | 15 categories with pricing | Enrich: connect to brand kit auto-apply, preview with campaign colors | |
+| Design editor | 🔑 | 🔴 | Preview only | Needs canvas tool (Polotno/Canva API) | |
+| Order tracking | 🔑 | 🔴 | Schema ready | Needs fulfillment partner API | |
 
 ### 12. ANALYTICS
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| 8-tab dashboard | ✅ | Campaign, canvassing, supporters, volunteers, GOTV, finance, events, historical |
-| Charts (Recharts) | ✅ | Pie, bar, line, area |
-| Choropleth map | ✅ | Needs GIS seed data |
-| Export (PNG) | ✅ | Chart image export |
-| Scheduled reports | ✅ | Weekly cron (Monday 9am). Contacts, doors, donations, volunteers, emails, SMS, signs, events, tasks, questions. Stored in history + team notified. |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| 8-tab dashboard | ✅ | 🟠 | All tabs with real data | Enrich: drill-through to contacts, actionable insights not just charts | |
+| Scheduled reports | ✅ | 🟢 | Weekly cron. Full campaign summary. Team notified. | — | |
 
 ### 13. TV MODE
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Public results display | ✅ | /tv/[slug] — no auth |
-| Live stats API | ✅ | Feed, results, stats, volunteers |
-| Auto-rotation | ✅ | Cycles panels |
-| Real election data | 🔑 | Internal DB source working. Needs Elections Ontario/Canada API (no public API exists) |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Public results display | ✅ | 🟠 | /tv/[slug] — no auth | Enrich: auto-update from GOTV data, team celebration triggers | |
+| Real election data | 🔑 | 🔴 | Internal DB working | No public Elections Ontario API exists | |
 
 ### 14. ELECTION NIGHT
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Dashboard mode | ✅ | CNN-style candidate vs opponent |
-| Results map | ✅ | Leaflet integration |
-| Poll-by-poll table | 🟡 | Table exists. Needs data feed |
-| Live data source | 🔑 | Internal data working. External election API not available publicly |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Dashboard mode | ✅ | 🟠 | CNN-style results | Enrich: auto-post to social, live team notifications per poll | |
+| Live data source | 🔑 | 🔴 | Internal data working | External election API not publicly available | |
 
-### 15. OTHER
+### 15. AUTOMATION ENGINE
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Contact import (CSV) | ✅ | Auto-format, fuzzy match, batch |
-| Contact export | ✅ | Filtered CSV |
-| Brand kit | 🟡 | Settings save. Not applied everywhere |
-| Push notifications | ✅🔑 | Full send, schedule, history. Needs VAPID keys |
-| Opponent intelligence | ✅ | Full CRUD — name, party, signs, support, strengths, weaknesses, issues |
-| Coalitions | ✅ | Full CRUD — create, list, manage coalition partners |
-| Media tracking | ✅ | Outlets, ticker, live results — full dashboard |
-| Sentiment dashboard | ✅ | Public page with official approval ratings |
-| Officials directory | ✅ | 1,100+ searchable officials |
-| Help center | ✅ | Articles + categories |
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Inbound engine | ✅ | 🟢 | Every form → Contact + tag + task + engagement | — | |
+| Sentiment classification | ✅ | 🟢 | Media → URGENT, Negative → HIGH, auto-task + team alert | — | |
+| Engagement scoring | ✅ | 🟢 | Auto-escalates support levels based on interactions | — | |
+| Lifecycle cron (daily) | ✅ | 🟢 | Pledges, VIP donors, milestones, post-event, overdue, countdown, no-shows | — | |
+| Weekly report (Monday) | ✅ | 🟢 | Full summary. Stored in history. Team notified. | — | |
+
+### 16. OTHER
+
+| Feature | Status | Enterprise | Notes | What's Needed for 🟢 | Your Notes |
+|---------|--------|-----------|-------|----------------------|------------|
+| Contact import (CSV) | ✅ | 🟢 | Auto-format, fuzzy match, batch | — | |
+| Contact export | ✅ | 🟢 | Filtered CSV | — | |
+| Brand kit | 🟡 | 🔴 | Settings save | Apply to all surfaces: emails, SMS footer, print, social posts | |
+| Push notifications | ✅🔑 | 🟠 | Full send/schedule/history | Enrich: trigger from automation engine events | |
+| Opponent intelligence | ✅ | 🟠 | Full CRUD | Enrich: auto-alert on opponent sign clusters, competitive scoring | |
+| Coalitions | ✅ | 🟠 | Full CRUD | Enrich: endorsement → campaign website auto-publish | |
+| Media tracking | ✅ | 🟠 | Outlets, ticker, results | Enrich: auto-alert on media mentions, press list integration | |
 
 ---
 
 ## MARKETING / PUBLIC PAGES
 
-| Page | Status | Notes |
-|------|--------|-------|
-| Homepage (/) | ✅ | Guided experience. Product visuals. Website showcase. |
-| Pricing (/pricing) | ✅ | 3-step: role → location → plan. Ontario data. |
-| Demo (/demo) | ✅ | Working credentials. Role selector. Website showcase. |
-| Login (/login) | ✅ | Email/password + Google + Apple |
-| Help (/help) | ✅ | Articles + search |
-| Officials (/officials) | ✅ | Directory with search |
-| Terms (/terms) | ✅ | Legal text |
-| Privacy (/privacy-policy) | ✅ | PIPEDA reference |
-| Calculator (/calculator) | ✅ | Campaign cost estimator |
+| Page | Status | Enterprise | Notes | Your Notes |
+|------|--------|-----------|-------|------------|
+| Homepage (/) | ✅ | 🟢 | Guided experience. Product visuals. Website showcase. | |
+| Pricing (/pricing) | ✅ | 🟢 | 3-step: role → location → plan. Monthly + one-time. Add-ons. | |
+| Demo (/demo) | ✅ | 🟢 | Working credentials. Role selector. Campaign website showcase. | |
+| Login (/login) | ✅ | 🟢 | Email/password + Google + Apple. Demo creds displayed. | |
+| Unsubscribe | ✅ | 🟢 | CASL compliant. DNC + newsletter unsubscribe. | |
 
 ---
 
 ## TRACKING & ANALYTICS
 
-| System | Status | Notes |
-|--------|--------|-------|
-| Google Analytics 4 | ✅🔑 | Next.js Script. Needs NEXT_PUBLIC_GA_ID |
-| Meta Pixel | ✅🔑 | afterInteractive. Needs NEXT_PUBLIC_META_PIXEL_ID |
-| Google Ads | ✅🔑 | Piggybacks on GA4 loader. Needs NEXT_PUBLIC_GOOGLE_ADS_ID |
-| Microsoft Clarity | ✅🔑 | Heatmaps + recordings. Needs NEXT_PUBLIC_CLARITY_ID |
-| Per-campaign GA4 | ✅ | Campaign gaId field. Fires on candidate page |
-| Per-campaign Pixel | ✅ | Campaign metaPixelId. Fires Lead + Purchase events |
-| Page view counter | ✅ | Increments on every candidate page load |
+| System | Status | Enterprise | Notes | Your Notes |
+|--------|--------|-----------|-------|------------|
+| Google Analytics 4 | ✅🔑 | 🟢 | Global + per-campaign | |
+| Meta Pixel | ✅🔑 | 🟢 | Global + per-campaign. Lead + Purchase events. | |
+| Resend webhooks | ✅ | 🟢 | Bounces → DNC. Opens/clicks → engagement. | |
+| Page view counter | ✅ | 🟢 | Every candidate page load counted. | |
 
 ---
 
 ## WHAT GEORGE NEEDS TO PROVIDE
 
-| Item | Why | Priority |
-|------|-----|----------|
-| RESEND_API_KEY | Email sending won't work without it | HIGH |
-| TWILIO_ACCOUNT_SID + AUTH_TOKEN + PHONE_NUMBER | SMS won't work without it | HIGH |
-| STRIPE_SECRET_KEY + WEBHOOK_SECRET | Donations won't process | HIGH |
-| ANTHROPIC_API_KEY | Adoni AI won't respond | HIGH |
-| NEXTAUTH_SECRET | Required for production auth | CRITICAL |
-| GOOGLE_CLIENT_ID + SECRET | For Google sign-in | MEDIUM |
-| NEXT_PUBLIC_GA_ID | For Google Analytics tracking | MEDIUM |
-| NEXT_PUBLIC_META_PIXEL_ID | For Meta ad tracking | MEDIUM |
-| NEXT_PUBLIC_CLARITY_ID | For heatmaps/session recordings | LOW |
-| TURNSTILE keys | For form spam protection | MEDIUM |
-| VAPID keys | For push notifications | LOW |
+| Item | Why | Priority | Your Notes |
+|------|-----|----------|------------|
+| RESEND_API_KEY | Email sending | HIGH | |
+| TWILIO_ACCOUNT_SID + AUTH_TOKEN + PHONE | SMS sending | HIGH | |
+| STRIPE_SECRET_KEY + WEBHOOK_SECRET | Donations | HIGH | |
+| ANTHROPIC_API_KEY | Adoni AI | HIGH | |
+| NEXTAUTH_SECRET | Production auth | CRITICAL | |
+| GOOGLE_CLIENT_ID + SECRET | Google sign-in | MEDIUM | |
+| NEXT_PUBLIC_GA_ID | Analytics tracking | MEDIUM | |
+| NEXT_PUBLIC_META_PIXEL_ID | Ad tracking | MEDIUM | |
+| NEXT_PUBLIC_CLARITY_ID | Heatmaps | LOW | |
+| TURNSTILE keys | Form spam protection | MEDIUM | |
+| VAPID keys | Push notifications | LOW | |
 
 ---
 
@@ -353,7 +391,7 @@ IP_HASH_SALT                    # random string for rate limiting
 
 | Date | Author | Changes |
 |------|--------|---------|
-| 2026-04-07 | Claude Opus 4.6 | Initial George Report created. Full system audit. |
+| 2026-04-07 | Claude Opus 4.6 | Initial George Report. Full system audit. |
 | 2026-04-07 | Claude Opus 4.6 | Resource Library enterprise rebuild |
 | 2026-04-07 | Claude Opus 4.6 | Communications 10-tab command center |
 | 2026-04-07 | Claude Opus 4.6 | Dashboard: live maps, CNN election night, custom widget builder |
@@ -363,6 +401,9 @@ IP_HASH_SALT                    # random string for rate limiting
 | 2026-04-07 | Claude Opus 4.6 | Tracking: GA4, Meta Pixel, Clarity, Google Ads + per-campaign |
 | 2026-04-07 | Claude Opus 4.6 | Domain verification API + per-campaign tracking fields |
 | 2026-04-07 | Claude Opus 4.6 | Campaign website premium rebuild |
-| 2026-04-07 | Claude Opus 4.6 | Communications suite — all tabs fully wired (overview stats, inbox reply, templates CRUD, scheduled CRUD, compose save draft/template, history pagination, cross-tab navigation) |
-| 2026-04-07 | Claude Opus 4.6 | Communications enterprise upgrade — Adoni AI Write in compose, enriched audience filters (volunteer/email/phone/last contacted), segment builder in Audiences tab, removed AI Assistant from nav |
-| 2026-04-08 | Claude Opus 4.6 | 4-tier automation engine: all 7 inbound routes → Contact creation + tagging + tasks. Sentiment classification (media/negative). Sign installed → notify supporter. Lifecycle cron (pledges, VIP donors, volunteer milestones, post-event, election countdown, overdue tasks, no-show volunteers). Engagement scoring auto-escalates support levels. |
+| 2026-04-07 | Claude Opus 4.6 | Communications suite — all tabs fully wired |
+| 2026-04-07 | Claude Opus 4.6 | Communications enterprise upgrade — Adoni AI, segments, audiences |
+| 2026-04-08 | Claude Opus 4.6 | CASL: /unsubscribe page + API. Resend webhook. Subscribers tab. |
+| 2026-04-08 | Claude Opus 4.6 | 4-tier automation engine: inbound → Contact + tag + task + scoring. Lifecycle cron. |
+| 2026-04-08 | Claude Opus 4.6 | All green: Automations wired. Weekly report cron. Resource upload. |
+| 2026-04-08 | Claude Opus 4.6 | George Report v2: Added Enterprise column + Enrichment Process. Defined what 🟢 means. |
