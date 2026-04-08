@@ -127,14 +127,14 @@ export function Label({ children, className, required, ...props }: React.LabelHT
 
 export function Card({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("bg-white rounded-xl border border-gray-200 shadow-sm", className)} {...props}>
+    <div className={cn("bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm", className)} {...props}>
       {children}
     </div>
   );
 }
 
 export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("px-6 py-4 border-b border-gray-100", className)}>{children}</div>;
+  return <div className={cn("px-6 py-4 border-b border-gray-100 dark:border-slate-700", className)}>{children}</div>;
 }
 
 export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -142,7 +142,7 @@ export function CardContent({ children, className }: { children: React.ReactNode
 }
 
 export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <h3 className={cn("text-lg font-semibold text-gray-900", className)}>{children}</h3>;
+  return <h3 className={cn("text-lg font-semibold text-gray-900 dark:text-slate-100", className)}>{children}</h3>;
 }
 
 // ─── Switch ──────────────────────────────────────────────────────────────────

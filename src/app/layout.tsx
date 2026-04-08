@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/providers/auth-provider";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "sonner";
 import PwaRegister from "@/components/pwa/pwa-register";
 import Analytics from "@/components/tracking/analytics";
@@ -84,11 +85,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <Analytics />
       <body className="font-sans antialiased">
-        <AuthProvider>
-          {children}
-          <Toaster richColors position="top-right" />
-          <PwaRegister />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+            <Toaster richColors position="top-right" />
+            <PwaRegister />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

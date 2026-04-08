@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShellClient>
-      <div className="flex h-dvh min-h-dvh md:h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-dvh min-h-dvh md:h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar user={session.user} />
