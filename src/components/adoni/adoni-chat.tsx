@@ -672,6 +672,19 @@ export default function AdoniChat() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile]);
 
+  /* Open Adoni from sidebar button, alerts "Ask Adoni", page assist chips */
+  useEffect(() => {
+    function onOpenAdoni(ev: Event) {
+      const detail = (ev as CustomEvent).detail as { prefill?: string } | undefined;
+      if (detail?.prefill) {
+        setPrompt(detail.prefill);
+      }
+      setMode((prev) => (prev === "bubble" ? "panel" : prev));
+    }
+    window.addEventListener("pollcity:open-adoni", onOpenAdoni as EventListener);
+    return () => window.removeEventListener("pollcity:open-adoni", onOpenAdoni as EventListener);
+  }, []);
+
   /* Hide bubble when a right-side panel is open (widget builder, etc.) */
   useEffect(() => {
     const open = () => setPanelBlocking(true);
