@@ -2,12 +2,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Plus, MapPin, Users, BookOpen, RefreshCw,
+  Plus, MapPin, Users, BookOpen, RefreshCw, Printer,
 } from "lucide-react";
 import {
   Button, Card, CardHeader, CardContent, PageHeader, Modal,
   FormField, Input, Textarea, Select, EmptyState,
 } from "@/components/ui";
+import Link from "next/link";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -298,6 +299,11 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
             <Button size="sm" variant="outline" onClick={() => load()}>
               <RefreshCw className="w-3.5 h-3.5" />
             </Button>
+            <Link href={`/canvassing/print-walk-list?campaignId=${campaignId}`}>
+              <Button size="sm" variant="outline">
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Walk List
+              </Button>
+            </Link>
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="w-3.5 h-3.5" /> New List
             </Button>

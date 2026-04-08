@@ -7,9 +7,50 @@ import {
   Flag, DoorOpen, FileText, CreditCard, Mail, Sticker, Circle,
   Shirt, HardHat, ShoppingBag, Scroll, Square, Anchor, RectangleHorizontal,
   Tag, Paintbrush, Store, Briefcase, LayoutTemplate, Sparkles,
+  MapPin, Users, CalendarDays, PhoneCall, Receipt, ChevronRight,
 } from "lucide-react";
 import { PRINT_PRODUCTS, type ProductSpec } from "@/lib/print/catalog";
 import { Button, Badge } from "@/components/ui";
+
+/* ─── Operational print links ────────────────────────────────────────────────── */
+
+const OPERATIONAL_LINKS: {
+  label: string;
+  description: string;
+  href: string;
+  Icon: React.ElementType;
+}[] = [
+  {
+    label: "Walk List",
+    description: "Contacts organised by street for door-to-door canvassing",
+    href: "/canvassing/print-walk-list",
+    Icon: MapPin,
+  },
+  {
+    label: "Volunteer Schedule",
+    description: "Weekly volunteer shift schedule for your team",
+    href: "/volunteers?view=schedule&print=1",
+    Icon: Users,
+  },
+  {
+    label: "Event Sign-in Sheet",
+    description: "Attendance sheet for campaign events",
+    href: "/events?print=1",
+    Icon: CalendarDays,
+  },
+  {
+    label: "Call List",
+    description: "Phone banking contact list formatted for callers",
+    href: "/contacts?format=call&print=1",
+    Icon: PhoneCall,
+  },
+  {
+    label: "Expense Report",
+    description: "Campaign expense summary for compliance filing",
+    href: "/budget?print=1",
+    Icon: Receipt,
+  },
+];
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Flag, DoorOpen, FileText, CreditCard, Mail, Sticker, Circle,
@@ -107,6 +148,31 @@ export default function PrintClient({ campaignId }: Props) {
           </div>
         </motion.div>
       )}
+
+      {/* Campaign Operations — operational print links */}
+      <section className="mb-10">
+        <h2 className="text-lg font-bold text-[#0A2342] mb-1">Campaign Operations</h2>
+        <p className="text-xs text-gray-500 mb-4">Print directly from your campaign data — no shop order needed.</p>
+        <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+          {OPERATIONAL_LINKS.map(({ label, description, href, Icon }) => (
+            <Link key={href} href={href}>
+              <motion.div
+                whileHover={{ backgroundColor: "#f9fafb" }}
+                className="flex items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#0A2342]/8 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-4 h-4 text-[#0A2342]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#0A2342]">{label}</p>
+                  <p className="text-xs text-gray-500">{description}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </motion.div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Product Grid — 15 categories */}
       <section className="mb-10">
