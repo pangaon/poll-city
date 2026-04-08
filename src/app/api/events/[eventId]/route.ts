@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     where: { id: params.eventId },
     include: { rsvps: true, reminders: true },
   });
-  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (!event || event.deletedAt) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const membership = await ensureMembership(session!.user.id, event.campaignId);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const event = await prisma.event.findUnique({ where: { id: params.eventId } });
-  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (!event || event.deletedAt) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const membership = await ensureMembership(session!.user.id, event.campaignId);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -146,12 +146,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { eventId: 
   const { session, error } = await apiAuth(req);
   if (error) return error;
   const event = await prisma.event.findUnique({ where: { id: params.eventId } });
-  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (!event || event.deletedAt) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
   const membership = await ensureMembership(session!.user.id, event.campaignId);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.event.delete({ where: { id: params.eventId } });
+  await prisma.event.update({
+    where: { id: params.eventId },
+    data: { deletedAt: new Date() },
+  });
 
   await audit(prisma, 'event.delete', {
     campaignId: event.campaignId,

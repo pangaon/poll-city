@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
 
   const where = {
     campaignId,
+    deletedAt: null,
     isDeceased: false,
     ...(excludeDnc ? { doNotContact: false } : {}),
     phone: { not: null },

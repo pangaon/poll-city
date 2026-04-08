@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
   const brand = await loadBrandKit(campaignId);
   const where = {
     campaignId,
+    deletedAt: null,
     isDeceased: false,
     ...(excludeDnc ? { doNotContact: false } : {}),
     email: { not: null },

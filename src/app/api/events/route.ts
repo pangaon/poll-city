@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const includePast = req.nextUrl.searchParams.get("includePast") === "true";
 
   const events = await prisma.event.findMany({
-    where: { campaignId: campaignId!,
+    where: { campaignId: campaignId!, deletedAt: null,
       ...(statuses.length
         ? {
             status: {
