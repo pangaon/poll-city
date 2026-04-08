@@ -124,7 +124,14 @@ IP_HASH_SALT                    # random string for rate limiting
 |---------|--------|-------|
 | Email compose + send | ✅🔑 | Resend API. 5K recipients. CASL footer. |
 | SMS compose + send | ✅🔑 | Twilio. 2K recipients. CASL footer. |
-| Audience calculator | ✅ | Real-time by support level, ward, tags, DNC |
+| Audience calculator | ✅ | Real-time by support level, ward, tags, DNC, volunteer, has email/phone, last contacted |
+| AI Write (Adoni) | ✅🔑 | Inline AI content generation in compose. Needs ANTHROPIC_API_KEY |
+| Unsubscribe page | ✅ | /unsubscribe — CASL compliant. Marks DNC + newsletter unsubscribe |
+| Resend webhooks | ✅ | /api/webhooks/resend — bounces → DNC, complaints, opens, clicks |
+| Newsletter subscribers | ✅ | Visible in Subscribers tab. From website signup forms |
+| Questions from website | ✅ | Visible in Subscribers tab. Mailto reply link |
+| Sign requests | ✅ | Visible in Subscribers tab with status |
+| Saved segments | ✅ | Create, save, use in compose. Persisted to campaign JSON |
 | Send history | ✅ | Real data from NotificationLog |
 | Unified inbox | ✅ | Split panel. Reply navigates to Compose. Archive removes locally. |
 | Templates | ✅ | Hardcoded defaults + custom templates persisted to campaign customization. Use loads into Compose. |
