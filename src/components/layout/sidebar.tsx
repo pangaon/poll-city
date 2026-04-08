@@ -168,7 +168,10 @@ export default function Sidebar() {
     }
 
     if (isSuperAdmin) {
-      settingsItems.push({ href: "/settings/permissions", icon: Shield, label: "Permission Control Center" });
+      settingsItems.push(
+        { href: "/ops/campaigns", icon: LayoutDashboard, label: "All Campaigns" },
+        { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" }
+      );
     }
 
     return [
