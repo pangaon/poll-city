@@ -8,7 +8,7 @@ type TownhallStatus = (typeof ALLOWED_STATUSES)[number];
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { eventId: string } },
 ) {
   const { session, error } = await apiAuth(req, [
     Role.ADMIN,
@@ -18,7 +18,7 @@ export async function PATCH(
   if (error) return error;
 
   const event = await prisma.event.findUnique({
-    where: { id: params.id },
+    where: { id: params.eventId },
     select: { campaignId: true, isTownhall: true },
   });
 
@@ -26,7 +26,6 @@ export async function PATCH(
     return NextResponse.json({ error: "Event not found or not a townhall" }, { status: 404 });
   }
 
-  // Ensure the user belongs to this campaign
   const membership = await prisma.membership.findUnique({
     where: {
       userId_campaignId: {
@@ -54,7 +53,7 @@ export async function PATCH(
   }
 
   const updated = await prisma.event.update({
-    where: { id: params.id },
+    where: { id: params.eventId },
     data: {
       townhallStatus: body.status,
       ...(body.townhallRoomUrl !== undefined

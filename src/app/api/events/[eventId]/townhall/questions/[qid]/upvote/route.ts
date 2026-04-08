@@ -14,7 +14,7 @@ function getIp(req: NextRequest): string {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; qid: string } },
+  { params }: { params: { eventId: string; qid: string } },
 ) {
   const ip = getIp(req);
   const dedupKey = `${params.qid}:${ip}`;
@@ -28,7 +28,7 @@ export async function POST(
     select: { id: true, eventId: true, isHidden: true },
   });
 
-  if (!question || question.eventId !== params.id || question.isHidden) {
+  if (!question || question.eventId !== params.eventId || question.isHidden) {
     return NextResponse.json({ error: "Question not found" }, { status: 404 });
   }
 

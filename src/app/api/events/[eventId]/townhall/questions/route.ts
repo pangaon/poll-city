@@ -4,10 +4,10 @@ import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { eventId: string } },
 ) {
   const event = await prisma.event.findUnique({
-    where: { id: params.id },
+    where: { id: params.eventId },
     select: { isTownhall: true },
   });
   if (!event || !event.isTownhall) {
@@ -15,7 +15,7 @@ export async function GET(
   }
 
   const questions = await prisma.townhallQuestion.findMany({
-    where: { eventId: params.id, isHidden: false },
+    where: { eventId: params.eventId, isHidden: false },
     orderBy: [{ isAnswered: "asc" }, { upvotes: "desc" }, { createdAt: "asc" }],
   });
 
@@ -24,13 +24,13 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { eventId: string } },
 ) {
   const limited = await rateLimit(req, "form");
   if (limited) return limited;
 
   const event = await prisma.event.findUnique({
-    where: { id: params.id },
+    where: { id: params.eventId },
     select: { isTownhall: true, maxQuestions: true, townhallStatus: true },
   });
 
@@ -55,10 +55,9 @@ export async function POST(
   if (text.length > 280)
     return NextResponse.json({ error: "Question must be 280 characters or fewer" }, { status: 400 });
 
-  // Check question cap
   if (event.maxQuestions) {
     const count = await prisma.townhallQuestion.count({
-      where: { eventId: params.id, isHidden: false },
+      where: { eventId: params.eventId, isHidden: false },
     });
     if (count >= event.maxQuestions) {
       return NextResponse.json({ error: "Question limit reached" }, { status: 429 });
@@ -67,7 +66,7 @@ export async function POST(
 
   const question = await prisma.townhallQuestion.create({
     data: {
-      eventId: params.id,
+      eventId: params.eventId,
       askedByName: name,
       askedByEmail: email,
       text,

@@ -49,9 +49,9 @@ async function resolveAndGuard(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string; qid: string } },
+  { params }: { params: { eventId: string; qid: string } },
 ) {
-  const { question, authError } = await resolveAndGuard(req, params.id, params.qid);
+  const { question, authError } = await resolveAndGuard(req, params.eventId, params.qid);
   if (authError) return authError;
 
   const body = (await req.json().catch(() => null)) as {
@@ -78,9 +78,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; qid: string } },
+  { params }: { params: { eventId: string; qid: string } },
 ) {
-  const { question, authError } = await resolveAndGuard(req, params.id, params.qid);
+  const { question, authError } = await resolveAndGuard(req, params.eventId, params.qid);
   if (authError) return authError;
 
   await prisma.townhallQuestion.update({
