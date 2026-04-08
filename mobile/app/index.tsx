@@ -7,5 +7,7 @@
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  return <Redirect href="/(app)/walk-list" />;
+  // Redirect to the tab-based interface. Auth guard in _layout.tsx handles
+  // unauthenticated users and sends them to /(auth)/login first.
+  return <Redirect href="/(tabs)/canvassing" />;
 }

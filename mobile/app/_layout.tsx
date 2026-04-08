@@ -23,8 +23,8 @@ function RootNavigationGuard() {
       // Not signed in — redirect to login
       router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
-      // Signed in — redirect to main app
-      router.replace("/(app)/walk-list");
+      // Signed in — redirect to main app (tab-based interface)
+      router.replace("/(tabs)/canvassing");
     }
   }, [user, isLoading, segments, router]);
 

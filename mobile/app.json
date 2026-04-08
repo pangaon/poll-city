@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Poll City Canvasser",
-    "slug": "poll-city-canvasser",
+    "name": "Poll City",
+    "slug": "poll-city",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
