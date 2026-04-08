@@ -107,6 +107,10 @@ export async function POST(req: NextRequest) {
 
   for (const r of recipients) {
     if (!r.phone) continue;
+    if (!hasTwilio) {
+      console.log(`[comms/sms] (no Twilio config) would send to ${r.phone}`);
+      continue;
+    }
     const personalized = msgBody
       .replace(/\{\{firstName\}\}/g, r.firstName ?? "")
       .replace(/\{\{ward\}\}/g, r.ward ?? "")
@@ -115,7 +119,7 @@ export async function POST(req: NextRequest) {
     const finalMsg = `${personalized}${caslSuffix}`.slice(0, 320); // 2 segments max
 
     const ok = await sendSms(r.phone, finalMsg);
-    if (ok || !hasTwilio) sent += 1;
+    if (ok) sent += 1;
     else failed += 1;
   }
 
