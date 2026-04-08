@@ -6,6 +6,7 @@ import {
   ChevronRight, ChevronLeft, Plus, Trash2, Check, BarChart3,
   Eye, EyeOff, Calendar, Bell, RefreshCw, Lock, Globe, Zap,
   GripVertical, Sliders, Image, ThumbsUp, List, SortAsc,
+  Star, Cloud, Activity, Hash, MessageSquare,
 } from "lucide-react";
 import { Button, Card, CardContent, FormField, Input, Select, Textarea } from "@/components/ui";
 import { toast } from "sonner";
@@ -40,18 +41,23 @@ interface FormState {
 /* ── Option colors ────────────────────────────────────────────── */
 const OPTION_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#F97316"];
 
-/* ── Poll types (7 specified) ─────────────────────────────────── */
+/* ── Poll types (11 total) ────────────────────────────────────── */
 const POLL_TYPES = [
-  { value: "binary", label: "Yes / No", desc: "Simple binary choice", icon: ThumbsUp },
-  { value: "multiple_choice", label: "Multiple Choice", desc: "Pick one from several", icon: List },
-  { value: "ranked", label: "Ranked Choice", desc: "Drag to rank by preference", icon: SortAsc },
-  { value: "slider", label: "Slider (0-100)", desc: "Rate on a numeric scale", icon: Sliders },
-  { value: "swipe", label: "Swipe Cards", desc: "Swipe left/right to vote", icon: ChevronRight },
-  { value: "image_swipe", label: "Image Swipe", desc: "Swipe on visual cards", icon: Image },
-  { value: "flash_poll", label: "Flash Poll", desc: "Quick yes/no with urgency", icon: Zap },
+  { value: "binary",          label: "Yes / No",         desc: "Simple binary choice",          icon: ThumbsUp },
+  { value: "multiple_choice", label: "Multiple Choice",  desc: "Pick one from several",          icon: List },
+  { value: "ranked",          label: "Ranked Choice",    desc: "Drag to rank by preference",     icon: SortAsc },
+  { value: "slider",          label: "Slider (0-100)",   desc: "Rate on a numeric scale",        icon: Sliders },
+  { value: "swipe",           label: "Swipe Cards",      desc: "Swipe left/right to vote",       icon: ChevronRight },
+  { value: "image_swipe",     label: "Image Swipe",      desc: "Swipe on visual cards",          icon: Image },
+  { value: "flash_poll",      label: "Flash Poll",       desc: "Quick yes/no with urgency",      icon: Zap },
+  { value: "nps",             label: "NPS Score",        desc: "0–10 likelihood rating",         icon: Star },
+  { value: "word_cloud",      label: "Word Cloud",       desc: "Voters contribute words",        icon: Cloud },
+  { value: "timeline_radar",  label: "Radar / Timeline", desc: "Rate multiple dimensions",       icon: Activity },
+  { value: "emoji_react",     label: "Emoji React",      desc: "Emoji reaction voting",          icon: MessageSquare },
+  { value: "priority_rank",   label: "Priority Rank",    desc: "Prioritise from a list",         icon: Hash },
 ];
 
-const NEEDS_OPTIONS = new Set(["multiple_choice", "ranked", "swipe", "image_swipe"]);
+const NEEDS_OPTIONS = new Set(["multiple_choice", "ranked", "swipe", "image_swipe", "timeline_radar", "priority_rank"]);
 
 /* ── Step indicator ───────────────────────────────────────────── */
 function StepDot({ step, current, label }: { step: number; current: number; label: string }) {
@@ -91,7 +97,7 @@ function Step1({ form, onChange }: { form: FormState; onChange: (k: keyof FormSt
         <p className="text-gray-500 text-sm">Select the type that best fits your question.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {POLL_TYPES.map((t) => (
           <motion.button
             key={t.value}
@@ -411,6 +417,33 @@ function Step4({ form }: { form: FormState }) {
             </div>
           </div>
         )}
+        {form.type === "nps" && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {Array.from({ length: 11 }, (_, i) => (
+              <div key={i} className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold">{i}</div>
+            ))}
+          </div>
+        )}
+        {form.type === "word_cloud" && (
+          <div className="mt-4 flex flex-wrap gap-2 opacity-70">
+            {["policy", "economy", "housing", "transit", "tax"].map((w) => (
+              <span key={w} className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium">{w}</span>
+            ))}
+          </div>
+        )}
+        {form.type === "timeline_radar" && form.options.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {form.options.slice(0, 3).map((opt) => (
+              <div key={opt.id} className="flex items-center gap-2">
+                <span className="text-xs text-white/70 w-20 truncate">{opt.text || "Dimension"}</span>
+                <div className="flex-1 h-2 bg-white/20 rounded-full">
+                  <div className="h-full bg-white/60 rounded-full w-1/2" />
+                </div>
+                <span className="text-xs text-white/70">5</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Summary */}
@@ -516,7 +549,9 @@ function NewPollInner() {
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
         targetRegion: form.targetRegion || undefined,
         tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
-        options: NEEDS_OPTIONS.has(form.type) ? form.options.map((o) => o.text) : undefined,
+        options: NEEDS_OPTIONS.has(form.type) && form.options.length > 0
+          ? form.options.map((o) => o.text)
+          : undefined,
         campaignId: campaignId || undefined,
       };
 
@@ -528,8 +563,9 @@ function NewPollInner() {
       const data = await res.json();
 
       if (res.ok) {
+        const newId = data.data?.id ?? data.id;
         toast.success("Poll created!");
-        router.push("/polls");
+        router.push(newId ? `/polls/${newId}/live` : "/polls");
       } else {
         if (data.errors) {
           const msgs = Object.values(data.errors as Record<string, string[]>).flat();
