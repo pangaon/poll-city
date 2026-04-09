@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   }
 
   const contacts = await prisma.contact.findMany({
-    where: { campaignId },
+    where: { campaignId, deletedAt: null },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     include: { tags: { include: { tag: true } } },
   });

@@ -103,9 +103,9 @@ export async function POST(req: NextRequest) {
   // Calculate new gap
   const [supportersVoted, totalContacts] = await Promise.all([
     prisma.contact.count({
-      where: { campaignId, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
+      where: { campaignId, deletedAt: null, supportLevel: { in: ["strong_support", "leaning_support"] as any[] }, voted: true },
     }),
-    prisma.contact.count({ where: { campaignId } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null } }),
     // Audit log
     prisma.activityLog.create({
       data: {
