@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
     campaign,
     inactiveCanvassers,
   ] = await Promise.all([
-    prisma.contact.count({ where: { campaignId: cid, followUpNeeded: true, isDeceased: false } }),
-    prisma.contact.count({ where: { campaignId: cid, supportLevel: "strong_support", voted: false, isDeceased: false } }),
-    prisma.sign.count({ where: { campaignId: cid, status: "requested" } }),
+    prisma.contact.count({ where: { campaignId: cid, deletedAt: null, followUpNeeded: true, isDeceased: false } }),
+    prisma.contact.count({ where: { campaignId: cid, deletedAt: null, supportLevel: "strong_support", voted: false, isDeceased: false } }),
+    prisma.sign.count({ where: { campaignId: cid, deletedAt: null, status: "requested" } }),
     prisma.volunteerShift.count({
       where: {
         campaignId: cid,

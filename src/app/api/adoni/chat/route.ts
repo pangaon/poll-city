@@ -201,34 +201,34 @@ export async function POST(req: NextRequest) {
           select: { id: true, name: true, electionDate: true, electionType: true, jurisdiction: true },
         })
       : Promise.resolve(null),
-    cid ? prisma.contact.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid ? prisma.contact.count({ where: { campaignId: cid, deletedAt: null } }) : Promise.resolve(0),
     // Only fetch supporter/undecided counts for users with analytics permission
     cid && hasAnalytics
       ? prisma.contact.count({
-          where: { campaignId: cid, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } },
+          where: { campaignId: cid, deletedAt: null, supportLevel: { in: ["strong_support", "leaning_support"] as never[] } },
         })
       : Promise.resolve(0),
     cid && hasAnalytics
       ? prisma.contact.count({
-          where: { campaignId: cid, supportLevel: "undecided" as never },
+          where: { campaignId: cid, deletedAt: null, supportLevel: "undecided" as never },
         })
       : Promise.resolve(0),
     cid && hasAnalytics
       ? prisma.contact.count({
-          where: { campaignId: cid, supportLevel: "unknown" as never },
+          where: { campaignId: cid, deletedAt: null, supportLevel: "unknown" as never },
         })
       : Promise.resolve(0),
     cid ? prisma.volunteerProfile.count({ where: { campaignId: cid } }) : Promise.resolve(0),
     cid
-      ? prisma.interaction.count({ where: { contact: { campaignId: cid }, type: "door_knock" as never } })
+      ? prisma.interaction.count({ where: { contact: { campaignId: cid, deletedAt: null }, type: "door_knock" as never } })
       : Promise.resolve(0),
     cid
-      ? prisma.sign.count({ where: { campaignId: cid } })
+      ? prisma.sign.count({ where: { campaignId: cid, deletedAt: null } })
       : Promise.resolve(0),
     // Only fetch donation data for users with finance permission
-    cid && hasFinance ? prisma.donation.count({ where: { campaignId: cid } }) : Promise.resolve(0),
+    cid && hasFinance ? prisma.donation.count({ where: { campaignId: cid, deletedAt: null } }) : Promise.resolve(0),
     cid && hasFinance
-      ? prisma.donation.aggregate({ where: { campaignId: cid }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0))
+      ? prisma.donation.aggregate({ where: { campaignId: cid, deletedAt: null }, _sum: { amount: true } }).then((r) => Number(r._sum.amount ?? 0))
       : Promise.resolve(0),
   ]);
 

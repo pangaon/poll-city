@@ -31,17 +31,17 @@ export async function GET(req: NextRequest) {
     contactsThisWeek,
     contactsThisMonth,
   ] = await Promise.all([
-    prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.groupBy({ by: ["supportLevel"], where: { campaignId }, _count: true }),
-    prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: today } } }),
-    prisma.interaction.count({ where: { contact: { campaignId }, createdAt: { gte: weekAgo } } }),
-    prisma.interaction.count({ where: { contact: { campaignId } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null } }),
+    prisma.contact.groupBy({ by: ["supportLevel"], where: { campaignId, deletedAt: null }, _count: true }),
+    prisma.interaction.count({ where: { contact: { campaignId, deletedAt: null }, createdAt: { gte: today } } }),
+    prisma.interaction.count({ where: { contact: { campaignId, deletedAt: null }, createdAt: { gte: weekAgo } } }),
+    prisma.interaction.count({ where: { contact: { campaignId, deletedAt: null } } }),
     prisma.volunteerProfile.count({ where: { campaignId } }),
-    prisma.sign.count({ where: { campaignId } }),
-    prisma.donation.aggregate({ where: { campaignId }, _sum: { amount: true }, _count: true }),
-    prisma.event.count({ where: { campaignId, eventDate: { gte: today } } }),
-    prisma.contact.count({ where: { campaignId, createdAt: { gte: weekAgo } } }),
-    prisma.contact.count({ where: { campaignId, createdAt: { gte: monthAgo } } }),
+    prisma.sign.count({ where: { campaignId, deletedAt: null } }),
+    prisma.donation.aggregate({ where: { campaignId, deletedAt: null }, _sum: { amount: true }, _count: true }),
+    prisma.event.count({ where: { campaignId, deletedAt: null, eventDate: { gte: today } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, createdAt: { gte: weekAgo } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, createdAt: { gte: monthAgo } } }),
   ]);
 
   const support: Record<string, number> = {};

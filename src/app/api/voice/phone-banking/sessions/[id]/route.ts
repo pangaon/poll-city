@@ -41,6 +41,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const contact = await prisma.contact.findFirst({
     where: {
       campaignId: pbSession.campaignId,
+      deletedAt: null,
+      doNotContact: false,
       phone: { not: null },
       id: { notIn: calledIdArray },
     },

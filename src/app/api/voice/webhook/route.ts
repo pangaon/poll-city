@@ -8,8 +8,11 @@ import { InteractionType, SupportLevel } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.VOICE_WEBHOOK_SECRET ?? process.env.CRON_SECRET;
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "Voice webhook not configured" }, { status: 503 });
+  }
   const auth = req.headers.get("authorization");
-  if (webhookSecret && auth !== `Bearer ${webhookSecret}`) {
+  if (auth !== `Bearer ${webhookSecret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
