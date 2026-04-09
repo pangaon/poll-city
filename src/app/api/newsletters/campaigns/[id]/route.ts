@@ -7,7 +7,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuthWithPermission } from "@/lib/auth/helpers";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await apiAuthWithPermission(req, "email:read");
+  const { session, error } = await apiAuthWithPermission(req, "email:read");
   if (error) return error;
 
   const newsletter = await prisma.newsletterCampaign.findUnique({
@@ -15,6 +15,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     include: { createdBy: { select: { name: true } } },
   });
   if (!newsletter) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Campaign newsletters require membership
+  if (newsletter.campaignId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session.user.id, campaignId: newsletter.campaignId } },
+    });
+    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   return NextResponse.json({ newsletter });
 }
@@ -26,6 +34,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const newsletter = await prisma.newsletterCampaign.findUnique({ where: { id: params.id } });
   if (!newsletter) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (newsletter.campaignId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session.user.id, campaignId: newsletter.campaignId } },
+    });
+    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await req.json();
 
   // If sending, do the actual send
@@ -36,6 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         ...(newsletter.campaignId ? { campaignId: newsletter.campaignId } : {}),
         ...(newsletter.officialId ? { officialId: newsletter.officialId } : {}),
         status: "active",
+        unsubscribedAt: null,
       },
       select: { email: true, firstName: true },
     });
@@ -91,12 +107,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { error } = await apiAuthWithPermission(req, "email:write");
+  const { session, error } = await apiAuthWithPermission(req, "email:write");
   if (error) return error;
 
   const newsletter = await prisma.newsletterCampaign.findUnique({ where: { id: params.id } });
   if (!newsletter) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (newsletter.status === "sent") return NextResponse.json({ error: "Cannot delete sent newsletters" }, { status: 400 });
+
+  if (newsletter.campaignId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session.user.id, campaignId: newsletter.campaignId } },
+    });
+    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   await prisma.newsletterCampaign.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
