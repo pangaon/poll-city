@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const task = await prisma.task.findUnique({ where: { id: params.id }, select: { id: true, campaignId: true } });
+  const task = await prisma.task.findUnique({ where: { id: params.id }, select: { id: true, campaignId: true, contactId: true } });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { forbidden } = await guardCampaignRoute(session!.user.id, task.campaignId, "tasks:write");
@@ -32,6 +32,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       contact: { select: { id: true, firstName: true, lastName: true } },
     },
   });
+
+  if (parsed.data.status === "completed" && task.contactId) {
+    await prisma.contact.update({
+      where: { id: task.contactId },
+      data: { lastContactedAt: new Date() },
+    }).catch(() => {});
+  }
 
   await audit(prisma, 'task.update', {
     campaignId: task.campaignId,

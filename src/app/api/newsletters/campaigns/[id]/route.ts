@@ -60,6 +60,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     let sentCount = 0;
     let bounceCount = 0;
 
+    const sentEmails: string[] = [];
+
     if (resendKey && subscribers.length > 0) {
       try {
         const { Resend } = await import("resend");
@@ -77,6 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
                 html: newsletter.body,
               });
               sentCount++;
+              sentEmails.push(sub.email);
             } catch {
               bounceCount++;
             }
@@ -85,6 +88,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       } catch (e) {
         console.error("[Newsletter Send]", e);
       }
+    }
+
+    if (sentEmails.length > 0 && newsletter.campaignId) {
+      await prisma.contact.updateMany({
+        where: {
+          campaignId: newsletter.campaignId,
+          email: { in: sentEmails },
+          deletedAt: null,
+        },
+        data: { lastContactedAt: new Date() },
+      }).catch(() => {});
     }
 
     await prisma.newsletterCampaign.update({

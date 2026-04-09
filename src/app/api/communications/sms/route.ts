@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
   let sent = 0;
   let failed = 0;
   const hasTwilio = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && (process.env.TWILIO_PHONE_NUMBER ?? process.env.TWILIO_FROM));
+  const sentContactIds: string[] = [];
 
   for (const r of recipients) {
     if (!r.phone) continue;
@@ -119,8 +120,15 @@ export async function POST(req: NextRequest) {
     const finalMsg = `${personalized}${caslSuffix}`.slice(0, 320); // 2 segments max
 
     const ok = await sendSms(r.phone, finalMsg);
-    if (ok) sent += 1;
+    if (ok) { sent += 1; sentContactIds.push(r.id); }
     else failed += 1;
+  }
+
+  if (sentContactIds.length > 0) {
+    await prisma.contact.updateMany({
+      where: { id: { in: sentContactIds } },
+      data: { lastContactedAt: new Date() },
+    }).catch(() => {});
   }
 
   await prisma.notificationLog.create({
