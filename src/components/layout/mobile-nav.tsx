@@ -143,7 +143,7 @@ export default function MobileNav() {
       {/* Bottom tab bar */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
         aria-label="Mobile navigation"
       >
         <div className="flex items-stretch justify-around h-[60px]">
@@ -214,7 +214,7 @@ export default function MobileNav() {
       </nav>
 
       {/* Spacer so content isn't hidden behind fixed nav */}
-      <div className="md:hidden" style={{ height: "calc(60px + env(safe-area-inset-bottom))" }} aria-hidden />
+      <div className="md:hidden" style={{ height: "calc(60px + max(12px, env(safe-area-inset-bottom)))" }} aria-hidden />
 
       {/* More drawer */}
       <AnimatePresence>

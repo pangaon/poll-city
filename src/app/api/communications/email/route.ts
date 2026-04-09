@@ -52,7 +52,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  const brand = await loadBrandKit(campaignId);
+  const [brand, campaign] = await Promise.all([
+    loadBrandKit(campaignId),
+    prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { fromEmailName: true, replyToEmail: true },
+    }),
+  ]);
   const where = {
     campaignId,
     deletedAt: null,
@@ -107,7 +113,13 @@ export async function POST(req: NextRequest) {
       continue;
     }
     try {
-      await sendEmail({ to: r.email, subject, html });
+      await sendEmail({
+        to: r.email,
+        subject,
+        html,
+        ...(campaign?.fromEmailName ? { fromName: campaign.fromEmailName } : {}),
+        ...(campaign?.replyToEmail ? { replyTo: campaign.replyToEmail } : {}),
+      });
       sent += 1;
     } catch (e) {
       console.error(`[comms/email] failed for ${r.email}:`, e);

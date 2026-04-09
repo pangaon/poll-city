@@ -10,8 +10,17 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuthWithPermission(req, "analytics:read");
   if (error) return error;
 
-  const campaignId = session.user.activeCampaignId as string;
-  if (!campaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
+  const rawCampaignId = session.user.activeCampaignId as string | undefined;
+  if (!rawCampaignId) return NextResponse.json({ error: "No active campaign" }, { status: 403 });
+
+  // Verify current membership — session token may be stale after removal
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session.user.id, campaignId: rawCampaignId } },
+    select: { campaignId: true },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden — not a member of this campaign" }, { status: 403 });
+
+  const campaignId = rawCampaignId;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -6,6 +6,7 @@ import { createInteractionSchema } from "@/lib/validators";
 import { sanitizeUserText } from "@/lib/security/monitor";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
 import { FunnelStage } from "@prisma/client";
+import { scoreContact } from "@/lib/campaign/confidence-score";
 
 /**
  * GET /api/interactions
@@ -104,12 +105,27 @@ export async function POST(req: NextRequest) {
       duration: data.duration,
       latitude: data.latitude,
       longitude: data.longitude,
+      source: data.source ?? "canvass",
+      isProxy: data.isProxy ?? false,
+      opponentSign: data.opponentSign ?? false,
     },
     include: { user: { select: { id: true, name: true } } },
   });
 
+  // Recompute confidence score from last 3 real interactions (non-simulation)
+  const recentInteractions = await prisma.interaction.findMany({
+    where: { contactId: data.contactId, source: { not: "simulation" } },
+    select: { source: true, isProxy: true, opponentSign: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+  const newConfidenceScore = scoreContact(recentInteractions);
+
   // Update contact fields based on interaction
-  const contactUpdate: Record<string, unknown> = { lastContactedAt: new Date() };
+  const contactUpdate: Record<string, unknown> = {
+    lastContactedAt: new Date(),
+    confidenceScore: newConfidenceScore,
+  };
   if (data.supportLevel) contactUpdate.supportLevel = data.supportLevel;
   if (data.issues?.length) contactUpdate.issues = data.issues;
   if (data.signRequested) contactUpdate.signRequested = true;

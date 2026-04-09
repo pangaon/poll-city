@@ -142,6 +142,40 @@ function storageKey(campaignId: string): string {
   return `adoni:chat:${campaignId}`;
 }
 
+function tipSeenKey(campaignId: string): string {
+  return `adoni:tip-seen:${campaignId}`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Proactive cycling tips                                             */
+/* ------------------------------------------------------------------ */
+
+type TipType = "fact" | "humour" | "tip" | "observation";
+
+interface ProactiveTip {
+  type: TipType;
+  content: string;
+  /** If true, auto-sends to Adoni instead of injecting as a static message */
+  live?: boolean;
+}
+
+const PROACTIVE_TIPS: ProactiveTip[] = [
+  { type: "fact", content: "Door-to-door canvassing increases voter turnout by 10 to 15 percentage points on average. Every conversation at a door is a direct vote conversion play." },
+  { type: "humour", content: "Every undecided voter is just a supporter you haven't met yet. Or haven't. But statistically, mostly yes." },
+  { type: "tip", content: "Best canvassing hours are 5 to 8 pm on weekdays. Voters are home from work, dinner is not yet a priority, and the door opens roughly 40% more often than at noon." },
+  { type: "fact", content: "Campaigns that log every interaction — even doors where no one answered — win more often. The data compounds." },
+  { type: "humour", content: "Campaign managers have the second-highest coffee consumption per capita of any profession. The first is unknown because those people haven't slept in years." },
+  { type: "tip", content: "When a voter says they're undecided, ask which issue matters most to them. The answer usually tells you which way they're leaning." },
+  { type: "fact", content: "Supporters who display a lawn sign are statistically 20% more likely to actually vote. Signs are not vanity — they are a commitment device." },
+  { type: "humour", content: "The best canvassing weather is slightly overcast with a chance of enthusiasm. Unfortunately the forecast is unreliable." },
+  { type: "tip", content: "Follow-ups convert. A voter contacted twice is 30% more likely to support you than one contacted once. Do not leave them on read." },
+  { type: "observation", content: "I have been keeping an eye on things. Want a quick read on how the campaign is tracking right now?", live: true },
+  { type: "fact", content: "Phone calls are the second most effective outreach method — but only if the caller is a known local number, not a 1-800 line." },
+  { type: "tip", content: "Volunteer retention is an electoral advantage. A volunteer who returns for a second shift is three times more likely to stick through election day." },
+  { type: "humour", content: "The unofficial motto of every campaign manager who has ever lived: move fast, thank people loudly, and never let them see you stressed." },
+  { type: "observation", content: "Activity numbers caught my eye. Something worth a look — want me to break it down?", live: true },
+];
+
 function loadHistory(campaignId: string): ChatMessage[] {
   try {
     const raw = localStorage.getItem(storageKey(campaignId));
@@ -634,6 +668,9 @@ export default function AdoniChat() {
   const [isMobile, setIsMobile] = useState(false);
   const [campaignId] = useState("default");
   const [panelBlocking, setPanelBlocking] = useState(false);
+  const [pendingTip, setPendingTip] = useState<ProactiveTip | null>(null);
+  const [tipPreviewVisible, setTipPreviewVisible] = useState(false);
+  const tipIndexRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo(() => contextualSuggestions(pathname), [pathname]);
@@ -703,6 +740,48 @@ export default function AdoniChat() {
       scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
     }
   }, [messages, streaming]);
+
+  /* Cycling tips — surface a new proactive tip every 90 seconds when panel is closed */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (mode !== "bubble") return;
+      const tip = PROACTIVE_TIPS[tipIndexRef.current % PROACTIVE_TIPS.length];
+      tipIndexRef.current += 1;
+      setPendingTip(tip);
+      setHasSuggestion(true);
+      setTipPreviewVisible(true);
+      // Auto-hide preview after 8 seconds
+      setTimeout(() => setTipPreviewVisible(false), 8000);
+    }, 90_000);
+    return () => clearInterval(interval);
+  }, [mode]);
+
+  /* When panel opens and chat is empty, inject pending tip as first message */
+  useEffect(() => {
+    if (mode !== "panel" && mode !== "fullscreen") return;
+    if (!pendingTip) return;
+
+    if (pendingTip.live) {
+      // For live observations, pre-fill the prompt so user taps Send to get real data.
+      // Only set if the user hasn't already typed something — don't overwrite in-progress text.
+      setPrompt((prev) => (prev.trim() ? prev : pendingTip!.content));
+    } else {
+      // For static tips, inject directly as Adoni's voice
+      setMessages((prev) => {
+        if (prev.length > 0) return prev; // don't inject if conversation already exists
+        const msg: ChatMessage = {
+          id: nextId(),
+          role: "assistant",
+          content: pendingTip.content,
+        };
+        return [msg];
+      });
+    }
+
+    setPendingTip(null);
+    setTipPreviewVisible(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   /* Send */
   const send = useCallback(
@@ -793,6 +872,45 @@ export default function AdoniChat() {
 
   return (
     <>
+      {/* Tip preview speech bubble */}
+      <AnimatePresence>
+        {mode === "bubble" && tipPreviewVisible && pendingTip && !panelBlocking && (
+          <motion.div
+            key="tip-preview"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed z-[9998] max-w-[260px] rounded-2xl px-3.5 py-3 text-sm leading-snug text-white shadow-xl cursor-pointer"
+            style={{
+              bottom: isMobile
+                ? "calc(60px + max(12px, env(safe-area-inset-bottom)) + 84px)"
+                : 154,
+              right: 20,
+              backgroundColor: NAVY,
+            }}
+            onClick={() => setMode("panel")}
+            aria-label="Adoni tip"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: GREEN }}>
+              {pendingTip.type === "fact" ? "Campaign Fact" : pendingTip.type === "humour" ? "From the campaign trail" : pendingTip.type === "observation" ? "I noticed something" : "Quick tip"}
+            </p>
+            {pendingTip.content.length > 90
+              ? pendingTip.content.slice(0, 87) + "..."
+              : pendingTip.content}
+            {/* Speech bubble tail */}
+            <span
+              className="absolute -bottom-2 right-7 h-0 w-0"
+              style={{
+                borderLeft: "8px solid transparent",
+                borderRight: "8px solid transparent",
+                borderTop: `8px solid ${NAVY}`,
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bubble */}
       <AnimatePresence>
         {mode === "bubble" && (
@@ -806,7 +924,7 @@ export default function AdoniChat() {
             transition={bubbleSpring}
             className="fixed z-[9999] overflow-hidden rounded-full shadow-xl hover:shadow-2xl focus:outline-none"
             style={{
-              bottom: 80,
+              bottom: isMobile ? "calc(60px + max(12px, env(safe-area-inset-bottom)) + 12px)" : 80,
               right: 20,
               width: 60,
               height: 60,
@@ -839,21 +957,47 @@ export default function AdoniChat() {
 
       {/* Panel mode */}
       <AnimatePresence>
+        {mode === "panel" && isMobile && (
+          <motion.div
+            key="backdrop"
+            className="fixed inset-0 z-[9998] bg-slate-950/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={handleClose}
+          />
+        )}
         {mode === "panel" && (
           <motion.div
             key="panel"
-            initial={{ x: 420, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 420, opacity: 0 }}
+            initial={isMobile ? { y: "100%" } : { x: 420, opacity: 0 }}
+            animate={isMobile ? { y: 0 } : { x: 0, opacity: 1 }}
+            exit={isMobile ? { y: "100%" } : { x: 420, opacity: 0 }}
             transition={panelSpring}
-            className="fixed right-5 z-[9999] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-            style={{
-              bottom: 80,
-              width: 400,
-              maxWidth: "calc(100vw - 1rem)",
-              height: "min(85vh, 760px)",
-            }}
+            className={`fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl ${
+              isMobile
+                ? "left-0 right-0 rounded-t-2xl border-t border-slate-200"
+                : "right-5 rounded-2xl border border-slate-200"
+            }`}
+            style={
+              isMobile
+                ? { bottom: "calc(60px + max(12px, env(safe-area-inset-bottom)))", height: "60vh" }
+                : { bottom: 80, width: 400, maxWidth: "calc(100vw - 1rem)", height: "min(85vh, 760px)" }
+            }
           >
+            {/* Drag handle — tap or swipe down to close on mobile */}
+            {isMobile && (
+              <button
+                type="button"
+                onClick={handleClose}
+                aria-label="Close Adoni"
+                className="flex justify-center items-center pt-2 pb-1 w-full"
+                style={{ minHeight: 28 }}
+              >
+                <span className="block h-1 w-10 rounded-full bg-slate-300" />
+              </button>
+            )}
             <PanelHeader
               mode={mode}
               isMobile={isMobile}

@@ -74,6 +74,14 @@
     {
       "path": "/api/autonomous/ingest",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/simulation",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/team-activity",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

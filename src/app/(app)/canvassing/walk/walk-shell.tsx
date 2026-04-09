@@ -60,6 +60,7 @@ interface Person {
   firstName: string;
   lastName: string;
   phone: string | null;
+  unitApt: string | null;
   supportLevel: SupportLevel;
   gotvStatus: string;
   followUpNeeded: boolean;
@@ -339,7 +340,7 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
           ),
         );
       }
-    }
+    }
     // Action is applied immediately without countdown.
     // Persist
     for (const p of hh.people) {
@@ -417,6 +418,17 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
         await queueViaServiceWorker({ url: `/api/contacts/${p.id}`, method: "PATCH", body: customBody, label: `${label}: ${p.firstName}` });
       }
     }
+    // Sign requested at household level → create a Sign record for the address so
+    // it appears in the sign crew queue. One record per address, default type.
+    // Person-level type selection (in PersonRow) handles apartments + specific sizes.
+    if (fieldKey === "__sign_requested" && value === true) {
+      fetch("/api/signs/quick-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, address: hh.address, signType: "standard" }),
+      }).catch(() => {}); // fire-and-forget — sign contact flag already captured above
+    }
+
     toast.success(`${label} recorded`);
   }
 
@@ -586,6 +598,7 @@ export default function WalkShell({ campaignId }: { campaignId: string }) {
                 onMoreOption={(fieldKey, value) => handleMoreOption(hh, fieldKey, value)}
                 onPersonUpdate={load}
                 campaignFields={campaignFields}
+                campaignId={campaignId}
               />
             </motion.div>
           ))
@@ -607,6 +620,7 @@ function HouseholdRow({
   onMoreOption,
   onPersonUpdate,
   campaignFields,
+  campaignId,
 }: {
   household: Household;
   isExpanded: boolean;
@@ -615,6 +629,7 @@ function HouseholdRow({
   onMoreOption: (fieldKey: string, value?: unknown) => void;
   onPersonUpdate: () => void;
   campaignFields: CampaignFieldDef[];
+  campaignId: string;
 }) {
   const [showScript, setShowScript] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -920,7 +935,7 @@ function HouseholdRow({
       {isExpanded && (
         <div className="border-t border-gray-100 divide-y divide-gray-50">
           {hh.people.map((person) => (
-            <PersonRow key={person.id} person={person} onUpdate={onPersonUpdate} campaignFields={campaignFields} />
+            <PersonRow key={person.id} person={person} onUpdate={onPersonUpdate} campaignFields={campaignFields} address={hh.address} campaignId={campaignId} />
           ))}
         </div>
       )}
@@ -932,12 +947,35 @@ function HouseholdRow({
    Person Row
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-function PersonRow({ person: p, onUpdate, campaignFields }: { person: Person; onUpdate: () => void; campaignFields: CampaignFieldDef[] }) {
+function PersonRow({ person: p, onUpdate, campaignFields, address, campaignId }: { person: Person; onUpdate: () => void; campaignFields: CampaignFieldDef[]; address: string; campaignId: string }) {
   const [support, setSupport] = useState(p.supportLevel);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [justLogged, setJustLogged] = useState(false);
+  const [signType, setSignType] = useState<string | null>(p.signRequested ? "standard" : null);
+
+  async function handleSignType(type: string | null) {
+    const prev = signType;
+    setSignType(type);
+    try {
+      if (!type) {
+        await fetch(`/api/contacts/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signRequested: false }) });
+        return;
+      }
+      const res = await fetch("/api/signs/quick-capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, contactId: p.id, address, signType: type }),
+      });
+      if (!res.ok) throw new Error();
+      const label = type === "large" ? "Large" : type === "window" ? "Window" : "Small";
+      toast.success(`${label} sign requested`);
+    } catch {
+      setSignType(prev);
+      toast.error("Could not save sign request");
+    }
+  }
 
   if (p.isDeceased)
     return (
@@ -999,10 +1037,13 @@ function PersonRow({ person: p, onUpdate, campaignFields }: { person: Person; on
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-semibold text-gray-900">
                 {p.firstName} {p.lastName}
               </p>
+              {p.unitApt && (
+                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">Unit {p.unitApt}</span>
+              )}
               {justLogged && <span className="text-xs text-emerald-600 font-medium">Done</span>}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -1070,6 +1111,25 @@ function PersonRow({ person: p, onUpdate, campaignFields }: { person: Person; on
                 rows={2}
                 className="w-full text-xs border border-gray-200 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-gray-50"
               />
+              {/* Sign type selector */}
+              {campaignFields.some((f) => f.key === "__sign_requested") && (
+                <div className="flex gap-1.5">
+                  {([["standard", "S Sign"], ["large", "L Sign"], ["window", "Window"]] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => handleSignType(signType === key ? null : key)}
+                      className={cn(
+                        "flex-1 text-xs py-2 rounded-full font-medium transition-all active:scale-95 min-h-[44px]",
+                        signType === key
+                          ? "bg-orange-100 text-orange-700 ring-2 ring-offset-1 ring-orange-300"
+                          : "bg-gray-100 text-gray-600"
+                      )}
+                    >
+                      {signType === key ? "✓ " : ""}{label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-1.5">
                 <button onClick={() => log("door_knock")} disabled={saving} className="py-3 bg-blue-600 text-white rounded-xl font-bold text-xs active:scale-95 disabled:opacity-50 min-h-[44px]">
                   Door Knock

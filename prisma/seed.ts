@@ -222,30 +222,343 @@ async function main() {
   });
   console.log("✅ Signs, canvassing, tasks");
 
-  // ── Polls ──────────────────────────────────────────────────────────────────
-  const poll1 = await prisma.poll.create({
-    data: { question: "What is the most important issue in Ward 12 right now?", type: PollType.multiple_choice, visibility: PollVisibility.public, targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4B", "M4E"], campaignId: campaign.id, tags: ["ward12", "municipal", "issues"], isFeatured: true, options: { create: [{ text: "Affordable Housing", order: 1 }, { text: "Public Transit", order: 2 }, { text: "Climate & Environment", order: 3 }, { text: "Public Safety", order: 4 }, { text: "Support for Seniors", order: 5 }] } },
+  // ── Polls — 5 per type: binary, multiple_choice, ranked, slider ───────────
+
+  // ── BINARY (5) ──────────────────────────────────────────────────────────────
+  const binaryPoll1 = await prisma.poll.create({ data: {
+    question: "Do you support mandatory inclusionary zoning requiring 10% affordable units in new residential developments?",
+    description: "Inclusionary zoning would require developers to set aside a portion of new units at below-market rents.",
+    type: PollType.binary, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4B", "M4E"],
+    campaignId: campaign.id, tags: ["housing", "zoning", "affordability"], isFeatured: true,
+  }});
+  const binaryPoll2 = await prisma.poll.create({ data: {
+    question: "Should the City of Toronto eliminate minimum parking requirements for new buildings within 500m of rapid transit?",
+    description: "Removing parking minimums near transit could reduce construction costs and speed up new housing.",
+    type: PollType.binary, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+    officialId: officialMP.id, tags: ["transit", "parking", "housing"],
+  }});
+  const binaryPoll3 = await prisma.poll.create({ data: {
+    question: "Do you support 24-hour TTC subway service on Friday and Saturday nights?",
+    description: "Night Network currently operates buses only. Subway extension would cost approximately $10M/year.",
+    type: PollType.binary, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M5A"],
+    tags: ["transit", "ttc", "nightlife"], isFeatured: true,
+  }});
+  const binaryPoll4 = await prisma.poll.create({ data: {
+    question: "Should Toronto implement a road congestion pricing program for downtown vehicle access during peak hours?",
+    description: "Similar to London's scheme, a downtown cordon charge could reduce congestion and fund transit improvements.",
+    type: PollType.binary, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M5A", "M5B", "M5C", "M4Y"],
+    tags: ["congestion", "transit", "environment"],
+  }});
+  const binaryPoll5 = await prisma.poll.create({ data: {
+    question: "Do you support converting vacant office buildings in the downtown core into mixed-income residential housing?",
+    description: "Office vacancy rates downtown have reached record highs post-pandemic. Conversion could add thousands of new homes.",
+    type: PollType.binary, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M5H", "M5J", "M5K"],
+    campaignId: campaign.id, tags: ["housing", "downtown", "office-conversion"],
+  }});
+
+  // ── MULTIPLE CHOICE (5) ──────────────────────────────────────────────────────
+  const mcPoll1 = await prisma.poll.create({
+    data: {
+      question: "What is the most important issue in Ward 12 right now?",
+      description: "Tell us what matters most to you. Your answer helps us prioritize.",
+      type: PollType.multiple_choice, visibility: PollVisibility.public,
+      targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4B", "M4E"],
+      campaignId: campaign.id, tags: ["ward12", "municipal", "priorities"], isFeatured: true,
+      options: { create: [
+        { text: "Affordable Housing", order: 1 },
+        { text: "Public Transit Reliability", order: 2 },
+        { text: "Climate & Green Infrastructure", order: 3 },
+        { text: "Public Safety & Policing", order: 4 },
+        { text: "Support for Seniors & Accessibility", order: 5 },
+      ]},
+    },
     include: { options: true },
   });
-  const poll2 = await prisma.poll.create({ data: { question: "Do you support expanding bike lanes on Danforth Avenue?", type: PollType.binary, visibility: PollVisibility.public, targetRegion: "Toronto—Danforth", targetPostalPrefixes: ["M4C", "M4J", "M4K"], officialId: officialMP.id, tags: ["transit", "cycling"], isFeatured: true } });
-  const poll3 = await prisma.poll.create({ data: { question: "How would you rate the state of affordable housing in Toronto? (0 = terrible, 100 = excellent)", type: PollType.slider, visibility: PollVisibility.public, targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4E"], tags: ["housing", "toronto"] } });
-  await prisma.pollResponse.createMany({
-    data: [
-      { pollId: poll1.id, optionId: poll1.options[0].id, userId: publicUser.id, postalCode: "M4C 3D4", ward: "Ward 12" },
-      { pollId: poll1.id, optionId: poll1.options[1].id, postalCode: "M4J 1A1", ward: "Ward 12" },
-      { pollId: poll1.id, optionId: poll1.options[0].id, postalCode: "M4K 2B3", ward: "Ward 14" },
-      { pollId: poll1.id, optionId: poll1.options[2].id, postalCode: "M4C 4E5", ward: "Ward 12" },
-      { pollId: poll2.id, value: "yes", userId: publicUser.id, postalCode: "M4C 3D4" },
-      { pollId: poll2.id, value: "no", postalCode: "M4J 2A2" },
-      { pollId: poll2.id, value: "yes", postalCode: "M4K 1C1" },
-      { pollId: poll3.id, value: "25", userId: publicUser.id, postalCode: "M4C 3D4" },
-      { pollId: poll3.id, value: "15", postalCode: "M4J 1B2" },
-    ],
+  const mcPoll2 = await prisma.poll.create({
+    data: {
+      question: "How do you most often get to work, school, or errands in Toronto?",
+      description: "We're gathering data to help advocate for better transportation investment where it's needed most.",
+      type: PollType.multiple_choice, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4E"],
+      tags: ["transit", "transportation", "commute"],
+      options: { create: [
+        { text: "TTC (subway, bus, streetcar)", order: 1 },
+        { text: "Personal vehicle", order: 2 },
+        { text: "Cycling", order: 3 },
+        { text: "Walking", order: 4 },
+        { text: "I work from home / don't commute", order: 5 },
+      ]},
+    },
+    include: { options: true },
   });
-  await prisma.poll.update({ where: { id: poll1.id }, data: { totalResponses: 4 } });
-  await prisma.poll.update({ where: { id: poll2.id }, data: { totalResponses: 3 } });
-  await prisma.poll.update({ where: { id: poll3.id }, data: { totalResponses: 2 } });
-  console.log("✅ Polls + responses (3 polls)");
+  const mcPoll3 = await prisma.poll.create({
+    data: {
+      question: "Which approach to housing affordability do you most support?",
+      description: "There are many proposed solutions to Toronto's housing crisis. Which do you believe would be most effective?",
+      type: PollType.multiple_choice, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4B"],
+      campaignId: campaign.id, tags: ["housing", "affordability", "policy"],
+      options: { create: [
+        { text: "Build more city-owned social housing", order: 1 },
+        { text: "Expand and strengthen rent control", order: 2 },
+        { text: "Remove zoning barriers to increase supply", order: 3 },
+        { text: "Fund non-profit and co-operative housing", order: 4 },
+        { text: "Tax vacant properties and speculation", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const mcPoll4 = await prisma.poll.create({
+    data: {
+      question: "Where should the City of Toronto increase its investment over the next 4 years?",
+      description: "The city budget is under pressure. Where do you want to see additional spending?",
+      type: PollType.multiple_choice, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+      officialId: officialCouncil.id, tags: ["budget", "municipal", "services"],
+      options: { create: [
+        { text: "Homeless shelters and supportive housing", order: 1 },
+        { text: "TTC service and maintenance", order: 2 },
+        { text: "Parks, trees, and green space", order: 3 },
+        { text: "Mental health and addiction services", order: 4 },
+        { text: "Road and sidewalk repair", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const mcPoll5 = await prisma.poll.create({
+    data: {
+      question: "What type of housing would you most like to see built in your neighbourhood?",
+      description: "As Toronto grows, different types of housing are being debated. What would you welcome near you?",
+      type: PollType.multiple_choice, visibility: PollVisibility.public,
+      targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+      campaignId: campaign.id, tags: ["housing", "neighbourhood", "density"],
+      options: { create: [
+        { text: "Mid-rise rental apartments (6–12 storeys)", order: 1 },
+        { text: "Affordable / co-operative housing", order: 2 },
+        { text: "Townhomes and rowhouses", order: 3 },
+        { text: "Laneway and garden suites", order: 4 },
+        { text: "High-rise condos near transit hubs", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+
+  // ── RANKED (5) ──────────────────────────────────────────────────────────────
+  const rankPoll1 = await prisma.poll.create({
+    data: {
+      question: "Rank the following city budget priorities from most to least important to you.",
+      description: "Drag to reorder from most important (1) to least important.",
+      type: PollType.ranked, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+      campaignId: campaign.id, tags: ["budget", "priorities"],
+      options: { create: [
+        { text: "Affordable Housing Investment", order: 1 },
+        { text: "TTC Maintenance and Expansion", order: 2 },
+        { text: "Shelter and Homelessness Services", order: 3 },
+        { text: "Climate Resilience and Green Infrastructure", order: 4 },
+        { text: "Community Centres and Libraries", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const rankPoll2 = await prisma.poll.create({
+    data: {
+      question: "Rank these transit improvements in order of priority for Toronto.",
+      description: "Tell us which transit improvements you want the city to prioritize.",
+      type: PollType.ranked, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M5A"],
+      tags: ["transit", "investment", "ttc"],
+      options: { create: [
+        { text: "Subway network expansion", order: 1 },
+        { text: "Bus rapid transit on Eglinton/Finch", order: 2 },
+        { text: "Real-time transit information and apps", order: 3 },
+        { text: "Protected cycling lanes connecting to transit", order: 4 },
+        { text: "Fare reduction for low-income riders", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const rankPoll3 = await prisma.poll.create({
+    data: {
+      question: "Rank these city services based on how well they currently perform in your neighbourhood.",
+      description: "1 = best performing, 5 = worst performing.",
+      type: PollType.ranked, visibility: PollVisibility.public,
+      targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+      campaignId: campaign.id, tags: ["services", "performance", "ward12"],
+      options: { create: [
+        { text: "Garbage and recycling collection", order: 1 },
+        { text: "Parks and recreation maintenance", order: 2 },
+        { text: "Road and pothole repair", order: 3 },
+        { text: "Winter snow clearing", order: 4 },
+        { text: "Tree canopy and street trees", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const rankPoll4 = await prisma.poll.create({
+    data: {
+      question: "Rank these climate actions you want your councillor to champion at City Hall.",
+      description: "What should the city prioritize to fight climate change?",
+      type: PollType.ranked, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4E"],
+      tags: ["climate", "environment", "action"],
+      options: { create: [
+        { text: "Deep retrofit program for older buildings", order: 1 },
+        { text: "Expanded urban tree canopy planting", order: 2 },
+        { text: "Flood resilience and stormwater infrastructure", order: 3 },
+        { text: "Electric city vehicle fleet and charging", order: 4 },
+        { text: "Community solar and rooftop energy programs", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+  const rankPoll5 = await prisma.poll.create({
+    data: {
+      question: "Rank these changes to make local democracy more accessible.",
+      description: "How should the city make it easier for residents to participate?",
+      type: PollType.ranked, visibility: PollVisibility.public,
+      targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+      officialId: officialCouncil.id, tags: ["democracy", "participation", "reform"],
+      options: { create: [
+        { text: "Online voting for municipal elections", order: 1 },
+        { text: "More evening and weekend community meetings", order: 2 },
+        { text: "Stronger conflict-of-interest rules for councillors", order: 3 },
+        { text: "Participatory budgeting for ward projects", order: 4 },
+        { text: "Improved 311 responsiveness and follow-up", order: 5 },
+      ]},
+    },
+    include: { options: true },
+  });
+
+  // ── SLIDER (5) ──────────────────────────────────────────────────────────────
+  const sliderPoll1 = await prisma.poll.create({ data: {
+    question: "How satisfied are you with your local city councillor's performance? (0 = very unsatisfied, 100 = very satisfied)",
+    type: PollType.slider, visibility: PollVisibility.public,
+    targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+    officialId: officialCouncil.id, tags: ["councillor", "performance", "satisfaction"],
+  }});
+  const sliderPoll2 = await prisma.poll.create({ data: {
+    question: "How would you rate the reliability of public transit in your area? (0 = terrible, 100 = excellent)",
+    description: "Rate based on your actual daily experience.",
+    type: PollType.slider, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4E"],
+    tags: ["transit", "ttc", "reliability"], isFeatured: true,
+  }});
+  const sliderPoll3 = await prisma.poll.create({ data: {
+    question: "How would you rate the state of affordable housing in Toronto today? (0 = catastrophically bad, 100 = very good)",
+    description: "Consider the availability, accessibility, and quality of housing options.",
+    type: PollType.slider, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J", "M4K", "M4E"],
+    campaignId: campaign.id, tags: ["housing", "affordability", "toronto"],
+  }});
+  const sliderPoll4 = await prisma.poll.create({ data: {
+    question: "How responsive is the City of Toronto to resident concerns and 311 requests? (0 = completely unresponsive, 100 = very responsive)",
+    type: PollType.slider, visibility: PollVisibility.public,
+    targetRegion: "Toronto", targetPostalPrefixes: ["M4C", "M4J"],
+    tags: ["city-services", "311", "responsiveness"],
+  }});
+  const sliderPoll5 = await prisma.poll.create({ data: {
+    question: "How safe do you feel walking in your neighbourhood at night? (0 = very unsafe, 100 = very safe)",
+    description: "Your answer helps identify areas where residents feel the city needs to improve lighting, outreach, or services.",
+    type: PollType.slider, visibility: PollVisibility.public,
+    targetRegion: "Ward 12", targetPostalPrefixes: ["M4C", "M4J", "M4K"],
+    campaignId: campaign.id, tags: ["safety", "neighbourhood", "ward12"],
+  }});
+
+  // ── Poll responses (realistic volume) ──────────────────────────────────────
+  await prisma.pollResponse.createMany({ skipDuplicates: true, data: [
+    // binary polls
+    { pollId: binaryPoll1.id, value: "yes", userId: publicUser.id, postalCode: "M4C 3D4", ward: "Ward 12" },
+    { pollId: binaryPoll1.id, value: "yes", postalCode: "M4J 1A1", ward: "Ward 12" },
+    { pollId: binaryPoll1.id, value: "no", postalCode: "M4K 2B3", ward: "Ward 14" },
+    { pollId: binaryPoll1.id, value: "yes", postalCode: "M4B 1R5", ward: "Ward 12" },
+    { pollId: binaryPoll1.id, value: "yes", postalCode: "M4E 2K4", ward: "Ward 14" },
+    { pollId: binaryPoll2.id, value: "yes", userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: binaryPoll2.id, value: "no", postalCode: "M4J 2A2" },
+    { pollId: binaryPoll2.id, value: "yes", postalCode: "M4K 1C1" },
+    { pollId: binaryPoll3.id, value: "yes", userId: publicUser.id, postalCode: "M4C 5L7" },
+    { pollId: binaryPoll3.id, value: "yes", postalCode: "M4J 3P2" },
+    { pollId: binaryPoll3.id, value: "no", postalCode: "M4K 1R8" },
+    { pollId: binaryPoll3.id, value: "yes", postalCode: "M4E 2M3" },
+    { pollId: binaryPoll4.id, value: "yes", postalCode: "M5A 1B2" },
+    { pollId: binaryPoll4.id, value: "no", postalCode: "M5B 2C3" },
+    { pollId: binaryPoll4.id, value: "no", postalCode: "M4Y 1P4" },
+    { pollId: binaryPoll5.id, value: "yes", userId: publicUser.id, postalCode: "M5H 2N2" },
+    { pollId: binaryPoll5.id, value: "yes", postalCode: "M5J 1A7" },
+    { pollId: binaryPoll5.id, value: "yes", postalCode: "M5K 1B3" },
+    // multiple choice
+    { pollId: mcPoll1.id, optionId: mcPoll1.options[0].id, userId: publicUser.id, postalCode: "M4C 3D4", ward: "Ward 12" },
+    { pollId: mcPoll1.id, optionId: mcPoll1.options[1].id, postalCode: "M4J 1A1", ward: "Ward 12" },
+    { pollId: mcPoll1.id, optionId: mcPoll1.options[0].id, postalCode: "M4K 2B3", ward: "Ward 14" },
+    { pollId: mcPoll1.id, optionId: mcPoll1.options[2].id, postalCode: "M4C 4E5", ward: "Ward 12" },
+    { pollId: mcPoll1.id, optionId: mcPoll1.options[3].id, postalCode: "M4B 2L1", ward: "Ward 12" },
+    { pollId: mcPoll2.id, optionId: mcPoll2.options[0].id, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: mcPoll2.id, optionId: mcPoll2.options[1].id, postalCode: "M4J 2A2" },
+    { pollId: mcPoll2.id, optionId: mcPoll2.options[2].id, postalCode: "M4K 1A4" },
+    { pollId: mcPoll3.id, optionId: mcPoll3.options[2].id, userId: publicUser.id, postalCode: "M4C 5G3" },
+    { pollId: mcPoll3.id, optionId: mcPoll3.options[0].id, postalCode: "M4J 1C7" },
+    { pollId: mcPoll3.id, optionId: mcPoll3.options[3].id, postalCode: "M4K 3S1" },
+    { pollId: mcPoll4.id, optionId: mcPoll4.options[0].id, postalCode: "M4C 2H4" },
+    { pollId: mcPoll4.id, optionId: mcPoll4.options[1].id, postalCode: "M4J 4K2" },
+    { pollId: mcPoll5.id, optionId: mcPoll5.options[0].id, userId: publicUser.id, postalCode: "M4C 1A1", ward: "Ward 12" },
+    { pollId: mcPoll5.id, optionId: mcPoll5.options[1].id, postalCode: "M4J 2B3", ward: "Ward 12" },
+    // ranked — each response is a separate row with rank
+    { pollId: rankPoll1.id, optionId: rankPoll1.options[0].id, rank: 1, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: rankPoll1.id, optionId: rankPoll1.options[2].id, rank: 2, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: rankPoll1.id, optionId: rankPoll1.options[1].id, rank: 3, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: rankPoll2.id, optionId: rankPoll2.options[3].id, rank: 1, postalCode: "M4J 1B4" },
+    { pollId: rankPoll2.id, optionId: rankPoll2.options[0].id, rank: 2, postalCode: "M4J 1B4" },
+    { pollId: rankPoll3.id, optionId: rankPoll3.options[1].id, rank: 1, postalCode: "M4K 2A1" },
+    { pollId: rankPoll3.id, optionId: rankPoll3.options[0].id, rank: 2, postalCode: "M4K 2A1" },
+    { pollId: rankPoll4.id, optionId: rankPoll4.options[1].id, rank: 1, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: rankPoll4.id, optionId: rankPoll4.options[2].id, rank: 2, userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: rankPoll5.id, optionId: rankPoll5.options[0].id, rank: 1, postalCode: "M4J 3K2" },
+    { pollId: rankPoll5.id, optionId: rankPoll5.options[3].id, rank: 2, postalCode: "M4J 3K2" },
+    // slider
+    { pollId: sliderPoll1.id, value: "62", userId: publicUser.id, postalCode: "M4C 3D4", ward: "Ward 12" },
+    { pollId: sliderPoll1.id, value: "45", postalCode: "M4J 1A1", ward: "Ward 12" },
+    { pollId: sliderPoll1.id, value: "78", postalCode: "M4K 2B3", ward: "Ward 14" },
+    { pollId: sliderPoll2.id, value: "38", userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: sliderPoll2.id, value: "42", postalCode: "M4J 2A2" },
+    { pollId: sliderPoll2.id, value: "55", postalCode: "M4K 1B1" },
+    { pollId: sliderPoll3.id, value: "18", userId: publicUser.id, postalCode: "M4C 3D4" },
+    { pollId: sliderPoll3.id, value: "22", postalCode: "M4J 1B2" },
+    { pollId: sliderPoll4.id, value: "41", postalCode: "M4C 1R3" },
+    { pollId: sliderPoll4.id, value: "35", postalCode: "M4J 4P1" },
+    { pollId: sliderPoll5.id, value: "70", userId: publicUser.id, postalCode: "M4C 3D4", ward: "Ward 12" },
+    { pollId: sliderPoll5.id, value: "55", postalCode: "M4J 1A1", ward: "Ward 12" },
+    { pollId: sliderPoll5.id, value: "82", postalCode: "M4K 2C3", ward: "Ward 14" },
+  ]});
+
+  // Update response counts
+  await Promise.all([
+    prisma.poll.update({ where: { id: binaryPoll1.id }, data: { totalResponses: 5 } }),
+    prisma.poll.update({ where: { id: binaryPoll2.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: binaryPoll3.id }, data: { totalResponses: 4 } }),
+    prisma.poll.update({ where: { id: binaryPoll4.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: binaryPoll5.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: mcPoll1.id }, data: { totalResponses: 5 } }),
+    prisma.poll.update({ where: { id: mcPoll2.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: mcPoll3.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: mcPoll4.id }, data: { totalResponses: 2 } }),
+    prisma.poll.update({ where: { id: mcPoll5.id }, data: { totalResponses: 2 } }),
+    prisma.poll.update({ where: { id: rankPoll1.id }, data: { totalResponses: 1 } }),
+    prisma.poll.update({ where: { id: rankPoll2.id }, data: { totalResponses: 1 } }),
+    prisma.poll.update({ where: { id: rankPoll3.id }, data: { totalResponses: 1 } }),
+    prisma.poll.update({ where: { id: rankPoll4.id }, data: { totalResponses: 1 } }),
+    prisma.poll.update({ where: { id: rankPoll5.id }, data: { totalResponses: 1 } }),
+    prisma.poll.update({ where: { id: sliderPoll1.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: sliderPoll2.id }, data: { totalResponses: 3 } }),
+    prisma.poll.update({ where: { id: sliderPoll3.id }, data: { totalResponses: 2 } }),
+    prisma.poll.update({ where: { id: sliderPoll4.id }, data: { totalResponses: 2 } }),
+    prisma.poll.update({ where: { id: sliderPoll5.id }, data: { totalResponses: 3 } }),
+  ]);
+  console.log("✅ Polls + responses (20 polls: 5 binary + 5 multiple_choice + 5 ranked + 5 slider)");
 
   // ── Support Signals & Questions ────────────────────────────────────────────
   await prisma.supportSignal.createMany({
@@ -295,7 +608,7 @@ async function main() {
   // ── Demo Campaign for admin@pollcity.dev ───────────────────────────────────
   const demoCampaign = await prisma.campaign.upsert({
     where: { slug: "demo-campaign-2026" },
-    update: { isPublic: true, isActive: true },
+    update: { isPublic: true, isActive: true, isDemo: true, onboardingComplete: true },
     create: {
       name: "Demo Campaign 2026",
       slug: "demo-campaign-2026",
@@ -303,12 +616,16 @@ async function main() {
       electionType: ElectionType.municipal,
       jurisdiction: "Ward 1",
       electionDate: new Date("2026-10-26"),
+      advanceVoteStart: new Date("2026-10-16"),
+      advanceVoteEnd: new Date("2026-10-18"),
       candidateName: "Demo Candidate",
-      candidateTitle: "Candidate",
+      candidateTitle: "Ward 1 Councillor Candidate",
       candidateBio: "Demo Candidate is running for Ward 1 council to demonstrate the full capabilities of Poll City.",
       primaryColor: "#1e40af",
       isPublic: true,
       isActive: true,
+      isDemo: true,
+      onboardingComplete: true, // demo campaigns skip the setup wizard
     },
   });
 

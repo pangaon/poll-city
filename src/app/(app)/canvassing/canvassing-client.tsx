@@ -1,19 +1,20 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, MapPin, Users, BookOpen, RefreshCw, Printer,
+  CheckCircle2, Navigation, ClipboardList, ChevronRight,
+  ChevronLeft, X,
 } from "lucide-react";
 import {
   Button, Card, CardHeader, CardContent, PageHeader, Modal,
-  FormField, Input, Textarea, Select, EmptyState,
+  FormField, Input, Textarea, Select, EmptyState, MultiSelect,
+  AddressAutocomplete,
 } from "@/components/ui";
+import type { AddressResult } from "@/components/ui";
 import Link from "next/link";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createCanvassListSchema, CreateCanvassListInput } from "@/lib/validators";
 import dynamic from "next/dynamic";
 import type { MapTurfSelection } from "@/components/maps/campaign-map";
 
@@ -24,6 +25,14 @@ const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
+
+interface AreaStats {
+  doors: number;
+  knocked: number;
+  supporters: number;
+  estimatedHours: number;
+  volunteersNeeded: number;
+}
 
 interface CanvassList {
   id: string;
@@ -51,10 +60,16 @@ interface CanvasserLocation {
   updatedAt: string;
 }
 
+interface SavedTurfResult {
+  id: string;
+  name: string;
+  contactCount: number;
+}
+
 interface Props {
   campaignId: string;
   currentUserId: string;
-  teamMembers: { id: string; name: string | null; email: string | null }[];
+  teamMembers: { id: string; name: string | null; email: string | null; role?: string }[];
 }
 
 const statusColors: Record<string, string> = {
@@ -95,17 +110,21 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showAssign, setShowAssign] = useState<string | null>(null);
-  const [assignUserId, setAssignUserId] = useState("");
+  const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [litDropMode, setLitDropMode] = useState(false);
+
+  // Turf draw panel
   const [turfPanelOpen, setTurfPanelOpen] = useState(false);
   const [savingTurf, setSavingTurf] = useState(false);
   const [activeTurfId, setActiveTurfId] = useState<string | null>(null);
   const [activeTurfName, setActiveTurfName] = useState("");
   const [draftCoordinates, setDraftCoordinates] = useState<Array<[number, number]>>([]);
-  const [turfAssigneeId, setTurfAssigneeId] = useState("");
+  const [draftStats, setDraftStats] = useState<AreaStats | null>(null);
+  const [turfAssigneeIds, setTurfAssigneeIds] = useState<string[]>([]);
   const [turfCanvassDate, setTurfCanvassDate] = useState("");
   const [turfNotes, setTurfNotes] = useState("");
+  const [savedTurf, setSavedTurf] = useState<SavedTurfResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,7 +161,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     load();
   }, [load]);
 
-  // Refresh canvasser locations every 30s
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -161,7 +179,6 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     }, 30000);
     return () => clearInterval(interval);
   }, [campaignId]);
-
 
   function centroidForPolygon(points: Array<[number, number]>) {
     if (!points.length) return null;
@@ -187,10 +204,14 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     return parts.join("\n\n");
   }
 
-  function hydratePanelFromSelection(selection: MapTurfSelection) {
+  function openTurfPanel(selection: MapTurfSelection, stats: AreaStats | null = null) {
     setActiveTurfId(selection.id);
-    setActiveTurfName(selection.name ?? (selection.id ? "Selected Turf" : `New Turf ${new Date().toLocaleDateString()}`));
+    setActiveTurfName(
+      selection.name ?? (selection.id ? "Selected Turf" : `New Turf ${new Date().toLocaleDateString()}`),
+    );
     setDraftCoordinates(selection.coordinates);
+    setDraftStats(stats);
+    setSavedTurf(null);
     setTurfPanelOpen(true);
   }
 
@@ -201,7 +222,7 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
       const payload = await res.json();
       const turf = payload?.data;
       if (!turf) return;
-      setTurfAssigneeId(turf.assignedUserId ?? "");
+      setTurfAssigneeIds(turf.assignedUserId ? [turf.assignedUserId] : []);
       const notesText = String(turf.notes ?? "");
       const dateMatch = notesText.match(/Canvass date:\s*(\d{4}-\d{2}-\d{2})/i);
       setTurfCanvassDate(dateMatch?.[1] ?? "");
@@ -215,25 +236,39 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     setSavingTurf(true);
     try {
       if (activeTurfId) {
+        // Update existing turf
+        const primaryAssignee = turfAssigneeIds[0] ?? null;
         const patchRes = await fetch(`/api/turf/${activeTurfId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            assignedUserId: turfAssigneeId || null,
-            status: turfAssigneeId ? "assigned" : "draft",
+            assignedUserId: primaryAssignee,
+            status: primaryAssignee ? "assigned" : "draft",
             notes: serializeNotes(turfCanvassDate, turfNotes),
             name: activeTurfName || "Selected Turf",
           }),
         });
-        if (!patchRes.ok) { toast.error("Failed to save turf details"); return; }
+        if (!patchRes.ok) {
+          toast.error("Failed to save turf details");
+          return;
+        }
         toast.success("Turf details saved");
         setTurfPanelOpen(false);
         load();
         return;
       }
-      if (draftCoordinates.length < 3) { toast.error("Draw a turf area with at least 3 points"); return; }
+
+      // Create new turf
+      if (draftCoordinates.length < 3) {
+        toast.error("Draw a turf area with at least 3 points");
+        return;
+      }
+
       const contactsRes = await fetch(`/api/maps/contacts-geojson?campaignId=${campaignId}&take=10000`);
-      if (!contactsRes.ok) { toast.error("Could not load map contacts for this turf"); return; }
+      if (!contactsRes.ok) {
+        toast.error("Could not load map contacts for this turf");
+        return;
+      }
       const contactsGeo = await contactsRes.json();
       const contactIds: string[] = (contactsGeo?.features ?? [])
         .filter((feature: { geometry?: { coordinates?: [number, number] }; properties?: { id?: string } }) => {
@@ -243,11 +278,18 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         })
         .map((feature: { properties?: { id?: string } }) => feature.properties?.id)
         .filter((id: string | undefined): id is string => Boolean(id));
-      if (!contactIds.length) { toast.error("No contacts found in the selected turf area"); return; }
+
+      if (!contactIds.length) {
+        toast.error("No contacts found in the selected turf area");
+        return;
+      }
+
       const boundary = {
         type: "Polygon",
         coordinates: [[...draftCoordinates.map(([lat, lng]) => [lng, lat]), [draftCoordinates[0][1], draftCoordinates[0][0]]]],
       };
+
+      const primaryAssignee = turfAssigneeIds[0] ?? null;
       const createRes = await fetch("/api/turf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,38 +298,61 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
           name: activeTurfName || `Turf ${new Date().toLocaleDateString()}`,
           contactIds,
           notes: serializeNotes(turfCanvassDate, turfNotes),
-          assignedUserId: turfAssigneeId || null,
+          assignedUserId: primaryAssignee,
           boundary,
           centroid: centroidForPolygon(draftCoordinates),
         }),
       });
+
       if (!createRes.ok) {
         const err = await createRes.json().catch(() => null);
         toast.error(err?.error ?? "Failed to save turf");
         return;
       }
-      toast.success("Turf created and saved");
-      setTurfPanelOpen(false);
+
+      const turfData = await createRes.json();
+      const newTurfId = turfData?.data?.id as string | undefined;
+
+      // Show success in-panel with CTAs
+      setSavedTurf({
+        id: newTurfId ?? "",
+        name: activeTurfName || "New Turf",
+        contactCount: contactIds.length,
+      });
       load();
     } finally {
       setSavingTurf(false);
     }
   }
 
-  async function assign() {
-    if (!assignUserId || !showAssign) return;
+  // Bulk assign: sends all selectedIds to the canvass list
+  async function bulkAssign() {
+    if (!assignUserIds.length || !showAssign) return;
     setAssigning(true);
     try {
       const res = await fetch("/api/canvass/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canvassListId: showAssign, userId: assignUserId }),
+        body: JSON.stringify({ canvassListId: showAssign, userIds: assignUserIds }),
       });
-      if (res.ok) { toast.success("Volunteer assigned"); setShowAssign(null); load(); } else toast.error("Failed to assign");
+      if (res.ok) {
+        toast.success(`${assignUserIds.length} volunteer${assignUserIds.length !== 1 ? "s" : ""} assigned`);
+        setShowAssign(null);
+        setAssignUserIds([]);
+        load();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to assign");
+      }
     } finally {
       setAssigning(false);
     }
   }
+
+  const teamOptions = teamMembers.map((m) => ({
+    label: m.name ?? m.email ?? "Team member",
+    value: m.id,
+  }));
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -311,7 +376,7 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         }
       />
 
-      {/* ── Turf Overview with Completion Percentages ── */}
+      {/* ── Turf Overview ── */}
       {turfs.length > 0 && (
         <Card>
           <CardHeader>
@@ -352,7 +417,7 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         </Card>
       )}
 
-      {/* ── Active Canvassers List ── */}
+      {/* ── Active Canvassers ── */}
       {canvassers.length > 0 && (
         <Card>
           <CardHeader>
@@ -385,7 +450,7 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         </Card>
       )}
 
-      {/* ── Literature Drop Mode Toggle ── */}
+      {/* ── Literature Drop Mode ── */}
       <Card>
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
@@ -396,17 +461,14 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
               <div>
                 <h3 className="font-medium text-gray-900">Literature Drop Mode</h3>
                 <p className="text-sm text-gray-500">
-                  {litDropMode ? "Drop mode active -- tap each house as you deliver flyers" : "Switch to literature drop mode for flyer delivery"}
+                  {litDropMode ? "Drop mode active — tap each house as you deliver flyers" : "Switch to literature drop mode for flyer delivery"}
                 </p>
               </div>
             </div>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => { setLitDropMode(!litDropMode); toast(litDropMode ? "Literature drop mode off" : "Literature drop mode on"); }}
-              className={cn(
-                "relative w-12 h-7 rounded-full transition-colors",
-                litDropMode ? "bg-green-500" : "bg-gray-300",
-              )}
+              className={cn("relative w-12 h-7 rounded-full transition-colors", litDropMode ? "bg-green-500" : "bg-gray-300")}
             >
               <motion.div
                 animate={{ x: litDropMode ? 20 : 2 }}
@@ -421,8 +483,12 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
       {/* ── Campaign Map ── */}
       <Card>
         <CardHeader>
-          <h2 className="text-sm font-semibold text-gray-900">Campaign Map</h2>
-          <p className="text-xs text-gray-500">Draw turfs, review volunteer coverage, and estimate effort live.</p>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Campaign Map</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Click <strong>Draw Turf</strong> to select an area, then <strong>Create Turf</strong> to save it as a walk list.
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
           <CampaignMap
@@ -430,23 +496,26 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
             height={460}
             showControls
             showCalculator
-            onTurfDraw={(coordinates) => {
-              setTurfAssigneeId("");
+            onTurfDraw={(coordinates, stats) => {
+              setTurfAssigneeIds([]);
               setTurfCanvassDate("");
               setTurfNotes("");
-              hydratePanelFromSelection({
-                id: null,
-                name: `New Turf ${new Date().toLocaleDateString()}`,
-                coordinates,
-                stats: { doors: 0, knocked: 0, supporters: 0, estimatedHours: 0, volunteersNeeded: 1 },
-              });
+              openTurfPanel(
+                {
+                  id: null,
+                  name: `New Turf ${new Date().toLocaleDateString()}`,
+                  coordinates,
+                  stats,
+                },
+                stats,
+              );
             }}
             onTurfClick={(selection) => {
-              hydratePanelFromSelection(selection);
+              openTurfPanel(selection, null);
               if (selection.id) {
                 void loadExistingTurf(selection.id);
               } else {
-                setTurfAssigneeId("");
+                setTurfAssigneeIds([]);
                 setTurfCanvassDate("");
                 setTurfNotes("");
               }
@@ -455,45 +524,156 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         </CardContent>
       </Card>
 
-      {/* ── Turf panel ── */}
-      {turfPanelOpen && (
-        <div className="fixed inset-0 z-[1400] bg-black/35" onClick={() => setTurfPanelOpen(false)}>
-          <aside
-            className="absolute right-0 top-0 h-full w-full max-w-md bg-white border-l border-gray-200 shadow-2xl p-5 overflow-y-auto"
-            onClick={(event) => event.stopPropagation()}
+      {/* ── Turf panel (slide-over) ── */}
+      <AnimatePresence>
+        {turfPanelOpen && (
+          <div
+            className="fixed inset-0 z-[1400] bg-black/35"
+            onClick={() => { setTurfPanelOpen(false); setSavedTurf(null); }}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Turf Details</h3>
-              <button onClick={() => setTurfPanelOpen(false)} className="text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close turf panel">
-                <Plus className="w-5 h-5 rotate-45" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <FormField label="Turf name">
-                <Input value={activeTurfName} onChange={(e) => setActiveTurfName(e.target.value)} placeholder="Ward 3 North" />
-              </FormField>
-              <FormField label="Assign volunteer">
-                <Select value={turfAssigneeId} onChange={(e) => setTurfAssigneeId(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {teamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name ?? m.email ?? "Volunteer"}</option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Canvass date">
-                <Input type="date" value={turfCanvassDate} onChange={(e) => setTurfCanvassDate(e.target.value)} />
-              </FormField>
-              <FormField label="Notes">
-                <Textarea rows={4} value={turfNotes} onChange={(e) => setTurfNotes(e.target.value)} placeholder="Instructions, route notes, or key talking points" />
-              </FormField>
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setTurfPanelOpen(false)} className="flex-1">Cancel</Button>
-                <Button onClick={saveTurfFlow} loading={savingTurf} className="flex-1">Save</Button>
+            <motion.aside
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute right-0 top-0 h-full w-full max-w-md bg-white border-l border-gray-200 shadow-2xl overflow-y-auto"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="p-5 flex flex-col h-full">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {savedTurf ? "Turf Saved" : activeTurfId ? "Edit Turf" : "Save This Turf"}
+                  </h3>
+                  <button
+                    onClick={() => { setTurfPanelOpen(false); setSavedTurf(null); }}
+                    className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* ── Success state after save ── */}
+                {savedTurf ? (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-6 pb-8">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-xl font-bold text-gray-900">{savedTurf.name}</h4>
+                      <p className="text-gray-500 mt-1">
+                        {savedTurf.contactCount} door{savedTurf.contactCount !== 1 ? "s" : ""} ready to knock
+                      </p>
+                    </div>
+                    <div className="w-full space-y-3">
+                      <Link
+                        href={`/canvassing/walk?turfId=${savedTurf.id}&campaignId=${campaignId}`}
+                        className="w-full"
+                      >
+                        <Button className="w-full" size="lg">
+                          <Navigation className="w-4 h-4 mr-1" /> Start Walk List
+                        </Button>
+                      </Link>
+                      <Link
+                        href={`/canvassing/print-walk-list?campaignId=${campaignId}&turfId=${savedTurf.id}`}
+                        target="_blank"
+                        className="w-full"
+                      >
+                        <Button variant="outline" className="w-full" size="lg">
+                          <Printer className="w-4 h-4 mr-1" /> Print Walk List
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => { setTurfPanelOpen(false); setSavedTurf(null); }}
+                      >
+                        <ClipboardList className="w-4 h-4 mr-1" /> Back to Map
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Save form ── */
+                  <div className="flex-1 flex flex-col">
+                    {/* Area stats (shown when drawing a new turf) */}
+                    {!activeTurfId && draftStats && (
+                      <div className="mb-5 grid grid-cols-3 gap-2">
+                        <div className="bg-blue-50 rounded-lg p-3 text-center">
+                          <p className="text-xl font-bold text-blue-700">{draftStats.doors}</p>
+                          <p className="text-xs text-blue-600 mt-0.5">Doors</p>
+                        </div>
+                        <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                          <p className="text-xl font-bold text-emerald-700">{draftStats.supporters}</p>
+                          <p className="text-xs text-emerald-600 mt-0.5">Supporters</p>
+                        </div>
+                        <div className="bg-amber-50 rounded-lg p-3 text-center">
+                          <p className="text-xl font-bold text-amber-700">{draftStats.estimatedHours.toFixed(1)}h</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Est. time</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4 flex-1">
+                      <FormField label="Turf name">
+                        <Input
+                          value={activeTurfName}
+                          onChange={(e) => setActiveTurfName(e.target.value)}
+                          placeholder="Ward 3 North, Bloor Street Block…"
+                        />
+                      </FormField>
+
+                      <FormField
+                        label={`Assign volunteer${turfAssigneeIds.length > 1 ? "s" : ""}`}
+                      >
+                        <MultiSelect
+                          value={turfAssigneeIds}
+                          onChange={setTurfAssigneeIds}
+                          options={teamOptions}
+                          placeholder="Select one or more volunteers…"
+                        />
+                        {teamOptions.length === 0 && (
+                          <p className="text-xs text-gray-400 mt-1">No team members available</p>
+                        )}
+                      </FormField>
+
+                      <FormField label="Canvass date">
+                        <Input
+                          type="date"
+                          value={turfCanvassDate}
+                          onChange={(e) => setTurfCanvassDate(e.target.value)}
+                        />
+                      </FormField>
+
+                      <FormField label="Notes">
+                        <Textarea
+                          rows={3}
+                          value={turfNotes}
+                          onChange={(e) => setTurfNotes(e.target.value)}
+                          placeholder="Route notes, talking points, or instructions for the volunteer…"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 mt-auto border-t border-gray-100">
+                      <Button
+                        variant="outline"
+                        onClick={() => { setTurfPanelOpen(false); setSavedTurf(null); }}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={saveTurfFlow} loading={savingTurf} className="flex-1">
+                        {activeTurfId ? "Save Changes" : "Save Turf"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          </aside>
-        </div>
-      )}
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Walk lists ── */}
       {loading ? (
@@ -532,13 +712,21 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate">{list.name}</h3>
-                    {list.description && <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{list.description}</p>}
+                    {list.description && (
+                      <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{list.description}</p>
+                    )}
                   </div>
-                  <span className={cn("text-xs px-2 py-1 rounded-full font-medium flex-shrink-0", statusColors[list.status])}>{statusLabels[list.status]}</span>
+                  <span className={cn("text-xs px-2 py-1 rounded-full font-medium flex-shrink-0", statusColors[list.status])}>
+                    {statusLabels[list.status]}
+                  </span>
                 </div>
                 <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{list.assignments.length} assigned</div>
-                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />Created {formatDate(list.createdAt)}</div>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />{list.assignments.length} assigned
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />Created {formatDate(list.createdAt)}
+                  </div>
                 </div>
                 {list.assignments.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
@@ -546,14 +734,19 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
                     <div className="flex flex-wrap gap-1.5">
                       {list.assignments.map((a) => (
                         <span key={a.id} className={cn("text-xs px-2 py-0.5 rounded-full", statusColors[a.status])}>
-                          {a.user.name ?? "Unknown"} -- {statusLabels[a.status]}
+                          {a.user.name ?? "Unknown"} — {statusLabels[a.status]}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
                 <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline" onClick={() => { setShowAssign(list.id); setAssignUserId(""); }} className="flex-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setShowAssign(list.id); setAssignUserIds([]); }}
+                    className="flex-1"
+                  >
                     <Users className="w-3.5 h-3.5" /> Assign
                   </Button>
                 </div>
@@ -563,23 +756,47 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
         </div>
       )}
 
-      {/* ── Create list modal ── */}
-      <CreateCanvassModal open={showCreate} onClose={() => setShowCreate(false)} campaignId={campaignId} onCreated={() => { setShowCreate(false); load(); }} />
+      {/* ── Create list modal (wizard) ── */}
+      <CreateCanvassWizard
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        campaignId={campaignId}
+        teamMembers={teamMembers}
+        onCreated={() => { setShowCreate(false); load(); }}
+      />
 
-      {/* ── Assign modal ── */}
-      <Modal open={!!showAssign} onClose={() => setShowAssign(null)} title="Assign Volunteer" size="sm">
+      {/* ── Bulk assign modal ── */}
+      <Modal open={!!showAssign} onClose={() => { setShowAssign(null); setAssignUserIds([]); }} title="Assign Volunteers" size="sm">
         <div className="space-y-4">
-          <FormField label="Select Volunteer">
-            <Select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)}>
-              <option value="">Choose a volunteer...</option>
-              {teamMembers.map((m) => (
-                <option key={m.id} value={m.id}>{m.name ?? m.email}</option>
-              ))}
-            </Select>
+          <FormField label="Select volunteers">
+            <MultiSelect
+              value={assignUserIds}
+              onChange={setAssignUserIds}
+              options={teamOptions}
+              placeholder="Choose team members…"
+            />
           </FormField>
+          {teamOptions.length > 0 && (
+            <button
+              type="button"
+              className="text-xs text-blue-600 hover:underline"
+              onClick={() => setAssignUserIds(teamOptions.map((o) => o.value))}
+            >
+              Assign entire team ({teamOptions.length})
+            </button>
+          )}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setShowAssign(null)} className="flex-1">Cancel</Button>
-            <Button onClick={assign} loading={assigning} disabled={!assignUserId} className="flex-1">Assign</Button>
+            <Button variant="outline" onClick={() => { setShowAssign(null); setAssignUserIds([]); }} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={bulkAssign}
+              loading={assigning}
+              disabled={assignUserIds.length === 0}
+              className="flex-1"
+            >
+              Assign{assignUserIds.length > 0 ? ` (${assignUserIds.length})` : ""}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -587,32 +804,276 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
   );
 }
 
-/* ─── Create Canvass Modal ──────────────────────────────────────────────────── */
+/* ─── Create Canvass Wizard ─────────────────────────────────────────────────── */
 
-function CreateCanvassModal({ open, onClose, campaignId, onCreated }: { open: boolean; onClose: () => void; campaignId: string; onCreated: () => void }) {
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateCanvassListInput>({
-    resolver: zodResolver(createCanvassListSchema),
-    defaultValues: { campaignId },
-  });
-  async function onSubmit(data: CreateCanvassListInput) {
-    const res = await fetch("/api/canvass", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    if (res.ok) { toast.success("Canvass list created"); reset(); onCreated(); } else { const e = await res.json(); toast.error(e.error ?? "Failed"); }
+interface WizardProps {
+  open: boolean;
+  onClose: () => void;
+  campaignId: string;
+  teamMembers: { id: string; name: string | null; email: string | null }[];
+  onCreated: () => void;
+}
+
+const SUPPORT_LEVEL_OPTIONS = [
+  { value: "strong_support", label: "Strong Support" },
+  { value: "leaning_support", label: "Leaning Support" },
+  { value: "undecided", label: "Undecided" },
+  { value: "leaning_opposition", label: "Leaning Opposition" },
+];
+
+function CreateCanvassWizard({ open, onClose, campaignId, teamMembers, onCreated }: WizardProps) {
+  const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Step 1 fields
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [ward, setWard] = useState("");
+  const [targetArea, setTargetArea] = useState("");
+
+  // Step 2 fields
+  const [targetSupportLevels, setTargetSupportLevels] = useState<string[]>(
+    ["strong_support", "leaning_support", "undecided"],
+  );
+
+  // Step 3 fields
+  const [assignUserIds, setAssignUserIds] = useState<string[]>([]);
+
+  const teamOptions = teamMembers.map((m) => ({
+    label: m.name ?? m.email ?? "Team member",
+    value: m.id,
+  }));
+
+  function handleClose() {
+    setStep(1);
+    setName("");
+    setDescription("");
+    setWard("");
+    setTargetArea("");
+    setTargetSupportLevels(["strong_support", "leaning_support", "undecided"]);
+    setAssignUserIds([]);
+    onClose();
   }
+
+  async function handleCreate() {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    try {
+      // Create the canvass list
+      const res = await fetch("/api/canvass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          name: name.trim(),
+          description: description.trim() || undefined,
+          ward: ward.trim() || undefined,
+          targetArea: targetArea.trim() || undefined,
+          targetSupportLevels: targetSupportLevels.length > 0 ? targetSupportLevels : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const e = await res.json();
+        toast.error(e.error ?? "Failed to create list");
+        return;
+      }
+
+      const data = await res.json();
+      const listId = data?.data?.id as string | undefined;
+
+      // Bulk-assign selected volunteers
+      if (listId && assignUserIds.length > 0) {
+        await fetch("/api/canvass/assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ canvassListId: listId, userIds: assignUserIds }),
+        });
+      }
+
+      toast.success("Canvass list created");
+      handleClose();
+      onCreated();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const stepTitles = ["List Details", "Target Voters", "Assign Volunteers"];
+  const totalSteps = 3;
+
   return (
-    <Modal open={open} onClose={onClose} title="New Canvass List" size="sm">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <input type="hidden" {...register("campaignId")} />
-        <FormField label="List Name" error={errors.name?.message} required>
-          <Input {...register("name")} placeholder="East Ward 12 -- April Blitz" />
-        </FormField>
-        <FormField label="Description">
-          <Textarea {...register("description")} rows={2} placeholder="Target area, focus, instructions for volunteers..." />
-        </FormField>
-        <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-          <Button type="submit" loading={isSubmitting} className="flex-1">Create</Button>
+    <Modal open={open} onClose={handleClose} title="New Canvass List" size="sm">
+      {/* Step indicators */}
+      <div className="flex items-center gap-1 mb-5">
+        {stepTitles.map((title, i) => (
+          <div key={title} className="flex items-center flex-1">
+            <div className="flex items-center gap-1.5 flex-1">
+              <div
+                className={cn(
+                  "w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0",
+                  i + 1 < step
+                    ? "bg-emerald-500 text-white"
+                    : i + 1 === step
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-400",
+                )}
+              >
+                {i + 1 < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+              </div>
+              <span className={cn("text-xs font-medium hidden sm:inline", i + 1 === step ? "text-gray-900" : "text-gray-400")}>
+                {title}
+              </span>
+            </div>
+            {i < totalSteps - 1 && <div className="h-px bg-gray-200 flex-1 mx-1" />}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: List details */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <FormField label="List name" required>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="East Ward 12 — April Blitz"
+              autoFocus
+            />
+          </FormField>
+          <FormField label="Description">
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Focus area, priority doors, or instructions for volunteers…"
+            />
+          </FormField>
+          <FormField label="Ward / Poll number">
+            <Input
+              value={ward}
+              onChange={(e) => setWard(e.target.value)}
+              placeholder="Ward 3, Poll 12A…"
+            />
+          </FormField>
+          <FormField label="Target street or area">
+            <AddressAutocomplete
+              value={targetArea}
+              onChange={setTargetArea}
+              onSelect={(result: AddressResult) => {
+                if (result.city) setTargetArea(result.city);
+              }}
+              placeholder="Search a street, neighbourhood, or postal code…"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used to focus this list on a specific area — or type any description.
+            </p>
+          </FormField>
         </div>
-      </form>
+      )}
+
+      {/* Step 2: Target voters */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Which support levels should this walk list include?
+            </p>
+            <div className="space-y-2">
+              {SUPPORT_LEVEL_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={targetSupportLevels.includes(opt.value)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setTargetSupportLevels([...targetSupportLevels, opt.value]);
+                      } else {
+                        setTargetSupportLevels(targetSupportLevels.filter((l) => l !== opt.value));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 group-hover:text-gray-900">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+            Tip: include <strong>Undecided</strong> and <strong>Leaning Support</strong> for persuasion canvassing. Focus on <strong>Strong Support</strong> for GOTV.
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Assign volunteers */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <FormField label="Assign to volunteers">
+            <MultiSelect
+              value={assignUserIds}
+              onChange={setAssignUserIds}
+              options={teamOptions}
+              placeholder="Select one or more team members…"
+            />
+          </FormField>
+          {teamOptions.length > 0 && (
+            <button
+              type="button"
+              className="text-xs text-blue-600 hover:underline"
+              onClick={() => setAssignUserIds(teamOptions.map((o) => o.value))}
+            >
+              Assign entire team ({teamOptions.length})
+            </button>
+          )}
+          <p className="text-xs text-gray-400">
+            You can also assign later from the canvass list card.
+          </p>
+
+          {/* Summary */}
+          <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Summary</p>
+            <p className="text-sm text-gray-700"><span className="font-medium">List:</span> {name}</p>
+            {ward && <p className="text-sm text-gray-700"><span className="font-medium">Ward:</span> {ward}</p>}
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">Targeting:</span>{" "}
+              {targetSupportLevels.length === 0 ? "All support levels" : `${targetSupportLevels.length} support level${targetSupportLevels.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex gap-3 mt-6">
+        {step > 1 ? (
+          <Button type="button" variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
+            <ChevronLeft className="w-4 h-4" /> Back
+          </Button>
+        ) : (
+          <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
+            Cancel
+          </Button>
+        )}
+        {step < totalSteps ? (
+          <Button
+            type="button"
+            onClick={() => setStep(step + 1)}
+            disabled={step === 1 && !name.trim()}
+            className="flex-1"
+          >
+            Next <ChevronRight className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={handleCreate}
+            loading={submitting}
+            disabled={!name.trim()}
+            className="flex-1"
+          >
+            Create List
+          </Button>
+        )}
+      </div>
     </Modal>
   );
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   SupportLevel,
   InteractionType,
+  InteractionSource,
   ElectionType,
   TaskStatus,
   TaskPriority,
@@ -122,6 +123,10 @@ export const createInteractionSchema = z.object({
   duration: z.number().int().positive().optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  // Confidence scoring fields
+  source: z.nativeEnum(InteractionSource).optional().default("canvass"),
+  isProxy: z.boolean().optional().default(false),
+  opponentSign: z.boolean().optional().default(false),
 });
 
 // ─── Task ─────────────────────────────────────────────────────────────────
@@ -155,11 +160,21 @@ export const createCanvassListSchema = z.object({
   campaignId: z.string().cuid(),
   name: z.string().min(3, "List name is required").max(120),
   description: z.string().max(500).optional(),
+  ward: z.string().max(100).optional(),
+  targetArea: z.string().max(200).optional(),
+  targetSupportLevels: z.array(z.string()).optional(),
 });
 
+/** Assign one user (legacy single-assign) */
 export const assignCanvassSchema = z.object({
   canvassListId: z.string().cuid(),
   userId: z.string().cuid(),
+});
+
+/** Bulk-assign multiple users at once */
+export const bulkAssignCanvassSchema = z.object({
+  canvassListId: z.string().cuid(),
+  userIds: z.array(z.string().cuid()).min(1, "Select at least one person"),
 });
 
 // ─── Import ───────────────────────────────────────────────────────────────
@@ -187,6 +202,7 @@ export type CreateInteractionInput = z.infer<typeof createInteractionSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type CreateCanvassListInput = z.infer<typeof createCanvassListSchema>;
+export type BulkAssignCanvassInput = z.infer<typeof bulkAssignCanvassSchema>;
 export type ImportContactRow = z.infer<typeof importContactRowSchema>;
 
 // ─── Extended Contact (leadership races + full address decomposition) ─────────

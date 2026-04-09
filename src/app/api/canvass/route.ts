@@ -7,7 +7,7 @@ import { createCanvassListSchema } from "@/lib/validators";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-    const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const campaignId = req.nextUrl.searchParams.get("campaignId");
   const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "canvassing:read");
   if (forbidden) return forbidden;
   const scope = req.nextUrl.searchParams.get("scope") ?? "all";
@@ -45,15 +45,33 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
   const { forbidden } = await guardCampaignRoute(session!.user.id, parsed.data.campaignId, "canvassing:write");
   if (forbidden) return forbidden;
-  const list = await prisma.canvassList.create({ data: parsed.data });
+
+  // Extract enrichment fields — store them in geoArea JSON alongside any geometry
+  const { campaignId, name, description, ward, targetArea, targetSupportLevels } = parsed.data;
+  const metadata = {
+    ...(ward ? { ward } : {}),
+    ...(targetArea ? { targetArea } : {}),
+    ...(targetSupportLevels?.length ? { targetSupportLevels } : {}),
+  };
+
+  const list = await prisma.canvassList.create({
+    data: {
+      campaignId,
+      name,
+      description,
+      // Store enrichment metadata in geoArea JSON; real geometry will be added when turfs are drawn
+      geoArea: Object.keys(metadata).length > 0 ? (metadata as never) : undefined,
+    },
+  });
+
   await prisma.activityLog.create({
     data: {
-      campaignId: parsed.data.campaignId,
+      campaignId,
       userId: session!.user.id,
       action: "created",
       entityType: "canvass_list",
       entityId: list.id,
-      details: { name: parsed.data.name },
+      details: { name, ward, targetArea },
     },
   });
   return NextResponse.json({ data: list }, { status: 201 });

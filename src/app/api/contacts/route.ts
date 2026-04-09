@@ -185,6 +185,34 @@ export async function POST(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Duplicate detection — check for existing contact with same email or phone in this campaign
+  if (data.email) {
+    const existingByEmail = await prisma.contact.findFirst({
+      where: { campaignId: data.campaignId, email: { equals: data.email, mode: "insensitive" }, deletedAt: null },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (existingByEmail) {
+      return NextResponse.json({
+        error: "A contact with this email already exists in this campaign",
+        existing: { id: existingByEmail.id, name: `${existingByEmail.firstName} ${existingByEmail.lastName}`.trim() },
+        code: "DUPLICATE_EMAIL",
+      }, { status: 409 });
+    }
+  }
+  if (data.phone) {
+    const existingByPhone = await prisma.contact.findFirst({
+      where: { campaignId: data.campaignId, phone: data.phone, deletedAt: null },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (existingByPhone) {
+      return NextResponse.json({
+        error: "A contact with this phone number already exists in this campaign",
+        existing: { id: existingByPhone.id, name: `${existingByPhone.firstName} ${existingByPhone.lastName}`.trim() },
+        code: "DUPLICATE_PHONE",
+      }, { status: 409 });
+    }
+  }
+
   const contact = await prisma.contact.create({
     data: {
       ...data,

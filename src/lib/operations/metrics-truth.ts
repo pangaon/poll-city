@@ -60,6 +60,7 @@ export async function getGotvSummaryMetrics(campaignId: string): Promise<GotvSum
       lastContactedAt: true,
       voted: true,
       votedAt: true,
+      confidenceScore: true,
     },
     take: MAX_CONTACT_SCAN,
   });
@@ -140,6 +141,7 @@ export async function getGotvPriorityList(
       lastContactedAt: true,
       voted: true,
       votedAt: true,
+      confidenceScore: true,
     },
     take: MAX_CONTACT_SCAN,
   });

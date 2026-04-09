@@ -114,7 +114,7 @@ export async function bulkAdvanceFunnel(
 export async function getFunnelMetrics(campaignId: string) {
   const counts = await prisma.contact.groupBy({
     by: ["funnelStage"],
-    where: { campaignId, isDeceased: false, doNotContact: false },
+    where: { campaignId, isDeceased: false, doNotContact: false, deletedAt: null },
     _count: { id: true },
   });
 

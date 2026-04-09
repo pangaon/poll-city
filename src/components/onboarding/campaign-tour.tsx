@@ -143,10 +143,10 @@ const STEPS: TourStep[] = [
   {
     number: 8,
     kind: "completion",
-    title: "You're ready",
+    title: "You're home now",
     description:
-      "Your campaign is set up and ready to run. Adoni is standing by whenever you need him.",
-    note: "Tip: when your walk list is ready, Adoni can generate a print-ready paper fallback for volunteers without smartphones.",
+      "Keep looking around — don't be shy. This is your platform and I'm not going anywhere. You won't bother me. I never get tired.",
+    note: "The more you use it, the better I get. Go explore. Ask me anything.",
   },
 ];
 

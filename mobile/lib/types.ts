@@ -27,6 +27,15 @@ export type InteractionType =
   | "follow_up"
   | "field_encounter";
 
+export type InteractionSource =
+  | "canvass"
+  | "internal_phone"
+  | "call_center"
+  | "event"
+  | "social"
+  | "self"
+  | "simulation";
+
 // ---------------------------------------------------------------------------
 // Domain models
 // ---------------------------------------------------------------------------
@@ -114,6 +123,49 @@ export interface CreateInteractionPayload {
   duration?: number;
   latitude?: number;
   longitude?: number;
+  // Confidence scoring fields (wired 2026-04-09)
+  source?: InteractionSource;
+  isProxy?: boolean;
+  opponentSign?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// E-Day / Scrutineer
+// ---------------------------------------------------------------------------
+
+export interface ScrutineerAssignment {
+  id: string;
+  campaignId: string;
+  userId: string;
+  pollingStation: string;
+  pollingAddress: string | null;
+  municipality: string;
+  ward: string | null;
+  province: string;
+  electionDate: string;
+  candidateSigned: boolean;
+  signedAt: string | null;
+  notes: string | null;
+}
+
+export interface OcrCandidate {
+  name: string;
+  party: string | null;
+  votes: number;
+}
+
+export interface OcrResult {
+  pollingStation: string | null;
+  municipality: string | null;
+  ward: string | null;
+  province: string | null;
+  office: string | null;
+  percentReporting: number;
+  candidates: OcrCandidate[];
+  totalVotes: number | null;
+  rejectedBallots: number | null;
+  confidence: "high" | "medium" | "low";
+  warnings: string[];
 }
 
 // ---------------------------------------------------------------------------

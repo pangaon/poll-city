@@ -21,14 +21,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  // Get user's active campaign
+  // Get user's active campaign — verify current membership regardless of session state
+  // (session token may be stale if user was removed from a campaign)
   const user = session!.user as { id: string; activeCampaignId?: string };
   const activeCampaignId = user.activeCampaignId;
 
   let campaignId: string | null = null;
   if (activeCampaignId) {
-    campaignId = activeCampaignId;
-  } else {
+    // Confirm the user is still a member — do not trust session alone
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session!.user.id, campaignId: activeCampaignId } },
+      select: { campaignId: true },
+    });
+    campaignId = membership?.campaignId ?? null;
+  }
+
+  if (!campaignId) {
     const firstMembership = await prisma.membership.findFirst({
       where: { userId: session!.user.id },
       select: { campaignId: true },

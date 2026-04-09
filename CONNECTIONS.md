@@ -9,8 +9,27 @@ Every major user action. Every downstream effect. Honest status.
 - ✗ NOT CONNECTED — should exist, does not
 - — NOT BUILT — feature not yet built
 
-*Last updated: 2026-04-08 by Claude Sonnet 4.6 — Priority #7 wired*
+*Last updated: 2026-04-09 (session 2) by Claude Sonnet 4.6 — E-day chain, poll management, security hardening*
 *Read CLAUDE.md → THE BUILD CYCLE before touching anything in this file.*
+
+---
+
+## CAMPAIGN SETUP (First-Time Wizard)
+
+### Manager completes setup wizard (onboarding)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| candidateName / candidateTitle / jurisdiction saved | ✓ CONNECTED | wired 2026-04-09 |
+| electionDate / electionType saved | ✓ CONNECTED | wired 2026-04-09 |
+| advanceVoteStart / advanceVoteEnd saved | ✓ CONNECTED | wired 2026-04-09 — drive advance vote canvass strategy |
+| officeAddress / candidatePhone / candidateEmail saved | ✓ CONNECTED | wired 2026-04-09 |
+| websiteUrl / twitterHandle / instagramHandle / facebookUrl saved | ✓ CONNECTED | wired 2026-04-09 |
+| fromEmailName / replyToEmail saved | ✓ CONNECTED | wired 2026-04-09 — used by email blast sender |
+| onboardingComplete = true | ✓ CONNECTED | wired 2026-04-09 — wizard never shows again |
+| ActivityLog entry | ✓ CONNECTED | wired 2026-04-09 — onboarding_complete action |
+| CampaignTour starts after wizard | ✓ CONNECTED | wizard dismisses, tour gate fires independently |
+| Volunteers skip wizard | ✓ CONNECTED | membership role check in GET /api/campaigns/setup |
+| Demo mode skips wizard | ✓ CONNECTED | ?demo=true bypasses gate |
 
 ---
 
@@ -22,8 +41,8 @@ Every major user action. Every downstream effect. Honest status.
 | Contact record created | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
 | Funnel stage initialized | ✓ CONNECTED | |
-| Duplicate check by email | ✗ NOT CONNECTED | silently creates duplicate |
-| Duplicate check by phone | ✗ NOT CONNECTED | silently creates duplicate |
+| Duplicate check by email | ✓ CONNECTED | wired 2026-04-09 — 409 + existing contact id returned |
+| Duplicate check by phone | ✓ CONNECTED | wired 2026-04-09 — 409 + existing contact id returned |
 
 ### Import Contacts (CSV)
 | Effect | Status | Notes |
@@ -51,7 +70,7 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | contact.doNotContact = true | ✓ CONNECTED | |
 | NewsletterSubscriber unsubscribed | ✓ CONNECTED | |
-| SMS opt-out recorded | ✗ NOT CONNECTED | no SMS opt-out table updated |
+| SMS opt-out recorded | ✓ CONNECTED | wired 2026-04-09 — smsOptOut field on Contact |
 | Voice broadcast excluded | ✓ CONNECTED | CRTC compliance added 2026-04-08 |
 | ActivityLog entry | ✗ NOT CONNECTED | no audit trail |
 
@@ -92,6 +111,8 @@ Every major user action. Every downstream effect. Honest status.
 | Campaign status = sent | ✓ CONNECTED | |
 | sentCount / bounceCount tallied | ✓ CONNECTED | |
 | Resend delivery | ✓ CONNECTED | |
+| Sender display name (fromEmailName) | ✓ CONNECTED | wired 2026-04-09 — "John Smith for Ward 5 <noreply@poll.city>" |
+| Reply-to address (replyToEmail) | ✓ CONNECTED | wired 2026-04-09 — campaign's reply-to used if set |
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — batch updateMany by email |
 | Bounced contacts flagged | ✓ CONNECTED | wired 2026-04-08 — emailBounced flag, campaign-scoped, does NOT set doNotContact |
 | Unsubscribe → contact.doNotContact | ⚠ PARTIAL | updates newsletterSubscriber but not contact |
@@ -111,7 +132,7 @@ Every major user action. Every downstream effect. Honest status.
 | NewsletterSubscriber.status = unsubscribed | ✓ CONNECTED | |
 | unsubscribedAt set | ✓ CONNECTED | |
 | contact.doNotContact = true | ✓ CONNECTED | |
-| SMS opt-out updated | ✗ NOT CONNECTED | no smsOptOut field on Contact model — needs schema field |
+| SMS opt-out updated | ✓ CONNECTED | wired 2026-04-09 — smsOptOut field added to Contact; unsubscribe sets both doNotContact + smsOptOut |
 | ActivityLog entry | ✗ NOT CONNECTED | public endpoint has no userId — ActivityLog requires FK to User |
 
 ---
@@ -124,7 +145,7 @@ Every major user action. Every downstream effect. Honest status.
 | Donation record created/updated | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
 | Receipt email sent | ✓ CONNECTED | wired 2026-04-08 — Ontario MEA compliant, via Resend |
-| contact.supportLevel updated | ✗ NOT CONNECTED | donors should be at minimum leaning_support |
+| contact.supportLevel updated | ✓ CONNECTED | wired 2026-04-09 — upgrade to leaning_support if unknown/undecided |
 | Funnel advances to "donor" | ✓ CONNECTED | already wired in quick-capture (advanceFunnel) |
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — set when receipt email sent |
 | doNotContact check before recording | ✗ NOT CONNECTED | |
@@ -228,6 +249,124 @@ Every major user action. Every downstream effect. Honest status.
 | Long-inactive contacts flagged | ✗ NOT CONNECTED | |
 | Sign requested 60+ days → escalation | ✗ NOT CONNECTED | |
 | ActivityLog for cron run | ✗ NOT CONNECTED | no record of what ran |
+
+---
+
+## ELECTION DAY — SCRUTINEER & RESULTS OCR
+
+### Scrutineer assigned to polling station
+| Effect | Status | Notes |
+|--------|--------|-------|
+| ScrutineerAssignment record created | ✓ CONNECTED | wired 2026-04-09 |
+| Assignment scoped to campaign (membership verified) | ✓ CONNECTED | wired 2026-04-09 |
+| Scrutineer receives push notification on assignment | ✓ CONNECTED | wired 2026-04-09 — sendPushBatch after upsert, non-fatal |
+| Multi-station assignment on same day allowed | ✓ CONNECTED | wired 2026-04-09 — unique constraint updated to include pollingStation |
+| Candidate signs appointment (candidateSigned) | ✓ CONNECTED | PATCH /api/eday/scrutineers/[id] |
+| Scrutineer receives push notification on signing | ✓ CONNECTED | wired 2026-04-09 — push fires only on false→true transition |
+| My-assignment auto-populates device | ✓ CONNECTED | wired 2026-04-09 — GET /api/eday/my-assignment |
+| Credential shows unsigned warning in UI | ✓ CONNECTED | wired 2026-04-09 — eday-client.tsx |
+| ActivityLog entry on assignment | ✗ NOT CONNECTED | no audit trail |
+
+### OCR scan of polling station printout
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Image sent to Claude Vision API | ✓ CONNECTED | wired 2026-04-09 — /api/results/ocr |
+| Station info pre-populated from scrutineer assignment | ✓ CONNECTED | hint merged into OCR payload |
+| Extracted data shown for human review | ✓ CONNECTED | editable candidate table in eday-client |
+| ocrAssisted flag set on result entry | ✓ CONNECTED | wired 2026-04-09 — LiveResult.ocrAssisted |
+| Double-entry verification still required | ✓ CONNECTED | existing /api/results/entry logic intact |
+| Vote count mismatch on second entry → flagged | ✓ CONNECTED | 409 response — UI shows mismatch warning |
+| OCR-flagged results visible in TV mode | ✗ NOT CONNECTED | TV mode shows all LiveResults but no OCR flag indicator |
+| LiveResult scoped by campaignId | ✓ CONNECTED | wired 2026-04-09 — IDOR closed; double-entry scoped per campaign |
+| OCR failure shown to user | ✓ CONNECTED | wired 2026-04-09 — "error" step state in eday-client |
+| Empty vote count blocked at submit | ✓ CONNECTED | wired 2026-04-09 — validation in eday-client before POST |
+| 0-candidate OCR result handled | ✓ CONNECTED | wired 2026-04-09 — amber warning card if no candidates extracted |
+| Sanitize prompt injection on OCR | ✓ CONNECTED | sanitizePrompt() on all user-supplied text to Claude |
+
+### Mobile parity
+| Effect | Status | Notes |
+|--------|--------|-------|
+| ScrutineerAssignment type in mobile/lib/types.ts | ✓ CONNECTED | wired 2026-04-09 |
+| OcrResult type in mobile types | ✓ CONNECTED | wired 2026-04-09 |
+| fetchMyAssignment() in mobile/lib/api.ts | ✓ CONNECTED | wired 2026-04-09 |
+| ocrScanPrintout() in mobile api | ✓ CONNECTED | wired 2026-04-09 |
+| submitResultEntry() in mobile api | ✓ CONNECTED | wired 2026-04-09 |
+| Native camera OCR screen in mobile app | ✓ CONNECTED | wired 2026-04-09 — mobile/app/(tabs)/eday/index.tsx — full native camera OCR + result entry flow |
+
+---
+
+## SIMULATION ENGINE
+
+### Simulation batch runs (cron every 5 min)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Interactions created (source=simulation) | ✓ CONNECTED | wired 2026-04-09 |
+| Contact.supportLevel updated | ✓ CONNECTED | wired 2026-04-09 |
+| Contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-09 |
+| Contact.funnelStage advanced | ✓ CONNECTED | wired 2026-04-09 |
+| Sign records created for sign requests | ✓ CONNECTED | wired 2026-04-09 |
+| Only runs on isDemo=true campaigns | ✓ CONNECTED | hard guard in engine.ts |
+| Kill switch: SIMULATION_ENABLED=false | ✓ CONNECTED | env var checked before every run |
+| SUPER_ADMIN /ops run-now button | ✓ CONNECTED | wired 2026-04-09 — Demo tab |
+| SUPER_ADMIN clear-sim button | ✓ CONNECTED | wired 2026-04-09 — clears all source=simulation records |
+| Confidence score excluded from sim interactions | ✓ CONNECTED | source=simulation returns 0 in confidence scorer |
+
+### Interaction Confidence Scoring
+| Effect | Status | Notes |
+|--------|--------|-------|
+| source field on Interaction | ✓ CONNECTED | wired 2026-04-09 — canvass/internal_phone/call_center/event/social/self/simulation |
+| isProxy field on Interaction | ✓ CONNECTED | wired 2026-04-09 — −20 confidence |
+| opponentSign field on Interaction | ✓ CONNECTED | wired 2026-04-09 — −75 confidence |
+| Contact.confidenceScore updated on interaction create | ✓ CONNECTED | wired 2026-04-09 — weighted avg of last 3 real interactions |
+| Confidence feeds GOTV tier score | ✓ CONNECTED | wired 2026-04-09 — ±5pt modifier in computeGotvScore |
+| Call center interactions score lower (30%) | ✓ CONNECTED | George's rule — call centres lie |
+| Canvass interactions score highest (85%) | ✓ CONNECTED | face-to-face most reliable |
+
+---
+
+## NOTIFICATION ROUTING
+
+### Notification routing config (Campaign.notificationRoutes)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Campaign stores alert routing config (JSON) | ✓ CONNECTED | wired 2026-04-09 — notificationRoutes field on Campaign |
+| team_activity_alert respects campaign routing | ✓ CONNECTED | wired 2026-04-09 — cron/team-activity uses resolveNotificationRecipients() |
+| suspension alert respects campaign routing | ✓ CONNECTED | wired 2026-04-09 — team/[id] PATCH uses resolveNotificationRecipients() |
+| Admin can set routing via API | ✓ CONNECTED | wired 2026-04-09 — /api/campaigns/notification-routes PATCH |
+| UI settings page for notification routing | — NOT BUILT | no UI yet — API exists, needs settings panel |
+| security_alert routing | ✓ CONNECTED | defaults to ADMIN + CAMPAIGN_MANAGER, overridable |
+| "All active members" mode for small campaigns | ✓ CONNECTED | mode: "all" routes to every active member |
+| Named user mode (intake coordinator) | ✓ CONNECTED | mode: "users" with explicit userIds array |
+
+---
+
+## CANVASSING — DOOR STATE GAPS
+
+### DO_NOT_RETURN flag (from developer pack audit)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Contact.doNotContact blocks future contact | ✓ CONNECTED | |
+| Per-door "do not return" (aggressive resident, no address contact) | ✗ NOT CONNECTED | doNotContact is person-level; need address-level "do not return" separate from person blacklist |
+| Volunteer reliability score | ✗ NOT CONNECTED | no numeric reliability field; only status enum |
+
+---
+
+## PRODUCT ACCEPTANCE PASSPORT — SESSION 2026-04-09
+
+| Feature | Web | Mobile | Notes |
+|---------|-----|--------|-------|
+| Campaign setup wizard | ✓ | — | Web only — admin flow |
+| Simulation engine | ✓ | — | Web + /ops only |
+| Team activity monitor | ✓ | — | Cron + push |
+| Session invalidation on suspend | ✓ | ✓ | sessionVersion checked on JWT |
+| E-day OCR scanner | ✓ | ✓ | Web + mobile — UX hardened, error states wired 2026-04-09 |
+| Scrutineer assignment management | ✓ | ✓ | Push notifications wired; multi-station constraint fixed 2026-04-09 |
+| Scrutineer credential form (printable) | ✓ | — | Web API generates HTML |
+| Adoni cycling tips | ✓ | — | Web only — Adoni is web-only |
+| ContactSignalLayer | ✓ API | — | Analytics API, no UI yet |
+| Notification routing | ✓ API | — | API + logic wired, settings UI not built |
+| Tasks page layout fix | ✓ | — | Select component w-full wrapper fixed |
+| Confidence scoring on interactions | ✓ | Types wired | source/isProxy/opponentSign in mobile types |
 
 ---
 

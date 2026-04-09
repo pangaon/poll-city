@@ -17,12 +17,25 @@ interface SendEmailOptions {
   subject: string;
   html: string;
   replyTo?: string;
+  /** Display name override — combined with the platform sender domain (e.g. "John Smith for Ward 5 <noreply@poll.city>") */
+  fromName?: string;
 }
 
-export async function sendEmail({ to, subject, html, replyTo }: SendEmailOptions) {
+export async function sendEmail({ to, subject, html, replyTo, fromName }: SendEmailOptions) {
   const resend = getResend();
+
+  // Compose from address: preserve verified sending domain, swap display name if provided
+  const defaultFrom = FROM_EMAIL(); // e.g. "Poll City <noreply@poll.city>"
+  let from = defaultFrom;
+  if (fromName) {
+    // Extract the email address from the default and wrap with the campaign name
+    const match = defaultFrom.match(/<([^>]+)>/);
+    const addr = match ? match[1] : defaultFrom;
+    from = `${fromName} <${addr}>`;
+  }
+
   const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL(),
+    from,
     to: Array.isArray(to) ? to : [to],
     replyTo: replyTo ?? REPLY_TO(),
     subject,

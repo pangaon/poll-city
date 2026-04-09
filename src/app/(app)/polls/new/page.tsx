@@ -490,18 +490,32 @@ function NewPollInner() {
   const [saving, setSaving] = useState(false);
   const [campaignId, setCampaignId] = useState<string>("");
 
+  // Pre-fill from AI suggestion query params
+  const aiQuestion = searchParams.get("question") ?? "";
+  const aiDescription = searchParams.get("description") ?? "";
+  const aiType = searchParams.get("type") ?? "binary";
+  const aiTags = searchParams.get("tags") ?? "";
+  const aiOptionsRaw = searchParams.get("options") ?? "";
+  const isAIPrefill = searchParams.get("ai") === "1";
+
   const [form, setForm] = useState<FormState>({
-    question: "",
-    description: "",
-    type: "binary",
-    options: [],
+    question: isAIPrefill ? aiQuestion : "",
+    description: isAIPrefill ? aiDescription : "",
+    type: isAIPrefill && POLL_TYPES.some((t) => t.value === aiType) ? aiType : "binary",
+    options: isAIPrefill && aiOptionsRaw
+      ? aiOptionsRaw.split("||").filter(Boolean).map((text, i) => ({
+          id: crypto.randomUUID(),
+          text,
+          color: OPTION_COLORS[i % OPTION_COLORS.length],
+        }))
+      : [],
     visibility: "campaign_only",
     endsAt: "",
     targetRegion: "",
     allowMultipleVotes: false,
     showResultsBeforeEnd: true,
     notifySubscribers: false,
-    tags: "",
+    tags: isAIPrefill ? aiTags : "",
   });
 
   // Fetch active campaign
@@ -592,6 +606,12 @@ function NewPollInner() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: NAVY }}>Create Poll</h1>
         <p className="text-gray-500 mt-1">Build a poll to collect voter insights.</p>
+        {isAIPrefill && (
+          <div className="mt-3 flex items-center gap-2 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-xl">
+            <span className="text-violet-600 text-sm">✨</span>
+            <p className="text-sm text-violet-700 font-medium">Pre-filled from AI suggestion — review and adjust before publishing.</p>
+          </div>
+        )}
       </div>
 
       {/* Step indicator */}

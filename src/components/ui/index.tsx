@@ -92,9 +92,11 @@ Textarea.displayName = "Textarea";
 
 // ─── Select ──────────────────────────────────────────────────────────────────
 
-export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & { error?: string }>(
-  ({ className, error, children, ...props }, ref) => (
-    <div className="w-full">
+export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & { error?: string; wrapperClassName?: string }>(
+  ({ className, error, wrapperClassName, children, ...props }, ref) => (
+    // Width lives on the wrapper (wrapperClassName) in flex contexts so w-full on the
+    // select always means "fill the wrapper" — never fights with a consumer-supplied width.
+    <div className={cn("w-full", wrapperClassName)}>
       <select
         ref={ref}
         className={cn(
@@ -425,3 +427,5 @@ export function FormField({ label, error, required, children }: {
 // Re-export new components
 export { ContactAutocomplete } from "./contact-autocomplete";
 export { MultiSelect } from "./multi-select";
+export { AddressAutocomplete } from "./address-autocomplete";
+export type { AddressResult } from "./address-autocomplete";

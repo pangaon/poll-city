@@ -90,7 +90,11 @@ export default function TopBar({ user }: TopBarProps) {
   const hasCritical = (alertData?.critical ?? 0) > 0;
 
   return (
-    <header className="h-14 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-3 sm:px-6 flex-shrink-0">
+    <header
+      className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 flex flex-col flex-shrink-0"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="h-14 flex items-center justify-between px-3 sm:px-6" style={{ paddingRight: "max(0.75rem, env(safe-area-inset-right))" }}>
       <div className="flex-1 flex items-center gap-2">
         <button
           type="button"
@@ -208,6 +212,7 @@ export default function TopBar({ user }: TopBarProps) {
             </>
           )}
         </div>
+      </div>
       </div>
     </header>
   );

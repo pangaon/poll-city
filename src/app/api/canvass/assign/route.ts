@@ -2,57 +2,95 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
-import { assignCanvassSchema } from "@/lib/validators";
+import { bulkAssignCanvassSchema } from "@/lib/validators";
 
+/**
+ * POST /api/canvass/assign
+ *
+ * Bulk-assigns one or more team members to a canvass list.
+ * Body: { canvassListId, userIds: string[] }
+ *
+ * - Skips users already assigned (upsert behaviour via skipDuplicates)
+ * - Security: every target user must be an active member of the same campaign
+ */
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+
   let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
-
-  const parsed = assignCanvassSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
-
-  // Verify the canvass list exists and get its campaign
-  const list = await prisma.canvassList.findUnique({
-    where: { id: parsed.data.canvassListId },
-    select: { campaignId: true },
-  });
-  if (!list) return NextResponse.json({ error: "List not found" }, { status: 404 });
-
-  // Verify the requesting user is a member of this campaign
-  const requestingMembership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: list.campaignId } },
-  });
-  if (!requestingMembership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  // SECURITY: Verify the target user is also a member of this same campaign
-  // Prevents assigning users from other campaigns or arbitrary userIds
-  const targetMembership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: parsed.data.userId, campaignId: list.campaignId } },
-  });
-  if (!targetMembership) {
-    return NextResponse.json({ error: "Target user is not a member of this campaign" }, { status: 403 });
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const assignment = await prisma.canvassAssignment.create({
-    data: {
-      canvassListId: parsed.data.canvassListId,
-      userId: parsed.data.userId,
-      status: "not_started",
+  const parsed = bulkAssignCanvassSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      { status: 422 },
+    );
+  }
+
+  const { canvassListId, userIds } = parsed.data;
+
+  // Fetch the canvass list to get the campaign
+  const list = await prisma.canvassList.findUnique({
+    where: { id: canvassListId },
+    select: { campaignId: true },
+  });
+  if (!list) {
+    return NextResponse.json({ error: "List not found" }, { status: 404 });
+  }
+
+  // Verify the requesting user has access
+  const { forbidden } = await guardCampaignRoute(
+    session!.user.id,
+    list.campaignId,
+    "canvassing:write",
+  );
+  if (forbidden) return forbidden;
+
+  // SECURITY: Verify every target user is an active member of this campaign
+  const memberships = await prisma.membership.findMany({
+    where: {
+      campaignId: list.campaignId,
+      userId: { in: userIds },
+      status: "active",
     },
+    select: { userId: true },
   });
 
+  const validUserIds = new Set(memberships.map((m) => m.userId));
+  const invalidIds = userIds.filter((id) => !validUserIds.has(id));
+  if (invalidIds.length > 0) {
+    return NextResponse.json(
+      { error: "Some users are not active members of this campaign", invalidIds },
+      { status: 403 },
+    );
+  }
+
+  // Bulk upsert assignments — skip duplicates so re-assigning is idempotent
+  await prisma.canvassAssignment.createMany({
+    data: userIds.map((userId) => ({
+      canvassListId,
+      userId,
+      status: "not_started" as const,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Log the bulk assignment
   await prisma.activityLog.create({
     data: {
       campaignId: list.campaignId,
       userId: session!.user.id,
-      action: "canvass_assigned",
-      entityType: "canvass_assignment",
-      entityId: assignment.id,
-      details: { targetUserId: parsed.data.userId, listId: parsed.data.canvassListId },
+      action: "canvass_bulk_assigned",
+      entityType: "canvass_list",
+      entityId: canvassListId,
+      details: { targetUserIds: userIds, count: userIds.length },
     },
   });
 
-  return NextResponse.json({ data: assignment }, { status: 201 });
+  return NextResponse.json({ data: { canvassListId, assigned: userIds.length } }, { status: 201 });
 }

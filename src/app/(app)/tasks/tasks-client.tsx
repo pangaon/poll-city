@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, CheckCircle, Clock, AlertCircle, Filter } from "lucide-react";
-import { Button, Card, PageHeader, Select, SupportLevelBadge, Badge, Modal, FormField, Input, Textarea, EmptyState } from "@/components/ui";
+import { Plus, CheckCircle, Clock } from "lucide-react";
+import { Button, Card, PageHeader, Select, Badge, Modal, FormField, Input, Textarea, EmptyState } from "@/components/ui";
 import { formatDate, fullName, cn } from "@/lib/utils";
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TaskStatus, TaskPriority } from "@/types";
 import { useForm } from "react-hook-form";
@@ -69,13 +69,17 @@ export default function TasksClient({ campaignId, teamMembers, currentUserId }: 
         title="Tasks"
         description={`${total} tasks`}
         actions={
-          <div className="flex gap-2">
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-36">
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
               <option value="active">Active</option>
               <option value="all">All</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
-            </Select>
+            </select>
             <Button size="sm" variant={mineOnly ? "default" : "outline"} onClick={() => setMineOnly(!mineOnly)}>
               {mineOnly ? "My Tasks" : "All Tasks"}
             </Button>
@@ -117,30 +121,81 @@ function TaskCard({ task: t, onStatusChange, dimmed }: { task: TaskItem; onStatu
   const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed";
 
   return (
-    <Card className={cn("p-4 flex items-start gap-3", dimmed && "opacity-60")}>
-      <button
-        onClick={() => onStatusChange(t.id, t.status === "completed" ? "pending" : "completed")}
-        className={cn("w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 transition-colors flex items-center justify-center", t.status === "completed" ? "bg-emerald-500 border-emerald-500" : "border-gray-300 hover:border-emerald-400")}
-      >
-        {t.status === "completed" && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start gap-2 flex-wrap">
-          <p className={cn("text-sm font-medium", t.status === "completed" ? "text-gray-400 line-through" : "text-gray-900")}>{t.title}</p>
-          <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", TASK_PRIORITY_COLORS[t.priority])}>{t.priority}</span>
-          <span className={cn("text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600")}>{TASK_STATUS_LABELS[t.status]}</span>
-        </div>
-        {t.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{t.description}</p>}
-        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          {t.contact && <span className="text-xs text-blue-600">→ {fullName(t.contact.firstName, t.contact.lastName)}</span>}
-          {t.assignedTo && <span className="text-xs text-gray-400">Assigned: {t.assignedTo.name ?? t.assignedTo.email}</span>}
-          {t.dueDate && <span className={cn("text-xs flex items-center gap-1", isOverdue ? "text-red-500 font-medium" : "text-gray-400")}><Clock className="w-3 h-3" />{isOverdue ? "Overdue · " : "Due "}{formatDate(t.dueDate)}</span>}
+    <div className={cn("bg-white rounded-xl border border-gray-200 p-4", dimmed && "opacity-60")}>
+      {/* Top row: checkbox + title + status dropdown */}
+      <div className="flex items-start gap-3">
+        {/* Checkbox */}
+        <button
+          type="button"
+          onClick={() => onStatusChange(t.id, t.status === "completed" ? "pending" : "completed")}
+          className={cn(
+            "mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors flex items-center justify-center",
+            t.status === "completed" ? "bg-emerald-500 border-emerald-500" : "border-gray-300 hover:border-emerald-400"
+          )}
+        >
+          {t.status === "completed" && (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            {/* Title + badges */}
+            <div className="flex-1 min-w-0">
+              <p className={cn("text-sm font-medium", t.status === "completed" ? "text-gray-400 line-through" : "text-gray-900")}>
+                {t.title}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", TASK_PRIORITY_COLORS[t.priority])}>
+                  {t.priority}
+                </span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                  {TASK_STATUS_LABELS[t.status]}
+                </span>
+              </div>
+            </div>
+
+            {/* Status dropdown — fixed width, right-aligned, never expands */}
+            <div className="flex-shrink-0 w-28">
+              <select
+                value={t.status}
+                onChange={(e) => { e.stopPropagation(); onStatusChange(t.id, e.target.value as TaskStatus); }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                {Object.entries(TASK_STATUS_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Description */}
+          {t.description && (
+            <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{t.description}</p>
+          )}
+
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-3 mt-1.5">
+            {t.contact && (
+              <span className="text-xs text-blue-600">→ {fullName(t.contact.firstName, t.contact.lastName)}</span>
+            )}
+            {t.assignedTo && (
+              <span className="text-xs text-gray-400">Assigned: {t.assignedTo.name ?? t.assignedTo.email}</span>
+            )}
+            {t.dueDate && (
+              <span className={cn("text-xs flex items-center gap-1", isOverdue ? "text-red-500 font-medium" : "text-gray-400")}>
+                <Clock className="w-3 h-3" />
+                {isOverdue ? "Overdue · " : "Due "}{formatDate(t.dueDate)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-      <Select value={t.status} onChange={(e) => onStatusChange(t.id, e.target.value as TaskStatus)} className="w-32 text-xs" onClick={(e) => e.stopPropagation()}>
-        {Object.entries(TASK_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </Select>
-    </Card>
+    </div>
   );
 }
 
@@ -160,14 +215,18 @@ function CreateTaskModal({ open, onClose, campaignId, teamMembers, onCreated }: 
         <FormField label="Task Title" error={errors.title?.message} required>
           <Input {...register("title")} placeholder="Follow up with Jane Smith about transit concerns" />
         </FormField>
-        <FormField label="Description"><Textarea {...register("description")} rows={3} placeholder="Additional context…" /></FormField>
+        <FormField label="Description">
+          <Textarea {...register("description")} rows={3} placeholder="Additional context…" />
+        </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Priority">
             <Select {...register("priority")}>
               {Object.entries(TASK_PRIORITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </Select>
           </FormField>
-          <FormField label="Due Date"><Input {...register("dueDate")} type="date" /></FormField>
+          <FormField label="Due Date">
+            <Input {...register("dueDate")} type="date" />
+          </FormField>
         </div>
         <FormField label="Assign To">
           <Select {...register("assignedToId")}>

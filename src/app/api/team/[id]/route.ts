@@ -4,6 +4,8 @@ import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
+import { sendPushBatch, configureWebPush } from "@/lib/notifications/push";
+import { resolveNotificationRecipients, getPushSubscriptionsForUsers } from "@/lib/notifications/routing";
 
 const ASSIGNABLE_ROLES: Role[] = [
   Role.ADMIN,
@@ -80,6 +82,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       details: { targetUserId: target.userId, newRole: role, newStatus: status },
     });
 
+    // On suspend: immediately invalidate the target's mobile sessions by bumping sessionVersion
+    if (status === "suspended") {
+      await prisma.user.update({
+        where: { id: target.userId },
+        data: { sessionVersion: { increment: 1 } },
+      }).catch(() => {}); // non-fatal — web sessions expire naturally
+
+      // Alert recipients via campaign notification routing config
+      if (configureWebPush().ok) {
+        const recipientIds = await resolveNotificationRecipients(
+          campaignId,
+          "suspension",
+          session!.user.id, // don't notify the person who did it
+        );
+        if (recipientIds.length > 0) {
+          const subscriptions = await getPushSubscriptionsForUsers(recipientIds);
+          if (subscriptions.length > 0) {
+            const targetUser = await prisma.user.findUnique({
+              where: { id: target.userId },
+              select: { name: true, email: true },
+            });
+            await sendPushBatch({
+              subscriptions,
+              title: "Team member suspended",
+              body: `${targetUser?.name ?? targetUser?.email ?? "A team member"} has been suspended from the campaign.`,
+              data: { type: "security_alert", campaignId, action: "team.suspend" },
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ data: updated });
   } catch (e) {
     console.error("[team/patch]", e);
@@ -116,6 +150,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       ip: req.headers.get('x-forwarded-for'),
       details: { removedUserId: target.userId },
     });
+
+    // Immediately invalidate mobile sessions for the removed user
+    await prisma.user.update({
+      where: { id: target.userId },
+      data: { sessionVersion: { increment: 1 } },
+    }).catch(() => {});
 
     return NextResponse.json({ data: { removed: true } });
   } catch (e) {

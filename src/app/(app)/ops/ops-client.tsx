@@ -1535,6 +1535,140 @@ function DemoTab({
           ))}
         </div>
       )}
+      {/* Simulation Engine */}
+      <SimulationPanel />
+    </div>
+  );
+}
+
+/* ── Simulation Panel (inside Demo tab) ──────────────────────────────────── */
+function SimulationPanel() {
+  const [demoCampaigns, setDemoCampaigns] = useState<{ id: string; name: string }[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [running, setRunning] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch all campaigns and filter to demo ones (SUPER_ADMIN sees all)
+    fetch("/api/campaigns", { headers: {} })
+      .then((r) => r.json())
+      .then((data: { data?: { id: string; name: string; isDemo?: boolean }[] }) => {
+        const demos = (data.data ?? []).filter((c) => c.isDemo);
+        setDemoCampaigns(demos);
+        if (demos.length > 0) setSelectedId(demos[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function runSim() {
+    if (!selectedId) return;
+    setRunning(true);
+    setLastResult(null);
+    try {
+      const res = await fetch("/api/simulation/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: selectedId }),
+      });
+      const data = await res.json() as { created?: number; signRequests?: number; error?: string };
+      if (!res.ok) setLastResult(`Error: ${data.error ?? "unknown"}`);
+      else setLastResult(`Batch done — ${data.created} interactions, ${data.signRequests} sign requests`);
+    } catch {
+      setLastResult("Request failed");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function clearSim() {
+    if (!selectedId) return;
+    if (!confirm("This deletes ALL simulation interactions and resets contact support levels. Cannot be undone.")) return;
+    setClearing(true);
+    setLastResult(null);
+    try {
+      const res = await fetch("/api/simulation/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: selectedId }),
+      });
+      const data = await res.json() as { deleted?: number; error?: string };
+      if (!res.ok) setLastResult(`Error: ${data.error ?? "unknown"}`);
+      else setLastResult(`Cleared — ${data.deleted} interactions deleted`);
+    } catch {
+      setLastResult("Request failed");
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <Cpu className="w-5 h-5" style={{ color: GREEN }} />
+        <p className="font-bold text-gray-900 text-sm">Simulation Engine</p>
+        <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium ml-auto">
+          Demo only
+        </span>
+      </div>
+
+      {demoCampaigns.length === 0 ? (
+        <p className="text-sm text-gray-400">No demo campaigns found (isDemo=true).</p>
+      ) : (
+        <div className="space-y-3">
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-300"
+          >
+            {demoCampaigns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex gap-3">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={runSim}
+              disabled={running || clearing}
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-semibold text-white transition-opacity disabled:opacity-50 min-h-[44px]"
+              style={{ backgroundColor: GREEN }}
+            >
+              {running ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Running…</>
+              ) : (
+                <><Play className="w-4 h-4" /> Run batch</>
+              )}
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={clearSim}
+              disabled={running || clearing}
+              className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 min-h-[44px]"
+            >
+              {clearing ? (
+                <><RefreshCw className="w-4 h-4 animate-spin" /> Clearing…</>
+              ) : (
+                <><XCircle className="w-4 h-4" /> Clear sim data</>
+              )}
+            </motion.button>
+          </div>
+
+          {lastResult && (
+            <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+              {lastResult}
+            </p>
+          )}
+
+          <p className="text-xs text-gray-400">
+            Cron runs every 5 min automatically for all demo campaigns.{" "}
+            Kill switch: set <code className="font-mono">SIMULATION_ENABLED=false</code> in env.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

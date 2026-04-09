@@ -6,7 +6,8 @@ import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   ArrowLeft, BarChart3, Check, CheckCircle, ChevronLeft, ChevronRight,
   Clock, Copy, Eye, EyeOff, Globe, GripVertical, Lock, Share2,
-  ThumbsDown, ThumbsUp, Users, Vote, Search,
+  ThumbsDown, ThumbsUp, Users, Vote, Search, ExternalLink,
+  Star, Sparkles,
 } from "lucide-react";
 import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
 import { toast } from "sonner";
@@ -608,6 +609,8 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
   const [receipt, setReceipt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [loadingInsight, setLoadingInsight] = useState(false);
 
   const poll = resultsData?.poll ?? null;
 
@@ -649,10 +652,36 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
       toast.success("Vote recorded!");
       // Refresh results
       loadResults();
+      // Fetch AI insight if poll has enough responses
+      fetchInsight();
     } catch {
       toast.error("Network error");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function fetchInsight() {
+    if (loadingInsight || aiInsight) return;
+    setLoadingInsight(true);
+    try {
+      const res = await fetch(`/api/polls/${pollId}/insight`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.insight) setAiInsight(data.insight);
+      }
+    } catch { /* silent — insight is optional */ } finally {
+      setLoadingInsight(false);
+    }
+  }
+
+  function handleShare() {
+    const url = `${window.location.origin}/polls/${pollId}`;
+    if (navigator.share) {
+      navigator.share({ title: poll?.question ?? "Poll City", url });
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success("Poll link copied!");
     }
   }
 
@@ -726,16 +755,36 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
       transition={{ duration: 0.3 }}
       className="max-w-2xl mx-auto space-y-6"
     >
-      {/* Back button */}
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
-        transition={spring}
-        onClick={() => router.push("/polls")}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 min-h-[44px]"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Polls
-      </motion.button>
+      {/* Back + actions row */}
+      <div className="flex items-center justify-between">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          transition={spring}
+          onClick={() => router.push("/polls")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 min-h-[44px]"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Polls
+        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleShare}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 border border-gray-100 min-h-[36px]"
+          >
+            <Share2 className="w-4 h-4" /> Share
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => router.push(`/polls/${pollId}/live`)}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 border border-gray-100 min-h-[36px]"
+          >
+            <ExternalLink className="w-4 h-4" /> Live
+          </motion.button>
+        </div>
+      </div>
 
       {/* Header */}
       <div>
@@ -872,6 +921,35 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
           </Card>
         </motion.div>
       )}
+
+      {/* AI Insight — shows after voting when results have enough responses */}
+      <AnimatePresence>
+        {(loadingInsight || aiInsight) && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card style={{ borderColor: `${GREEN}40`, backgroundColor: `${GREEN}05` }}>
+              <CardContent className="pt-5 pb-5">
+                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: NAVY }}>
+                  <Sparkles className="w-4 h-4" style={{ color: GREEN }} /> AI Analysis
+                </h3>
+                {loadingInsight ? (
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-100 rounded-xl animate-pulse w-full" />
+                    <div className="h-4 bg-gray-100 rounded-xl animate-pulse w-4/5" />
+                    <div className="h-4 bg-gray-100 rounded-xl animate-pulse w-3/5" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-700 leading-relaxed">{aiInsight}</p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Receipt verification */}
       <Card>

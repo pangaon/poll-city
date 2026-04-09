@@ -104,6 +104,19 @@ export async function POST(req: NextRequest) {
     await advanceFunnel(resolvedContactId, FunnelStage.donor, "donation", session!.user.id);
   }
 
+  // Upgrade support level: a donor is at minimum leaning_support.
+  // Only upgrade if currently unknown or undecided — never downgrade an already-identified supporter.
+  if (resolvedContactId) {
+    await prisma.contact.updateMany({
+      where: {
+        id: resolvedContactId,
+        campaignId,
+        supportLevel: { in: ["unknown", "undecided"] },
+      },
+      data: { supportLevel: "leaning_support" },
+    });
+  }
+
   // Receipt email — Ontario Municipal Elections Act requires receipts for donations ≥ $25
   if (resolvedContactId) {
     const contact = await prisma.contact.findUnique({

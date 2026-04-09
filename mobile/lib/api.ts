@@ -16,7 +16,9 @@ import type {
   CreateInteractionPayload,
   Interaction,
   LoginResponse,
+  OcrResult,
   PaginatedResponse,
+  ScrutineerAssignment,
   ShiftSummary,
 } from "./types";
 
@@ -298,4 +300,60 @@ export async function fetchShiftSummary(campaignId: string): Promise<ShiftSummar
   return apiFetch<ShiftSummary>("/api/canvassing/shift-summary", {
     params: { campaignId },
   });
+}
+
+// ---------------------------------------------------------------------------
+// E-Day — Scrutineer assignments
+// ---------------------------------------------------------------------------
+
+export async function fetchMyAssignment(
+  campaignId: string,
+): Promise<{ data: ScrutineerAssignment | null }> {
+  return apiFetch<{ data: ScrutineerAssignment | null }>("/api/eday/my-assignment", {
+    params: { campaignId },
+  });
+}
+
+export interface OcrScanPayload {
+  campaignId: string;
+  /** base64-encoded image data (no data URI prefix) */
+  imageBase64: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  hint?: {
+    pollingStation?: string;
+    municipality?: string;
+    ward?: string;
+    province?: string;
+  };
+}
+
+export async function ocrScanPrintout(
+  payload: OcrScanPayload,
+): Promise<{ data: OcrResult }> {
+  return apiFetch<{ data: OcrResult }>("/api/results/ocr", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export interface ResultEntryPayload {
+  campaignId: string;
+  province: string;
+  municipality: string;
+  ward?: string | null;
+  office: string;
+  candidateName: string;
+  party?: string | null;
+  votes: number;
+  percentReporting?: number;
+  ocrAssisted?: boolean;
+}
+
+export async function submitResultEntry(
+  payload: ResultEntryPayload,
+): Promise<{ data: unknown; verified: boolean; message?: string }> {
+  return apiFetch<{ data: unknown; verified: boolean; message?: string }>(
+    "/api/results/entry",
+    { method: "POST", body: payload },
+  );
 }

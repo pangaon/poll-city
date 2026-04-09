@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
 
     let updated = 0;
 
-    // Mark contact as Do Not Contact
+    // Mark contact as Do Not Contact + SMS opt-out
     if (contactId) {
       try {
         await prisma.contact.update({
           where: { id: contactId, deletedAt: null },
-          data: { doNotContact: true },
+          data: { doNotContact: true, smsOptOut: true },
         });
         updated++;
       } catch {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       // Update all contacts with this email across all campaigns
       const result = await prisma.contact.updateMany({
         where: { email: { equals: email, mode: "insensitive" }, deletedAt: null },
-        data: { doNotContact: true },
+        data: { doNotContact: true, smsOptOut: true },
       });
       updated += result.count;
 

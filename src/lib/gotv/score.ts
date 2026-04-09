@@ -25,7 +25,10 @@ type GotvContact = Pick<
   | "volunteerInterest"
   | "lastContactedAt"
   | "voted"
->;
+> & {
+  /** Optional — when provided, shifts GOTV score ±5 based on interaction quality */
+  confidenceScore?: number | null;
+};
 
 export type GotvTier = 1 | 2 | 3 | 4;
 
@@ -75,7 +78,12 @@ export function computeGotvScore(c: GotvContact): GotvBreakdown {
 
   const commitment = COMMITMENT_WEIGHT[c.gotvStatus as GotvStatus] ?? 0;
 
-  const raw = base + support + engagement + recency + commitment;
+  // Confidence modifier: ±5 pts based on interaction quality vs. expected 50% baseline
+  // A canvassed contact (score 85) gets +3; call_center only (score 30) gets −2
+  const confidence = c.confidenceScore ?? 0;
+  const confidenceMod = confidence > 0 ? Math.round((confidence - 50) / 10) : 0;
+
+  const raw = base + support + engagement + recency + commitment + confidenceMod;
   const score = Math.max(0, Math.min(100, raw));
   const tier: GotvTier = score >= 80 ? 1 : score >= 60 ? 2 : score >= 40 ? 3 : 4;
 

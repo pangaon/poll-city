@@ -77,6 +77,7 @@ import {
   AreaChart,
 } from "recharts";
 import AnimatedNumber from "@/components/dashboard/animated-number";
+import StageBanner from "@/components/dashboard/stage-banner";
 
 const LiveInsightMap = dynamic(() => import("@/components/dashboard/live-insight-map"), { ssr: false });
 
@@ -708,6 +709,11 @@ export default function DashboardStudio({ campaignId, campaignName, campaignLogo
         </div>
       </div>
 
+      {/* ─── Stage-Aware Context Banner ──────────────────── */}
+      {mode === "overview" && (
+        <StageBanner campaignId={campaignId} />
+      )}
+
       {/* ─── Body ────────────────────────────────────────── */}
       <div>
         {/* Customize Panel */}
@@ -790,7 +796,7 @@ const FUNNEL_COLORS: Record<string, string> = {
   voter: "#ef4444",
 };
 const FUNNEL_LABELS: Record<string, string> = {
-  unknown: "Unknown",
+  unknown: "Universe",
   contact: "Contact",
   supporter: "Supporter",
   volunteer: "Volunteer",
@@ -809,7 +815,7 @@ function FunnelWidget({ data, campaignId }: { data: DashboardData; campaignId: s
         <a href={`/contacts?campaignId=${campaignId}`} className="text-[10px] text-blue-500 hover:underline">View all →</a>
       </div>
       <div className="space-y-2">
-        {stages.filter((s) => s.stage !== "unknown").map((s) => (
+        {stages.map((s) => (
           <a key={s.stage} href={`/contacts?campaignId=${campaignId}&funnelStage=${s.stage}`} className="block group">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-[10px] font-semibold text-slate-500 w-16 flex-shrink-0">{FUNNEL_LABELS[s.stage] ?? s.stage}</span>
