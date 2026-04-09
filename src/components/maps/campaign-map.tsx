@@ -271,7 +271,7 @@ export default function CampaignMap({
 
   const contactPoints = useMemo(() => {
     if (!contacts) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return contacts.features
+    return (contacts.features ?? [])
       .map((feature) => {
         const latLng = normalizePoint(feature.geometry);
         if (!latLng) return null;
@@ -282,7 +282,7 @@ export default function CampaignMap({
 
   const turfPolygons = useMemo(() => {
     if (!turfs) return [] as Array<{ points: Array<[number, number]>; properties: Record<string, unknown> }>;
-    return turfs.features
+    return (turfs.features ?? [])
       .map((feature) => {
         const points = normalizePolygonCoordinates(feature.geometry);
         if (!points.length) return null;
@@ -293,7 +293,7 @@ export default function CampaignMap({
 
   const signPoints = useMemo(() => {
     if (!signs) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return signs.features
+    return (signs.features ?? [])
       .map((feature) => {
         const latLng = normalizePoint(feature.geometry);
         if (!latLng) return null;
@@ -304,7 +304,7 @@ export default function CampaignMap({
 
   const volunteerPoints = useMemo(() => {
     if (!volunteers) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return volunteers.features
+    return (volunteers.features ?? [])
       .map((feature) => {
         const latLng = normalizePoint(feature.geometry);
         if (!latLng) return null;
@@ -315,7 +315,7 @@ export default function CampaignMap({
 
   const boundaryPolygons = useMemo(() => {
     if (!wardBoundary) return [] as Array<Array<[number, number]>>;
-    return wardBoundary.features
+    return (wardBoundary.features ?? [])
       .map((feature) => normalizePolygonCoordinates(feature.geometry))
       .filter((points) => points.length > 0);
   }, [wardBoundary]);

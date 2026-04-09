@@ -18,6 +18,11 @@ export async function GET(req: NextRequest) {
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   // Group contacts by municipal poll
   const pollData = await prisma.contact.groupBy({
     by: ["municipalPoll"],

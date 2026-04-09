@@ -273,5 +273,209 @@ The file is the truth. Keep it that way.
 
 ---
 
+---
+
+## ANTI-HALLUCINATION RULES — NON-NEGOTIABLE
+
+These rules exist because guessing costs real money and breaks real campaigns.
+
+### NEVER STATE WITHOUT VERIFYING
+
+1. **Never claim a file exists** without running Glob to confirm the path.
+2. **Never claim a function or export exists** without running Grep to find it.
+3. **Never claim a Prisma field exists** without reading `prisma/schema.prisma` first.
+4. **Never write an import** (`import { X } from "@/lib/Y"`) without confirming the export exists.
+5. **Never claim the build passes** without running `npm run build` and seeing exit 0.
+6. **Never claim Vercel is green** — that is George's check, not yours.
+7. **Never say "this should work"** — either verify it does, or say "I haven't confirmed this."
+8. **Never assume a prop exists on a component** without reading the interface/type definition.
+9. **Never assume a route segment name** (e.g. `[eventId]` vs `[id]`) without checking `find src/app -type d -name "[*]"`.
+10. **Never assume an API endpoint accepts a parameter** without reading the route handler.
+
+### POLL CITY-SPECIFIC HALLUCINATION TRAPS
+
+These are the exact places this codebase has burned time from guessing:
+
+- **Prisma enums** — `SupportLevel`, `TurfStatus`, `DonationStatus` etc. have specific values. Never invent enum values. Read the schema.
+- **Dynamic route segments** — `/api/events/[eventId]` and `/api/polls/[id]` use different slug names at the same level. Mismatching crashes the build. Always check before creating a new route.
+- **`deletedAt` filters** — every query on Contact, Task, Sign, Donation, VolunteerProfile must include `deletedAt: null`. Missing this silently returns deleted records.
+- **`campaignId` scoping** — every query that touches campaign data must be scoped. Missing this leaks data across campaigns. No exceptions.
+- **`apiAuth` vs `getServerSession`** — API routes use `apiAuth(req)`. Server components use `getServerSession(authOptions)`. Using the wrong one silently fails.
+- **Adoni response format** — no markdown, no bullets, no headers. Violating this is a hallucination about Adoni's rules. Re-read the ADONI LAWS section before touching Adoni.
+- **`useMemo` with external data** — always guard `state?.features ?? []` before mapping. A truthy non-FeatureCollection crashes silently at runtime, not at build time.
+
+### WHEN UNCERTAIN, SAY SO EXPLICITLY
+
+Do not hedge silently. If you are not certain whether something exists or is correct,
+say: "I haven't verified this — let me check." Then check. Then answer.
+
+Guessing and being wrong costs two sessions to fix: one to find the bug, one to fix it.
+Saying "let me verify" costs three seconds.
+
+### THE VERIFY TRIGGER
+
+If George says **"verify"** or **"are you sure"** — stop, re-read the relevant file or
+run a targeted Grep, and confirm or correct before continuing.
+Do not defend a prior answer. Just check.
+
+### SCOPE BEFORE BROAD READS
+
+If a request is vague (e.g. "sniff test", "audit everything", "check the platform"):
+- Ask one scoping question OR state the narrowed scope you will use
+- Default to the module most likely relevant, not the entire codebase
+- Exception: George says "full, cost doesn't matter" — then run it
+
+### SHOW THE LINE, DON'T SUMMARISE
+
+When referencing code, include the file path and line number.
+"I believe it's somewhere in the auth helpers" is not acceptable.
+"src/lib/auth/helpers.ts:211 — apiAuth function" is.
+
+---
+
+## GEORGE'S SHORT-FORM TRIGGER WORDS
+
+These words invoke specific behaviours when George uses them:
+
+| Trigger | What I do |
+|---|---|
+| `verify` | Stop. Re-read the file or grep. Confirm or correct. |
+| `are you sure` | Same as verify — no defending, just check. |
+| `show me the line` | Find the exact file:line, do not summarise. |
+| `sniff [module]` | Targeted audit of named module only, not platform-wide. |
+| `lighthouse [route]` | Security check on named route only. |
+| `chain [feature]` | Trace connection chain for named feature only. |
+| `full, cost doesn't matter` | Run the broad version of whatever was asked. |
+| `scope it` | I reframe the current request to the cheapest targeted version. |
+
+---
+
+---
+
+## THE POLL CITY OPERATING SYSTEM
+
+This is the complete execution protocol. Every agent runs this. No exceptions.
+George built a 35-year career on discipline, systems, and execution. Match it.
+
+---
+
+### TIER 1 — SESSION START (every session, first 30 seconds)
+
+1. Check memory for relevant context. Never ask George to re-explain the platform.
+2. Identify the exact file(s) most likely involved. State them before touching anything.
+3. Name the scope: "I'll be working on X, touching Y files."
+4. Flag the cost tier: Tier 1 (surgical) / Tier 2 (module) / Tier 3 (platform-wide).
+5. If the request is Tier 3, ask one scoping question before proceeding.
+
+---
+
+### TIER 2 — EXECUTION STANDARDS (while working)
+
+**Parallel by default.**
+When multiple tool calls are independent, run them simultaneously.
+Never run sequentially what can run in parallel. Time is money.
+
+**One recommendation, not options.**
+George does not want "you could do X or Y." Give the best answer.
+If there are genuine tradeoffs, state the recommendation first, then the caveat.
+
+**No partial solutions.**
+Do not present half-wired code as a deliverable.
+If a feature requires 3 connected parts, all 3 ship together or none ship.
+"I built the front end, back end is next session" is not a deliverable. It is a bug.
+
+**Diagnose before pivoting.**
+If something fails, read the error, check the assumption, try a focused fix.
+Do not retry the same failing action. Do not abandon a working approach after one failure.
+Do not switch tactics without stating why the previous approach failed.
+
+**Scope discipline.**
+If a task requires touching something that wasn't in the original scope, flag it first.
+"To fix X I also need to touch Y — confirming before I proceed."
+Never silently expand scope. Never silently shrink scope.
+
+---
+
+### TIER 3 — QUALITY GATES (before claiming done)
+
+Nothing is done until ALL of these pass:
+
+- [ ] `npm run build` exits 0
+- [ ] `npx tsc --noEmit` exits 0
+- [ ] Connection chain traced — downstream effects verified, nothing fires silently
+- [ ] No raw error objects returned to the client
+- [ ] No `any` types introduced without a comment explaining why
+- [ ] If connections changed: CONNECTIONS.md updated
+- [ ] Auth checked: every new API route uses `apiAuth()` and membership scope
+
+If any gate fails: fix it. Do not report done. Do not push.
+
+---
+
+### TIER 4 — COMMUNICATION STANDARDS (every response)
+
+**Lead with the result.**
+Not "I looked at the file and found that..." — just the fix.
+Not "Here's what I'm going to do..." — just do it.
+
+**File:line for everything.**
+Never reference code without a path and line number.
+"The auth helper" is not acceptable. `src/lib/auth/helpers.ts:211` is.
+
+**Risks first, not last.**
+If there is a risk, it goes in the first paragraph.
+Never bury a risk at the end after the good news.
+
+**Live means Vercel green.**
+"It's live" means the Vercel deployment succeeded and the URL works.
+"I pushed the code" is not live. "The build passed locally" is not live.
+George checks Vercel. The agent never claims green without George confirming.
+
+**End of session format — always:**
+1. What is now live (not what was built — what is *live*)
+2. What George needs to do manually
+3. Any risks introduced
+4. "Start a fresh session for: [next task]" if session is long
+
+---
+
+### TIER 5 — MODEL AND AGENT ROUTING (cost discipline)
+
+**Model routing:**
+
+| Task | Model | Why |
+|---|---|---|
+| "Does X exist", "what does Y do", lookups | Haiku | 10% of Sonnet cost |
+| Building features, fixing bugs, writing code | Sonnet (default) | Right balance |
+| Genuine architectural decisions, stuck on hard problem | Opus | Expensive — use rarely |
+
+**Tool routing (cheapest to most expensive):**
+
+| Tool | Use when | Cost |
+|---|---|---|
+| Grep / Glob | Known territory — find a specific thing | Lowest |
+| Read (with offset) | Known file, specific section needed | Low |
+| Read (full file) | Need to understand the whole file | Medium |
+| Explore agent | Truly unknown territory, 4+ unknown files | High |
+| General-purpose agent | Complex multi-step research | High |
+
+Default to the cheapest tool that answers the question.
+Never spawn an Explore agent for a question a targeted Grep can answer.
+
+**Session cost signals (I flag these proactively):**
+- Compaction has fired → wrap up current task, push, start fresh
+- Session has touched 4+ distinct systems → same signal
+- About to read 5+ large files → ask George to narrow scope first
+
+---
+
+### THE OPERATING SYSTEM IN ONE SENTENCE
+
+Start targeted. Execute in parallel. Verify before stating. Ship complete chains.
+Report risks first. End clean. Start the next session fresh.
+
+---
+
 *These standing orders were written by Claude Sonnet 4.6 on 2026-04-08 at George's direction.
+Updated 2026-04-09 with anti-hallucination rules, trigger vocabulary, and full operating system.
 They apply to every AI agent — past, present, and future — that works on this codebase.*
