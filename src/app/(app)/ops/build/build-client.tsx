@@ -12,10 +12,18 @@ import {
   Zap,
   BarChart3,
   AlertTriangle,
+  ChevronUp,
+  Play,
+  Square,
+  CheckCircle,
+  XCircle,
+  Wifi,
+  WifiOff,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
+// ─── Palette / spring ─────────────────────────────────────────────────────────
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
@@ -32,6 +40,40 @@ type QuickAction = {
   icon: React.ReactNode;
   prompt: string;
 };
+
+type BridgeStatus = "disconnected" | "connecting" | "connected";
+
+type BridgeCommand = { id: string; label: string };
+
+type TermLine = {
+  id: string;
+  type: "stdout" | "stderr" | "system";
+  text: string;
+};
+
+type ActiveRun = {
+  id: string;
+  label: string;
+  done: boolean;
+  ok?: boolean;
+};
+
+// Bridge WebSocket message shapes (inbound from daemon)
+type BridgeMsg =
+  | { type: "ready"; whitelist: BridgeCommand[] }
+  | { type: "start"; id: string; label: string; ts: number }
+  | { type: "stdout"; text: string }
+  | { type: "stderr"; text: string }
+  | { type: "done"; id: string; code: number; ok: boolean }
+  | { type: "killed"; text: string }
+  | { type: "error"; text: string }
+  | { type: "pong" };
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BRIDGE_PORT = 7433;
+const BRIDGE_URL = `ws://127.0.0.1:${BRIDGE_PORT}`;
+const RECONNECT_DELAY_MS = 3000;
 
 // ─── Quick actions ────────────────────────────────────────────────────────────
 
@@ -68,7 +110,6 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 // ─── Message renderer ─────────────────────────────────────────────────────────
-// Handles fenced code blocks (``` ``` ```) without adding react-markdown.
 
 function renderMessageContent(content: string): React.ReactNode {
   const parts = content.split(/(```[\s\S]*?```)/g);
@@ -103,9 +144,22 @@ function renderMessageContent(content: string): React.ReactNode {
   });
 }
 
+// ─── Bridge status dot ────────────────────────────────────────────────────────
+
+function BridgeDot({ status }: { status: BridgeStatus }) {
+  if (status === "connected") {
+    return <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] animate-pulse flex-shrink-0" />;
+  }
+  if (status === "connecting") {
+    return <Loader2 className="w-3 h-3 text-[#EF9F27] animate-spin flex-shrink-0" />;
+  }
+  return <span className="w-1.5 h-1.5 rounded-full bg-white/20 flex-shrink-0" />;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BuildClient() {
+  // ── Chat state ──────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -115,16 +169,162 @@ export default function BuildClient() {
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // ── Bridge / terminal state ──────────────────────────────────────────────────
+  const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus>("connecting");
+  const [bridgeCommands, setBridgeCommands] = useState<BridgeCommand[]>([]);
+  const [termLines, setTermLines] = useState<TermLine[]>([]);
+  const [activeRun, setActiveRun] = useState<ActiveRun | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+
+  // ── Refs ─────────────────────────────────────────────────────────────────────
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const termOutputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
+  // ── Auto-scroll chat ─────────────────────────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ── File handling ───────────────────────────────────────────────────────────
+  // ── Auto-scroll terminal output ───────────────────────────────────────────────
+  useEffect(() => {
+    if (termOutputRef.current) {
+      termOutputRef.current.scrollTop = termOutputRef.current.scrollHeight;
+    }
+  }, [termLines]);
 
+  // ── Bridge WebSocket connection (auto-reconnect) ──────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function connect() {
+      if (cancelled) return;
+
+      setBridgeStatus("connecting");
+
+      const ws = new WebSocket(BRIDGE_URL);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (cancelled) {
+          ws.close();
+          return;
+        }
+        setBridgeStatus("connected");
+      };
+
+      ws.onmessage = (e) => {
+        if (cancelled) return;
+        let msg: BridgeMsg;
+        try {
+          msg = JSON.parse(e.data) as BridgeMsg;
+        } catch {
+          return;
+        }
+
+        switch (msg.type) {
+          case "ready":
+            setBridgeCommands(msg.whitelist);
+            break;
+
+          case "start":
+            setActiveRun({ id: msg.id, label: msg.label, done: false });
+            setTermLines([
+              {
+                id: crypto.randomUUID(),
+                type: "system",
+                text: `$ ${msg.label}\n`,
+              },
+            ]);
+            setTerminalOpen(true); // auto-open on run
+            break;
+
+          case "stdout":
+            setTermLines((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "stdout", text: msg.text },
+            ]);
+            break;
+
+          case "stderr":
+            setTermLines((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "stderr", text: msg.text },
+            ]);
+            break;
+
+          case "done":
+            setActiveRun((prev) =>
+              prev ? { ...prev, done: true, ok: msg.ok } : null
+            );
+            setTermLines((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                type: "system",
+                text: `\n[exit ${msg.code}] ${msg.ok ? "✓ success" : "✗ failed"}\n`,
+              },
+            ]);
+            break;
+
+          case "killed":
+          case "error":
+            setTermLines((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), type: "stderr", text: `\n${msg.text}\n` },
+            ]);
+            setActiveRun((prev) =>
+              prev ? { ...prev, done: true, ok: false } : null
+            );
+            break;
+
+          case "pong":
+            // heartbeat — no action needed
+            break;
+        }
+      };
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        setBridgeStatus("disconnected");
+        setBridgeCommands([]);
+        setActiveRun(null);
+        reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+      };
+
+      ws.onerror = () => {
+        // onclose fires after onerror — handled there
+      };
+    }
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── Send a bridge command ────────────────────────────────────────────────────
+  const runBridgeCommand = useCallback((id: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ type: "run", id }));
+  }, []);
+
+  // ── Kill active process ──────────────────────────────────────────────────────
+  const killProcess = useCallback(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({ type: "kill" }));
+  }, []);
+
+  // ── File handling ────────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -152,14 +352,12 @@ export default function BuildClient() {
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear dragging state if leaving the root container
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragging(false);
     }
   }, []);
 
-  // ── Message sending ─────────────────────────────────────────────────────────
-
+  // ── Chat message sending ─────────────────────────────────────────────────────
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() && !attachedFile) return;
@@ -256,7 +454,7 @@ export default function BuildClient() {
     [input, sendMessage]
   );
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -265,7 +463,7 @@ export default function BuildClient() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-[#0A2342]/95 backdrop-blur-sm z-10">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center justify-center w-7 h-7 rounded-md bg-[#1D9E75]/15 border border-[#1D9E75]/25">
@@ -276,13 +474,51 @@ export default function BuildClient() {
             <div className="text-[10px] text-white/30 font-mono">poll.city/ops/build</div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] animate-pulse" />
-          <span className="text-[11px] text-white/40 font-mono">SUPER_ADMIN</span>
+
+        <div className="flex items-center gap-4">
+          {/* Bridge status */}
+          <button
+            onClick={() => setTerminalOpen((v) => !v)}
+            className={cn(
+              "flex items-center gap-1.5 text-[11px] font-mono transition-colors",
+              bridgeStatus === "connected"
+                ? "text-[#1D9E75] hover:text-[#1D9E75]/80"
+                : bridgeStatus === "connecting"
+                ? "text-[#EF9F27]"
+                : "text-white/30 hover:text-white/50"
+            )}
+            title={
+              bridgeStatus === "connected"
+                ? "Bridge connected — click to toggle terminal"
+                : bridgeStatus === "connecting"
+                ? "Connecting to bridge..."
+                : "Bridge offline — run: npm run bridge"
+            }
+          >
+            {bridgeStatus === "connected" ? (
+              <Wifi className="w-3.5 h-3.5" />
+            ) : bridgeStatus === "connecting" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {bridgeStatus === "connected"
+                ? "BRIDGE"
+                : bridgeStatus === "connecting"
+                ? "CONNECTING"
+                : "BRIDGE OFFLINE"}
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#1D9E75] animate-pulse" />
+            <span className="text-[11px] text-white/40 font-mono">SUPER_ADMIN</span>
+          </div>
         </div>
       </div>
 
-      {/* Quick actions */}
+      {/* ── Quick actions ── */}
       <div className="flex-shrink-0 flex gap-2 px-4 py-2.5 overflow-x-auto border-b border-white/8 scrollbar-none">
         {QUICK_ACTIONS.map((action) => (
           <button
@@ -302,7 +538,7 @@ export default function BuildClient() {
         ))}
       </div>
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
         <AnimatePresence initial={false}>
           {messages.length === 0 && (
@@ -321,6 +557,11 @@ export default function BuildClient() {
                 Use a quick action or ask anything about the build, code, or deployments
               </p>
               <p className="text-white/15 text-xs mt-1">Drag any file to attach it</p>
+              {bridgeStatus !== "connected" && (
+                <p className="text-[#EF9F27]/50 text-xs mt-4 font-mono">
+                  Run <span className="text-[#EF9F27]">npm run bridge</span> to enable the terminal
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -364,7 +605,146 @@ export default function BuildClient() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Drag overlay */}
+      {/* ── Terminal Drawer ── */}
+      <div className="flex-shrink-0 border-t border-white/10">
+        {/* Drawer toggle bar */}
+        <button
+          onClick={() => setTerminalOpen((v) => !v)}
+          className="w-full flex items-center gap-2 px-4 py-2 bg-black/20 hover:bg-black/30 transition-colors group"
+        >
+          <Terminal className="w-3 h-3 text-white/30 group-hover:text-white/50 flex-shrink-0" />
+          <span className="text-[10px] font-mono text-white/30 group-hover:text-white/50 uppercase tracking-widest">
+            Terminal
+          </span>
+
+          {/* Active run status */}
+          {activeRun && !activeRun.done && (
+            <div className="flex items-center gap-1.5 ml-2">
+              <Loader2 className="w-3 h-3 text-[#EF9F27] animate-spin" />
+              <span className="text-[10px] font-mono text-[#EF9F27] truncate max-w-[200px]">
+                {activeRun.label}
+              </span>
+            </div>
+          )}
+          {activeRun?.done && (
+            <div className="flex items-center gap-1.5 ml-2">
+              {activeRun.ok ? (
+                <CheckCircle className="w-3 h-3 text-[#1D9E75]" />
+              ) : (
+                <XCircle className="w-3 h-3 text-[#E24B4A]" />
+              )}
+              <span
+                className={cn(
+                  "text-[10px] font-mono truncate max-w-[200px]",
+                  activeRun.ok ? "text-[#1D9E75]" : "text-[#E24B4A]"
+                )}
+              >
+                {activeRun.label}
+              </span>
+            </div>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            <BridgeDot status={bridgeStatus} />
+            <ChevronUp
+              className={cn(
+                "w-3.5 h-3.5 text-white/30 transition-transform",
+                terminalOpen ? "" : "rotate-180"
+              )}
+            />
+          </div>
+        </button>
+
+        {/* Drawer body */}
+        <AnimatePresence>
+          {terminalOpen && (
+            <motion.div
+              key="terminal-body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 300, opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              className="overflow-hidden bg-black/40"
+            >
+              <div className="flex flex-col h-full">
+                {/* Command buttons */}
+                <div className="flex-shrink-0 px-3 pt-2.5 pb-2 border-b border-white/8">
+                  {bridgeStatus === "connected" ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {bridgeCommands.map((cmd) => (
+                        <button
+                          key={cmd.id}
+                          onClick={() => runBridgeCommand(cmd.id)}
+                          disabled={!!(activeRun && !activeRun.done)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono whitespace-nowrap transition-all",
+                            "bg-white/5 hover:bg-[#1D9E75]/15 border border-white/10 hover:border-[#1D9E75]/30",
+                            "text-white/50 hover:text-[#1D9E75]",
+                            "disabled:opacity-30 disabled:cursor-not-allowed"
+                          )}
+                        >
+                          <Play className="w-2.5 h-2.5" />
+                          {cmd.label}
+                        </button>
+                      ))}
+                      {activeRun && !activeRun.done && (
+                        <button
+                          onClick={killProcess}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono whitespace-nowrap transition-all bg-[#E24B4A]/10 hover:bg-[#E24B4A]/20 border border-[#E24B4A]/25 hover:border-[#E24B4A]/40 text-[#E24B4A]"
+                        >
+                          <Square className="w-2.5 h-2.5 fill-current" />
+                          Kill
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-white/25">
+                      <WifiOff className="w-3 h-3" />
+                      <span className="text-[11px] font-mono">
+                        {bridgeStatus === "connecting"
+                          ? "Connecting to bridge daemon..."
+                          : "Bridge offline — run: npm run bridge"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Output area */}
+                <div
+                  ref={termOutputRef}
+                  className="flex-1 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed"
+                >
+                  {termLines.length === 0 ? (
+                    <span className="text-white/15">
+                      {bridgeStatus === "connected"
+                        ? "Click a command button to run it. Output streams here in real time."
+                        : "Waiting for bridge connection..."}
+                    </span>
+                  ) : (
+                    termLines.map((line) => (
+                      <span
+                        key={line.id}
+                        className={cn(
+                          "whitespace-pre",
+                          line.type === "stderr"
+                            ? "text-[#E24B4A]/90"
+                            : line.type === "system"
+                            ? "text-[#EF9F27]/80"
+                            : "text-white/70"
+                        )}
+                      >
+                        {line.text}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Drag overlay ── */}
       <AnimatePresence>
         {isDragging && (
           <motion.div
@@ -382,7 +762,7 @@ export default function BuildClient() {
         )}
       </AnimatePresence>
 
-      {/* Input area */}
+      {/* ── Input area ── */}
       <form
         onSubmit={handleSubmit}
         className="flex-shrink-0 px-4 pb-4 pt-3 border-t border-white/10 bg-[#0A2342]/95"
@@ -413,7 +793,7 @@ export default function BuildClient() {
         </AnimatePresence>
 
         <div className="flex gap-2 items-end">
-          {/* File picker button */}
+          {/* File picker */}
           <input
             ref={fileInputRef}
             type="file"
@@ -445,7 +825,6 @@ export default function BuildClient() {
             value={input}
             onChange={(e) => {
               setInput(e.target.value);
-              // Auto-resize
               e.target.style.height = "auto";
               e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
             }}
@@ -461,7 +840,7 @@ export default function BuildClient() {
             style={{ minHeight: "42px", maxHeight: "150px" }}
           />
 
-          {/* Send button */}
+          {/* Send */}
           <button
             type="submit"
             disabled={loading || (!input.trim() && !attachedFile)}

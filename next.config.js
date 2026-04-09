@@ -43,7 +43,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https:",
+              // ws://127.0.0.1:7433 allows the local bridge daemon (npm run bridge) to connect from the build console
+              "connect-src 'self' https: ws://127.0.0.1:7433",
               "worker-src 'self' blob:",
               "frame-src 'self' https://calendly.com",
             ].join("; "),
