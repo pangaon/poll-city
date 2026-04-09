@@ -208,6 +208,8 @@ Every major user action. Every downstream effect. Honest status.
 | contact.signPlaced = true | ✓ CONNECTED | wired 2026-04-08 |
 | contact.supportLevel escalated | ✓ CONNECTED | wired 2026-04-08 — escalates to strong_support, never downgrades |
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 |
+| ActivityLog / Interaction entry | ✗ NOT CONNECTED | audit() logs sign update but no entry on contact's timeline |
+| contact.signRequested reverts on cancel | ✗ NOT CONNECTED | signRequested stays true even if sign request cancelled |
 
 ---
 
