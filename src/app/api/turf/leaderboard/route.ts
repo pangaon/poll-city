@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   // Door knocks per canvasser — get contactIds for campaign first, then group
   const campaignContactIds = await prisma.contact.findMany({
-    where: { campaignId: campaignId! },
+    where: { campaignId: campaignId!, deletedAt: null },
     select: { id: true },
   }).then((rows) => rows.map((r) => r.id));
 

@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       // Count target contacts and filter opt-outs
       if (body.status === "in_progress" && !broadcast.startedAt) {
         const contacts = await prisma.contact.findMany({
-          where: { campaignId: broadcast.campaignId, phone: { not: null } },
+          where: { campaignId: broadcast.campaignId, deletedAt: null, phone: { not: null } },
           select: { id: true, phone: true },
         });
         const phones = contacts.filter((c) => c.phone).map((c) => c.phone!);

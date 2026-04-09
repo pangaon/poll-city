@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   // Get all contacts grouped by poll
   const contacts = await prisma.contact.findMany({
-    where: { campaignId, isDeceased: false, municipalPoll: { not: null } },
+    where: { campaignId, deletedAt: null, isDeceased: false, municipalPoll: { not: null } },
     select: { municipalPoll: true, supportLevel: true, voted: true },
   });
 

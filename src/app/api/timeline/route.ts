@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   // First contact imported
   const firstContact = await prisma.contact.findFirst({
-    where: { campaignId }, orderBy: { createdAt: "asc" }, select: { createdAt: true },
+    where: { campaignId, deletedAt: null }, orderBy: { createdAt: "asc" }, select: { createdAt: true },
   });
   if (firstContact) {
     milestones.push({
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
   // Contact milestones (100, 500, 1000, 2000, 5000)
   for (const threshold of [100, 500, 1000, 2000, 5000]) {
     const contact = await prisma.contact.findFirst({
-      where: { campaignId },
+      where: { campaignId, deletedAt: null },
       orderBy: { createdAt: "asc" },
       skip: threshold - 1,
       select: { createdAt: true },

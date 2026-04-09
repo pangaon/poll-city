@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   const recentVotes = await prisma.contact.findMany({
     where: {
       campaignId,
+      deletedAt: null,
       voted: true,
       votedAt: { gte: sinceTwelveHours },
     },

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   // Load all campaign contacts for matching
   const allContacts = await prisma.contact.findMany({
-    where: { campaignId, voted: false },
+    where: { campaignId, deletedAt: null, voted: false },
     select: { id: true, firstName: true, lastName: true, address1: true },
   });
 

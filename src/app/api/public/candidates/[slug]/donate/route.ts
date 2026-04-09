@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
     // Create or update contact in CRM
     let contact = await prisma.contact.findFirst({
-      where: { campaignId: campaign.id, email: donorEmail.trim() },
+      where: { campaignId: campaign.id, deletedAt: null, email: donorEmail.trim() },
     });
 
     if (contact) {

@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
   const externalBridgeId = `social_user_${sessionUserId}`;
 
   const existingContact = await prisma.contact.findFirst({
-    where: { campaignId: campaignId!, externalId: externalBridgeId },
+    where: { campaignId: campaignId!, deletedAt: null, externalId: externalBridgeId },
     select: { id: true },
   });
 

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const sampleContact = await prisma.contact.findFirst({
-    where: { campaignId: campaign.id },
+    where: { campaignId: campaign.id, deletedAt: null },
     select: { ward: true, riding: true, city: true, province: true },
     orderBy: { createdAt: "desc" },
   });

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
   const householdContacts = body.applyHousehold && contact.householdId
     ? await prisma.contact.findMany({
-      where: { campaignId: contact.campaignId, householdId: contact.householdId, isDeceased: false },
+      where: { campaignId: contact.campaignId, deletedAt: null, householdId: contact.householdId, isDeceased: false },
       select: { id: true },
     })
     : [{ id: body.contactId }];

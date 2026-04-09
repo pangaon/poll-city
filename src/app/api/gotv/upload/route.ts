@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
   // Load our supporters from DB
   const supporters = await prisma.contact.findMany({
-    where: { campaignId, supportLevel: { in: SUPPORTER_LEVELS }, isDeceased: false },
+    where: { campaignId, deletedAt: null, supportLevel: { in: SUPPORTER_LEVELS }, isDeceased: false },
     select: { id: true, firstName: true, lastName: true, address1: true, streetNumber: true, streetName: true, postalCode: true, phone: true, externalId: true },
   });
 

@@ -57,6 +57,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let contact = await prisma.contact.findFirst({
       where: {
         campaignId: campaign.id,
+        deletedAt: null,
         email: parsed.data.email.trim(),
       },
     });
