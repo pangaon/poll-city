@@ -20,8 +20,12 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET is not configured — endpoint locked" }, { status: 503 });
+  }
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+  if (secret !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
