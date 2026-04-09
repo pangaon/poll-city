@@ -9,7 +9,7 @@ Every major user action. Every downstream effect. Honest status.
 - ✗ NOT CONNECTED — should exist, does not
 - — NOT BUILT — feature not yet built
 
-*Last updated: 2026-04-08 by Claude Sonnet 4.6*
+*Last updated: 2026-04-08 by Claude Sonnet 4.6 — Priority #1 wired*
 *Read CLAUDE.md → THE BUILD CYCLE before touching anything in this file.*
 
 ---
@@ -92,7 +92,7 @@ Every major user action. Every downstream effect. Honest status.
 | Campaign status = sent | ✓ CONNECTED | |
 | sentCount / bounceCount tallied | ✓ CONNECTED | |
 | Resend delivery | ✓ CONNECTED | |
-| contact.lastContactedAt updated | ✗ NOT CONNECTED | zero contact records know it happened |
+| contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — batch updateMany by email |
 | Bounced contacts flagged | ✗ NOT CONNECTED | bounceCount increments but contact untouched |
 | Unsubscribe → contact.doNotContact | ⚠ PARTIAL | updates newsletterSubscriber but not contact |
 
@@ -101,7 +101,7 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | NotificationLog created | ✓ CONNECTED | |
 | Delivery count tracked | ✓ CONNECTED | |
-| contact.lastContactedAt updated | ✗ NOT CONNECTED | |
+| contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — batch updateMany by id |
 | Failed delivery flagged on contact | ✗ NOT CONNECTED | |
 | doNotContact contacts excluded | ✓ CONNECTED | |
 
@@ -148,7 +148,7 @@ Every major user action. Every downstream effect. Honest status.
 | ShiftSignup.status = attended | ✓ CONNECTED | |
 | volunteerProfile.totalHours incremented | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| contact.lastContactedAt updated | ✗ NOT CONNECTED | |
+| contact.lastContactedAt updated | ✗ NOT CONNECTED | shift check-in doesn't touch contact record |
 | Milestone recognition (10/25/50 hrs) | ⚠ PARTIAL | lifecycle cron creates task but doesn't notify |
 
 ---
@@ -234,7 +234,7 @@ Every major user action. Every downstream effect. Honest status.
 
 | # | Connection to wire | Why it matters |
 |---|-------------------|----------------|
-| 1 | contact.lastContactedAt on email/SMS/task complete | Foundation — everything reads this |
+| 1 | ✓ contact.lastContactedAt on email/SMS/task complete | DONE 2026-04-08 |
 | 2 | CSV import deduplication by email + phone | Data integrity — imports create garbage |
 | 3 | Donation receipt email | **Compliance — Elections Canada** |
 | 4 | Donation → funnel advance to donor | Pipeline accuracy |
