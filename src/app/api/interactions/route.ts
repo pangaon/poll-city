@@ -125,6 +125,14 @@ export async function POST(req: NextRequest) {
     : FunnelStage.contact;
   await advanceFunnel(data.contactId, funnelTarget, `interaction:${data.type}`, session!.user.id);
 
+  // Mark TurfStop visited — non-fatal: a failed map update must not block the interaction
+  await prisma.turfStop
+    .updateMany({
+      where: { contactId: data.contactId, visited: false },
+      data: { visited: true, visitedAt: new Date() },
+    })
+    .catch(() => {});
+
   // Log activity
   await prisma.activityLog.create({
     data: {

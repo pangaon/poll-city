@@ -799,6 +799,8 @@ model Contact {
   voted                Boolean      @default(false)
   votedAt              DateTime?
   votedListUploadId    String?
+  emailBounced         Boolean      @default(false) // set when Resend fires email.bounced; does NOT auto-set doNotContact
+  emailBouncedAt       DateTime?                    // timestamp of first recorded bounce
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   deletedAt            DateTime?

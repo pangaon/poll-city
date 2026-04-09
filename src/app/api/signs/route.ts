@@ -4,6 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parsePagination, paginate } from "@/lib/utils";
 import { audit } from "@/lib/audit";
+import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -59,7 +60,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
-  const sign = await prisma.sign.findUnique({ select: { id: true, campaignId: true, status: true }, where: { id: signId } });
+  const sign = await prisma.sign.findUnique({ select: { id: true, campaignId: true, status: true, contactId: true }, where: { id: signId } });
   if (!sign || !sign.campaignId) return NextResponse.json({ error: "Sign not found" }, { status: 404 });
 
   const membership = await prisma.membership.findUnique({
@@ -90,6 +91,32 @@ export async function PATCH(req: NextRequest) {
     entityType: 'Sign',
     ip: req.headers.get('x-forwarded-for'),
   });
+
+  // When a sign is installed, update the linked contact
+  if (body.status === "installed" && sign.status !== "installed" && sign.contactId) {
+    const ESCALATE_FROM = new Set<SupportLevel>([
+      SupportLevel.unknown,
+      SupportLevel.leaning_support,
+      SupportLevel.undecided,
+    ]);
+    prisma.contact.findUnique({
+      where: { id: sign.contactId, deletedAt: null },
+      select: { id: true, supportLevel: true },
+    }).then((contact) => {
+      if (!contact) return;
+      const newSupportLevel = ESCALATE_FROM.has(contact.supportLevel)
+        ? SupportLevel.strong_support
+        : undefined;
+      return prisma.contact.update({
+        where: { id: contact.id },
+        data: {
+          signPlaced: true,
+          lastContactedAt: new Date(),
+          ...(newSupportLevel ? { supportLevel: newSupportLevel } : {}),
+        },
+      });
+    }).catch(() => {});
+  }
 
   // Tier 2: Notify supporter when sign is installed
   if (body.status === "installed" && sign.status !== "installed") {

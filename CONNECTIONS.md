@@ -9,7 +9,7 @@ Every major user action. Every downstream effect. Honest status.
 - ✗ NOT CONNECTED — should exist, does not
 - — NOT BUILT — feature not yet built
 
-*Last updated: 2026-04-08 by Claude Sonnet 4.6 — Priority #1 wired*
+*Last updated: 2026-04-08 by Claude Sonnet 4.6 — Priority #7 wired*
 *Read CLAUDE.md → THE BUILD CYCLE before touching anything in this file.*
 
 ---
@@ -71,7 +71,7 @@ Every major user action. Every downstream effect. Honest status.
 | contact.followUpNeeded updated | ✓ CONNECTED | |
 | Funnel advances (supporter/volunteer) | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| TurfStop.visited marked | ✗ NOT CONNECTED | map doesn't know door was knocked |
+| TurfStop.visited marked | ✓ CONNECTED | wired 2026-04-08 — updateMany by contactId, non-fatal |
 | GOTV priority recalculates | ✗ NOT CONNECTED | |
 | Auto-create volunteer profile if interested | ✗ NOT CONNECTED | manual step required |
 
@@ -93,7 +93,7 @@ Every major user action. Every downstream effect. Honest status.
 | sentCount / bounceCount tallied | ✓ CONNECTED | |
 | Resend delivery | ✓ CONNECTED | |
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — batch updateMany by email |
-| Bounced contacts flagged | ✗ NOT CONNECTED | bounceCount increments but contact untouched |
+| Bounced contacts flagged | ✓ CONNECTED | wired 2026-04-08 — emailBounced flag, campaign-scoped, does NOT set doNotContact |
 | Unsubscribe → contact.doNotContact | ⚠ PARTIAL | updates newsletterSubscriber but not contact |
 
 ### SMS Blast Sent
@@ -205,9 +205,9 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | Sign.status = installed | ✓ CONNECTED | |
 | Notification sent | ✓ CONNECTED | |
-| contact.signPlaced = true | ✗ NOT CONNECTED | |
-| contact.supportLevel escalated | ✗ NOT CONNECTED | sign = strong signal |
-| contact.lastContactedAt updated | ✗ NOT CONNECTED | |
+| contact.signPlaced = true | ✓ CONNECTED | wired 2026-04-08 |
+| contact.supportLevel escalated | ✓ CONNECTED | wired 2026-04-08 — escalates to strong_support, never downgrades |
+| contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 |
 
 ---
 
@@ -240,9 +240,9 @@ Every major user action. Every downstream effect. Honest status.
 | 4 | ✓ Donation → funnel advance to donor | DONE — was already wired in quick-capture |
 | 5 | ✓ Voted upload → funnel advance to voter | DONE 2026-04-08 |
 | 6 | ✓ Staff event RSVP → contact update + funnel | DONE 2026-04-08 |
-| 7 | TurfStop.visited on door knock | Map accuracy |
-| 8 | Email bounce → contact flag | List hygiene |
-| 9 | Sign installed → contact.signPlaced + support escalation | Field data accuracy |
+| 7 | ✓ TurfStop.visited on door knock | DONE 2026-04-08 |
+| 8 | ✓ Email bounce → contact flag | DONE 2026-04-08 — emailBounced field, campaign-scoped |
+| 9 | ✓ Sign installed → contact.signPlaced + support escalation | DONE 2026-04-08 |
 | 10 | Unsubscribe → SMS opt-out + ActivityLog | Compliance + audit trail |
 
 ---

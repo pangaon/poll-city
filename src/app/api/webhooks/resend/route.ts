@@ -59,43 +59,106 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Resolves the campaign IDs that are associated with a given email address
+ * via newsletter subscribers. Used to scope contact updates to the correct
+ * campaign(s) — never update contacts cross-campaign.
+ */
+async function getCampaignIdsForEmail(email: string): Promise<string[]> {
+  const subs = await prisma.newsletterSubscriber.findMany({
+    where: {
+      email: { equals: email, mode: "insensitive" },
+      campaignId: { not: null },
+    },
+    select: { campaignId: true },
+  });
+  return subs.flatMap((s) => (s.campaignId ? [s.campaignId] : []));
+}
+
 async function handleEvent(type: string, data: Record<string, unknown>): Promise<NextResponse> {
   const toEmail = Array.isArray(data.to) ? (data.to[0] as string) : (data.to as string);
 
   switch (type) {
     case "email.delivered": {
       if (toEmail) {
-        await prisma.contact.updateMany({
-          where: { email: { equals: toEmail, mode: "insensitive" } },
-          data: { lastContactedAt: new Date() },
-        });
+        // Scope to campaigns this email belongs to via newsletter subscribers.
+        const campaignIds = await getCampaignIdsForEmail(toEmail).catch(() => [] as string[]);
+        if (campaignIds.length > 0) {
+          await prisma.contact.updateMany({
+            where: {
+              campaignId: { in: campaignIds },
+              email: { equals: toEmail, mode: "insensitive" },
+              deletedAt: null,
+            },
+            data: { lastContactedAt: new Date() },
+          }).catch((err: unknown) => {
+            console.error("[Resend webhook] email.delivered contact update failed:", err);
+          });
+        }
       }
       break;
     }
 
     case "email.bounced": {
+      // FLAG the contact as bounced but do NOT set doNotContact — a single bounce
+      // may be a temporary failure. That decision belongs to the campaign manager.
       if (toEmail) {
-        await prisma.contact.updateMany({
-          where: { email: { equals: toEmail, mode: "insensitive" } },
-          data: { doNotContact: true },
-        });
+        const now = new Date();
+        const campaignIds = await getCampaignIdsForEmail(toEmail).catch(() => [] as string[]);
+
+        if (campaignIds.length > 0) {
+          await prisma.contact.updateMany({
+            where: {
+              campaignId: { in: campaignIds },
+              email: { equals: toEmail, mode: "insensitive" },
+              deletedAt: null,
+              emailBounced: false, // only set the timestamp on first bounce
+            },
+            data: {
+              emailBounced: true,
+              emailBouncedAt: now,
+            },
+          }).catch((err: unknown) => {
+            console.error("[Resend webhook] email.bounced contact update failed:", err);
+          });
+        }
+
+        // Always mark the newsletter subscriber record as bounced regardless of
+        // whether we found a campaign-scoped contact.
         await prisma.newsletterSubscriber.updateMany({
           where: { email: { equals: toEmail, mode: "insensitive" } },
           data: { status: "bounced" },
+        }).catch((err: unknown) => {
+          console.error("[Resend webhook] email.bounced subscriber update failed:", err);
         });
       }
       break;
     }
 
     case "email.complained": {
+      // Spam complaint — here doNotContact IS appropriate: the recipient explicitly
+      // marked us as spam, which is a deliberate signal.
       if (toEmail) {
-        await prisma.contact.updateMany({
-          where: { email: { equals: toEmail, mode: "insensitive" } },
-          data: { doNotContact: true },
-        });
+        const campaignIds = await getCampaignIdsForEmail(toEmail).catch(() => [] as string[]);
+
+        if (campaignIds.length > 0) {
+          await prisma.contact.updateMany({
+            where: {
+              campaignId: { in: campaignIds },
+              email: { equals: toEmail, mode: "insensitive" },
+              deletedAt: null,
+            },
+            data: { doNotContact: true },
+          }).catch((err: unknown) => {
+            console.error("[Resend webhook] email.complained contact update failed:", err);
+          });
+        }
+
         await prisma.newsletterSubscriber.updateMany({
           where: { email: { equals: toEmail, mode: "insensitive" } },
           data: { status: "unsubscribed", unsubscribedAt: new Date() },
+        }).catch((err: unknown) => {
+          console.error("[Resend webhook] email.complained subscriber update failed:", err);
         });
       }
       break;
@@ -104,14 +167,24 @@ async function handleEvent(type: string, data: Record<string, unknown>): Promise
     case "email.opened":
     case "email.clicked": {
       if (toEmail) {
-        await prisma.contact.updateMany({
-          where: { email: { equals: toEmail, mode: "insensitive" } },
-          data: { lastContactedAt: new Date() },
-        });
+        const campaignIds = await getCampaignIdsForEmail(toEmail).catch(() => [] as string[]);
+        if (campaignIds.length > 0) {
+          await prisma.contact.updateMany({
+            where: {
+              campaignId: { in: campaignIds },
+              email: { equals: toEmail, mode: "insensitive" },
+              deletedAt: null,
+            },
+            data: { lastContactedAt: new Date() },
+          }).catch((err: unknown) => {
+            console.error("[Resend webhook] email.opened/clicked contact update failed:", err);
+          });
+        }
       }
       break;
     }
   }
 
+  // Always return 200 — never block webhook acknowledgment on contact-update failures.
   return NextResponse.json({ received: true });
 }
