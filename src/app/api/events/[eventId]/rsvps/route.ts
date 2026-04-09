@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
-import { EventRsvpStatus } from "@prisma/client";
+import { EventRsvpStatus, FunnelStage } from "@prisma/client";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
-import { FunnelStage } from "@prisma/client";
+import { autoTagContact } from "@/lib/automation/inbound-engine";
 
 async function ensureMembership(userId: string, campaignId: string) {
   return prisma.membership.findUnique({
@@ -98,10 +98,38 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     ? await prisma.eventRsvp.update({ where: { id: existing.id }, data })
     : await prisma.eventRsvp.create({ data });
 
-  // Advance funnel: RSVP → supporter
-  if (body.contactId) {
-    await advanceFunnel(body.contactId, FunnelStage.supporter, "event_rsvp", session!.user.id);
+  // Resolve contact by email if contactId not provided
+  const resolvedContactId = body.contactId || (
+    await prisma.contact.findFirst({
+      where: { campaignId: event.campaignId, email: body.email.trim().toLowerCase(), deletedAt: null },
+      select: { id: true },
+    })
+  )?.id || null;
+
+  if (resolvedContactId) {
+    await Promise.all([
+      advanceFunnel(resolvedContactId, FunnelStage.supporter, "event_rsvp", session!.user.id),
+      prisma.contact.update({ where: { id: resolvedContactId }, data: { lastContactedAt: new Date() } }),
+      autoTagContact(event.campaignId, resolvedContactId, "event-rsvp", "#7C3AED"),
+    ]);
   }
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: event.campaignId,
+      userId: session!.user.id,
+      action: "event_rsvp_staff",
+      entityType: "Event",
+      entityId: params.eventId,
+      details: {
+        name: body.name.trim(),
+        email: body.email.trim().toLowerCase(),
+        status: resolvedStatus,
+        contactId: resolvedContactId,
+        rsvpId: rsvp.id,
+      },
+    },
+  }).catch(() => {});
 
   return NextResponse.json({ data: rsvp }, { status: existing ? 200 : 201 });
 }
