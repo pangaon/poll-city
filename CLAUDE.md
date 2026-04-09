@@ -436,7 +436,7 @@ George checks Vercel. The agent never claims green without George confirming.
 1. What is now live (not what was built — what is *live*)
 2. What George needs to do manually
 3. Any risks introduced
-4. "Start a fresh session for: [next task]" if session is long
+4. If recommending a new session: say **"New."** then provide a ready-to-paste session opener — a 2–4 sentence block George can copy verbatim into the next session to orient it instantly. Include: what was just built, where it lives, and what Phase 2 / next task is. Do not make George ask for this.
 
 ---
 
