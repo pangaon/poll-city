@@ -31,9 +31,9 @@ Every major user action. Every downstream effect. Honest status.
 | Contact records created | ✓ CONNECTED | |
 | importSource = "csv" | ✓ CONNECTED | |
 | Custom field values set | ✓ CONNECTED | |
-| Duplicate detection by email | ✗ NOT CONNECTED | creates duplicates every import |
-| Duplicate detection by phone | ✗ NOT CONNECTED | |
-| Merge with existing contact | ✗ NOT CONNECTED | |
+| Duplicate detection by email | ✓ CONNECTED | wired 2026-04-08 — pre-load Map, case-insensitive |
+| Duplicate detection by phone | ✓ CONNECTED | wired 2026-04-08 — normalized to last 10 digits |
+| Merge with existing contact | ✓ CONNECTED | fills blank fields, does not overwrite |
 | lastContactedAt set | ✗ NOT CONNECTED | stays null |
 | ActivityLog entry | ✓ CONNECTED | |
 
@@ -235,7 +235,7 @@ Every major user action. Every downstream effect. Honest status.
 | # | Connection to wire | Why it matters |
 |---|-------------------|----------------|
 | 1 | ✓ contact.lastContactedAt on email/SMS/task complete | DONE 2026-04-08 |
-| 2 | CSV import deduplication by email + phone | Data integrity — imports create garbage |
+| 2 | ✓ CSV import deduplication by email + phone | DONE 2026-04-08 |
 | 3 | Donation receipt email | **Compliance — Elections Canada** |
 | 4 | Donation → funnel advance to donor | Pipeline accuracy |
 | 5 | Voted upload → funnel advance to voter | GOTV accuracy |
