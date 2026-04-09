@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     if (action === "summarize_voter" && contactId) {
       const contact = await prisma.contact.findFirst({
-        where: { id: contactId, campaignId },
+        where: { id: contactId, campaignId, deletedAt: null },
         include: {
           interactions: {
             orderBy: { createdAt: "desc" },
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       );
     } else if (action === "generate_script" && contactId) {
       const contact = await prisma.contact.findFirst({
-        where: { id: contactId, campaignId },
+        where: { id: contactId, campaignId, deletedAt: null },
         select: { firstName: true, lastName: true, issues: true, supportLevel: true },
       });
       if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });

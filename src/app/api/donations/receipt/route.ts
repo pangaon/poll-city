@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
   // Find donations over $25 that haven't been receipted
   const unreceipted = await prisma.donation.findMany({
-    where: { campaignId, amount: { gte: 25 }, status: { not: DonationStatus.receipted } },
+    where: { campaignId, deletedAt: null, amount: { gte: 25 }, status: { not: DonationStatus.receipted } },
     include: {
       contact: { select: { firstName: true, lastName: true, address1: true, city: true, province: true, postalCode: true } },
     },

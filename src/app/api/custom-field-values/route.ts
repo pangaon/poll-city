@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Verify contact belongs to campaign
-  const contact = await prisma.contact.findFirst({ where: { id: contactId, campaignId } });
+  const contact = await prisma.contact.findFirst({ where: { id: contactId, campaignId, deletedAt: null } });
   if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
 
   await setContactCustomFields(contactId, campaignId, fields as Record<string, string | boolean | number | string[] | null>);
