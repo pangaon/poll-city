@@ -5,10 +5,23 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+/**
+ * Append connection_limit to the DATABASE_URL so each serverless container
+ * holds at most 3 Postgres connections. Without this, Vercel's concurrent
+ * lambdas exhaust Railway's ~100-connection limit.
+ */
+function buildDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL ?? "";
+  if (!url || url.includes("connection_limit")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}connection_limit=3`;
+}
+
 const client =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    datasources: { db: { url: buildDatabaseUrl() } },
   });
 
 // ---------------------------------------------------------------------------
@@ -125,7 +138,7 @@ if (ENCRYPTION_KEY_ENV) {
   });
 }
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
+globalForPrisma.prisma = client;
 
 export const prisma = client;
 export default prisma;
