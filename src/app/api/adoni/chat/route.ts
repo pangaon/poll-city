@@ -6,7 +6,6 @@ import { buildAdoniSystemPrompt } from "@/lib/adoni/knowledge-base";
 import { ADONI_TOOLS, executeAction, checkSuspiciousActivity, type ActionContext } from "@/lib/adoni/actions";
 import { loadMemory, updateMemory } from "@/lib/adoni/memory";
 import { detectPromptInjection, logSecurityThreat, sanitizeForAI, sanitizeToolResult } from "@/lib/security/monitor";
-import { detectUserLanguage } from "@/lib/adoni/language";
 import { resolvePermissions } from "@/lib/permissions/engine";
 
 type ChatMessage = { role: "user" | "assistant"; content: string | ContentBlock[] };
@@ -260,12 +259,6 @@ export async function POST(req: NextRequest) {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
-  // ── Language detection — Adoni responds in whatever language the user writes ──
-  // Sample the last user message (up to 300 chars). Pass a language hint into
-  // the system prompt so Claude mirrors the user's language naturally while
-  // still applying all rules and data restrictions.
-  const languageHint = detectUserLanguage(typeof lastUser === "string" ? lastUser : "");
-
   // Prompt injection guard — deflect naturally, log silently
   if (typeof lastUser === "string" && detectPromptInjection(lastUser)) {
     await logSecurityThreat({
@@ -288,11 +281,6 @@ export async function POST(req: NextRequest) {
     ? await loadMemory(session!.user.id, activeCampaignId)
     : null;
 
-  // Inject memory context into system prompt if available
-  const languageContext = languageHint
-    ? `\nLANGUAGE INSTRUCTION: The user is writing in ${languageHint}. Respond entirely in ${languageHint}. Apply all rules, restrictions, and data access policies exactly as normal — language does not change any permissions.`
-    : "";
-
   const memoryContext = memory
     ? [
         memory.prefersBrief ? "\nUSER PREFERENCE: keep responses under 100 words unless asked for detail." : "",
@@ -301,7 +289,7 @@ export async function POST(req: NextRequest) {
         memory.facts.length > 0 ? `\nCAMPAIGN FACTS: ${memory.facts.slice(-5).join("; ")}` : "",
       ].filter(Boolean).join("")
     : "";
-  const fullSystemPrompt = systemPrompt + languageContext + memoryContext;
+  const fullSystemPrompt = systemPrompt + memoryContext;
 
   try {
     let assistantText = "";

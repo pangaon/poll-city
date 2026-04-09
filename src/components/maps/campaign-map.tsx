@@ -51,17 +51,27 @@ export interface MapTurfSelection {
   name: string | null;
   coordinates: Array<[number, number]>;
   stats: AreaStats;
+  status?: string;
+  completionPercent?: number;
+  assignedVolunteer?: string | null;
+  totalDoors?: number;
+  doorsKnocked?: number;
+  supporters?: number;
+  undecided?: number;
 }
 
 export interface CampaignMapProps {
   mode: CampaignMapMode;
   height?: number | string;
+  campaignId?: string;
   turfId?: string;
+  selectedTurfId?: string | null;
   onTurfDraw?: (coordinates: Array<[number, number]>, stats: AreaStats) => void;
   onTurfClick?: (selection: MapTurfSelection) => void;
   onAreaSelect?: (stats: AreaStats) => void;
   showControls?: boolean;
   showCalculator?: boolean;
+  hideLegend?: boolean;
 }
 
 const DEFAULT_CENTER: [number, number] = [43.6532, -79.3832];
@@ -150,30 +160,53 @@ function computeAreaStats(pointCount: number): AreaStats {
   return { doors, knocked, supporters, estimatedHours, volunteersNeeded };
 }
 
-/** Completion color — grey (not started), yellow (in progress), green (complete) */
-function completionColor(percent: number | null | undefined): string {
+/** 7-state turf colour based on workflow status + completion */
+export function turfStatusColor(
+  status: unknown,
+  percent: number | null | undefined,
+): string {
   const pct = percent ?? 0;
-  if (pct >= 90) return "#22c55e"; // green
-  if (pct > 0) return "#eab308"; // yellow
-  return "#9ca3af"; // grey
+  switch (status) {
+    case "completed":   return "#22c55e"; // green
+    case "reassigned":  return "#a855f7"; // purple
+    case "in_progress":
+      if (pct >= 75) return "#84cc16"; // lime — nearly done
+      if (pct >= 40) return "#f97316"; // orange — good progress
+      return "#f59e0b";                // amber — just started
+    case "assigned":    return "#3b82f6"; // blue — ready to go
+    default:            return "#9ca3af"; // grey — draft / unknown
+  }
+}
+
+function turfFillOpacity(status: unknown, percent: number | null | undefined): number {
+  const pct = percent ?? 0;
+  if (status === "completed") return 0.3;
+  if (pct > 0) return 0.2;
+  if (status === "assigned") return 0.15;
+  return 0.08;
+}
+
+/** @deprecated use turfStatusColor */
+function completionColor(percent: number | null | undefined): string {
+  return turfStatusColor(percent && percent >= 90 ? "completed" : percent && percent > 0 ? "in_progress" : "draft", percent);
 }
 
 function completionFillOpacity(percent: number | null | undefined): number {
-  const pct = percent ?? 0;
-  if (pct >= 90) return 0.25;
-  if (pct > 0) return 0.15;
-  return 0.08;
+  return turfFillOpacity(percent && percent > 0 ? "in_progress" : "draft", percent);
 }
 
 export default function CampaignMap({
   mode,
   height = 480,
+  campaignId,
   turfId,
+  selectedTurfId,
   onTurfDraw,
   onTurfClick,
   onAreaSelect,
   showControls = true,
   showCalculator = false,
+  hideLegend = false,
 }: CampaignMapProps) {
   const [layer, setLayer] = useState<LayerToggles>({
     heat: mode === "gotv" || mode === "dashboard" || mode === "canvassing",
@@ -203,12 +236,15 @@ export default function CampaignMap({
   }, []);
 
   useEffect(() => {
+    const cid = campaignId ? `campaignId=${encodeURIComponent(campaignId)}` : "";
+    const turfParam = turfId ? `turfId=${encodeURIComponent(turfId)}` : "";
+    const contactsParams = [cid, turfParam].filter(Boolean).join("&");
     void Promise.all([
-      readApi(`/api/maps/contacts-geojson${turfId ? `?turfId=${encodeURIComponent(turfId)}` : ""}`),
-      readApi("/api/maps/turfs-geojson"),
-      readApi("/api/maps/signs-geojson"),
-      readApi("/api/maps/volunteer-locations"),
-      readApi("/api/maps/ward-boundary"),
+      readApi(`/api/maps/contacts-geojson${contactsParams ? `?${contactsParams}` : ""}`),
+      readApi(campaignId ? `/api/maps/turfs-geojson?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/turfs-geojson"),
+      readApi(campaignId ? `/api/maps/signs-geojson?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/signs-geojson"),
+      readApi(campaignId ? `/api/maps/volunteer-locations?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/volunteer-locations"),
+      readApi(campaignId ? `/api/maps/ward-boundary?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/ward-boundary"),
     ]).then(([contactGeoJson, turfGeoJson, signGeoJson, volunteerGeoJson, boundaryGeoJson]) => {
       setContacts(contactGeoJson);
       setTurfs(turfGeoJson);
@@ -221,7 +257,7 @@ export default function CampaignMap({
       setSelectedStats(stats);
       onAreaSelect?.(stats);
     });
-  }, [onAreaSelect, readApi, turfId]);
+  }, [onAreaSelect, readApi, turfId, campaignId]);
 
   useEffect(() => {
     if (mode !== "dashboard") return;
@@ -335,13 +371,19 @@ export default function CampaignMap({
 
         {layer.turfs && turfPolygons.map((poly, index) => {
           const pct = typeof poly.properties.completionPercent === "number" ? poly.properties.completionPercent : 0;
-          const color = completionColor(pct);
-          const fill = completionFillOpacity(pct);
+          const status = typeof poly.properties.status === "string" ? poly.properties.status : undefined;
+          const isSelected = selectedTurfId && poly.properties.id === selectedTurfId;
+          const color = turfStatusColor(status, pct);
+          const fill = turfFillOpacity(status, pct);
           return (
           <Polygon
             key={`turf-${index}`}
             positions={poly.points as LatLngExpression[]}
-            pathOptions={{ color, weight: 2, fillOpacity: fill }}
+            pathOptions={{
+              color: isSelected ? "#1d4ed8" : color,
+              weight: isSelected ? 3 : 2,
+              fillOpacity: isSelected ? 0.35 : fill,
+            }}
             eventHandlers={{
               click: () => {
                 const pointCount = Math.max(1, poly.points.length * 16);
@@ -350,6 +392,13 @@ export default function CampaignMap({
                   name: typeof poly.properties.name === "string" ? poly.properties.name : null,
                   coordinates: poly.points,
                   stats: computeAreaStats(pointCount),
+                  status,
+                  completionPercent: pct,
+                  assignedVolunteer: typeof poly.properties.assignedVolunteer === "string" ? poly.properties.assignedVolunteer : null,
+                  totalDoors: typeof poly.properties.totalDoors === "number" ? poly.properties.totalDoors : 0,
+                  doorsKnocked: typeof poly.properties.doorsKnocked === "number" ? poly.properties.doorsKnocked : 0,
+                  supporters: typeof poly.properties.supporters === "number" ? poly.properties.supporters : 0,
+                  undecided: typeof poly.properties.undecided === "number" ? poly.properties.undecided : 0,
                 });
               },
             }}
@@ -357,7 +406,7 @@ export default function CampaignMap({
             <Popup>
               {(poly.properties.name as string) ?? `Turf ${index + 1}`}
               {" — "}
-              {pct >= 90 ? "Complete" : pct > 0 ? `${Math.round(pct)}% done` : "Not started"}
+              {status === "completed" ? "Complete" : pct > 0 ? `${Math.round(pct)}% done` : (status === "assigned" ? "Assigned" : "Not started")}
               {poly.properties.assignedVolunteer ? ` (${poly.properties.assignedVolunteer})` : ""}
             </Popup>
           </Polygon>
@@ -467,14 +516,25 @@ export default function CampaignMap({
         </div>
       )}
 
-      {/* Completion legend */}
-      {layer.turfs && turfPolygons.length > 0 && (
+      {/* Turf status legend */}
+      {!hideLegend && layer.turfs && turfPolygons.length > 0 && (
         <div className="absolute left-3 top-3 z-[500] rounded-xl bg-white/95 border border-slate-200 p-2.5 shadow-lg text-xs text-slate-700">
-          <p className="font-semibold text-slate-900 mb-1.5">Turf Progress</p>
+          <p className="font-semibold text-slate-900 mb-1.5">Turf Status</p>
           <div className="space-y-1">
-            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#9ca3af" }} /> Not started</div>
-            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#eab308" }} /> In progress</div>
-            <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#22c55e" }} /> Complete</div>
+            {[
+              ["#9ca3af", "Draft"],
+              ["#3b82f6", "Assigned"],
+              ["#f59e0b", "In progress"],
+              ["#f97316", "Halfway"],
+              ["#84cc16", "Nearly done"],
+              ["#22c55e", "Completed"],
+              ["#a855f7", "Reassigned"],
+            ].map(([color, label]) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="inline-block w-3 h-3 rounded-sm flex-shrink-0" style={{ background: color }} />
+                {label}
+              </div>
+            ))}
           </div>
         </div>
       )}

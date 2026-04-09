@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       properties: {
         id: turf.id,
         name: turf.name,
+        status: turf.status,
         completionPercent: turf.completionPercent,
         assignedVolunteer:
           turf.assignedVolunteer?.user?.name ??
