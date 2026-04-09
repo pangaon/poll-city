@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   // Verify contacts belong to this campaign
   const validContacts = await prisma.contact.findMany({
-    where: { id: { in: contactIds }, campaignId },
+    where: { id: { in: contactIds }, campaignId, deletedAt: null },
     select: { id: true },
   });
   const validIds = validContacts.map((c) => c.id);

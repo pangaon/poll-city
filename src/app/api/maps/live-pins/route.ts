@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
   const contacts = await prisma.contact.findMany({
     where: {
       campaignId,
+      deletedAt: null,
       household: {
         lat: { gte: south, lte: north },
         lng: { gte: west, lte: east },

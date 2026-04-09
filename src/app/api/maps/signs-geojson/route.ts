@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (access.error) return access.error;
 
   const signs = await prisma.sign.findMany({
-    where: { campaignId, lat: { not: null }, lng: { not: null } },
+    where: { campaignId, deletedAt: null, lat: { not: null }, lng: { not: null } },
     select: {
       id: true,
       address1: true,

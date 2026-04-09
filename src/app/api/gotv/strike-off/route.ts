@@ -22,6 +22,7 @@ async function findContactByName(campaignId: string, name: string) {
   let contact = await prisma.contact.findFirst({
     where: {
       campaignId,
+      deletedAt: null,
       firstName: { contains: firstName, mode: "insensitive" },
       ...(lastName ? { lastName: { contains: lastName, mode: "insensitive" } } : {}),
       voted: false,
@@ -34,6 +35,7 @@ async function findContactByName(campaignId: string, name: string) {
     contact = await prisma.contact.findFirst({
       where: {
         campaignId,
+        deletedAt: null,
         lastName: { contains: lastName, mode: "insensitive" },
         voted: false,
         isDeceased: false,
@@ -46,6 +48,7 @@ async function findContactByName(campaignId: string, name: string) {
     contact = await prisma.contact.findFirst({
       where: {
         campaignId,
+        deletedAt: null,
         OR: [
           { firstName: { contains: firstName, mode: "insensitive" } },
           { lastName: { contains: firstName, mode: "insensitive" } },
@@ -107,7 +110,7 @@ export async function POST(req: NextRequest) {
   }
 
   const contact = matchedContact ?? await prisma.contact.findFirst({
-    where: { id: contactId, campaignId },
+    where: { id: contactId, campaignId, deletedAt: null },
     select: { id: true, firstName: true, lastName: true, address1: true, phone: true, supportLevel: true, voted: true },
   });
   if (!contact) {

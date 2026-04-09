@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
   const contacts = await prisma.contact.findMany({
-    where: { campaignId: campaignId!, isDeceased: false },
+    where: { campaignId: campaignId!, deletedAt: null, isDeceased: false },
     select: {
       municipalPoll: true, supportLevel: true, voted: true,
       lastContactedAt: true, notHome: true, phone: true,

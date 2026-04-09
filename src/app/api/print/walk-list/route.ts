@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   // Build where clause
   const where: Record<string, unknown> = {
     campaignId,
+    deletedAt: null,
     isDeceased: false,
     doNotContact: false,
   };

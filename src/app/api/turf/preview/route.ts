@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
   // Build filter
   const where: Record<string, unknown> = {
     campaignId,
+    deletedAt: null,
     isDeceased: false,
     doNotContact: false,
     skipHouse: false,
@@ -63,19 +64,19 @@ export async function GET(req: NextRequest) {
   // Get distinct wards and poll numbers for dropdowns
   const [distinctWards, distinctPolls, distinctStreets] = await Promise.all([
     prisma.contact.findMany({
-      where: { campaignId: campaignId!, ward: { not: null } },
+      where: { campaignId: campaignId!, deletedAt: null, ward: { not: null } },
       select: { ward: true },
       distinct: ["ward"],
       orderBy: { ward: "asc" },
     }),
     prisma.contact.findMany({
-      where: { campaignId: campaignId!, municipalPoll: { not: null } },
+      where: { campaignId: campaignId!, deletedAt: null, municipalPoll: { not: null } },
       select: { municipalPoll: true },
       distinct: ["municipalPoll"],
       orderBy: { municipalPoll: "asc" },
     }),
     prisma.contact.findMany({
-      where: { campaignId: campaignId!, streetName: { not: null } },
+      where: { campaignId: campaignId!, deletedAt: null, streetName: { not: null } },
       select: { streetName: true },
       distinct: ["streetName"],
       orderBy: { streetName: "asc" },

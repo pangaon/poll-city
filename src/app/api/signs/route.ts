@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const status = sp.get("status");
   const search = sp.get("search")?.trim();
-  const baseWhere: any = { campaignId };
+  const baseWhere: any = { campaignId, deletedAt: null };
   if (status) baseWhere.status = status;
   if (search) {
     baseWhere.OR = [

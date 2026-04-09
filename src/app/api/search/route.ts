@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       ? prisma.contact.findMany({
           where: {
             campaignId,
+            deletedAt: null,
             OR: [
               { firstName: { contains: q, mode: "insensitive" } },
               { lastName: { contains: q, mode: "insensitive" } },
