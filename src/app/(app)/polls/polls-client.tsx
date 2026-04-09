@@ -2,10 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, Search, BarChart3, Clock, Eye, EyeOff, Users, Globe,
+  Plus, Search, Clock, EyeOff, Users, Globe,
   Lock, ChevronLeft, ChevronRight, Vote, MoreVertical, Star,
   StarOff, Archive, ExternalLink, Copy, XCircle, Sparkles,
-  Loader2, RefreshCw, CheckCircle,
+  Loader2, RefreshCw, CheckCircle, Pencil,
 } from "lucide-react";
 import { Button, Card, CardContent, Input, PageHeader } from "@/components/ui";
 import { useRouter } from "next/navigation";
@@ -104,6 +104,7 @@ function PollMenu({
   onClose,
   onCopyLink,
   onLiveResults,
+  onEdit,
 }: {
   poll: PollRow;
   onFeature: () => void;
@@ -111,6 +112,7 @@ function PollMenu({
   onClose: () => void;
   onCopyLink: () => void;
   onLiveResults: () => void;
+  onEdit: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -125,6 +127,11 @@ function PollMenu({
 
   const items = [
     {
+      icon: Pencil,
+      label: "Edit",
+      onClick: () => { onEdit(); setOpen(false); },
+    },
+    {
       icon: poll.isFeatured ? StarOff : Star,
       label: poll.isFeatured ? "Unfeature" : "Feature",
       onClick: () => { onFeature(); setOpen(false); },
@@ -136,7 +143,7 @@ function PollMenu({
     },
     {
       icon: Copy,
-      label: "Copy Link",
+      label: "Copy Voter Link",
       onClick: () => { onCopyLink(); setOpen(false); },
     },
     {
@@ -423,9 +430,14 @@ export default function PollsClient({ campaignId }: Props) {
   }
 
   function handleCopyLink(poll: PollRow) {
-    const url = `${window.location.origin}/polls/${poll.id}`;
+    // Public / unlisted polls: voters go to the social page (no login required)
+    // Campaign-only polls: share the campaign app URL (requires member login)
+    const origin = window.location.origin;
+    const url = poll.visibility === "campaign_only"
+      ? `${origin}/polls/${poll.id}`
+      : `${origin}/social/polls/${poll.id}`;
     navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard");
+    toast.success(poll.visibility === "campaign_only" ? "Campaign link copied" : "Voter link copied");
   }
 
   function handleAISelect(suggestion: AISuggestion) {
@@ -572,6 +584,7 @@ export default function PollsClient({ campaignId }: Props) {
                         onClose={() => handleClose(poll)}
                         onCopyLink={() => handleCopyLink(poll)}
                         onLiveResults={() => router.push(`/polls/${poll.id}/live`)}
+                        onEdit={() => router.push(`/polls/${poll.id}`)}
                       />
                     </div>
 

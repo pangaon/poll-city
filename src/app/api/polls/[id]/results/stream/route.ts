@@ -36,7 +36,7 @@ export async function GET(
 
             let results: unknown = null;
 
-            if (count >= 10) {
+            if (count >= 1) {
               // Fetch results based on type
               if (poll.type === "binary") {
                 results = await prisma.pollResponse.groupBy({
@@ -73,7 +73,7 @@ export async function GET(
               }
             }
 
-            const data = JSON.stringify({ totalResponses: count, results, hasMinVotes: count >= 10 });
+            const data = JSON.stringify({ totalResponses: count, results, hasMinVotes: count >= 1 });
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
         } catch (e) {

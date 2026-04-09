@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   ArrowLeft, BarChart3, Check, CheckCircle, ChevronLeft, ChevronRight,
-  Clock, Copy, Eye, EyeOff, Globe, GripVertical, Lock, Share2,
-  ThumbsDown, ThumbsUp, Users, Vote, Search, ExternalLink,
-  Star, Sparkles,
+  Clock, Copy, EyeOff, Globe, GripVertical, Lock, Share2,
+  ThumbsDown, ThumbsUp, Users, Search, ExternalLink,
+  Star, Sparkles, HelpCircle, Pencil, Archive, XCircle, Plus, X,
 } from "lucide-react";
-import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
+import { Badge, Button, Card, CardContent, Input, Label } from "@/components/ui";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -553,6 +553,157 @@ function SwipeResults({ results }: { results: { id: string; text: string; order:
   );
 }
 
+/* ── Edit Modal ───────────────────────────────────────────────── */
+
+interface EditFormState {
+  question: string;
+  description: string;
+  visibility: string;
+  endsAt: string;
+  tags: string;
+}
+
+function EditModal({ poll, onClose, onSaved }: { poll: PollData; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<EditFormState>({
+    question: poll.question,
+    description: poll.description ?? "",
+    visibility: poll.visibility,
+    endsAt: poll.endsAt ? new Date(poll.endsAt).toISOString().slice(0, 16) : "",
+    tags: poll.tags.join(", "),
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        question: form.question.trim(),
+        description: form.description.trim() || null,
+        visibility: form.visibility,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      };
+      if (form.endsAt) body.endsAt = new Date(form.endsAt).toISOString();
+      const res = await fetch(`/api/polls/${poll.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        toast.error(d.error ?? "Failed to save");
+        return;
+      }
+      toast.success("Poll updated");
+      onSaved();
+      onClose();
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={spring}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold" style={{ color: NAVY }}>Edit Poll</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700">Question</Label>
+            <textarea
+              value={form.question}
+              onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
+              rows={3}
+              maxLength={500}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></Label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              maxLength={1000}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700">Visibility</Label>
+              <select
+                value={form.visibility}
+                onChange={(e) => setForm((f) => ({ ...f, visibility: e.target.value }))}
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30"
+              >
+                <option value="public">Public</option>
+                <option value="campaign_only">Campaign Only</option>
+                <option value="unlisted">Unlisted</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700">Close Date</Label>
+              <input
+                type="datetime-local"
+                value={form.endsAt}
+                onChange={(e) => setForm((f) => ({ ...f, endsAt: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-gray-700">Tags <span className="text-gray-400 font-normal">(comma-separated)</span></Label>
+            <Input
+              value={form.tags}
+              onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+              placeholder="housing, transit, budget"
+            />
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={save}
+            disabled={saving || !form.question.trim()}
+            style={{ backgroundColor: GREEN }}
+          >
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ── Visibility info helper ───────────────────────────────────── */
+
+function VisibilityInfo({ visibility }: { visibility: string }) {
+  const info = {
+    public: { icon: Globe, label: "Public", desc: "Anyone can vote — also appears on Poll City Social", color: "text-blue-600" },
+    campaign_only: { icon: Lock, label: "Campaign only", desc: "Only your campaign team members can vote", color: "text-amber-600" },
+    unlisted: { icon: EyeOff, label: "Unlisted", desc: "Anyone with the direct link can vote", color: "text-gray-500" },
+  }[visibility] ?? { icon: Globe, label: visibility, desc: "", color: "text-gray-500" };
+
+  return (
+    <span className={`text-xs flex items-center gap-1 ${info.color}`} title={info.desc}>
+      <info.icon className="w-3 h-3" />
+      {info.label}
+    </span>
+  );
+}
+
 /* ── Receipt Verification ─────────────────────────────────────── */
 
 function ReceiptVerifier() {
@@ -601,7 +752,7 @@ function ReceiptVerifier() {
 
 /* ── Main Component ───────────────────────────────────────────── */
 
-export default function PollDetailClient({ pollId, campaignId }: { pollId: string; campaignId: string }) {
+export default function PollDetailClient({ pollId, campaignId, isManager }: { pollId: string; campaignId: string; isManager: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [resultsData, setResultsData] = useState<ResultsData | null>(null);
@@ -611,6 +762,8 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
   const [showReceipt, setShowReceipt] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showReceiptTip, setShowReceiptTip] = useState(false);
 
   const poll = resultsData?.poll ?? null;
 
@@ -675,14 +828,53 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
     }
   }
 
+  function getShareUrl() {
+    const origin = window.location.origin;
+    // Public and unlisted polls: voters go to the social-facing URL (no login required)
+    // Campaign-only polls: share the campaign app URL (members need to log in)
+    if (poll?.visibility === "campaign_only") return `${origin}/polls/${pollId}`;
+    return `${origin}/social/polls/${pollId}`;
+  }
+
   function handleShare() {
-    const url = `${window.location.origin}/polls/${pollId}`;
+    const url = getShareUrl();
     if (navigator.share) {
       navigator.share({ title: poll?.question ?? "Poll City", url });
     } else {
       navigator.clipboard.writeText(url);
       toast.success("Poll link copied!");
     }
+  }
+
+  async function patchPoll(updates: Record<string, unknown>) {
+    const res = await fetch(`/api/polls/${pollId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const d = await res.json();
+      toast.error(d.error ?? "Update failed");
+      return false;
+    }
+    return true;
+  }
+
+  async function handleFeature() {
+    if (!poll) return;
+    // isFeatured not in PollData type so we PATCH and reload
+    const ok = await patchPoll({ isFeatured: true });
+    if (ok) { toast.success("Poll featured on the ticker"); loadResults(); }
+  }
+
+  async function handleClose() {
+    const ok = await patchPoll({ closeNow: true });
+    if (ok) { toast.success("Poll closed"); loadResults(); }
+  }
+
+  async function handleArchive() {
+    const ok = await patchPoll({ isActive: false });
+    if (ok) { toast.success("Poll archived"); router.push("/polls"); }
   }
 
   function handleBinaryVote(value: string) {
@@ -755,8 +947,8 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
       transition={{ duration: 0.3 }}
       className="max-w-2xl mx-auto space-y-6"
     >
-      {/* Back + actions row */}
-      <div className="flex items-center justify-between">
+      {/* Back + primary actions row */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
@@ -766,7 +958,7 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
         >
           <ArrowLeft className="w-4 h-4" /> Back to Polls
         </motion.button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
@@ -781,10 +973,65 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
             onClick={() => router.push(`/polls/${pollId}/live`)}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 border border-gray-100 min-h-[36px]"
           >
-            <ExternalLink className="w-4 h-4" /> Live
+            <ExternalLink className="w-4 h-4" /> Live View
           </motion.button>
+          {isManager && campaignId && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push("/polls/new")}
+              className="flex items-center gap-1.5 text-sm text-white px-3 py-2 rounded-xl min-h-[36px]"
+              style={{ backgroundColor: GREEN }}
+            >
+              <Plus className="w-4 h-4" /> New Poll
+            </motion.button>
+          )}
         </div>
       </div>
+
+      {/* Management action bar — campaign managers only */}
+      {isManager && campaignId && (
+        <div className="flex items-center gap-2 flex-wrap p-3 rounded-2xl bg-gray-50 border border-gray-100">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-1">Manage:</span>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}
+            onClick={() => setShowEditModal(true)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-700 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-[#1D9E75] hover:text-[#1D9E75] transition-colors min-h-[32px]"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}
+            onClick={handleFeature}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-700 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-amber-400 hover:text-amber-600 transition-colors min-h-[32px]"
+          >
+            <Star className="w-3.5 h-3.5" /> Feature
+          </motion.button>
+          {!isEnded && (
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}
+              onClick={handleClose}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-700 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-amber-400 hover:text-amber-600 transition-colors min-h-[32px]"
+            >
+              <XCircle className="w-3.5 h-3.5" /> Close Poll
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}
+            onClick={() => { navigator.clipboard.writeText(getShareUrl()); toast.success("Voter link copied!"); }}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-700 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 transition-colors min-h-[32px]"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Copy Voter Link
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}
+            onClick={handleArchive}
+            className="flex items-center gap-1.5 text-xs font-medium text-red-600 px-3 py-1.5 rounded-lg bg-white border border-red-100 hover:bg-red-50 transition-colors min-h-[32px]"
+          >
+            <Archive className="w-3.5 h-3.5" /> Archive
+          </motion.button>
+        </div>
+      )}
 
       {/* Header */}
       <div>
@@ -793,10 +1040,7 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
             {TYPE_LABELS[poll.type] ?? poll.type.replace(/_/g, " ")}
           </span>
           <StatusPill poll={poll} />
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            {poll.visibility === "public" ? <Globe className="w-3 h-3" /> : poll.visibility === "campaign_only" ? <Lock className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            {poll.visibility.replace("_", " ")}
-          </span>
+          <VisibilityInfo visibility={poll.visibility} />
         </div>
         <h1 className="text-2xl font-bold tracking-tight" style={{ color: NAVY }}>{poll.question}</h1>
         {poll.description && <p className="text-gray-500 mt-2">{poll.description}</p>}
@@ -954,9 +1198,35 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
       {/* Receipt verification */}
       <Card>
         <CardContent className="pt-5 pb-5">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Search className="w-4 h-4" /> Verify Your Vote
-          </h3>
+          <div className="flex items-start justify-between mb-3 gap-2">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Search className="w-4 h-4" /> Verify Your Vote
+            </h3>
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowReceiptTip((v) => !v)}
+                className="text-gray-400 hover:text-gray-600 transition-colors min-w-[24px] min-h-[24px] flex items-center justify-center"
+                aria-label="What is this?"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+              <AnimatePresence>
+                {showReceiptTip && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.93, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.93 }}
+                    transition={spring}
+                    className="absolute right-0 top-7 z-50 w-72 bg-gray-900 text-white text-xs rounded-2xl p-4 shadow-xl leading-relaxed"
+                  >
+                    <p className="font-semibold mb-1.5">Why anonymous receipts?</p>
+                    <p className="text-gray-300">Poll City never records who you are or what you voted. Your receipt code is proof your vote was counted — without linking it to your identity. It works like a paper ballot stub: confirms your participation, reveals nothing about your choice.</p>
+                    <p className="text-gray-400 mt-2">Enter your code here anytime to confirm it appears in our records.</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
           <ReceiptVerifier />
         </CardContent>
       </Card>
@@ -969,6 +1239,17 @@ export default function PollDetailClient({ pollId, campaignId }: { pollId: strin
           ))}
         </div>
       )}
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {showEditModal && poll && (
+          <EditModal
+            poll={poll}
+            onClose={() => setShowEditModal(false)}
+            onSaved={loadResults}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

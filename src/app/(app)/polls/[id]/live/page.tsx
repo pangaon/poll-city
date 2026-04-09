@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import Link from "next/link";
 import LiveResultsStream from "@/components/polls/LiveResultsStream";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Globe, Lock, EyeOff } from "lucide-react";
+import LivePageActions from "./live-page-actions";
 
 export const metadata = { title: "Live Results — Poll City" };
 
@@ -34,26 +35,65 @@ export default async function PollLivePage({ params }: { params: { id: string } 
     }
   }
 
+  const nonManagerRoles = ["VOLUNTEER", "PUBLIC_USER"];
+  const isManager = !!session?.user?.role && !nonManagerRoles.includes(session.user.role as string);
+
+  // Voter share URL: public/unlisted → social page, campaign_only → campaign app
+  const voterUrl = poll.visibility === "campaign_only"
+    ? `/polls/${poll.id}`
+    : `/social/polls/${poll.id}`;
+
+  const visibilityLabel =
+    poll.visibility === "public" ? "Public — anyone can vote"
+    : poll.visibility === "campaign_only" ? "Campaign members only"
+    : "Unlisted — anyone with the link";
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 flex-1 mr-4 line-clamp-2">{poll.question}</h1>
-        <Link
-          href={`/polls/${poll.id}`}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors flex-shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to poll
-        </Link>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <Link
+            href={`/polls/${poll.id}`}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-3"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to poll
+          </Link>
+          <h1 className="text-xl font-bold text-gray-900 line-clamp-3">{poll.question}</h1>
+          <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+            {poll.visibility === "public" ? <Globe className="w-3.5 h-3.5" /> : poll.visibility === "campaign_only" ? <Lock className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span>{visibilityLabel}</span>
+          </div>
+        </div>
+        {isManager && (
+          <Link
+            href={`/polls/${poll.id}`}
+            className="flex-shrink-0 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#1D9E75] transition-colors px-3 py-2 rounded-xl border border-gray-200 hover:border-[#1D9E75]"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Manage
+          </Link>
+        )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      {/* Live stream */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <LiveResultsStream
           pollId={poll.id}
           pollType={poll.type}
           initialTotal={poll.totalResponses}
         />
       </div>
+
+      {/* Share + actions */}
+      <LivePageActions
+        pollId={poll.id}
+        voterUrl={voterUrl}
+        isManager={isManager}
+        visibility={poll.visibility}
+      />
+
     </div>
   );
 }
