@@ -75,6 +75,16 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
   const [timelineKind, setTimelineKind] = useState<"all" | TimelineKind>("all");
   const [timelineQuery, setTimelineQuery] = useState("");
   const [editForm, setEditForm] = useState({
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    phone: contact.phone ?? "",
+    email: contact.email ?? "",
+    address1: contact.address1 ?? "",
+    city: contact.city ?? "",
+    province: contact.province ?? "",
+    postalCode: contact.postalCode ?? "",
+    ward: contact.ward ?? "",
+    riding: contact.riding ?? "",
     notes: contact.notes ?? "",
     supportLevel: contact.supportLevel,
     followUpNeeded: contact.followUpNeeded,
@@ -82,6 +92,20 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
     volunteerInterest: contact.volunteerInterest,
     doNotContact: contact.doNotContact,
   });
+
+  function splitName() {
+    const full = editForm.firstName.trim();
+    const commaIdx = full.indexOf(",");
+    if (commaIdx !== -1) {
+      // "Last, First" format
+      setEditForm(f => ({ ...f, lastName: full.slice(0, commaIdx).trim(), firstName: full.slice(commaIdx + 1).trim() }));
+    } else {
+      const spaceIdx = full.indexOf(" ");
+      if (spaceIdx !== -1) {
+        setEditForm(f => ({ ...f, firstName: full.slice(0, spaceIdx).trim(), lastName: full.slice(spaceIdx + 1).trim() }));
+      }
+    }
+  }
 
   async function saveEdit() {
     setSaving(true);
@@ -193,6 +217,40 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
             <CardContent className="space-y-3">
               {editing ? (
                 <>
+                  {/* Name — with split helper */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-gray-500">Name</p>
+                      {editForm.firstName.includes(" ") && !editForm.lastName && (
+                        <button type="button" onClick={splitName} className="text-xs text-blue-600 hover:underline">Split name →</button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} placeholder="First name" />
+                      <Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} placeholder="Last name" />
+                    </div>
+                    {editForm.firstName.includes(" ") && !editForm.lastName && (
+                      <p className="text-xs text-amber-600">Looks like a full name in First Name — use Split name to fix.</p>
+                    )}
+                  </div>
+                  <FormField label="Phone">
+                    <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="e.g. 416-555-1234" />
+                  </FormField>
+                  <FormField label="Email">
+                    <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="email@example.com" />
+                  </FormField>
+                  <FormField label="Address">
+                    <Input value={editForm.address1} onChange={(e) => setEditForm({ ...editForm, address1: e.target.value })} placeholder="123 Main St" />
+                  </FormField>
+                  <div className="flex gap-2">
+                    <div className="flex-1"><FormField label="City"><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Toronto" /></FormField></div>
+                    <div className="w-24"><FormField label="Province"><Input value={editForm.province} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} placeholder="ON" /></FormField></div>
+                    <div className="w-28"><FormField label="Postal"><Input value={editForm.postalCode} onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })} placeholder="M5V 1A1" /></FormField></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1"><FormField label="Ward"><Input value={editForm.ward} onChange={(e) => setEditForm({ ...editForm, ward: e.target.value })} placeholder="Ward 10" /></FormField></div>
+                    <div className="flex-1"><FormField label="Riding"><Input value={editForm.riding} onChange={(e) => setEditForm({ ...editForm, riding: e.target.value })} placeholder="Riding name" /></FormField></div>
+                  </div>
                   <FormField label="Support Level">
                     <Select value={editForm.supportLevel} onChange={(e) => setEditForm({ ...editForm, supportLevel: e.target.value as SupportLevel })}>
                       {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
