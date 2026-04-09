@@ -123,10 +123,10 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | Donation record created/updated | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| Receipt email sent | ✗ NOT CONNECTED | **COMPLIANCE RISK — Elections Canada** |
+| Receipt email sent | ✓ CONNECTED | wired 2026-04-08 — Ontario MEA compliant, via Resend |
 | contact.supportLevel updated | ✗ NOT CONNECTED | donors should be at minimum leaning_support |
-| Funnel advances to "donor" | ✗ NOT CONNECTED | |
-| contact.lastContactedAt updated | ✗ NOT CONNECTED | |
+| Funnel advances to "donor" | ✓ CONNECTED | already wired in quick-capture (advanceFunnel) |
+| contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — set when receipt email sent |
 | doNotContact check before recording | ✗ NOT CONNECTED | |
 | Major donation ($500+) → superSupporter | ✓ CONNECTED | lifecycle automation handles this |
 
@@ -236,8 +236,8 @@ Every major user action. Every downstream effect. Honest status.
 |---|-------------------|----------------|
 | 1 | ✓ contact.lastContactedAt on email/SMS/task complete | DONE 2026-04-08 |
 | 2 | ✓ CSV import deduplication by email + phone | DONE 2026-04-08 |
-| 3 | Donation receipt email | **Compliance — Elections Canada** |
-| 4 | Donation → funnel advance to donor | Pipeline accuracy |
+| 3 | ✓ Donation receipt email | DONE 2026-04-08 — Ontario MEA compliant |
+| 4 | ✓ Donation → funnel advance to donor | DONE — was already wired in quick-capture |
 | 5 | Voted upload → funnel advance to voter | GOTV accuracy |
 | 6 | Staff event RSVP → contact update + funnel | Closes staff/public gap |
 | 7 | TurfStop.visited on door knock | Map accuracy |
