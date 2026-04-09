@@ -190,5 +190,88 @@ Build it like it matters. Because it does.
 
 ---
 
+---
+
+## THE BUILD CYCLE — NON-NEGOTIABLE FOR EVERY FEATURE
+
+This is the cradle-to-grave order for every piece of work. No shortcuts. No exceptions.
+If you skip a step, you have not finished the work.
+
+### Step 1 — NAME THE ACTION
+State the exact user action in plain language.
+"Canvasser marks a door as Strong Support."
+"Campaign manager sends an email blast."
+Not vague. Specific.
+
+### Step 2 — MAP THE FULL CONNECTION CHAIN
+Before writing a single line of code, answer these questions:
+
+**Immediate effects** (what must change in the database right now?)
+**Downstream effects** (what other tables/records must update as a result?)
+**User feedback** (what does the user see/feel to confirm it worked?)
+**Edge cases** (what if the contact is deleted? doNotContact? no email? no phone?)
+**Failure mode** (what happens if this step fails? does it fail silently?)
+
+If you cannot answer all five, you do not understand the feature well enough to build it.
+
+### Step 3 — CHECK CONNECTIONS.md
+Read `CONNECTIONS.md` in the repo root before building anything that touches:
+Contact, Interaction, Donation, Task, Event, VolunteerProfile, NewsletterCampaign,
+VoiceBroadcast, TurfStop, GotvRide, Sign, ActivityLog.
+
+If the feature you are building creates a new connection, add it to CONNECTIONS.md
+in the same commit. Never let CONNECTIONS.md fall behind the code.
+
+### Step 4 — BUILD THE FULL CHAIN IN ONE COMMIT
+Do not build the surface and leave the downstream for later.
+If a donation should advance the funnel to "donor" AND send a receipt AND update
+lastContactedAt — all three ship together or none of them ship.
+Partial wiring is a bug, not progress.
+
+### Step 5 — RUN THE BUILD
+`npm run build` exits 0. No exceptions. You know this.
+
+### Step 6 — TRACE THE CHAIN IN CODE
+After building, re-read the route you wrote. Follow every downstream call.
+Confirm each connection actually fires. Confirm nothing fails silently.
+If you cannot trace it, it is not wired.
+
+### Step 7 — UPDATE CONNECTIONS.md
+Mark each newly wired connection as ✓ CONNECTED in CONNECTIONS.md.
+If you found a gap while building, add it as ✗ NOT CONNECTED.
+This file is the institutional memory. Keep it honest.
+
+### Step 8 — REPORT TO GEORGE
+What is now connected that wasn't before.
+What you found that still isn't connected.
+Any risk you introduced.
+One paragraph. He can read the diff.
+
+---
+
+## THE CONNECTION QUESTION
+
+Ask this about every feature, every route, every field:
+
+**"What is this connected to, and what should it be connected to that it isn't?"**
+
+This question is asked at the start of every session, every feature, every fix.
+It is never skipped.
+It is the difference between a database with buttons and a platform that wins elections.
+
+---
+
+## THE USER JOURNEY PASSPORT
+
+The full map of user journeys, connection status, and edge cases lives in:
+`CONNECTIONS.md` — repo root, always up to date, always honest.
+
+Every agent reads it. Every agent updates it.
+If CONNECTIONS.md says something is connected and your code says it isn't — fix the code.
+If CONNECTIONS.md says something isn't connected and you just wired it — update the file.
+The file is the truth. Keep it that way.
+
+---
+
 *These standing orders were written by Claude Sonnet 4.6 on 2026-04-08 at George's direction.
 They apply to every AI agent — past, present, and future — that works on this codebase.*
