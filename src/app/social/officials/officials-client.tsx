@@ -22,7 +22,10 @@ export default function SocialOfficials() {
   useEffect(() => {
     const url = search ? `/api/officials?search=${encodeURIComponent(search)}` : "/api/officials";
     setLoading(true);
-    fetch(url).then(r => r.json()).then(d => { setOfficials(d.data ?? []); setLoading(false); });
+    fetch(url)
+      .then(r => r.json())
+      .then(d => { setOfficials(Array.isArray(d.data) ? d.data : []); setLoading(false); })
+      .catch(() => { setOfficials([]); setLoading(false); });
   }, [search]);
 
   async function sendSignal(officialId: string, type: string) {

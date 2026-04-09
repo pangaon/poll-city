@@ -53,6 +53,8 @@ export default function LoginPage() {
         const role = session?.user?.role;
         if (role === "VOLUNTEER") {
           router.push("/canvass");
+        } else if (role === "PUBLIC_USER") {
+          router.push("/social/profile");
         } else {
           router.push("/dashboard");
         }
