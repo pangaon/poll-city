@@ -3,13 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useMemo, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
-  HelpCircle, BarChart3, ChevronDown, ChevronRight, FileText, Mail, MessageSquare,
-  Inbox, Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2
+  HelpCircle, BarChart3, FileText, Mail, MessageSquare,
+  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -102,7 +102,6 @@ const SETTINGS_ADMIN_SECTION: NavSection = {
   ],
 };
 
-const STORAGE_KEY = "poll-city:sidebar-collapsed-sections";
 
 const CANVASSER_SECTIONS: NavSection[] = [
   {
@@ -147,7 +146,6 @@ function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
@@ -189,42 +187,6 @@ export default function Sidebar() {
     ];
   }, [isAdmin, isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, boolean>;
-      setCollapsedSections(parsed);
-    } catch {
-      // ignore storage parse errors
-    }
-  }, []);
-
-  const sectionStates = useMemo(() => {
-    const next = { ...collapsedSections };
-    for (const section of sidebarSections) {
-      if (sectionHasActivePath(pathname, section.items)) {
-        next[section.id] = false;
-      }
-      if (!(section.id in next)) {
-        next[section.id] = false;
-      }
-    }
-    return next;
-  }, [collapsedSections, pathname, sidebarSections]);
-
-  function toggleSection(id: string) {
-    setCollapsedSections((prev) => {
-      const next = { ...prev, [id]: !(sectionStates[id] ?? false) };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore storage write errors
-      }
-      return next;
-    });
-  }
-
   function openAdoni() {
     window.dispatchEvent(new CustomEvent("pollcity:open-adoni"));
   }
@@ -244,59 +206,36 @@ export default function Sidebar() {
         <CampaignSwitcher />
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto scrollbar-thin">
-        {sidebarSections.map((section) => {
-          const isCollapsed = sectionStates[section.id] ?? false;
-          const isActiveSection = sectionHasActivePath(pathname, section.items);
-          const SectionIcon = section.icon;
-
-          return (
-            <section key={section.id}>
-              <button
-                type="button"
-                onClick={() => toggleSection(section.id)}
-                className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 text-left rounded-md transition-colors",
-                  isActiveSection ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <SectionIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">
-                    {section.label}
-                  </span>
-                </div>
-                {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
-              </button>
-
-              {!isCollapsed && (
-                <div className="mt-0.5 ml-2 space-y-px">
-                  {section.items.map(({ href, icon: Icon, label }) => {
-                    const active = pathname === href || pathname.startsWith(`${href}/`);
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={cn(
-                          "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all",
-                          active
-                            ? "bg-blue-600 text-white"
-                            : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="flex items-center gap-2 truncate">
-                          {label}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })}
+      {/* Nav — always-visible, no collapse */}
+      <nav className="flex-1 px-2 py-3 overflow-y-auto scrollbar-thin space-y-4">
+        {sidebarSections.map((section) => (
+          <section key={section.id}>
+            {/* Section label — not clickable, just a label */}
+            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
+              {section.label}
+            </p>
+            <div className="space-y-px">
+              {section.items.map(({ href, icon: Icon, label }) => {
+                const active = pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors",
+                      active
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </nav>
 
       {/* Bottom */}
