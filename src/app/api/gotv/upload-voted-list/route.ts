@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { calculateWinThreshold } from "@/lib/operations/metrics-truth";
+import { bulkAdvanceFunnel } from "@/lib/operations/funnel-engine";
+import { FunnelStage } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -92,12 +94,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Batch update all matched contacts
+  // Batch update all matched contacts + advance funnel to voter
   if (matchedIds.length > 0) {
     await prisma.contact.updateMany({
       where: { id: { in: matchedIds } },
       data: { voted: true, votedAt: new Date() },
     });
+    await bulkAdvanceFunnel(matchedIds, FunnelStage.voter, "voted_list_upload", session!.user.id);
   }
 
   // Calculate new gap
