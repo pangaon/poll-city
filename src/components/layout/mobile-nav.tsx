@@ -2,91 +2,118 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Map, Menu, Search, Users, X } from "lucide-react";
+import {
+  LayoutDashboard, Map, Menu, Search, Users, X,
+  CheckCircle2, Bot, DollarSign, Target, Bell
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const TABS = [
-  { type: "route", href: "/dashboard", label: "Dashboard", icon: Home },
-  { type: "route", href: "/contacts", label: "Contacts", icon: Users },
-  { type: "action", action: "search", label: "Search", icon: Search },
-  { type: "route", href: "/canvassing/walk", label: "Walk List", icon: Map },
-] as const;
+// ── Role-aware primary tabs ─────────────────────────────────────────────────
+
+type RouteTab = { type: "route"; href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type ActionTab = { type: "action"; action: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type Tab = RouteTab | ActionTab;
+
+const CANVASSER_TABS: Tab[] = [
+  { type: "route",  href: "/canvassing/walk", label: "My Turf",  icon: Map },
+  { type: "route",  href: "/tasks",           label: "My Tasks", icon: CheckCircle2 },
+  { type: "action", action: "adoni",          label: "Adoni",    icon: Bot },
+];
+
+const FINANCE_TABS: Tab[] = [
+  { type: "route",  href: "/donations",   label: "Donations",  icon: DollarSign },
+  { type: "route",  href: "/budget",      label: "Budget",     icon: DollarSign },
+  { type: "route",  href: "/reports",     label: "Reports",    icon: Search },
+  { type: "action", action: "more",       label: "More",       icon: Menu },
+];
+
+const DEFAULT_TABS: Tab[] = [
+  { type: "route",  href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { type: "route",  href: "/contacts",  label: "Contacts",  icon: Users },
+  { type: "route",  href: "/tasks",     label: "Tasks",     icon: CheckCircle2 },
+  { type: "action", action: "search",   label: "Search",    icon: Search },
+  { type: "action", action: "more",     label: "More",      icon: Menu },
+];
+
+// ── More drawer groups ───────────────────────────────────────────────────────
 
 const MORE_GROUPS = [
   {
     title: "Command",
     items: [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/command-center", label: "Command Center" },
-      { href: "/election-night", label: "Election Night" },
-      { href: "/alerts", label: "Alerts" },
+      { href: "/dashboard",       label: "Dashboard" },
+      { href: "/command-center",  label: "Command Center" },
+      { href: "/alerts",          label: "Alerts" },
+      { href: "/election-night",  label: "Election Night" },
     ],
   },
   {
     title: "Field Ops",
     items: [
-      { href: "/contacts", label: "Contacts" },
-      { href: "/canvassing", label: "Canvassing" },
+      { href: "/contacts",        label: "Contacts" },
+      { href: "/tasks",           label: "Tasks" },
+      { href: "/canvassing",      label: "Canvassing" },
       { href: "/canvassing/walk", label: "Walk List" },
-      { href: "/lookup", label: "Lookup" },
-      { href: "/gotv", label: "GOTV" },
-      { href: "/volunteers", label: "Volunteers" },
-      { href: "/events", label: "Events" },
-      { href: "/calendar", label: "Calendar" },
-      { href: "/tasks", label: "Tasks" },
-      { href: "/signs", label: "Signs" },
+      { href: "/gotv",            label: "GOTV" },
+      { href: "/volunteers",      label: "Volunteers" },
+      { href: "/events",          label: "Events" },
+      { href: "/calendar",        label: "Calendar" },
+      { href: "/signs",           label: "Signs" },
+      { href: "/lookup",          label: "Voter Lookup" },
     ],
   },
   {
     title: "Communications",
     items: [
-      { href: "/communications", label: "Communications" },
-      { href: "/communications/social", label: "Social Media" },
+      { href: "/communications",          label: "Email & SMS" },
+      { href: "/communications/social",   label: "Social Media" },
+      { href: "/notifications",           label: "Voter Outreach" },
     ],
   },
   {
-    title: "Fundraising & Finance",
+    title: "Finance",
     items: [
       { href: "/donations", label: "Donations" },
-      { href: "/budget", label: "Budget" },
+      { href: "/budget",    label: "Budget" },
       { href: "/analytics", label: "Analytics" },
-      { href: "/reports", label: "Reports" },
-      { href: "/billing", label: "Billing" },
+      { href: "/reports",   label: "Reports" },
     ],
   },
   {
     title: "Intelligence",
     items: [
-      { href: "/officials", label: "Officials" },
-      { href: "/media", label: "Media" },
-      { href: "/coalitions", label: "Coalitions" },
+      { href: "/officials",    label: "Officials" },
+      { href: "/polls",        label: "Polls" },
       { href: "/intelligence", label: "Opponent Intel" },
-      { href: "/polls", label: "Polls" },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
-      { href: "/print", label: "Print" },
-      { href: "/import-export", label: "Import/Export" },
-      { href: "/ops/videos", label: "Ops Videos" },
-      { href: "/ops/verify", label: "Ops Verify" },
-      { href: "/ops/security", label: "Ops Security" },
+      { href: "/media",        label: "Media Contacts" },
+      { href: "/coalitions",   label: "Coalitions" },
     ],
   },
   {
     title: "Settings & Help",
     items: [
-      { href: "/settings", label: "Settings" },
+      { href: "/settings",       label: "Settings" },
       { href: "/settings/brand", label: "Brand Kit" },
-      { href: "/settings/team", label: "Team" },
-      { href: "/settings/security", label: "Security" },
-      { href: "/help", label: "Help Center" },
-      { href: "/resources", label: "Resources" },
+      { href: "/settings/team",  label: "Team" },
+      { href: "/import-export",  label: "Import / Export" },
+      { href: "/help",           label: "Help Center" },
+    ],
+  },
+  {
+    title: "Operations",
+    adminOnly: true,
+    items: [
+      { href: "/ops/videos",   label: "Videos & Docs" },
+      { href: "/ops/verify",   label: "Verify Features" },
+      { href: "/ops/security", label: "Security Monitor" },
+      { href: "/ops/campaigns",label: "All Campaigns" },
     ],
   },
 ] as const;
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -94,126 +121,182 @@ export default function MobileNav() {
   const { data: session } = useSession();
   const role = (session?.user?.role ?? "").toString().toUpperCase();
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  const isCanvasser = role === "VOLUNTEER" || role === "CANVASSER";
+  const isFinance = role.includes("FINANCE");
 
-  function openSearch() {
-    window.dispatchEvent(new CustomEvent("pollcity:open-search"));
-  }
+  const tabs = isCanvasser ? CANVASSER_TABS : isFinance ? FINANCE_TABS : DEFAULT_TABS;
+
+  function openSearch() { window.dispatchEvent(new CustomEvent("pollcity:open-search")); }
+  function openAdoni()  { window.dispatchEvent(new CustomEvent("pollcity:open-adoni")); }
+
+  // Close drawer on navigation
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   useEffect(() => {
     const open = () => setMoreOpen(true);
     window.addEventListener("pollcity:open-mobile-menu", open as EventListener);
-    return () => {
-      window.removeEventListener("pollcity:open-mobile-menu", open as EventListener);
-    };
+    return () => window.removeEventListener("pollcity:open-mobile-menu", open as EventListener);
   }, []);
 
   return (
     <>
+      {/* Bottom tab bar */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Mobile navigation"
       >
         <div className="flex items-stretch justify-around h-[60px]">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const Icon = tab.icon;
+
             if (tab.type === "route") {
               const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  className={`flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 ${
-                    active ? "text-blue-600" : "text-gray-400"
+                  className={`flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                    active ? "text-blue-600" : "text-gray-400 active:text-gray-600"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? "fill-current" : ""}`} />
+                  <Icon className="w-5 h-5" />
                   <span className="text-[10px] font-semibold">{tab.label}</span>
                 </Link>
               );
             }
 
+            if (tab.type === "action" && tab.action === "search") {
+              return (
+                <button
+                  key="search"
+                  type="button"
+                  onClick={openSearch}
+                  className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-gray-400 active:text-gray-600"
+                  aria-label="Open search"
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-semibold">{tab.label}</span>
+                </button>
+              );
+            }
+
+            if (tab.type === "action" && tab.action === "adoni") {
+              return (
+                <button
+                  key="adoni"
+                  type="button"
+                  onClick={openAdoni}
+                  className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-blue-600 active:text-blue-800"
+                  aria-label="Ask Adoni"
+                >
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold">A</span>
+                  <span className="text-[10px] font-semibold text-gray-400">Adoni</span>
+                </button>
+              );
+            }
+
+            // More button
             return (
               <button
-                key={tab.action}
+                key="more"
                 type="button"
-                onClick={openSearch}
-                className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-gray-400"
-                aria-label="Open search"
+                onClick={() => setMoreOpen(true)}
+                className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-gray-400 active:text-gray-600"
+                aria-label="Open full navigation"
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-semibold">{tab.label}</span>
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            className="flex-1 min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-gray-400"
-            aria-label="Open more navigation"
-          >
-            <Menu className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">More</span>
-          </button>
         </div>
       </nav>
 
+      {/* Spacer so content isn't hidden behind fixed nav */}
       <div className="md:hidden" style={{ height: "calc(60px + env(safe-area-inset-bottom))" }} aria-hidden />
 
-      {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} aria-hidden />
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white max-h-[85vh] overflow-y-auto animate-fade-in" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-            <div className="sticky top-0 border-b border-gray-100 bg-white px-5 py-3 flex items-center justify-between rounded-t-3xl">
-              <h2 className="font-bold text-gray-900">More</h2>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={openSearch}
-                  className="min-w-[44px] min-h-[44px] rounded-lg hover:bg-gray-100 text-gray-500 inline-flex items-center justify-center"
-                  aria-label="Open search"
-                >
-                  <Search className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMoreOpen(false)}
-                  className="min-w-[44px] min-h-[44px] rounded-lg hover:bg-gray-100 text-gray-500 inline-flex items-center justify-center"
-                  aria-label="Close menu"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+      {/* More drawer */}
+      <AnimatePresence>
+        {moreOpen && (
+          <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Full navigation">
+            {/* Backdrop */}
+            <motion.div
+              className="absolute inset-0 bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMoreOpen(false)}
+              aria-hidden
+            />
+
+            {/* Sheet */}
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white max-h-[85vh] overflow-y-auto overscroll-contain"
+              style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              {/* Header */}
+              <div className="sticky top-0 border-b border-gray-100 bg-white px-5 py-3 flex items-center justify-between rounded-t-3xl z-10">
+                <h2 className="font-bold text-gray-900 text-base">Navigation</h2>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={openSearch}
+                    className="min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 text-gray-500 inline-flex items-center justify-center"
+                    aria-label="Search"
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen(false)}
+                    className="min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 text-gray-500 inline-flex items-center justify-center"
+                    aria-label="Close navigation"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-3 space-y-4">
-              {MORE_GROUPS
-                .filter((group) => isAdmin || group.title !== "Operations")
-                .map((group) => (
-                <section key={group.title}>
-                  <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{group.title}</p>
-                  <div className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setMoreOpen(false)}
-                          className={`block min-h-[44px] px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                            active ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-50"
-                          }`}
-                        >
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
+
+              {/* Groups */}
+              <div className="p-3 space-y-5">
+                {MORE_GROUPS
+                  .filter((g) => !("adminOnly" in g) || isAdmin)
+                  .map((group) => (
+                    <section key={group.title}>
+                      <p className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                        {group.title}
+                      </p>
+                      <div className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className={`flex items-center min-h-[48px] px-3 rounded-xl text-[15px] font-medium transition-colors ${
+                                active
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "text-gray-800 hover:bg-gray-50 active:bg-gray-100"
+                              }`}
+                            >
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }
