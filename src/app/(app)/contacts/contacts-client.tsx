@@ -1924,7 +1924,7 @@ function BulkActionButton({
 function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boolean; onClose: () => void; campaignId: string; onCreated: () => void }) {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateContactInput>({
     resolver: zodResolver(createContactSchema),
-    defaultValues: { campaignId, supportLevel: SupportLevel.unknown, preferredLanguage: "en", issues: [] },
+    defaultValues: { campaignId, preferredLanguage: "en", issues: [] },
   });
 
   async function onSubmit(data: CreateContactInput) {
@@ -1954,7 +1954,7 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
           </FormField>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <FormField label="Street #" required>
+          <FormField label="Street #">
             <Input {...register("streetNumber")} placeholder="302" />
           </FormField>
           <div className="col-span-2">
@@ -1972,7 +1972,9 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
           <FormField label="Ward"><Input {...register("ward")} placeholder="Ward 12" /></FormField>
           <FormField label="Support Level">
             <Select {...register("supportLevel")}>
-              {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              <option value="">— Not assessed —</option>
+              {Object.entries(SUPPORT_LEVEL_LABELS).filter(([v]) => v !== "unknown").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              <option value="unknown">Unknown</option>
             </Select>
           </FormField>
         </div>
