@@ -15,8 +15,6 @@ import {
   HelpCircle,
   ThumbsUp,
   Trash2,
-  CheckCircle,
-  MinusCircle,
   ExternalLink,
   ChevronDown,
 } from "lucide-react";
@@ -546,9 +544,15 @@ export function QaOverlay() {
     };
   }, [isActive, handleClick]);
 
-  // Escape key handling
+  // Keyboard handling: Shift+Q to toggle, Escape to exit/dismiss
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Q" && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        setIsActive((v) => !v);
+        setPending(null);
+        setSelected(null);
+        return;
+      }
       if (e.key !== "Escape") return;
       if (pending) { setPending(null); return; }
       if (selected) { setSelected(null); return; }
@@ -617,10 +621,6 @@ export function QaOverlay() {
       toast.error("Failed to delete");
     }
   }
-
-  const openCount = annotations.filter(
-    (a) => a.status === "open" || a.status === "in_progress"
-  ).length;
 
   return (
     <>
@@ -698,41 +698,7 @@ export function QaOverlay() {
         )}
       </AnimatePresence>
 
-      {/* Toggle button */}
-      <motion.button
-        data-qa-ui
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          setIsActive((v) => !v);
-          setPending(null);
-          setSelected(null);
-        }}
-        style={{ position: "fixed", bottom: 80, right: 16, zIndex: 54 }}
-        className={cn(
-          "flex items-center gap-2 px-3.5 py-2.5 rounded-full shadow-xl text-sm font-semibold transition-colors select-none",
-          isActive
-            ? "bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-300"
-            : "bg-[#0A2342] hover:bg-[#0A2342]/90 text-white"
-        )}
-      >
-        {isActive ? (
-          <>
-            <X className="w-4 h-4" />
-            Exit QA
-          </>
-        ) : (
-          <>
-            <Bug className="w-4 h-4" />
-            QA
-            {openCount > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center -ml-0.5">
-                {openCount}
-              </span>
-            )}
-          </>
-        )}
-      </motion.button>
+      {/* QA mode is toggled with Shift+Q — no persistent button to accidentally click */}
     </>
   );
 }
