@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
   }
 
   const stops = await prisma.turfStop.findMany({
-    where: { turfId },
+    where: { turfId, contact: { deletedAt: null } },
     orderBy: { order: "asc" },
     include: {
       contact: {

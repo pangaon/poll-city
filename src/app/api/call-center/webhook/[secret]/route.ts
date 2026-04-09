@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { secret: str
   // Match by Poll City ID first (exact match)
   if (pollCityId) {
     const contact = await prisma.contact.findFirst({
-      where: { id: pollCityId, campaignId: integration.campaignId },
+      where: { id: pollCityId, campaignId: integration.campaignId, deletedAt: null },
     });
     if (contact) contactId = contact.id;
   }
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { secret: str
   if (!contactId && phone) {
     const digits = phone.replace(/\D/g, "").slice(-10);
     const contact = await prisma.contact.findFirst({
-      where: { campaignId: integration.campaignId, phone: { endsWith: digits } },
+      where: { campaignId: integration.campaignId, deletedAt: null, phone: { endsWith: digits } },
     });
     if (contact) contactId = contact.id;
   }
