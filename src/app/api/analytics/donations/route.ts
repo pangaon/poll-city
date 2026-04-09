@@ -23,10 +23,10 @@ export async function GET(req: NextRequest) {
   });
 
   const [donations, expenses, recentDonations] = await Promise.all([
-    prisma.donation.aggregate({ where: { campaignId }, _sum: { amount: true }, _count: true, _avg: { amount: true } }),
+    prisma.donation.aggregate({ where: { campaignId, deletedAt: null }, _sum: { amount: true }, _count: true, _avg: { amount: true } }),
     prisma.budgetItem.aggregate({ where: { campaignId, itemType: "expense" }, _sum: { amount: true }, _count: true }),
     prisma.donation.findMany({
-      where: { campaignId },
+      where: { campaignId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: { amount: true, createdAt: true, method: true },
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   // Monthly trend
   const allDonations = await prisma.donation.findMany({
-    where: { campaignId },
+    where: { campaignId, deletedAt: null },
     select: { amount: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });

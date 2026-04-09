@@ -20,15 +20,15 @@ export async function GET(req: NextRequest) {
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [totalContacts, totalVoted, supporterVoted, totalSupporters] = await Promise.all([
-    prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, voted: true } }),
-    prisma.contact.count({ where: { campaignId, voted: true, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, voted: true } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, voted: true, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
   ]);
 
   // P1-P4 tier breakdown using the real GOTV scoring engine
   const contacts = await prisma.contact.findMany({
-    where: { campaignId },
+    where: { campaignId, deletedAt: null },
     select: {
       supportLevel: true,
       gotvStatus: true,

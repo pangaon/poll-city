@@ -66,11 +66,12 @@ export async function GET(req: NextRequest) {
           select: { name: true, electionDate: true },
         })
       : Promise.resolve(null),
-    campaignId ? prisma.contact.count({ where: { campaignId } }) : Promise.resolve(0),
+    campaignId ? prisma.contact.count({ where: { campaignId, deletedAt: null } }) : Promise.resolve(0),
     campaignId
       ? prisma.contact.count({
           where: {
             campaignId,
+            deletedAt: null,
             supportLevel: { in: ["strong_support", "leaning_support"] },
           },
         })
