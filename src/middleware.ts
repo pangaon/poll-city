@@ -55,6 +55,14 @@ const PUBLIC_PATHS = [
   "/api/webhooks",
   "/api/ops/demos",
   "/api/tv",
+  "/api/cron",
+  "/api/autonomous",
+  "/api/stripe/webhook",
+  "/api/voice/webhook",
+  "/api/call-center/webhook",
+  "/api/volunteer/onboard",
+  "/api/calendar",
+  "/api/help",
 ];
 
 function isPublicPath(path: string) {
