@@ -169,9 +169,9 @@ Every major user action. Every downstream effect. Honest status.
 | Effect | Status | Notes |
 |--------|--------|-------|
 | EventRsvp record created | ✓ CONNECTED | waitlist logic included |
-| Contact record updated | ✗ NOT CONNECTED | |
-| ActivityLog entry | ✗ NOT CONNECTED | |
-| Funnel advance | ✗ NOT CONNECTED | |
+| Contact record updated | ✓ CONNECTED | wired 2026-04-08 — lastContactedAt, tag, resolves by email |
+| ActivityLog entry | ✓ CONNECTED | wired 2026-04-08 |
+| Funnel advance | ✓ CONNECTED | wired 2026-04-08 — advances to supporter |
 | Confirmation email to attendee | ✗ NOT CONNECTED | |
 
 ---
@@ -185,7 +185,7 @@ Every major user action. Every downstream effect. Honest status.
 | contact.votedAt set | ✓ CONNECTED | |
 | Gap recalculated | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| Funnel advances to "voter" | ✗ NOT CONNECTED | |
+| Funnel advances to "voter" | ✓ CONNECTED | wired 2026-04-08 — bulkAdvanceFunnel |
 | Canvassers notified (their supporter voted) | ✗ NOT CONNECTED | |
 
 ---
@@ -238,8 +238,8 @@ Every major user action. Every downstream effect. Honest status.
 | 2 | ✓ CSV import deduplication by email + phone | DONE 2026-04-08 |
 | 3 | ✓ Donation receipt email | DONE 2026-04-08 — Ontario MEA compliant |
 | 4 | ✓ Donation → funnel advance to donor | DONE — was already wired in quick-capture |
-| 5 | Voted upload → funnel advance to voter | GOTV accuracy |
-| 6 | Staff event RSVP → contact update + funnel | Closes staff/public gap |
+| 5 | ✓ Voted upload → funnel advance to voter | DONE 2026-04-08 |
+| 6 | ✓ Staff event RSVP → contact update + funnel | DONE 2026-04-08 |
 | 7 | TurfStop.visited on door knock | Map accuracy |
 | 8 | Email bounce → contact flag | List hygiene |
 | 9 | Sign installed → contact.signPlaced + support escalation | Field data accuracy |
