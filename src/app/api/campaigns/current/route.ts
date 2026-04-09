@@ -7,8 +7,10 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
-  // Get current campaign from session or first campaign
-  const campaignId = req.headers.get("x-campaign-id");
+  // Get campaign from header or fall back to session's active campaign
+  const campaignId = req.headers.get("x-campaign-id")
+    ?? (session!.user as { activeCampaignId?: string }).activeCampaignId
+    ?? null;
   if (!campaignId) {
     return NextResponse.json({ error: "No campaign selected" }, { status: 400 });
   }
@@ -37,7 +39,9 @@ export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
-  const campaignId = req.headers.get("x-campaign-id");
+  const campaignId = req.headers.get("x-campaign-id")
+    ?? (session!.user as { activeCampaignId?: string }).activeCampaignId
+    ?? null;
   if (!campaignId) {
     return NextResponse.json({ error: "No campaign selected" }, { status: 400 });
   }
