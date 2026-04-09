@@ -111,8 +111,8 @@ Every major user action. Every downstream effect. Honest status.
 | NewsletterSubscriber.status = unsubscribed | ✓ CONNECTED | |
 | unsubscribedAt set | ✓ CONNECTED | |
 | contact.doNotContact = true | ✓ CONNECTED | |
-| SMS opt-out updated | ✗ NOT CONNECTED | |
-| ActivityLog entry | ✗ NOT CONNECTED | |
+| SMS opt-out updated | ✗ NOT CONNECTED | no smsOptOut field on Contact model — needs schema field |
+| ActivityLog entry | ✗ NOT CONNECTED | public endpoint has no userId — ActivityLog requires FK to User |
 
 ---
 
@@ -243,7 +243,7 @@ Every major user action. Every downstream effect. Honest status.
 | 7 | ✓ TurfStop.visited on door knock | DONE 2026-04-08 |
 | 8 | ✓ Email bounce → contact flag | DONE 2026-04-08 — emailBounced field, campaign-scoped |
 | 9 | ✓ Sign installed → contact.signPlaced + support escalation | DONE 2026-04-08 |
-| 10 | Unsubscribe → SMS opt-out + ActivityLog | Compliance + audit trail |
+| 10 | ⚠ Unsubscribe → SMS opt-out + ActivityLog | PARTIAL — deletedAt filter fixed; SMS/ActivityLog blocked by missing schema fields |
 
 ---
 

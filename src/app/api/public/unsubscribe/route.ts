@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
     if (contactId) {
       try {
         await prisma.contact.update({
-          where: { id: contactId },
+          where: { id: contactId, deletedAt: null },
           data: { doNotContact: true },
         });
         updated++;
       } catch {
-        // Contact not found — try by email
+        // Contact not found or deleted — continue
       }
     }
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (email) {
       // Update all contacts with this email across all campaigns
       const result = await prisma.contact.updateMany({
-        where: { email: { equals: email, mode: "insensitive" } },
+        where: { email: { equals: email, mode: "insensitive" }, deletedAt: null },
         data: { doNotContact: true },
       });
       updated += result.count;
