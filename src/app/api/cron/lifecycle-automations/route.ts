@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
       const dueFollowUps = await prisma.contact.findMany({
         where: {
           campaignId: campaign.id,
+          deletedAt: null,
           followUpNeeded: true,
           followUpDate: { lte: new Date() },
           doNotContact: false,

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   // Daily door knock counts
   const interactions = await prisma.interaction.findMany({
-    where: { contact: { campaignId }, createdAt: { gte: since } },
+    where: { contact: { campaignId, deletedAt: null }, createdAt: { gte: since } },
     select: { createdAt: true, userId: true },
   });
 

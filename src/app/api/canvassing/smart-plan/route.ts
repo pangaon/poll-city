@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   // Get all contacts with their street info and status
   const contacts = await prisma.contact.findMany({
-    where: { campaignId, isDeceased: false, doNotContact: false },
+    where: { campaignId, deletedAt: null, isDeceased: false, doNotContact: false },
     select: {
       id: true,
       streetName: true,

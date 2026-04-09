@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const contacts = await prisma.contact.findMany({
     where: {
       campaignId,
+      deletedAt: null,
       isDeceased: false,
       streetName: q ? { contains: q, mode: "insensitive" } : { not: null },
     },

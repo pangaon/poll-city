@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   if (!campaignId || !street) return NextResponse.json({ error: "campaignId and street required" }, { status: 400 });
 
   const contacts = await prisma.contact.findMany({
-    where: { campaignId: campaignId!, address1: { contains: street, mode: "insensitive" } },
+    where: { campaignId: campaignId!, deletedAt: null, address1: { contains: street, mode: "insensitive" } },
     select: {
       id: true, firstName: true, lastName: true, address1: true,
       supportLevel: true, lastContactedAt: true, notHome: true, phone: true,

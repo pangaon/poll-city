@@ -10,9 +10,9 @@ export async function GET(req: NextRequest) {
   if (forbidden) return forbidden;
   // Auto-generate call list from: donation pledges, volunteer interests, sign requests, follow-ups
   const [followUps, volunteers, donations] = await Promise.all([
-    prisma.contact.findMany({ where: { campaignId: campaignId!, followUpNeeded: true, phone: { not: null }, isDeceased: false }, take: 30, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
-    prisma.contact.findMany({ where: { campaignId: campaignId!, volunteerInterest: true, phone: { not: null }, isDeceased: false }, take: 20, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
-    prisma.donation.findMany({ where: { campaignId: campaignId!, status: "pledged" }, take: 20, include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true, address1: true, supportLevel: true } } } }),
+    prisma.contact.findMany({ where: { campaignId: campaignId!, deletedAt: null, followUpNeeded: true, phone: { not: null }, isDeceased: false }, take: 30, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
+    prisma.contact.findMany({ where: { campaignId: campaignId!, deletedAt: null, volunteerInterest: true, phone: { not: null }, isDeceased: false }, take: 20, select: { id: true, firstName: true, lastName: true, phone: true, address1: true, notes: true, supportLevel: true } }),
+    prisma.donation.findMany({ where: { campaignId: campaignId!, deletedAt: null, status: "pledged" }, take: 20, include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true, address1: true, supportLevel: true } } } }),
   ]);
   const calls = [
     ...followUps.map(c => ({ id: `fu-${c.id}`, contactId: c.id, firstName: c.firstName, lastName: c.lastName, phone: c.phone!, address: c.address1 ?? "", reason: "follow_up_needed", reasonNote: c.notes ?? "", priority: "high" as const, staffNote: c.notes ?? "", supportLevel: c.supportLevel, status: "pending" as const })),

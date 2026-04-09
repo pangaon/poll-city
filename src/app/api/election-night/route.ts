@@ -50,14 +50,14 @@ export async function GET(req: NextRequest) {
     recentStrikeOffs,
     lastUpload,
   ] = await Promise.all([
-    prisma.contact.count({ where: { campaignId } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
-    prisma.contact.count({ where: { campaignId, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true } }),
-    prisma.contact.count({ where: { campaignId, voted: true } }),
-    prisma.contact.count({ where: { campaignId, voted: true, votedAt: { gte: todayStart } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, voted: true } }),
+    prisma.contact.count({ where: { campaignId, deletedAt: null, voted: true, votedAt: { gte: todayStart } } }),
     // Last 10 strike-offs for the live ticker
     prisma.contact.findMany({
-      where: { campaignId, voted: true, votedAt: { gte: todayStart } },
+      where: { campaignId, deletedAt: null, voted: true, votedAt: { gte: todayStart } },
       orderBy: { votedAt: "desc" },
       take: 10,
       select: { firstName: true, lastName: true, address1: true, votedAt: true, supportLevel: true },
