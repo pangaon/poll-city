@@ -7,6 +7,7 @@ import { AdoniChat } from "@/components/adoni";
 import MobileNav from "@/components/layout/mobile-nav";
 import DebugToolbarGate from "@/components/debug/debug-toolbar-gate";
 import QaOverlayGate from "@/components/ops/qa-overlay-gate";
+import CampaignTourGate from "@/components/onboarding/campaign-tour-gate";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <MobileNav />
         </div>
         <AdoniChat />
+        <CampaignTourGate />
         <DebugToolbarGate />
         <QaOverlayGate />
       </div>
