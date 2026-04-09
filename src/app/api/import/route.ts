@@ -148,6 +148,23 @@ export async function POST(req: NextRequest) {
 
     const results = { imported: 0, updated: 0, skipped: 0, errors: [] as string[] };
 
+    // Pre-load existing contacts for in-memory deduplication (avoids N+1 queries)
+    const existingContacts = await prisma.contact.findMany({
+      where: { campaignId, deletedAt: null },
+      select: { id: true, email: true, phone: true, externalId: true },
+    });
+    const byEmail = new Map<string, string>();
+    const byPhone = new Map<string, string>();
+    const byExtId = new Map<string, string>();
+    for (const c of existingContacts) {
+      if (c.email) byEmail.set(c.email.toLowerCase().trim(), c.id);
+      if (c.phone) {
+        const digits = c.phone.replace(/\D/g, "").slice(-10);
+        if (digits.length === 10) byPhone.set(digits, c.id);
+      }
+      if (c.externalId) byExtId.set(c.externalId, c.id);
+    }
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
@@ -167,14 +184,25 @@ export async function POST(req: NextRequest) {
         null;
 
       try {
-        // Check for existing contact by externalId or name+address
-        let existing = null;
-        if (row.externalId) {
-          existing = await prisma.contact.findFirst({ where: { campaignId, externalId: row.externalId } });
+        // Deduplicate by externalId → email → phone (in that priority order)
+        let existingId: string | null = null;
+        if (row.externalId?.trim()) {
+          existingId = byExtId.get(row.externalId.trim()) ?? null;
+        }
+        if (!existingId && row.email?.trim()) {
+          existingId = byEmail.get(row.email.trim().toLowerCase()) ?? null;
+        }
+        if (!existingId && row.phone?.trim()) {
+          const digits = row.phone.replace(/\D/g, "").slice(-10);
+          if (digits.length === 10) existingId = byPhone.get(digits) ?? null;
         }
 
+        const existing = existingId
+          ? await prisma.contact.findUnique({ where: { id: existingId } })
+          : null;
+
         if (existing) {
-          // Update existing contact (fill in blanks, don't overwrite)
+          // Update existing contact (fill in blanks, don't overwrite non-null values)
           await prisma.contact.update({
             where: { id: existing.id },
             data: {
