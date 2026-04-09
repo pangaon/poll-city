@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     const contacts = await prisma.contact.findMany({
       where: {
         campaignId,
+        deletedAt: null,
         supportLevel: { in: ["strong_support", "leaning_support"] },
         doNotContact: false,
       },

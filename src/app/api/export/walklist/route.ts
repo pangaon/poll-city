@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     });
 
     const contacts = await prisma.contact.findMany({
-      where: { campaignId, doNotContact: false },
+      where: { campaignId, deletedAt: null, doNotContact: false },
       orderBy: [{ address1: "asc" }, { lastName: "asc" }],
     });
 

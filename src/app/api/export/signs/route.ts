@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     });
 
     const signs = await prisma.sign.findMany({
-      where: { campaignId },
+      where: { campaignId, deletedAt: null },
       include: { contact: { select: { firstName: true, lastName: true } } },
       orderBy: { createdAt: "desc" },
     });

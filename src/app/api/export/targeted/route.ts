@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   };
 
   // Build where clause from filters
-  const where: Record<string, unknown> = { campaignId };
+  const where: Record<string, unknown> = { campaignId, deletedAt: null };
 
   if (filters.street) where.address1 = { contains: filters.street, mode: "insensitive" };
   if (filters.ward) where.ward = { contains: filters.ward, mode: "insensitive" };
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
     case "signs": {
       const signs = await prisma.sign.findMany({
-        where: { campaignId },
+        where: { campaignId, deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 10000,
       });
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
     case "donations": {
       const donations = await prisma.donation.findMany({
-        where: { campaignId },
+        where: { campaignId, deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 50000,
       });

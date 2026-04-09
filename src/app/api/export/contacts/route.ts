@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Build where clause
-    const where: Prisma.ContactWhereInput = { campaignId };
+    const where: Prisma.ContactWhereInput = { campaignId, deletedAt: null };
 
     // ID-based selection
     const rawIds = sp.get("ids");
