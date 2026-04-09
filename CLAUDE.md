@@ -303,6 +303,7 @@ These are the exact places this codebase has burned time from guessing:
 - **`apiAuth` vs `getServerSession`** — API routes use `apiAuth(req)`. Server components use `getServerSession(authOptions)`. Using the wrong one silently fails.
 - **Adoni response format** — no markdown, no bullets, no headers. Violating this is a hallucination about Adoni's rules. Re-read the ADONI LAWS section before touching Adoni.
 - **`useMemo` with external data** — always guard `state?.features ?? []` before mapping. A truthy non-FeatureCollection crashes silently at runtime, not at build time.
+- **`.gitignore` has `build/`** — catches ANY directory named `build/` anywhere in the repo, including `src/app/**/build/`. Exception `!src/**/build/` is already in `.gitignore`. But check `.gitignore` before naming any new route or directory. If the route name matches a gitignore pattern, files will be silently excluded from git with no warning.
 
 ### WHEN UNCERTAIN, SAY SO EXPLICITLY
 
