@@ -10,9 +10,12 @@ node_modules/
 .next/
 out/
 
-# Production build
+# Production build (Next.js uses .next/, not build/)
 build/
 dist/
+# Re-include Next.js source directories named "build" (gitignore can't know the difference)
+!src/**/build/
+!src/**/build/**
 
 # Environment
 .env
