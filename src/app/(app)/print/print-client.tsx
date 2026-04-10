@@ -8,6 +8,7 @@ import {
   Shirt, HardHat, ShoppingBag, Scroll, Square, Anchor, RectangleHorizontal,
   Tag, Paintbrush, Store, Briefcase, LayoutTemplate, Sparkles,
   MapPin, Users, CalendarDays, PhoneCall, Receipt, ChevronRight,
+  Boxes, Package,
 } from "lucide-react";
 import { PRINT_PRODUCTS, type ProductSpec } from "@/lib/print/catalog";
 import { Button, Badge } from "@/components/ui";
@@ -185,7 +186,29 @@ export default function PrintClient({ campaignId }: Props) {
       </section>
 
       {/* Quick Links */}
-      <section className="grid gap-4 sm:grid-cols-3 mb-10">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-10">
+        <Link href="/print/inventory">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-xl border-2 border-[#1D9E75]/40 bg-emerald-50 p-5 hover:shadow-md transition-shadow"
+          >
+            <Boxes className="w-8 h-8 text-[#1D9E75] mb-2" />
+            <h3 className="font-bold text-[#0A2342]">Inventory</h3>
+            <p className="text-xs text-gray-500 mt-1">Track all printed materials</p>
+          </motion.div>
+        </Link>
+        <Link href="/print/packs">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-xl border-2 border-[#0A2342]/20 bg-[#0A2342]/5 p-5 hover:shadow-md transition-shadow"
+          >
+            <Package className="w-8 h-8 text-[#0A2342] mb-2" />
+            <h3 className="font-bold text-[#0A2342]">Print Packs</h3>
+            <p className="text-xs text-gray-500 mt-1">Auto-generate walk &amp; sign kits</p>
+          </motion.div>
+        </Link>
         <Link href="/print/jobs">
           <motion.div
             whileHover={{ scale: 1.02 }}
@@ -193,8 +216,8 @@ export default function PrintClient({ campaignId }: Props) {
             className="rounded-xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
           >
             <Briefcase className="w-8 h-8 text-[#0A2342] mb-2" />
-            <h3 className="font-bold text-[#0A2342]">My Print Jobs</h3>
-            <p className="text-xs text-gray-500 mt-1">Track jobs, review bids, award contracts</p>
+            <h3 className="font-bold text-[#0A2342]">Print Jobs</h3>
+            <p className="text-xs text-gray-500 mt-1">Post jobs, review bids, award contracts</p>
           </motion.div>
         </Link>
         <Link href="/print/shops">
@@ -205,7 +228,7 @@ export default function PrintClient({ campaignId }: Props) {
           >
             <Store className="w-8 h-8 text-[#1D9E75] mb-2" />
             <h3 className="font-bold text-[#0A2342]">Shop Directory</h3>
-            <p className="text-xs text-gray-500 mt-1">Browse local print shops near your riding</p>
+            <p className="text-xs text-gray-500 mt-1">Browse local print shops</p>
           </motion.div>
         </Link>
         <Link href="/print/templates">

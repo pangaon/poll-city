@@ -20,31 +20,44 @@ export default async function ContactDetailPage({ params }: { params: { id: stri
 
   if (!contact) return notFound();
 
-  const [tags, teamMembers, customFields] = await Promise.all([
+  const isManager = ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"].includes(role);
+  const canViewRelationships = ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER"].includes(role);
+
+  const [tags, teamMembers, customFields, activityLogs, contactNotes, relationships, roleProfiles, supportProfile] = await Promise.all([
     prisma.tag.findMany({ where: { campaignId }, orderBy: { name: "asc" } }),
     prisma.membership.findMany({ where: { campaignId }, include: { user: { select: { id: true, name: true, email: true } } } }),
-    prisma.customFieldValue.findMany({
-      where: { contactId: params.id },
-      include: { field: true },
+    prisma.customFieldValue.findMany({ where: { contactId: params.id }, include: { field: true } }),
+    prisma.activityLog.findMany({
+      where: { campaignId, entityId: params.id, entityType: "contact" },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { id: true, action: true, details: true, createdAt: true, user: { select: { id: true, name: true } } },
     }),
+    // Notes — filtered by role visibility
+    prisma.contactNote.findMany({
+      where: {
+        contactId: params.id,
+        ...(!isManager ? { visibility: "all_members" } : {}),
+      },
+      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+      include: { createdBy: { select: { id: true, name: true } } },
+    }),
+    // Relationships (VOLUNTEER_LEADER+)
+    canViewRelationships ? prisma.contactRelationship.findMany({
+      where: { fromContactId: params.id, isActive: true },
+      include: {
+        toContact: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, supportLevel: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }) : Promise.resolve([]),
+    // Role profiles (all members can view)
+    prisma.contactRoleProfile.findMany({
+      where: { contactId: params.id },
+      orderBy: { createdAt: "asc" },
+    }),
+    // Support profile (manager+ only)
+    isManager ? prisma.supportProfile.findUnique({ where: { contactId: params.id } }) : Promise.resolve(null),
   ]);
-
-  const activityLogs = await prisma.activityLog.findMany({
-    where: {
-      campaignId,
-      entityId: params.id,
-      entityType: "contact",
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      action: true,
-      details: true,
-      createdAt: true,
-      user: { select: { id: true, name: true } },
-    },
-  });
 
   return (
     <ErrorBoundary
@@ -64,6 +77,10 @@ export default async function ContactDetailPage({ params }: { params: { id: stri
         activityLogs={activityLogs}
         userRole={role}
         campaignId={campaignId}
+        contactNotes={contactNotes}
+        relationships={relationships}
+        roleProfiles={roleProfiles}
+        supportProfile={supportProfile}
       />
     </ErrorBoundary>
   );

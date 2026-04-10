@@ -51,8 +51,9 @@ const FINANCE_SECTION: NavSection = {
   label: "Finance",
   icon: DollarSign,
   items: [
+    { href: "/finance", icon: DollarSign, label: "Finance Command" },
     { href: "/donations", icon: DollarSign, label: "Donations" },
-    { href: "/budget", icon: DollarSign, label: "Budget" },
+    { href: "/budget", icon: DollarSign, label: "Legacy Budget" },
     { href: "/billing", icon: CreditCard, label: "Billing" },
   ],
 };
@@ -120,11 +121,15 @@ const FINANCE_SECTIONS: NavSection[] = [
     label: "Finance",
     icon: DollarSign,
     items: [
-      { href: "/budget", icon: DollarSign, label: "Budget Overview" },
-      { href: "/donations", icon: CreditCard, label: "Donations" },
-      { href: "/volunteers/expenses", icon: FileText, label: "Expenses" },
-      { href: "/reports", icon: BarChart3, label: "Reports" },
-      { href: "/budget?view=filing", icon: CheckCircle2, label: "Filing Checklist" },
+      { href: "/finance", icon: DollarSign, label: "Overview" },
+      { href: "/finance/budget", icon: BarChart3, label: "Budget" },
+      { href: "/finance/expenses", icon: CreditCard, label: "Expenses" },
+      { href: "/finance/purchase-requests", icon: FileText, label: "Purchase Requests" },
+      { href: "/finance/vendors", icon: FileText, label: "Vendors" },
+      { href: "/finance/reimbursements", icon: FileText, label: "Reimbursements" },
+      { href: "/finance/approvals", icon: CheckCircle2, label: "Approvals" },
+      { href: "/finance/reports", icon: BarChart3, label: "Reports" },
+      { href: "/donations", icon: DollarSign, label: "Donations" },
     ],
   },
   {

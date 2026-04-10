@@ -111,6 +111,7 @@ interface ScheduledItem {
   status?: string;
 }
 
+// Legacy: kept for backward compatibility during migration
 interface CustomTemplate {
   slug: string;
   name: string;
@@ -118,6 +119,20 @@ interface CustomTemplate {
   subject?: string;
   body: string;
   createdAt: string;
+}
+
+interface MessageTemplate {
+  id: string;
+  channel: "email" | "sms" | "push";
+  name: string;
+  subject?: string | null;
+  bodyHtml?: string | null;
+  bodyText: string;
+  previewText?: string | null;
+  tokensUsed: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: { id: string; name: string | null };
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -677,33 +692,18 @@ function ComposeTab({
     setSavingTemplate(true);
     setResult(null);
     try {
-      // Load current campaign customization to get existing templates
-      const campaignRes = await fetch(`/api/campaigns/current`);
-      let existingTemplates: CustomTemplate[] = [];
-      if (campaignRes.ok) {
-        const campaignData = await campaignRes.json();
-        existingTemplates = campaignData.data?.customization?.templates ?? [];
-      }
-
-      const newTemplate: CustomTemplate = {
-        slug: `custom-${Date.now()}`,
-        name: subject || `${channel.toUpperCase()} Template ${existingTemplates.length + 1}`,
-        channel,
-        subject: channel === "email" ? subject : undefined,
-        body,
-        createdAt: new Date().toISOString(),
-      };
-
-      const res = await fetch("/api/campaigns/current", {
+      const res = await fetch("/api/comms/templates", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          customization: {
-            templates: [...existingTemplates, newTemplate],
-          },
+          campaignId,
+          channel,
+          name: (channel === "email" && subject) ? subject : `${channel.toUpperCase()} Template`,
+          subject: channel === "email" ? subject : undefined,
+          bodyHtml: channel === "email" ? body : undefined,
+          bodyText: body.replace(/<[^>]*>/g, ""),
         }),
       });
-
       if (res.ok) {
         setResult({ message: "Template saved. View it in the Templates tab." });
       } else {
@@ -1403,39 +1403,330 @@ function InboxTab({ campaignId, onNavigateCompose }: { campaignId: string; onNav
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campaignId: string; channelFilter: Channel; onNavigateCompose: (prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) => void }) {
-  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
-  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
-  const [loadingCustom, setLoadingCustom] = useState(true);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/campaigns/current`);
-        if (res.ok) {
-          const data = await res.json();
-          setCustomTemplates(data.data?.customization?.templates ?? []);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setLoadingCustom(false);
-    })();
-  }, [campaignId]);
+  // New template modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createChannel, setCreateChannel] = useState<"email" | "sms">("email");
+  const [createName, setCreateName] = useState("");
+  const [createSubject, setCreateSubject] = useState("");
+  const [createBody, setCreateBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  const emailT = channelFilter !== "sms" ? EMAIL_TEMPLATES : [];
-  const smsT = channelFilter !== "email" ? SMS_TEMPLATES : [];
-  const customEmailT = channelFilter !== "sms" ? customTemplates.filter((t) => t.channel === "email") : [];
-  const customSmsT = channelFilter !== "email" ? customTemplates.filter((t) => t.channel === "sms") : [];
+  const loadTemplates = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ campaignId });
+      if (channelFilter !== "all") params.set("channel", channelFilter);
+      const res = await fetch(`/api/comms/templates?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.templates ?? []);
+      }
+    } catch { /* graceful degradation */ }
+    setLoading(false);
+  }, [campaignId, channelFilter]);
+
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  async function handleDelete(templateId: string) {
+    if (!confirm("Delete this template? This cannot be undone.")) return;
+    setDeletingId(templateId);
+    try {
+      await fetch(`/api/comms/templates/${templateId}`, { method: "DELETE" });
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    } catch { /* noop */ }
+    setDeletingId(null);
+  }
+
+  async function handleDuplicate(t: MessageTemplate) {
+    try {
+      const res = await fetch("/api/comms/templates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          channel: t.channel,
+          name: `${t.name} (copy)`,
+          subject: t.subject,
+          bodyHtml: t.bodyHtml,
+          bodyText: t.bodyText,
+          previewText: t.previewText,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates((prev) => [data.template, ...prev]);
+      }
+    } catch { /* noop */ }
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!createName.trim() || !createBody.trim()) return;
+    setSaving(true);
+    setCreateError(null);
+    try {
+      const res = await fetch("/api/comms/templates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          channel: createChannel,
+          name: createName,
+          subject: createChannel === "email" ? createSubject : undefined,
+          bodyHtml: createChannel === "email" ? createBody : undefined,
+          bodyText: createChannel === "sms" ? createBody : createBody.replace(/<[^>]*>/g, ""),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates((prev) => [data.template, ...prev]);
+        setShowCreate(false);
+        setCreateName(""); setCreateSubject(""); setCreateBody("");
+      } else {
+        const data = await res.json();
+        setCreateError(data.error ?? "Failed to create template");
+      }
+    } catch {
+      setCreateError("Network error");
+    }
+    setSaving(false);
+  }
+
+  const builtInEmail = channelFilter !== "sms" ? EMAIL_TEMPLATES : [];
+  const builtInSms = channelFilter !== "email" ? SMS_TEMPLATES : [];
+  const savedFiltered = templates.filter((t) =>
+    channelFilter === "all" ? true : t.channel === channelFilter,
+  );
 
   return (
     <div className="space-y-6">
-      {emailT.length > 0 && (
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">Templates</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Reusable messages for email and SMS</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="h-9 px-4 rounded-lg bg-[#1D9E75] text-white text-sm font-medium flex items-center gap-1.5 hover:bg-[#17886a] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Template
+        </button>
+      </div>
+
+      {/* Create modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900">New Template</h3>
+              <button onClick={() => setShowCreate(false)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="p-5 space-y-4">
+              <div className="flex gap-2">
+                {(["email", "sms"] as const).map((ch) => (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => setCreateChannel(ch)}
+                    className={`flex-1 h-9 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors border ${
+                      createChannel === ch
+                        ? "bg-[#0A2342] text-white border-[#0A2342]"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {ch === "email" ? <Mail className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                    {ch.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Template name</label>
+                <input
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="e.g. Strong Supporter Thank You"
+                  className="w-full h-9 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+                />
+              </div>
+              {createChannel === "email" && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Subject line</label>
+                  <input
+                    value={createSubject}
+                    onChange={(e) => setCreateSubject(e.target.value)}
+                    placeholder="e.g. Thank you for your support, {{firstName}}!"
+                    className="w-full h-9 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
+                  />
+                </div>
+              )}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-slate-700">
+                    {createChannel === "email" ? "Body" : "Message"}
+                  </label>
+                  {createChannel === "sms" && (
+                    <span className={`text-[10px] font-mono ${createBody.length > 320 ? "text-red-500" : "text-slate-400"}`}>
+                      {createBody.length}/320
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={createBody}
+                  onChange={(e) => setCreateBody(e.target.value)}
+                  rows={createChannel === "sms" ? 4 : 8}
+                  placeholder={createChannel === "sms"
+                    ? "Hi {{firstName}}, just a reminder to vote on Oct 27. Reply STOP to opt out."
+                    : "Dear {{firstName}},\n\nThank you for your support..."
+                  }
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75] resize-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Tokens: {"{{"+"firstName"+"}}"}  {"{{"+"lastName"+"}}"}  {"{{"+"ward"+"}}"}  {"{{"+"candidateName"+"}}"}
+                </p>
+              </div>
+              {createError && (
+                <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createError}</p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="flex-1 h-9 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !createName.trim() || !createBody.trim()}
+                  className="flex-1 h-9 rounded-lg bg-[#1D9E75] text-white text-sm font-medium hover:bg-[#17886a] disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Template"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Saved templates (from DB) */}
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+        </div>
+      ) : savedFiltered.length > 0 ? (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-[#1D9E75]" />
+            <h3 className="text-base font-bold text-slate-900">Saved Templates</h3>
+            <span className="text-xs text-slate-400">{savedFiltered.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {savedFiltered.map((t) => {
+              const isEmail = t.channel === "email";
+              const preview = isEmail
+                ? (t.subject ?? t.bodyText.slice(0, 80))
+                : t.bodyText.slice(0, 80);
+              return (
+                <div
+                  key={t.id}
+                  className={`bg-white rounded-xl border p-4 hover:shadow-md transition-all ${
+                    isEmail ? "hover:border-blue-200" : "hover:border-violet-200"
+                  } border-slate-200`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isEmail ? "bg-blue-50" : "bg-violet-50"}`}>
+                      {isEmail
+                        ? <Mail className="w-4 h-4 text-blue-600" />
+                        : <MessageSquare className="w-4 h-4 text-violet-600" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 truncate">{t.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">{preview}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(t.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1 flex-wrap">
+                    <button
+                      onClick={() => setPreviewId(previewId === t.id ? null : t.id)}
+                      className={`h-7 px-2.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
+                        isEmail ? "text-slate-500 hover:bg-blue-50 hover:text-blue-600" : "text-slate-500 hover:bg-violet-50 hover:text-violet-600"
+                      }`}
+                    >
+                      <Eye className="w-3 h-3" />
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => onNavigateCompose({
+                        channel: t.channel === "push" ? "email" : t.channel,
+                        subject: t.subject ?? undefined,
+                        body: t.bodyHtml ?? t.bodyText,
+                      })}
+                      className={`h-7 px-2.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
+                        isEmail ? "text-slate-500 hover:bg-blue-50 hover:text-blue-600" : "text-slate-500 hover:bg-violet-50 hover:text-violet-600"
+                      }`}
+                    >
+                      <Send className="w-3 h-3" />
+                      Use
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(t)}
+                      className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Dupe
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t.id)}
+                      disabled={deletingId === t.id}
+                      className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-1 transition-colors ml-auto"
+                    >
+                      {deletingId === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    </button>
+                  </div>
+                  {previewId === t.id && (
+                    <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-700 whitespace-pre-wrap">
+                      {t.bodyHtml
+                        ? <div dangerouslySetInnerHTML={{ __html: t.bodyHtml }} />
+                        : t.bodyText
+                      }
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+          <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm font-medium text-slate-500">No saved templates yet</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Create one above, or save any message from the Compose tab.
+          </p>
+        </div>
+      )}
+
+      {/* Built-in starters */}
+      {builtInEmail.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Mail className="w-4 h-4 text-blue-600" />
-            <h3 className="text-base font-bold text-slate-900">Email Templates</h3>
-            <span className="text-xs text-slate-400">{emailT.length}</span>
+            <h3 className="text-base font-bold text-slate-900">Email Starters</h3>
+            <span className="text-xs text-slate-400">{builtInEmail.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {emailT.map((t) => (
+            {builtInEmail.map((t) => (
               <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
@@ -1448,42 +1739,28 @@ function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campai
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
                   <button
-                    onClick={() => setPreviewSlug(previewSlug === t.slug ? null : t.slug)}
-                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Eye className="w-3 h-3" />
-                    Preview
-                  </button>
-                  <button
                     onClick={() => onNavigateCompose({ channel: "email", subject: t.subject, body: t.body })}
                     className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-1 transition-colors"
                   >
                     <Send className="w-3 h-3" />
                     Use
                   </button>
-                  <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors">
-                    <Copy className="w-3 h-3" />
-                    Duplicate
-                  </button>
                 </div>
-                {previewSlug === t.slug && (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 prose prose-xs max-w-none" dangerouslySetInnerHTML={{ __html: t.body }} />
-                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {smsT.length > 0 && (
+      {builtInSms.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
             <MessageSquare className="w-4 h-4 text-violet-600" />
-            <h3 className="text-base font-bold text-slate-900">SMS Templates</h3>
-            <span className="text-xs text-slate-400">{smsT.length}</span>
+            <h3 className="text-base font-bold text-slate-900">SMS Starters</h3>
+            <span className="text-xs text-slate-400">{builtInSms.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {smsT.map((t) => (
+            {builtInSms.map((t) => (
               <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-violet-200 hover:shadow-md transition-all">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
@@ -1502,66 +1779,10 @@ function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campai
                     <Send className="w-3 h-3" />
                     Use
                   </button>
-                  <button className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors">
-                    <Pencil className="w-3 h-3" />
-                    Edit
-                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Custom / Saved Templates */}
-      {(customEmailT.length > 0 || customSmsT.length > 0) && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <h3 className="text-base font-bold text-slate-900">Custom Templates</h3>
-            <span className="text-xs text-slate-400">{customEmailT.length + customSmsT.length}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {[...customEmailT, ...customSmsT].map((t) => (
-              <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-amber-200 hover:shadow-md transition-all">
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${t.channel === "email" ? "bg-blue-50" : "bg-violet-50"}`}>
-                    {t.channel === "email" ? <Mail className="w-4 h-4 text-blue-600" /> : <MessageSquare className="w-4 h-4 text-violet-600" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">{t.subject || t.body?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Saved {formatDate(t.createdAt)}</p>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <button
-                    onClick={() => setPreviewSlug(previewSlug === t.slug ? null : t.slug)}
-                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Eye className="w-3 h-3" />
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => onNavigateCompose({ channel: t.channel, subject: t.subject, body: t.body })}
-                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Send className="w-3 h-3" />
-                    Use
-                  </button>
-                </div>
-                {previewSlug === t.slug && (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-600 prose prose-xs max-w-none" dangerouslySetInnerHTML={{ __html: t.body }} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {loadingCustom && (
-        <div className="text-center py-4">
-          <Loader2 className="w-5 h-5 text-slate-400 animate-spin mx-auto" />
         </div>
       )}
     </div>

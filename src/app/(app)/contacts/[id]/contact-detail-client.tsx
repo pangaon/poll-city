@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit2, Phone, Mail, MapPin, Flag, MessageSquare, CheckSquare, Sparkles, Save, X } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, SupportLevelBadge, Badge, FormField, Input, Select, Textarea, Checkbox, Modal } from "@/components/ui";
@@ -23,6 +23,30 @@ interface Contact {
   tasks: { id: string; title: string; status: string; priority: string; dueDate: string | Date | null; createdAt: string | Date; assignedTo: { id: string; name: string | null } | null; createdBy: { id: string; name: string | null } }[];
 }
 
+interface CrmNote {
+  id: string; body: string; noteType: string; visibility: string; isPinned: boolean;
+  createdAt: string | Date; updatedAt: string | Date;
+  createdBy: { id: string; name: string | null };
+}
+
+interface CrmRelationship {
+  id: string; relationshipType: string; strength: number | null; notes: string | null;
+  toContact: { id: string; firstName: string; lastName: string; email: string | null; phone: string | null; supportLevel: string };
+}
+
+interface CrmRoleProfile {
+  id: string; roleType: string; roleStatus: string; metadataJson: unknown;
+  createdAt: string | Date;
+}
+
+interface CrmSupportProfile {
+  id: string; supportScore: number | null; turnoutLikelihood: number | null;
+  persuasionPriority: number | null; volunteerPotential: number | null; donorPotential: number | null;
+  flagHighValue: boolean; flagHighPriority: boolean; flagHostile: boolean; flagDeceased: boolean;
+  flagMoved: boolean; flagDuplicateRisk: boolean; flagNeedsFollowUp: boolean; flagComplianceReview: boolean;
+  notes: string | null; lastAssessedAt: string | Date | null;
+}
+
 interface Props {
   contact: Contact;
   userRole: string;
@@ -31,6 +55,10 @@ interface Props {
   tags: { id: string; campaignId: string; createdAt: Date; name: string; color: string }[];
   customFields: unknown[];
   activityLogs: { id: string; action: string; details: unknown; createdAt: string | Date; user: { id: string; name: string | null } }[];
+  contactNotes?: CrmNote[];
+  relationships?: CrmRelationship[];
+  roleProfiles?: CrmRoleProfile[];
+  supportProfile?: CrmSupportProfile | null;
 }
 
 type TimelineKind = "interaction" | "task" | "activity";
@@ -63,7 +91,7 @@ function activityLabel(action: string, details: unknown): string {
   return action.replaceAll("_", " ");
 }
 
-export default function ContactDetailClient({ contact: initialContact, userRole, campaignId, teamMembers, activityLogs }: Props) {
+export default function ContactDetailClient({ contact: initialContact, userRole, campaignId, teamMembers, activityLogs, contactNotes: initialNotes = [], relationships = [], roleProfiles = [], supportProfile }: Props) {
   const router = useRouter();
   const [contact, setContact] = useState(initialContact);
   const [editing, setEditing] = useState(false);
@@ -74,6 +102,15 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
   const [saving, setSaving] = useState(false);
   const [timelineKind, setTimelineKind] = useState<"all" | TimelineKind>("all");
   const [timelineQuery, setTimelineQuery] = useState("");
+  // CRM tabs
+  const [crmTab, setCrmTab] = useState<"notes" | "relationships" | "roles" | "score" | "audit">("notes");
+  const [notes, setNotes] = useState<CrmNote[]>(initialNotes);
+  const [noteBody, setNoteBody] = useState("");
+  const [noteType, setNoteType] = useState("general");
+  const [noteVisibility, setNoteVisibility] = useState("all_members");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const isManager = ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"].includes(userRole);
+  const canViewRelationships = ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER"].includes(userRole);
   const [editForm, setEditForm] = useState({
     firstName: contact.firstName,
     lastName: contact.lastName,
@@ -114,6 +151,35 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
       if (res.ok) { const data = await res.json(); setContact({ ...contact, ...data.data }); setEditing(false); toast.success("Contact updated"); }
       else toast.error("Failed to update contact");
     } finally { setSaving(false); }
+  }
+
+  async function saveNote() {
+    if (!noteBody.trim()) return;
+    setNoteSaving(true);
+    try {
+      const res = await fetch(`/api/crm/contacts/${contact.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: noteBody.trim(), noteType, visibility: noteVisibility }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotes(prev => [data.data, ...prev]);
+        setNoteBody("");
+        toast.success("Note saved");
+      } else {
+        const err = await res.json();
+        toast.error(err.error ?? "Failed to save note");
+      }
+    } finally { setNoteSaving(false); }
+  }
+
+  async function deleteNote(noteId: string) {
+    const res = await fetch(`/api/crm/contacts/${contact.id}/notes/${noteId}`, { method: "DELETE" });
+    if (res.ok) {
+      setNotes(prev => prev.filter(n => n.id !== noteId));
+      toast.success("Note deleted");
+    } else toast.error("Failed to delete note");
   }
 
   async function getAISummary() {
@@ -438,6 +504,237 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
         </div>
       </div>
 
+      {/* ─── CRM INTELLIGENCE TABS ─── */}
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        {/* Tab strip */}
+        <div className="flex border-b border-gray-200 bg-gray-50">
+          {(["notes", "relationships", "roles", ...(isManager ? ["score", "audit"] : [])] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setCrmTab(tab as typeof crmTab)}
+              className={cn(
+                "px-4 py-2.5 text-sm font-medium capitalize transition-colors",
+                crmTab === tab
+                  ? "bg-white border-b-2 border-blue-600 text-blue-700"
+                  : "text-gray-500 hover:text-gray-900"
+              )}
+            >
+              {tab === "score" ? "Support Score" : tab}
+              {tab === "notes" && notes.length > 0 && (
+                <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 rounded-full px-1.5">{notes.length}</span>
+              )}
+              {tab === "relationships" && relationships.length > 0 && (
+                <span className="ml-1.5 text-xs bg-purple-100 text-purple-700 rounded-full px-1.5">{relationships.length}</span>
+              )}
+              {tab === "roles" && roleProfiles.length > 0 && (
+                <span className="ml-1.5 text-xs bg-emerald-100 text-emerald-700 rounded-full px-1.5">{roleProfiles.length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Notes */}
+        {crmTab === "notes" && (
+          <div className="p-4 space-y-3">
+            {/* Note composer */}
+            <div className="space-y-2">
+              <textarea
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+                placeholder="Add a note about this contact…"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={noteType}
+                  onChange={(e) => setNoteType(e.target.value)}
+                  className="border border-gray-200 rounded text-xs px-2 py-1"
+                >
+                  {["general", "call", "canvass", "email", "event", "complaint"].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                {isManager && (
+                  <select
+                    value={noteVisibility}
+                    onChange={(e) => setNoteVisibility(e.target.value)}
+                    className="border border-gray-200 rounded text-xs px-2 py-1"
+                  >
+                    <option value="all_members">All members</option>
+                    <option value="managers_only">Managers only</option>
+                    <option value="admin_only">Admin only</option>
+                  </select>
+                )}
+                <Button size="sm" onClick={saveNote} loading={noteSaving} disabled={!noteBody.trim()}>
+                  Save Note
+                </Button>
+              </div>
+            </div>
+
+            {/* Notes list */}
+            {notes.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No notes yet. Add the first one above.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {notes.map((note) => (
+                  <div key={note.id} className={cn(
+                    "py-3",
+                    note.visibility === "admin_only" ? "border-l-2 border-red-300 pl-3" :
+                    note.visibility === "managers_only" ? "border-l-2 border-amber-300 pl-3" : ""
+                  )}>
+                    {note.isPinned && <span className="text-xs font-medium text-blue-600 mb-1 block">📌 Pinned</span>}
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.body}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{note.noteType}</span>
+                      {note.visibility !== "all_members" && (
+                        <span className="text-xs bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{note.visibility.replace("_", " ")}</span>
+                      )}
+                      <span className="text-xs text-gray-400">{note.createdBy.name ?? "Unknown"} · {formatDate(note.createdAt)}</span>
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="ml-auto text-xs text-red-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Relationships */}
+        {crmTab === "relationships" && canViewRelationships && (
+          <div className="p-4">
+            {relationships.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-400">No relationships mapped yet.</p>
+                <p className="text-xs text-gray-400 mt-1">Use the API to add connections — full UI coming in Phase 5.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {relationships.map((rel) => (
+                  <div key={rel.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">
+                        <a href={`/contacts/${rel.toContact.id}`} className="hover:text-blue-600">
+                          {rel.toContact.firstName} {rel.toContact.lastName}
+                        </a>
+                      </p>
+                      <p className="text-xs text-gray-500">{rel.relationshipType.replace(/_/g, " ")}</p>
+                      {rel.notes && <p className="text-xs text-gray-400 mt-0.5">{rel.notes}</p>}
+                    </div>
+                    <SupportLevelBadge level={rel.toContact.supportLevel as SupportLevel} />
+                    {rel.strength && (
+                      <div className="flex gap-0.5">
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} className={cn("w-2 h-2 rounded-full", i <= rel.strength! ? "bg-blue-500" : "bg-gray-200")} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Roles */}
+        {crmTab === "roles" && (
+          <div className="p-4">
+            {roleProfiles.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No roles assigned. Add via the API or the role manager (Phase 5).</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {roleProfiles.map((rp) => (
+                  <div key={rp.id} className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm",
+                    rp.roleStatus === "active" ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+                    rp.roleStatus === "inactive" ? "bg-gray-50 border-gray-200 text-gray-500" :
+                    "bg-amber-50 border-amber-200 text-amber-800"
+                  )}>
+                    <span className="font-medium capitalize">{rp.roleType.replace(/_/g, " ")}</span>
+                    <span className="text-xs opacity-70">({rp.roleStatus})</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Support Score — managers only */}
+        {crmTab === "score" && isManager && (
+          <div className="p-4">
+            {!supportProfile ? (
+              <p className="text-sm text-gray-400 text-center py-6">No support profile yet. Visit the contact's score API to initialize.</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { label: "Support Score", value: supportProfile.supportScore, color: "bg-blue-500" },
+                  { label: "Turnout Likelihood", value: supportProfile.turnoutLikelihood, color: "bg-emerald-500" },
+                  { label: "Persuasion Priority", value: supportProfile.persuasionPriority, color: "bg-amber-500" },
+                  { label: "Volunteer Potential", value: supportProfile.volunteerPotential, color: "bg-purple-500" },
+                  { label: "Donor Potential", value: supportProfile.donorPotential, color: "bg-orange-500" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="space-y-1">
+                    <p className="text-xs font-medium text-gray-500">{label}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={cn("h-2 rounded-full", color)}
+                          style={{ width: `${value ?? 0}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 w-8 text-right">{value ?? "—"}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="col-span-full">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Flags</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { flag: supportProfile.flagHighValue, label: "High Value", color: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+                      { flag: supportProfile.flagHighPriority, label: "High Priority", color: "bg-blue-100 text-blue-800 border-blue-300" },
+                      { flag: supportProfile.flagHostile, label: "Hostile", color: "bg-red-100 text-red-800 border-red-300" },
+                      { flag: supportProfile.flagDeceased, label: "Deceased", color: "bg-gray-100 text-gray-700 border-gray-400" },
+                      { flag: supportProfile.flagMoved, label: "Moved", color: "bg-orange-100 text-orange-800 border-orange-300" },
+                      { flag: supportProfile.flagDuplicateRisk, label: "Duplicate Risk", color: "bg-purple-100 text-purple-800 border-purple-300" },
+                      { flag: supportProfile.flagNeedsFollowUp, label: "Needs Follow-Up", color: "bg-amber-100 text-amber-800 border-amber-300" },
+                      { flag: supportProfile.flagComplianceReview, label: "Compliance Review", color: "bg-rose-100 text-rose-800 border-rose-300" },
+                    ].filter(f => f.flag).map(({ label, color }) => (
+                      <span key={label} className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", color)}>{label}</span>
+                    ))}
+                    {!Object.values({
+                      a: supportProfile.flagHighValue, b: supportProfile.flagHighPriority,
+                      c: supportProfile.flagHostile, d: supportProfile.flagDeceased,
+                      e: supportProfile.flagMoved, f: supportProfile.flagDuplicateRisk,
+                      g: supportProfile.flagNeedsFollowUp, h: supportProfile.flagComplianceReview,
+                    }).some(Boolean) && (
+                      <span className="text-xs text-gray-400">No flags set</span>
+                    )}
+                  </div>
+                </div>
+                {supportProfile.lastAssessedAt && (
+                  <p className="text-xs text-gray-400 col-span-full">
+                    Last assessed: {formatDate(supportProfile.lastAssessedAt)}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Audit — managers only */}
+        {crmTab === "audit" && isManager && (
+          <div className="p-4">
+            <p className="text-sm text-gray-500 mb-3">Field-level audit log for this contact.</p>
+            <AuditLogPanel contactId={contact.id} />
+          </div>
+        )}
+      </div>
+
       {/* Log Interaction Modal */}
       <LogInteractionModal
         open={showInteraction}
@@ -449,6 +746,87 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
           setShowInteraction(false);
         }}
       />
+    </div>
+  );
+}
+
+interface AuditEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  oldValueJson: unknown;
+  newValueJson: unknown;
+  source: string;
+  createdAt: string;
+  actorName: string | null;
+}
+
+function AuditLogPanel({ contactId }: { contactId: string }) {
+  const [logs, setLogs] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 25;
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/crm/contacts/${contactId}/audit?page=${page}&limit=${limit}`)
+      .then(r => r.json())
+      .then(d => { setLogs(d.data ?? []); setTotal(d.total ?? 0); })
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  }, [contactId, page]);
+
+  if (loading) {
+    return <div className="flex items-center gap-2 py-4 text-sm text-gray-400"><div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />Loading audit log…</div>;
+  }
+
+  if (logs.length === 0) {
+    return <p className="text-sm text-gray-400 text-center py-6">No audit entries for this contact yet.</p>;
+  }
+
+  const pages = Math.ceil(total / limit);
+
+  return (
+    <div className="space-y-2">
+      <div className="divide-y divide-gray-100">
+        {logs.map((entry) => {
+          const newVal = (entry.newValueJson ?? {}) as Record<string, unknown>;
+          const oldVal = (entry.oldValueJson ?? {}) as Record<string, unknown>;
+          const changedField = Object.keys(newVal).find(k => k !== "absorbedId" && k !== "fieldDecisions");
+          return (
+            <div key={entry.id} className="py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-gray-700 capitalize">{entry.action.replace(/_/g, " ")}</span>
+                  {changedField && (
+                    <span className="text-xs text-gray-500 ml-1.5">
+                      · <span className="font-mono">{changedField}</span>
+                      {oldVal[changedField] !== undefined && (
+                        <span> {String(oldVal[changedField])} → {String(newVal[changedField])}</span>
+                      )}
+                    </span>
+                  )}
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {entry.actorName ?? "System"} · {entry.source} · {formatDate(entry.createdAt)}
+                  </p>
+                </div>
+                <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded flex-shrink-0">{entry.entityType}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {pages > 1 && (
+        <div className="flex items-center justify-between pt-2 text-xs text-gray-500">
+          <span>{total} total entries</span>
+          <div className="flex gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">←</button>
+            <span className="px-2 py-1">{page} / {pages}</span>
+            <button onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page === pages} className="px-2 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50">→</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

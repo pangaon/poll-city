@@ -414,3 +414,8 @@ IP_HASH_SALT                    # random string for rate limiting
 | 2026-04-08 | Claude Sonnet 4.6 | Adoni hardening — multilingual (14 languages), Unicode-normalized injection detection, indirect injection sanitization, cross-session suspicious activity, permission obfuscation in logs |
 | 2026-04-08 | Claude Sonnet 4.6 | Dashboard — all 8 empty fields wired: activity feed, canvassers, turfs, walk lists, call stats, donation chart, priority call list |
 | 2026-04-08 | Claude Sonnet 4.6 | Security — election-night + timeline membership guards added. guardCampaignRoute utility created. Write-time sanitization on interactions/debrief/intelligence/donations notes. |
+| 2026-04-10 | Claude Sonnet 4.6 | Finance Suite Phases 1-5 built: budget builder, expenses, vendors, procurement, reimbursements. src/app/(app)/finance/ + src/app/api/finance/ + src/lib/finance/ |
+| 2026-04-10 | Claude Sonnet 4.6 | Calendar Suite: full domain model added to schema.prisma (Calendar, CalendarItem, 8 calendar types, conflict detection, reminders, checklists, audit log). calendar-client.tsx updated. REQUIRES db push. |
+| 2026-04-10 | Claude Sonnet 4.6 | Print Inventory + Print Packs: new API routes and UI routes added. src/app/(app)/print/inventory/, /packs/, /api/print/inventory/, /packs/ |
+| 2026-04-10 | Claude Sonnet 4.6 | Fundraising Suite stubbed: API routes + lib created. Schema NOT yet in prisma. All Phase 1 schema work still pending before any API routes function. |
+| 2026-04-10 | Claude Sonnet 4.6 | Coordination docs created: SYSTEM_MAP.md (module inventory), INTEGRATION_GAPS.md (25 gaps P0-P3), SESSION_HANDOFF.md updated. TASK_BOARD.md updated with Calendar suite + Field Ops chunk sequence. DECISIONS.md updated with 4 new architecture decisions. |

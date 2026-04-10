@@ -262,6 +262,12 @@ enum SocialPlatform {
   bluesky
 }
 
+enum MessageTemplateChannel {
+  email
+  sms
+  push
+}
+
 enum SocialAccountStatus {
   active
   disconnected
@@ -311,6 +317,220 @@ enum CaseChannel {
   in_person
   social
   referral
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FINANCIAL OPERATIONS SUITE — ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum FinanceBudgetStatus {
+  draft
+  active
+  locked
+  archived
+}
+
+enum FinanceBudgetLineCategory {
+  advertising
+  digital_ads
+  print
+  signs
+  literature
+  events
+  staffing
+  contractors
+  volunteer_support
+  travel
+  office
+  software
+  phones
+  outreach
+  canvassing
+  fundraising
+  compliance
+  research
+  photography
+  merchandise
+  shipping
+  contingency
+  other
+}
+
+enum FinanceExpenseStatus {
+  draft
+  submitted
+  needs_review
+  approved
+  rejected
+  paid
+  archived
+}
+
+enum FinancePaymentStatus {
+  unpaid
+  partial
+  paid
+  overdue
+  refunded
+}
+
+enum FinancePaymentMethod {
+  cash
+  cheque
+  credit_card
+  debit
+  etransfer
+  wire
+  invoice
+  other
+}
+
+enum FinancePurchaseRequestStatus {
+  draft
+  submitted
+  approved
+  rejected
+  partially_approved
+  cancelled
+}
+
+enum FinancePurchaseOrderStatus {
+  draft
+  sent
+  acknowledged
+  partially_received
+  received
+  cancelled
+  closed
+}
+
+enum FinanceVendorBillStatus {
+  draft
+  received
+  approved
+  paid
+  overdue
+  disputed
+  cancelled
+}
+
+enum FinanceReimbursementStatus {
+  draft
+  submitted
+  approved
+  rejected
+  partially_approved
+  paid
+  cancelled
+}
+
+enum FinanceBudgetTransferStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum FinanceVendorType {
+  print_shop
+  sign_company
+  advertising_agency
+  digital_vendor
+  event_vendor
+  staffing_agency
+  legal
+  software
+  courier
+  other
+}
+
+enum FinanceUrgency {
+  low
+  normal
+  high
+  urgent
+}
+
+enum FinanceSourceType {
+  manual
+  import
+  purchase_order
+  vendor_bill
+  volunteer_expense
+  reimbursement
+  print_order
+  sign_order
+  event
+  recurring
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM + CONTACT INTELLIGENCE SUITE — ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ContactNoteType {
+  general
+  call
+  canvass
+  email
+  event
+  complaint
+  system
+}
+
+enum ContactNoteVisibility {
+  all_members
+  managers_only
+  admin_only
+}
+
+enum ContactRelationshipType {
+  spouse_partner
+  parent
+  child
+  sibling
+  roommate
+  colleague
+  volunteer_captain
+  introduced_donor
+  staff_owner
+  candidate_connection
+  influencer
+  household_relative
+  other
+}
+
+enum ContactRoleType {
+  voter
+  donor
+  volunteer
+  supporter
+  staff
+  event_attendee
+  influencer
+  candidate_contact
+  vendor_contact
+}
+
+enum ContactRoleStatus {
+  active
+  inactive
+  pending
+}
+
+enum DuplicateConfidence {
+  exact   // 95-100: same normalized email or phone — auto-flag
+  high    // 80-94: strong name+address match
+  medium  // 60-79: probable match — review
+  low     // 40-59: possible match — manual scan only
+}
+
+enum DuplicateDecision {
+  pending
+  merged
+  not_duplicate
+  deferred
+  auto_linked
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -412,6 +632,7 @@ model User {
   newsletterCampaignsAuthored NewsletterCampaign[] @relation("NewsletterAuthor")
   scrutineerAssignments       ScrutineerAssignment[] @relation("ScrutineerUser")
   scrutineerAssignedBy        ScrutineerAssignment[] @relation("ScrutineerAssigner")
+  printInventoryLogs          PrintInventoryLog[]
 
   // Field operations
   fieldAssignmentsAssigned    FieldAssignment[]      @relation("FieldAssignmentAssignee")
@@ -424,6 +645,58 @@ model User {
   voterPassport  VoterPassport?   @relation("UserVoterPassport")
   civicCredits   CivicCredit[]    @relation("UserCivicCredits")
   qaAnnotations  QaAnnotation[]   @relation("QaAnnotationCreator")
+
+  // Fundraising Suite
+  donationsApproved          Donation[]               @relation("ApprovedDonations")
+  fundraisingCampaignsCreated FundraisingCampaign[]  @relation("FundraisingCampaignCreatedBy")
+  fundraisingCampaignsUpdated FundraisingCampaign[]  @relation("FundraisingCampaignUpdatedBy")
+  refundsProcessed           Refund[]                 @relation("RefundProcessedBy")
+  refundsApproved            Refund[]                 @relation("RefundApprovedBy")
+  receiptsIssued             DonationReceipt[]        @relation("ReceiptSentBy")
+  reconciliationsProcessed   PaymentReconciliation[]  @relation("ReconciliationReconciledBy")
+  donorAuditActed            DonorAuditLog[]          @relation("DonorAuditActor")
+
+  // Finance
+  budgetsCreated             CampaignBudget[]         @relation("BudgetCreatedBy")
+  budgetsUpdated             CampaignBudget[]         @relation("BudgetUpdatedBy")
+  budgetLinesOwned           BudgetLine[]             @relation("BudgetLineOwner")
+  financeExpensesEntered     FinanceExpense[]         @relation("ExpenseEnteredBy")
+  financeExpensesApproved    FinanceExpense[]         @relation("ExpenseApprovedBy")
+  purchaseRequestsMade       FinancePurchaseRequest[] @relation("PurchaseRequestedBy")
+  purchaseRequestsDecided    FinancePurchaseRequest[] @relation("PurchaseApprovedBy")
+  financeReimbursements      FinanceReimbursement[]   @relation("ReimbursementUser")
+  reimbursementsDecided      FinanceReimbursement[]   @relation("ReimbursementApprover")
+  budgetTransfersRequested   BudgetTransfer[]         @relation("TransferRequestedBy")
+  budgetTransfersApproved    BudgetTransfer[]         @relation("TransferApprovedBy")
+  financeAssetsUploaded      FinanceAsset[]           @relation("AssetUploadedBy")
+
+  // Calendar Suite
+  calendarItemsCreated       CalendarItem[]           @relation("CalendarItemCreator")
+  calendarItemsUpdated       CalendarItem[]           @relation("CalendarItemUpdater")
+  calendarAssignments        CalendarItemAssignment[]
+  availabilityBlocks         AvailabilityBlock[]
+  conflictsResolved          ScheduleConflict[]       @relation("ConflictResolver")
+  checklistEntriesCompleted  CalendarItemChecklistEntry[]
+  calendarAuditActed         CalendarAuditLog[]       @relation("CalendarAuditActor")
+
+  // CRM Suite
+  contactNotesAuthored       ContactNote[]            @relation("ContactNoteAuthor")
+
+  // Field Ops Domain
+  fieldProgramsCreated        FieldProgram[]           @relation("FieldProgramCreatedBy")
+  routesCreated               Route[]                  @relation("RouteCreatedBy")
+  fieldShiftsLed              FieldShift[]             @relation("FieldShiftLead")
+  fieldShiftAssignments       FieldShiftAssignment[]   @relation("FieldShiftAssignmentUser")
+  scriptTemplatesCreated      ScriptTemplate[]         @relation("ScriptTemplateCreatedBy")
+  scriptPackagesCreated       ScriptPackage[]          @relation("ScriptPackageCreatedBy")
+  fieldAttemptsLogged         FieldAttempt[]           @relation("FieldAttemptLogger")
+  followUpsAssigned           FollowUpAction[]         @relation("FollowUpAssignee")
+  followUpsCompleted          FollowUpAction[]         @relation("FollowUpCompleter")
+  fieldTeamsLed               FieldTeam[]              @relation("FieldTeamLead")
+  fieldTeamsCreated           FieldTeam[]              @relation("FieldTeamCreatedBy")
+  fieldTeamMemberships        FieldTeamMember[]        @relation("FieldTeamMemberUser")
+  fieldAuditActed             FieldAuditLog[]          @relation("FieldAuditActor")
+  messageTemplatesAuthored    MessageTemplate[]        @relation("MessageTemplateAuthor")
 
   @@map("users")
 }
@@ -567,11 +840,68 @@ model Campaign {
   fieldAssignments          FieldAssignment[]
   literaturePieces          LiteraturePiece[]
   literaturePackages        LiteraturePackage[]
+  printInventory            PrintInventory[]
+  printPacks                PrintPack[]
   signInventoryItems        SignInventoryItem[]
   // Alert routing: controls who receives which push notification types.
   // Schema: { "<alertType>": { "mode": "roles"|"users"|"all", "roles"?: Role[], "userIds"?: string[] } }
   // Default (null): falls back to all ADMIN + CAMPAIGN_MANAGER members.
   notificationRoutes        Json?
+
+  // Fundraising Suite
+  fundraisingCampaigns      FundraisingCampaign[]
+  donorProfiles             DonorProfile[]
+  donationSources           DonationSource[]
+  donationPages             DonationPage[]
+  recurrencePlans           RecurrencePlan[]
+  pledges                   Pledge[]
+  refunds                   Refund[]
+  donationReceipts          DonationReceipt[]
+  paymentReconciliations    PaymentReconciliation[]
+  donorAuditLogs            DonorAuditLog[]
+
+  // Finance
+  campaignBudgets           CampaignBudget[]
+  budgetLines               BudgetLine[]
+  financeVendors            FinanceVendor[]
+  financeExpenses           FinanceExpense[]
+  financePurchaseRequests   FinancePurchaseRequest[]
+  financePurchaseOrders     FinancePurchaseOrder[]
+  financeVendorBills        FinanceVendorBill[]
+  financeReimbursements     FinanceReimbursement[]
+  budgetTransfers           BudgetTransfer[]
+  financeAuditLogs          FinanceAuditLog[]
+  financeAssets             FinanceAsset[]
+
+  // Calendar Suite
+  calendars                 Calendar[]
+  calendarItems             CalendarItem[]
+  availabilityBlocks        AvailabilityBlock[]
+  scheduleConflicts         ScheduleConflict[]
+  checklistTemplates        ChecklistTemplate[]
+  calendarAuditLogs         CalendarAuditLog[]
+
+  // CRM Suite
+  contactNotes              ContactNote[]
+  contactRelationships      ContactRelationship[]
+  duplicateCandidates       DuplicateCandidate[]
+  mergeHistories            MergeHistory[]
+  contactAuditLogs          ContactAuditLog[]
+
+  // Field Ops Domain
+  fieldPrograms             FieldProgram[]
+  fieldRoutes               Route[]
+  fieldTargets              FieldTarget[]
+  fieldShifts               FieldShift[]
+  fieldShiftAssignments     FieldShiftAssignment[]
+  scriptTemplates           ScriptTemplate[]
+  scriptPackages            ScriptPackage[]
+  fieldAttempts             FieldAttempt[]
+  followUpActions           FollowUpAction[]
+  fieldTeams                FieldTeam[]
+  fieldTeamMembers          FieldTeamMember[]
+  fieldAuditLogs            FieldAuditLog[]
+  messageTemplates          MessageTemplate[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -746,6 +1076,9 @@ model Household {
   campaign         Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contacts         Contact[]
   assignmentStops  AssignmentStop[]
+  fieldTargets     FieldTarget[]
+  fieldAttempts    FieldAttempt[]
+  followUpActions  FollowUpAction[]
 
   @@map("households")
 }
@@ -863,6 +1196,25 @@ model Contact {
   eventRsvps           EventRsvp[]
   voiceBroadcastCalls  VoiceBroadcastCall[]
   assignmentStops      AssignmentStop[]
+  donorProfile         DonorProfile?
+  recurrencePlans      RecurrencePlan[]
+  pledges              Pledge[]
+
+
+  // CRM Suite relations
+  contactNotes             ContactNote[]
+  outgoingRelationships    ContactRelationship[]  @relation("RelationshipFrom")
+  incomingRelationships    ContactRelationship[]  @relation("RelationshipTo")
+  roleProfiles             ContactRoleProfile[]
+  supportProfile           SupportProfile?
+  duplicateCandidatesA     DuplicateCandidate[]   @relation("DuplicateCandidateA")
+  duplicateCandidatesB     DuplicateCandidate[]   @relation("DuplicateCandidateB")
+  contactAuditLogs         ContactAuditLog[]
+
+  // Field Ops Domain
+  fieldTargets             FieldTarget[]
+  fieldAttempts            FieldAttempt[]
+  followUpActions          FollowUpAction[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -1036,6 +1388,8 @@ model Sign {
   contact         Contact?         @relation(fields: [contactId], references: [id])
   assignedUser    User?            @relation("SignAssignee", fields: [assignedUserId], references: [id])
   assignmentStops AssignmentStop[]
+  fieldAttempts   FieldAttempt[]
+  followUpActions FollowUpAction[]
 
   @@index([campaignId, status])
   @@index([lat, lng])
@@ -1073,6 +1427,8 @@ model VolunteerProfile {
   shiftSignups       VolunteerShiftSignup[]
   submittedExpenses  VolunteerExpense[]
   fieldAssignments   FieldAssignment[]      @relation("FieldAssignmentVolunteer")
+  fieldShiftAssignments FieldShiftAssignment[] @relation("FieldShiftAssignmentVolunteer")
+  fieldTeamMemberships  FieldTeamMember[]      @relation("FieldTeamMemberVolunteer")
 
   @@index([campaignId])
   @@index([isActive])
@@ -1322,40 +1678,500 @@ model ServiceBooking {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DONATIONS (pledged on the fly by canvassers)
+// FUNDRAISING SUITE — FULL DOMAIN MODEL
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Enums ────────────────────────────────────────────────────────────────────
+
 enum DonationStatus {
-  pledged // captured at door/phone, not yet processed
-  processed // payment received
-  receipted // receipt generated
+  pledged   // captured at door/phone, not yet processed
+  processing // payment in flight (Stripe pending)
+  processed  // payment received and confirmed
+  receipted  // official receipt issued
+  failed     // payment failed
   cancelled
   refunded
+  partially_refunded
 }
 
-model Donation {
-  id            String         @id @default(cuid())
-  campaignId    String
-  contactId     String?
-  recordedById  String // user who captured it
-  amount        Float
-  status        DonationStatus @default(pledged)
-  method        String? // cash | cheque | credit | e-transfer
-  notes         String?
-  collectedAt   DateTime       @default(now())
-  processedAt   DateTime?
-  receiptNumber String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  deletedById   String?
+enum DonationType {
+  one_time
+  recurring
+  pledge
+  in_kind
+  event
+  tribute   // memorial / in-honour-of
+}
 
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact    Contact? @relation(fields: [contactId], references: [id])
-  recordedBy User     @relation("RecordedDonations", fields: [recordedById], references: [id])
+enum DonationPaymentMethod {
+  stripe_card
+  stripe_ach
+  cash
+  cheque
+  e_transfer
+  wire_transfer
+  in_kind
+  other
+}
+
+enum DonationComplianceStatus {
+  pending   // not yet evaluated
+  approved  // manually approved or auto-passed
+  flagged   // needs review
+  over_limit
+  blocked   // rejected by compliance
+  exempted  // override with documented reason
+}
+
+enum ReceiptStatus {
+  pending
+  generated
+  sent
+  resent
+  failed
+  void
+}
+
+enum DonorStatus {
+  prospect
+  first_time
+  repeat
+  lapsed    // no donation in 365+ days
+  major     // lifetime giving >= threshold
+  recurring
+  champion  // major + recurring + event donor
+}
+
+enum DonorTier {
+  general
+  silver
+  gold
+  platinum
+  major
+}
+
+enum FundraisingCampaignStatus {
+  draft
+  active
+  paused
+  completed
+  archived
+}
+
+enum DonationSourceType {
+  online_page
+  canvass
+  event
+  direct_mail
+  phone_bank
+  import
+  referral
+  other
+}
+
+enum DonationPageStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum RecurrenceFrequency {
+  weekly
+  biweekly
+  monthly
+  quarterly
+  annually
+}
+
+enum RecurrenceStatus {
+  active
+  paused
+  cancelled
+  completed
+  failed
+}
+
+enum PledgeStatus {
+  pending
+  partial
+  fulfilled
+  overdue
+  cancelled
+}
+
+enum RefundStatus {
+  pending
+  approved
+  processing
+  processed
+  failed
+  rejected
+}
+
+enum ReconciliationStatus {
+  pending
+  matched
+  unmatched
+  partial
+  disputed
+}
+
+// ── Donation (expanded from canvass-pledge stub) ──────────────────────────────
+
+model Donation {
+  id                    String                   @id @default(cuid())
+  campaignId            String
+  contactId             String?
+  recordedById          String                   // user who captured it
+  approvedByUserId      String?
+
+  // Core financials
+  amount                Float
+  feeAmount             Float                    @default(0)  // processor fee
+  netAmount             Float                    @default(0)  // amount - feeAmount
+  currency              String                   @default("CAD")
+  refundedAmount        Float                    @default(0)
+
+  // Classification
+  donationType          DonationType             @default(one_time)
+  status                DonationStatus           @default(pledged)
+  paymentMethod         DonationPaymentMethod?
+  method                String?                  // legacy string field (kept for backward compat)
+  isRecurring           Boolean                  @default(false)
+
+  // Compliance + receipt
+  complianceStatus      DonationComplianceStatus @default(pending)
+  receiptStatus         ReceiptStatus            @default(pending)
+
+  // Relations to fundraising objects
+  fundraisingCampaignId String?
+  eventId               String?
+  sourceId              String?
+  pageId                String?
+  recurrencePlanId      String?
+
+  // Payment gateway
+  paymentIntentId       String?                  // Stripe PaymentIntent ID
+  externalTransactionId String?                  // cheque#, e-transfer ref, etc.
+
+  // Content
+  notes                 String?
+  dedicationName        String?                  // "In memory of..." / "In honour of..."
+  dedicationType        String?                  // "memory" | "honour"
+  isAnonymous           Boolean                  @default(false)
+  metadataJson          Json?                    // raw gateway response, UTM params, etc.
+
+  // Timestamps
+  donationDate          DateTime                 @default(now())
+  collectedAt           DateTime                 @default(now())  // legacy alias
+  processedAt           DateTime?
+  receiptNumber         String?                  // legacy field — superseded by DonationReceipt
+
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  deletedAt             DateTime?
+  deletedById           String?
+
+  // Relations
+  campaign             Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact              Contact?             @relation(fields: [contactId], references: [id])
+  recordedBy           User                 @relation("RecordedDonations", fields: [recordedById], references: [id])
+  approvedBy           User?                @relation("ApprovedDonations", fields: [approvedByUserId], references: [id])
+  fundraisingCampaign  FundraisingCampaign? @relation(fields: [fundraisingCampaignId], references: [id])
+  event                Event?               @relation(fields: [eventId], references: [id])
+  source               DonationSource?      @relation(fields: [sourceId], references: [id])
+  page                 DonationPage?        @relation(fields: [pageId], references: [id])
+  recurrencePlan       RecurrencePlan?      @relation(fields: [recurrencePlanId], references: [id])
+  receipt              DonationReceipt?
+  refunds              Refund[]
+  reconciliations      PaymentReconciliation[]
 
   @@index([campaignId])
+  @@index([campaignId, donationDate])
+  @@index([campaignId, status])
+  @@index([contactId])
+  @@index([paymentIntentId])
   @@map("donations")
+}
+
+// ── FundraisingCampaign — named fundraising initiative ────────────────────────
+
+model FundraisingCampaign {
+  id              String                    @id @default(cuid())
+  campaignId      String
+  name            String
+  description     String?
+  goalAmount      Float?
+  raisedAmount    Float                     @default(0)
+  donorCount      Int                       @default(0)
+  startDate       DateTime
+  endDate         DateTime?
+  status          FundraisingCampaignStatus @default(draft)
+  defaultCurrency String                    @default("CAD")
+  createdByUserId String
+  updatedByUserId String?
+  deletedAt       DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("FundraisingCampaignCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy     User?          @relation("FundraisingCampaignUpdatedBy", fields: [updatedByUserId], references: [id])
+  donations     Donation[]
+  donationPages DonationPage[]
+  pledges       Pledge[]
+
+  @@index([campaignId])
+  @@map("fundraising_campaigns")
+}
+
+// ── DonorProfile — enriched donor intelligence record ────────────────────────
+
+model DonorProfile {
+  id                String      @id @default(cuid())
+  campaignId        String
+  contactId         String      @unique
+  donorStatus       DonorStatus @default(first_time)
+  donorTier         DonorTier   @default(general)
+  lifetimeGiving    Float       @default(0)
+  firstDonationDate DateTime?
+  lastDonationDate  DateTime?
+  largestDonation   Float?
+  donationCount     Int         @default(0)
+  recurringDonor    Boolean     @default(false)
+  notes             String?
+  riskFlagsJson     Json?       // [{flag: "corporate_keyword", detectedAt: "...", clearedAt: null}]
+  metadataJson      Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId])
+  @@index([campaignId, donorStatus])
+  @@index([campaignId, lifetimeGiving])
+  @@map("donor_profiles")
+}
+
+// ── DonationSource — UTM / channel tracking ───────────────────────────────────
+
+model DonationSource {
+  id             String             @id @default(cuid())
+  campaignId     String
+  name           String
+  sourceType     DonationSourceType @default(other)
+  medium         String?            // email | sms | social | direct | qr
+  campaignCode   String?            // UTM campaign code
+  channel        String?            // utm_channel override
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  campaign  Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  donations Donation[]
+
+  @@index([campaignId])
+  @@map("donation_sources")
+}
+
+// ── DonationPage — hosted / embedded donation pages ──────────────────────────
+
+model DonationPage {
+  id                    String             @id @default(cuid())
+  campaignId            String
+  fundraisingCampaignId String?
+  slug                  String
+  title                 String
+  description           String?
+  suggestedAmountsJson  Json               @default("[25,50,100,250]")
+  minimumAmount         Float?             @default(5)
+  pageStatus            DonationPageStatus @default(draft)
+  themeConfigJson       Json?
+  thankYouMessage       String?
+  showGoalThermometer   Boolean            @default(false)
+  allowRecurring        Boolean            @default(true)
+  requirePhone          Boolean            @default(false)
+  requireEmployer       Boolean            @default(false)
+  active                Boolean            @default(true)
+  publishedAt           DateTime?
+  deletedAt             DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  campaign            Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fundraisingCampaign FundraisingCampaign? @relation(fields: [fundraisingCampaignId], references: [id])
+  donations           Donation[]
+  recurrencePlans     RecurrencePlan[]
+
+  @@unique([campaignId, slug])
+  @@index([campaignId])
+  @@map("donation_pages")
+}
+
+// ── RecurrencePlan — recurring donation subscriptions ────────────────────────
+
+model RecurrencePlan {
+  id                     String            @id @default(cuid())
+  campaignId             String
+  contactId              String?
+  donationPageId         String?
+  frequency              RecurrenceFrequency @default(monthly)
+  amount                 Float
+  currency               String            @default("CAD")
+  startDate              DateTime
+  endDate                DateTime?
+  nextChargeDate         DateTime?
+  status                 RecurrenceStatus  @default(active)
+  externalSubscriptionId String?           // Stripe Subscription ID
+  failureCount           Int               @default(0)
+  lastChargedAt          DateTime?
+  lastFailedAt           DateTime?
+  cancelledAt            DateTime?
+  cancellationReason     String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact      Contact?      @relation(fields: [contactId], references: [id])
+  donationPage DonationPage? @relation(fields: [donationPageId], references: [id])
+  donations    Donation[]
+
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@index([externalSubscriptionId])
+  @@map("recurrence_plans")
+}
+
+// ── Pledge — commitment to donate (fulfilled over time) ───────────────────────
+
+model Pledge {
+  id                    String      @id @default(cuid())
+  campaignId            String
+  contactId             String?
+  fundraisingCampaignId String?
+  pledgedAmount         Float
+  fulfilledAmount       Float       @default(0)
+  pledgeDate            DateTime    @default(now())
+  dueDate               DateTime?
+  status                PledgeStatus @default(pending)
+  notes                 String?
+  reminderSentAt        DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  campaign            Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact             Contact?             @relation(fields: [contactId], references: [id])
+  fundraisingCampaign FundraisingCampaign? @relation(fields: [fundraisingCampaignId], references: [id])
+
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@map("pledges")
+}
+
+// ── Refund — refund records (partial or full) ─────────────────────────────────
+
+model Refund {
+  id                String       @id @default(cuid())
+  campaignId        String
+  donationId        String
+  refundAmount      Float
+  refundReason      String
+  refundDate        DateTime     @default(now())
+  externalRefundId  String?      // Stripe refund ID
+  status            RefundStatus @default(pending)
+  processedByUserId String?
+  approvedByUserId  String?
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  donation    Donation @relation(fields: [donationId], references: [id])
+  processedBy User?    @relation("RefundProcessedBy", fields: [processedByUserId], references: [id])
+  approvedBy  User?    @relation("RefundApprovedBy", fields: [approvedByUserId], references: [id])
+
+  @@index([campaignId])
+  @@index([donationId])
+  @@map("refunds")
+}
+
+// ── DonationReceipt — official receipt tracking ───────────────────────────────
+
+model DonationReceipt {
+  id            String        @id @default(cuid())
+  campaignId    String
+  donationId    String        @unique
+  receiptNumber String
+  issuedDate    DateTime?
+  receiptStatus ReceiptStatus @default(pending)
+  assetUrl      String?       // S3 / Cloudinary URL of PDF
+  sentAt        DateTime?
+  resentAt      DateTime?
+  sentByUserId  String?
+  failureReason String?
+  voidedAt      DateTime?
+  voidedReason  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  donation  Donation  @relation(fields: [donationId], references: [id])
+  sentBy    User?     @relation("ReceiptSentBy", fields: [sentByUserId], references: [id])
+
+  @@index([campaignId])
+  @@index([campaignId, receiptStatus])
+  @@map("donation_receipts")
+}
+
+// ── PaymentReconciliation — gateway settlement matching ───────────────────────
+
+model PaymentReconciliation {
+  id                   String               @id @default(cuid())
+  campaignId           String
+  donationId           String?
+  externalBatchId      String?              // Stripe payout ID / bank batch ref
+  gateway              String               @default("stripe")
+  settlementDate       DateTime?
+  settlementAmount     Float?
+  reconciledAt         DateTime?
+  reconciledByUserId   String?
+  reconciliationStatus ReconciliationStatus @default(pending)
+  notes                String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  donation      Donation? @relation(fields: [donationId], references: [id])
+  reconciledBy  User?     @relation("ReconciliationReconciledBy", fields: [reconciledByUserId], references: [id])
+
+  @@index([campaignId])
+  @@index([campaignId, reconciliationStatus])
+  @@index([externalBatchId])
+  @@map("payment_reconciliations")
+}
+
+// ── DonorAuditLog — immutable audit trail for sensitive donor/donation changes ──
+
+model DonorAuditLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  entityType   String   // "Donation" | "DonorProfile" | "Refund" | "RecurrencePlan" | "Pledge"
+  entityId     String
+  action       String   // "created" | "status_changed" | "compliance_approved" | "refunded" | ...
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actor    User     @relation("DonorAuditActor", fields: [actorUserId], references: [id])
+
+  @@index([campaignId, entityType, entityId])
+  @@index([campaignId, createdAt])
+  @@map("donor_audit_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1940,6 +2756,8 @@ model Turf {
   assignedGroup     VolunteerGroup?  @relation(fields: [assignedGroupId], references: [id])
   stops             TurfStop[]
   fieldAssignments  FieldAssignment[]
+  routes            Route[]
+  fieldShifts       FieldShift[]
 
   @@index([campaignId])
   @@map("turfs")
@@ -2168,6 +2986,7 @@ model Event {
   rsvps     EventRsvp[]
   reminders EventReminder[]
   questions TownhallQuestion[]
+  donations Donation[]
 
   @@index([campaignId, eventDate])
   @@index([campaignId, status])
@@ -2956,8 +3775,9 @@ model PrintOrder {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  template PrintTemplate? @relation(fields: [templateId], references: [id])
+  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template  PrintTemplate?  @relation(fields: [templateId], references: [id])
+  inventory PrintInventory?
 
   @@index([campaignId, createdAt])
   @@map("print_orders")
@@ -4214,4 +5034,1674 @@ model AssignmentResourcePackage {
   signInventoryItem   SignInventoryItem? @relation(fields: [signInventoryItemId], references: [id])
 
   @@map("assignment_resource_packages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINT INVENTORY SYSTEM
+// Unified inventory tracking for all printed campaign materials.
+// PrintOrder fulfilled → creates PrintInventory record.
+// Every qty change goes through PrintInventoryLog — no direct mutations.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PrintInventory {
+  id                String           @id @default(cuid())
+  campaignId        String
+  sku               String
+  productType       PrintProductType
+  description       String?
+  orderId           String?          @unique  // source PrintOrder when fulfilled
+  totalQty          Int              @default(0)  // set at receive time, never decreases
+  availableQty      Int              @default(0)  // totalQty - reservedQty - depletedQty - wastedQty
+  reservedQty       Int              @default(0)  // assigned to packs/volunteers, not yet used
+  depletedQty       Int              @default(0)  // confirmed used/distributed
+  wastedQty         Int              @default(0)  // damaged / discarded
+  location          String           @default("hq")  // hq | storage | event | in_field
+  reorderThreshold  Int?
+  notes             String?
+  receivedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  campaign  Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  order     PrintOrder?          @relation(fields: [orderId], references: [id])
+  logs      PrintInventoryLog[]
+  packItems PrintPackItem[]
+
+  @@unique([campaignId, sku])
+  @@index([campaignId, productType])
+  @@map("print_inventory")
+}
+
+// Audit log — one row per quantity change event.
+// NEVER update PrintInventory qty fields directly — always via a log entry.
+model PrintInventoryLog {
+  id            String   @id @default(cuid())
+  inventoryId   String
+  campaignId    String
+  action        String   // received | assigned | returned | depleted | wasted | adjusted
+  qty           Int      // positive = stock increase, negative = stock decrease
+  balance       Int      // availableQty AFTER this action
+  notes         String?
+  referenceId   String?  // packId | fieldAssignmentId | orderId | etc.
+  referenceType String?  // pack | field_assignment | order | manual
+  userId        String?
+  createdAt     DateTime @default(now())
+
+  inventory PrintInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  user      User?          @relation(fields: [userId], references: [id])
+
+  @@index([inventoryId])
+  @@index([campaignId, createdAt])
+  @@map("print_inventory_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRINT PACKS
+// Auto-generated material bundles for field operations.
+// Generated from turf/poll data. Linked to FieldAssignments.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PrintPack {
+  id                  String   @id @default(cuid())
+  campaignId          String
+  name                String
+  packType            String   // walk_kit | sign_install_kit | lit_drop_kit | event_kit | gotv_kit
+  targetCount         Int      @default(0)   // households/stops/doors in target area
+  bufferPct           Float    @default(0.20) // 20% default buffer
+  turfId              String?
+  pollNumber          String?
+  fieldAssignmentId   String?
+  eventId             String?
+  status              String   @default("draft") // draft | fulfilled | distributed | returned
+  notes               String?
+  generatedAt         DateTime?
+  distributedAt       DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  items    PrintPackItem[]
+
+  @@index([campaignId, packType])
+  @@index([campaignId, fieldAssignmentId])
+  @@map("print_packs")
+}
+
+model PrintPackItem {
+  id           String   @id @default(cuid())
+  packId       String
+  inventoryId  String?  // null until inventory is assigned
+  productType  PrintProductType
+  requiredQty  Int              // calculated required quantity
+  fulfilledQty Int      @default(0)  // actually pulled from inventory
+  notes        String?
+
+  pack      PrintPack       @relation(fields: [packId], references: [id], onDelete: Cascade)
+  inventory PrintInventory? @relation(fields: [inventoryId], references: [id])
+
+  @@index([packId])
+  @@map("print_pack_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FINANCIAL OPERATIONS SUITE
+// Phase 1: Financial Domain Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CampaignBudget {
+  id              String              @id @default(cuid())
+  campaignId      String
+  name            String
+  electionCycle   String?
+  totalBudget     Decimal             @db.Decimal(12, 2)
+  currency        String              @default("CAD")
+  status          FinanceBudgetStatus @default(draft)
+  startDate       DateTime?
+  endDate         DateTime?
+  notes           String?
+  createdByUserId String
+  updatedByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  campaign    Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation("BudgetCreatedBy", fields: [createdByUserId], references: [id])
+  updatedBy   User?            @relation("BudgetUpdatedBy", fields: [updatedByUserId], references: [id])
+  budgetLines BudgetLine[]
+  transfers   BudgetTransfer[]
+
+  @@index([campaignId, status])
+  @@map("campaign_budgets")
+}
+
+model BudgetLine {
+  id                  String                    @id @default(cuid())
+  campaignBudgetId    String
+  campaignId          String
+  parentBudgetLineId  String?
+  code                String?
+  name                String
+  description         String?
+  category            FinanceBudgetLineCategory @default(other)
+  subcategory         String?
+  plannedAmount       Decimal                   @db.Decimal(12, 2) @default(0)
+  committedAmount     Decimal                   @db.Decimal(12, 2) @default(0)
+  actualAmount        Decimal                   @db.Decimal(12, 2) @default(0)
+  warningThresholdPct Float                     @default(0.85)
+  ownerUserId         String?
+  isActive            Boolean                   @default(true)
+  sortOrder           Int                       @default(0)
+  isLocked            Boolean                   @default(false)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  campaignBudget   CampaignBudget          @relation(fields: [campaignBudgetId], references: [id], onDelete: Cascade)
+  campaign         Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  parent           BudgetLine?             @relation("BudgetLineChildren", fields: [parentBudgetLineId], references: [id])
+  children         BudgetLine[]            @relation("BudgetLineChildren")
+  owner            User?                   @relation("BudgetLineOwner", fields: [ownerUserId], references: [id])
+  expenses         FinanceExpense[]
+  expenseSplits    FinanceExpenseSplit[]
+  purchaseRequests FinancePurchaseRequest[]
+  purchaseOrders   FinancePurchaseOrder[]
+  reimbursements   FinanceReimbursement[]
+  transfersFrom    BudgetTransfer[]        @relation("TransferFrom")
+  transfersTo      BudgetTransfer[]        @relation("TransferTo")
+
+  @@index([campaignBudgetId])
+  @@index([campaignId, category])
+  @@index([parentBudgetLineId])
+  @@map("budget_lines")
+}
+
+model FinanceVendor {
+  id           String            @id @default(cuid())
+  campaignId   String?
+  vendorType   FinanceVendorType @default(other)
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  website      String?
+  paymentTerms String?
+  taxNumber    String?
+  notes        String?
+  isPreferred  Boolean           @default(false)
+  isActive     Boolean           @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  campaign         Campaign?               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  expenses         FinanceExpense[]
+  purchaseRequests FinancePurchaseRequest[]
+  purchaseOrders   FinancePurchaseOrder[]
+  vendorBills      FinanceVendorBill[]
+
+  @@index([campaignId, isActive])
+  @@index([vendorType])
+  @@map("finance_vendors")
+}
+
+model FinanceExpense {
+  id                String               @id @default(cuid())
+  campaignId        String
+  budgetLineId      String?
+  vendorId          String?
+  purchaseRequestId String?
+  purchaseOrderId   String?
+  printJobId        String?
+  signId            String?
+  eventId           String?
+  reimbursementId   String?
+  amount            Decimal              @db.Decimal(12, 2)
+  taxAmount         Decimal              @db.Decimal(12, 2) @default(0)
+  currency          String               @default("CAD")
+  expenseDate       DateTime
+  description       String
+  notes             String?
+  paymentMethod     FinancePaymentMethod?
+  paymentStatus     FinancePaymentStatus @default(unpaid)
+  expenseStatus     FinanceExpenseStatus @default(draft)
+  sourceType        FinanceSourceType    @default(manual)
+  externalReference String?
+  receiptAssetId    String?
+  invoiceAssetId    String?
+  isSplit           Boolean              @default(false)
+  isDuplicate       Boolean              @default(false)
+  isRecurring       Boolean              @default(false)
+  missingReceipt    Boolean              @default(false)
+  enteredByUserId   String
+  approvedByUserId  String?
+  deletedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  campaign        Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  budgetLine      BudgetLine?             @relation(fields: [budgetLineId], references: [id])
+  vendor          FinanceVendor?          @relation(fields: [vendorId], references: [id])
+  purchaseRequest FinancePurchaseRequest? @relation(fields: [purchaseRequestId], references: [id])
+  purchaseOrder   FinancePurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  reimbursement   FinanceReimbursement?   @relation(fields: [reimbursementId], references: [id])
+  receiptAsset    FinanceAsset?           @relation("ExpenseReceipt", fields: [receiptAssetId], references: [id])
+  invoiceAsset    FinanceAsset?           @relation("ExpenseInvoice", fields: [invoiceAssetId], references: [id])
+  enteredBy       User                    @relation("ExpenseEnteredBy", fields: [enteredByUserId], references: [id])
+  approvedBy      User?                   @relation("ExpenseApprovedBy", fields: [approvedByUserId], references: [id])
+  splitLines      FinanceExpenseSplit[]
+
+  @@index([campaignId, expenseDate])
+  @@index([campaignId, expenseStatus])
+  @@index([campaignId, budgetLineId])
+  @@index([vendorId])
+  @@map("finance_expenses")
+}
+
+model FinanceExpenseSplit {
+  id           String     @id @default(cuid())
+  expenseId    String
+  budgetLineId String
+  amount       Decimal    @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime   @default(now())
+
+  expense    FinanceExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  budgetLine BudgetLine     @relation(fields: [budgetLineId], references: [id])
+
+  @@index([expenseId])
+  @@map("finance_expense_splits")
+}
+
+model FinancePurchaseRequest {
+  id                String                       @id @default(cuid())
+  campaignId        String
+  budgetLineId      String?
+  vendorId          String?
+  requestedByUserId String
+  approverUserId    String?
+  title             String
+  description       String?
+  requestedAmount   Decimal                      @db.Decimal(12, 2)
+  approvedAmount    Decimal?                     @db.Decimal(12, 2)
+  urgency           FinanceUrgency               @default(normal)
+  requestStatus     FinancePurchaseRequestStatus @default(draft)
+  requestedDate     DateTime                     @default(now())
+  decidedDate       DateTime?
+  notes             String?
+  rejectionReason   String?
+  deletedAt         DateTime?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  campaign       Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  budgetLine     BudgetLine?            @relation(fields: [budgetLineId], references: [id])
+  vendor         FinanceVendor?         @relation(fields: [vendorId], references: [id])
+  requestedBy    User                   @relation("PurchaseRequestedBy", fields: [requestedByUserId], references: [id])
+  approver       User?                  @relation("PurchaseApprovedBy", fields: [approverUserId], references: [id])
+  expenses       FinanceExpense[]
+  purchaseOrders FinancePurchaseOrder[]
+
+  @@index([campaignId, requestStatus])
+  @@index([requestedByUserId])
+  @@map("finance_purchase_requests")
+}
+
+model FinancePurchaseOrder {
+  id                String                     @id @default(cuid())
+  campaignId        String
+  vendorId          String?
+  budgetLineId      String?
+  purchaseRequestId String?
+  poNumber          String
+  totalAmount       Decimal                    @db.Decimal(12, 2)
+  taxAmount         Decimal                    @db.Decimal(12, 2) @default(0)
+  currency          String                     @default("CAD")
+  issueDate         DateTime                   @default(now())
+  expectedDate      DateTime?
+  status            FinancePurchaseOrderStatus @default(draft)
+  notes             String?
+  deletedAt         DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  campaign        Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  vendor          FinanceVendor?         @relation(fields: [vendorId], references: [id])
+  budgetLine      BudgetLine?            @relation(fields: [budgetLineId], references: [id])
+  purchaseRequest FinancePurchaseRequest? @relation(fields: [purchaseRequestId], references: [id])
+  expenses        FinanceExpense[]
+  vendorBills     FinanceVendorBill[]
+
+  @@unique([campaignId, poNumber])
+  @@index([campaignId, status])
+  @@index([vendorId])
+  @@map("finance_purchase_orders")
+}
+
+model FinanceVendorBill {
+  id              String                  @id @default(cuid())
+  campaignId      String
+  vendorId        String?
+  purchaseOrderId String?
+  billNumber      String?
+  amount          Decimal                 @db.Decimal(12, 2)
+  taxAmount       Decimal                 @db.Decimal(12, 2) @default(0)
+  currency        String                  @default("CAD")
+  dueDate         DateTime?
+  receivedDate    DateTime                @default(now())
+  paidDate        DateTime?
+  status          FinanceVendorBillStatus @default(received)
+  notes           String?
+  assetId         String?
+  deletedAt       DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  campaign      Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  vendor        FinanceVendor?        @relation(fields: [vendorId], references: [id])
+  purchaseOrder FinancePurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  asset         FinanceAsset?         @relation(fields: [assetId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([vendorId])
+  @@map("finance_vendor_bills")
+}
+
+model FinanceReimbursement {
+  id              String                     @id @default(cuid())
+  campaignId      String
+  budgetLineId    String?
+  userId          String
+  approverUserId  String?
+  title           String
+  amountRequested Decimal                    @db.Decimal(12, 2)
+  amountApproved  Decimal?                   @db.Decimal(12, 2)
+  status          FinanceReimbursementStatus @default(draft)
+  submittedDate   DateTime?
+  decidedDate     DateTime?
+  payoutMethod    String?
+  notes           String?
+  rejectionReason String?
+  deletedAt       DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  budgetLine BudgetLine? @relation(fields: [budgetLineId], references: [id])
+  user       User        @relation("ReimbursementUser", fields: [userId], references: [id])
+  approver   User?       @relation("ReimbursementApprover", fields: [approverUserId], references: [id])
+  expenses   FinanceExpense[]
+
+  @@index([campaignId, status])
+  @@index([userId])
+  @@map("finance_reimbursements")
+}
+
+model BudgetTransfer {
+  id                String                      @id @default(cuid())
+  campaignId        String
+  campaignBudgetId  String
+  fromBudgetLineId  String
+  toBudgetLineId    String
+  amount            Decimal                     @db.Decimal(12, 2)
+  reason            String
+  requestedByUserId String
+  approvedByUserId  String?
+  status            FinanceBudgetTransferStatus @default(pending)
+  transferDate      DateTime?
+  notes             String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignBudget CampaignBudget @relation(fields: [campaignBudgetId], references: [id], onDelete: Cascade)
+  fromLine       BudgetLine     @relation("TransferFrom", fields: [fromBudgetLineId], references: [id])
+  toLine         BudgetLine     @relation("TransferTo", fields: [toBudgetLineId], references: [id])
+  requestedBy    User           @relation("TransferRequestedBy", fields: [requestedByUserId], references: [id])
+  approvedBy     User?          @relation("TransferApprovedBy", fields: [approvedByUserId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([campaignBudgetId])
+  @@map("budget_transfers")
+}
+
+model FinanceAuditLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  entityType   String
+  entityId     String
+  action       String
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("finance_audit_logs")
+}
+
+model FinanceAsset {
+  id           String    @id @default(cuid())
+  campaignId   String
+  uploadedById String?
+  assetType    String    // receipt | invoice | quote | proof_of_payment | contract | other
+  fileUrl      String
+  fileName     String
+  fileSize     Int?
+  mimeType     String?
+  hash         String?   // SHA-256 for duplicate detection
+  notes        String?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  campaign     Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploadedBy   User?            @relation("AssetUploadedBy", fields: [uploadedById], references: [id])
+  asReceiptFor FinanceExpense[] @relation("ExpenseReceipt")
+  asInvoiceFor FinanceExpense[] @relation("ExpenseInvoice")
+  vendorBills  FinanceVendorBill[]
+
+  @@index([campaignId])
+  @@index([hash])
+  @@map("finance_assets")
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALENDAR & SCHEDULING SUITE — PHASE 1 DOMAIN MODEL
+// The campaign time-and-coordination operating system.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CalendarType {
+  master
+  candidate
+  volunteer
+  field_ops
+  print_production
+  events
+  communications
+  approvals
+}
+
+enum CalendarItemType {
+  campaign_event
+  candidate_appearance
+  staff_meeting
+  donor_meeting
+  debate
+  media_appearance
+  fundraiser
+  town_hall
+  community_meeting
+  volunteer_shift_item
+  canvassing_run
+  literature_drop_item
+  sign_install_item
+  sign_removal_item
+  phone_bank_item
+  poll_day_ops
+  scrutineer_duty
+  print_deadline
+  vendor_appointment
+  delivery_window
+  inventory_pickup
+  email_blast_item
+  sms_blast_item
+  social_post_item
+  voice_broadcast_item
+  press_release
+  approval_deadline
+  internal_deadline
+  milestone
+  travel_block
+  protected_time
+  prep_window
+  setup_teardown
+  other_item
+}
+
+enum CalendarItemStatus {
+  draft
+  tentative
+  scheduled
+  confirmed
+  in_progress
+  completed
+  cancelled
+  postponed
+  no_show
+}
+
+enum CalLocationType {
+  in_person
+  virtual
+  phone
+  hybrid
+  tbd
+}
+
+enum ConflictType {
+  person_double_booked
+  team_double_booked
+  location_conflict
+  resource_conflict
+  inventory_conflict
+  deadline_missed
+  travel_infeasible
+  protected_time_override
+  dependency_unmet
+  capacity_exceeded
+  comm_blackout_violation
+}
+
+enum ConflictSeverity {
+  info
+  warning
+  blocking
+}
+
+enum CalReminderChannel {
+  in_app
+  email
+  sms
+  push
+}
+
+enum CalReminderStatus {
+  pending
+  sent
+  failed
+  cancelled
+}
+
+enum DependencyType {
+  finish_to_start
+  start_to_start
+  finish_to_finish
+  start_to_finish
+}
+
+enum AvailabilityType {
+  available
+  unavailable
+  tentative
+  busy
+  out_of_office
+  preferred
+}
+
+enum CalResourceType {
+  vehicle
+  venue
+  equipment
+  inventory_item
+  print_material
+  volunteer_team
+  vendor
+}
+
+enum ReservationStatus {
+  requested
+  confirmed
+  released
+  cancelled
+  conflict
+}
+
+model Calendar {
+  id               String       @id @default(cuid())
+  campaignId       String
+  name             String
+  description      String?
+  calendarType     CalendarType @default(master)
+  color            String       @default("#1D9E75")
+  visibility       String       @default("internal")
+  isDefault        Boolean      @default(false)
+  isActive         Boolean      @default(true)
+  createdByUserId  String
+  updatedByUserId  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  items    CalendarItem[]
+
+  @@unique([campaignId, name])
+  @@index([campaignId, calendarType])
+  @@index([campaignId, isDefault])
+  @@map("calendars")
+}
+
+model CalendarItem {
+  id                      String             @id @default(cuid())
+  campaignId              String
+  calendarId              String?
+  parentCalendarItemId    String?
+  title                   String
+  description             String?
+  itemType                CalendarItemType   @default(other_item)
+  itemStatus              CalendarItemStatus @default(scheduled)
+  priority                TaskPriority       @default(medium)
+  startAt                 DateTime
+  endAt                   DateTime
+  allDay                  Boolean            @default(false)
+  timezone                String             @default("America/Toronto")
+  locationType            CalLocationType    @default(in_person)
+  locationName            String?
+  addressLine1            String?
+  addressLine2            String?
+  city                    String?
+  province                String?
+  postalCode              String?
+  latitude                Float?
+  longitude               Float?
+  virtualUrl              String?
+  ward                    String?
+  pollNumber              String?
+  turfId                  String?
+  eventId                 String?
+  taskId                  String?
+  fieldAssignmentId       String?
+  printJobId              String?
+  printOrderId            String?
+  signJobIds              String[]           @default([])
+  vendorBookingId         String?
+  communicationsSendId    String?
+  volunteerShiftId        String?
+  maxCapacity             Int?
+  minCapacity             Int?
+  recurrenceRule          String?
+  recurrenceParentId      String?
+  recurrenceIndex         Int?
+  createdByUserId         String
+  updatedByUserId         String?
+  cancelledAt             DateTime?
+  cancellationReason      String?
+  deletedAt               DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  campaign        Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  calendar        Calendar?                 @relation(fields: [calendarId], references: [id], onDelete: SetNull)
+  createdBy       User                      @relation("CalendarItemCreator", fields: [createdByUserId], references: [id])
+  updatedBy       User?                     @relation("CalendarItemUpdater", fields: [updatedByUserId], references: [id])
+  parentItem      CalendarItem?             @relation("CalendarItemChildren", fields: [parentCalendarItemId], references: [id])
+  childItems      CalendarItem[]            @relation("CalendarItemChildren")
+  assignments     CalendarItemAssignment[]
+  resources       CalendarItemResource[]
+  reminders       CalendarReminder[]
+  predecessors    CalendarDependency[]      @relation("DependencySuccessor")
+  successors      CalendarDependency[]      @relation("DependencyPredecessor")
+  conflictsSource ScheduleConflict[]        @relation("ConflictSource")
+  conflictsTarget ScheduleConflict[]        @relation("ConflictTarget")
+  checklists      CalendarItemChecklist[]
+  @@index([campaignId, startAt])
+  @@index([campaignId, itemType, itemStatus])
+  @@index([calendarId, startAt])
+  @@index([campaignId, eventId])
+  @@index([campaignId, fieldAssignmentId])
+  @@index([campaignId, volunteerShiftId])
+  @@map("calendar_items")
+}
+
+model CalendarItemAssignment {
+  id                  String    @id @default(cuid())
+  calendarItemId      String
+  assignedUserId      String?
+  assignedVolunteerId String?
+  assignedTeamId      String?
+  roleOnItem          String?
+  responseStatus      String    @default("pending")
+  checkInAt           DateTime?
+  checkOutAt          DateTime?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+  assignedUser User?        @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  @@unique([calendarItemId, assignedUserId])
+  @@index([calendarItemId])
+  @@index([assignedUserId])
+  @@index([assignedVolunteerId])
+  @@index([assignedTeamId])
+  @@map("calendar_item_assignments")
+}
+
+model CalendarItemResource {
+  id                String            @id @default(cuid())
+  calendarItemId    String
+  resourceType      CalResourceType
+  resourceId        String
+  resourceLabel     String?
+  quantity          Int               @default(1)
+  reservationStatus ReservationStatus @default(requested)
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+
+  @@index([calendarItemId])
+  @@index([resourceType, resourceId])
+  @@map("calendar_item_resources")
+}
+
+model AvailabilityBlock {
+  id               String           @id @default(cuid())
+  campaignId       String
+  userId           String?
+  volunteerId      String?
+  title            String?
+  availabilityType AvailabilityType @default(available)
+  startAt          DateTime
+  endAt            DateTime
+  allDay           Boolean          @default(false)
+  recurrenceRule   String?
+  timezone         String           @default("America/Toronto")
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, startAt, endAt])
+  @@index([userId, startAt])
+  @@index([volunteerId, startAt])
+  @@map("availability_blocks")
+}
+
+model CalendarReminder {
+  id              String             @id @default(cuid())
+  calendarItemId  String
+  reminderType    String             @default("pre_event")
+  deliveryChannel CalReminderChannel @default(in_app)
+  minutesBefore   Int
+  recipientType   String             @default("all_assigned")
+  recipientId     String?
+  scheduledFor    DateTime?
+  status          CalReminderStatus  @default(pending)
+  sentAt          DateTime?
+  errorMessage    String?
+  createdAt       DateTime           @default(now())
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+
+  @@index([calendarItemId])
+  @@index([status, scheduledFor])
+  @@map("calendar_reminders")
+}
+
+model CalendarDependency {
+  id                        String         @id @default(cuid())
+  campaignId                String
+  predecessorCalendarItemId String
+  successorCalendarItemId   String
+  dependencyType            DependencyType @default(finish_to_start)
+  lagMinutes                Int            @default(0)
+  ruleBehavior              String         @default("warn")
+  createdAt                 DateTime       @default(now())
+
+  predecessor CalendarItem @relation("DependencyPredecessor", fields: [predecessorCalendarItemId], references: [id], onDelete: Cascade)
+  successor   CalendarItem @relation("DependencySuccessor", fields: [successorCalendarItemId], references: [id], onDelete: Cascade)
+
+  @@unique([predecessorCalendarItemId, successorCalendarItemId])
+  @@index([campaignId])
+  @@index([predecessorCalendarItemId])
+  @@index([successorCalendarItemId])
+  @@map("calendar_dependencies")
+}
+
+model ScheduleConflict {
+  id                        String           @id @default(cuid())
+  campaignId                String
+  entityType                String
+  entityId                  String
+  entityLabel               String?
+  conflictType              ConflictType
+  sourceCalendarItemId      String
+  conflictingCalendarItemId String
+  severity                  ConflictSeverity @default(warning)
+  status                    String           @default("open")
+  detectedAt                DateTime         @default(now())
+  resolvedAt                DateTime?
+  resolvedByUserId          String?
+  resolutionNotes           String?
+
+  campaign        Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sourceItem      CalendarItem @relation("ConflictSource", fields: [sourceCalendarItemId], references: [id], onDelete: Cascade)
+  conflictingItem CalendarItem @relation("ConflictTarget", fields: [conflictingCalendarItemId], references: [id], onDelete: Cascade)
+  resolvedBy      User?        @relation("ConflictResolver", fields: [resolvedByUserId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([campaignId, severity, status])
+  @@index([sourceCalendarItemId])
+  @@map("schedule_conflicts")
+}
+
+model ChecklistTemplate {
+  id            String    @id @default(cuid())
+  campaignId    String?
+  name          String
+  checklistType String
+  description   String?
+  isActive      Boolean   @default(true)
+  isSystem      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campaign      Campaign?               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  itemTemplates ChecklistItemTemplate[]
+  checklists    CalendarItemChecklist[]
+
+  @@index([campaignId, isActive])
+  @@map("checklist_templates")
+}
+
+model ChecklistItemTemplate {
+  id                  String   @id @default(cuid())
+  checklistTemplateId String
+  label               String
+  sortOrder           Int      @default(0)
+  required            Boolean  @default(false)
+  itemType            String   @default("checkbox")
+  helpText            String?
+  createdAt           DateTime @default(now())
+
+  template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([checklistTemplateId, sortOrder])
+  @@map("checklist_item_templates")
+}
+
+model CalendarItemChecklist {
+  id                  String    @id @default(cuid())
+  calendarItemId      String
+  checklistTemplateId String?
+  title               String?
+  createdByUserId     String
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+
+  calendarItem CalendarItem               @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+  template     ChecklistTemplate?         @relation(fields: [checklistTemplateId], references: [id])
+  entries      CalendarItemChecklistEntry[]
+
+  @@index([calendarItemId])
+  @@map("calendar_item_checklists")
+}
+
+model CalendarItemChecklistEntry {
+  id                      String    @id @default(cuid())
+  calendarItemChecklistId String
+  label                   String
+  sortOrder               Int       @default(0)
+  required                Boolean   @default(false)
+  itemType                String    @default("checkbox")
+  valueText               String?
+  valueNumber             Float?
+  completed               Boolean   @default(false)
+  completedAt             DateTime?
+  completedByUserId       String?
+  photoUrl                String?
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  checklist   CalendarItemChecklist @relation(fields: [calendarItemChecklistId], references: [id], onDelete: Cascade)
+  completedBy User?                 @relation(fields: [completedByUserId], references: [id])
+
+  @@index([calendarItemChecklistId, sortOrder])
+  @@map("calendar_item_checklist_entries")
+}
+
+model CalendarAuditLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  entityType   String
+  entityId     String
+  action       String
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actor    User     @relation("CalendarAuditActor", fields: [actorUserId], references: [id])
+
+  @@index([campaignId, entityType, entityId])
+  @@index([campaignId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("calendar_audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM + CONTACT INTELLIGENCE SUITE — PHASE 1 DOMAIN MODEL
+// The campaign relationship and person intelligence operating system.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ContactNote {
+  id          String                @id @default(cuid())
+  campaignId  String
+  contactId   String
+  noteType    ContactNoteType       @default(general)
+  body        String
+  visibility  ContactNoteVisibility @default(all_members)
+  isPinned    Boolean               @default(false)
+  createdById String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("ContactNoteAuthor", fields: [createdById], references: [id])
+
+  @@index([contactId])
+  @@index([campaignId])
+  @@map("contact_notes")
+}
+
+model ContactRelationship {
+  id               String                  @id @default(cuid())
+  campaignId       String
+  fromContactId    String
+  toContactId      String
+  relationshipType ContactRelationshipType
+  // Inverse relationship type stored to support bidirectional graph
+  // e.g. if A→B is "parent", B→A mirror is "child"
+  inverseType      ContactRelationshipType?
+  strength         Int?                    // 1-5
+  notes            String?
+  source           String?                 // manual | import | inferred
+  isActive         Boolean                 @default(true)
+  createdById      String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fromContact  Contact  @relation("RelationshipFrom", fields: [fromContactId], references: [id], onDelete: Cascade)
+  toContact    Contact  @relation("RelationshipTo", fields: [toContactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, fromContactId, toContactId, relationshipType])
+  @@index([fromContactId])
+  @@index([toContactId])
+  @@map("contact_relationships")
+}
+
+model ContactRoleProfile {
+  id           String            @id @default(cuid())
+  contactId    String
+  roleType     ContactRoleType
+  roleStatus   ContactRoleStatus @default(active)
+  metadataJson Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, roleType])
+  @@index([contactId])
+  @@map("contact_role_profiles")
+}
+
+model SupportProfile {
+  id                    String    @id @default(cuid())
+  contactId             String    @unique
+  // Composite intelligence scores (0-100)
+  supportScore          Int?
+  turnoutLikelihood     Int?
+  persuasionPriority    Int?
+  volunteerPotential    Int?
+  donorPotential        Int?
+  // Issue affinity: { environment: 85, transit: 60, housing: 90 }
+  issueAffinityJson     Json?
+  // Operational flags
+  flagHighValue         Boolean   @default(false) // major donor or major influencer
+  flagHighPriority      Boolean   @default(false) // focus canvassing / outreach
+  flagHostile           Boolean   @default(false) // do not engage aggressively
+  flagDeceased          Boolean   @default(false) // excluded from all outreach
+  flagMoved             Boolean   @default(false) // address likely stale
+  flagDuplicateRisk     Boolean   @default(false) // suspected duplicate pending review
+  flagNeedsFollowUp     Boolean   @default(false) // follow-up action required
+  flagComplianceReview  Boolean   @default(false) // donation compliance review pending
+  lastAssessedAt        DateTime?
+  assessedByUserId      String?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@map("support_profiles")
+}
+
+model DuplicateCandidate {
+  id               String              @id @default(cuid())
+  campaignId       String
+  contactAId       String
+  contactBId       String
+  confidence       DuplicateConfidence
+  confidenceScore  Int                 // 0-100
+  // Signals that contributed to this score
+  // e.g. { emailMatch: true, phoneMatch: false, nameScore: 0.92, addressScore: 0.7 }
+  signals          Json
+  decision         DuplicateDecision   @default(pending)
+  decidedByUserId  String?
+  decidedAt        DateTime?
+  survivorId       String?             // set after merge completes
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactA  Contact  @relation("DuplicateCandidateA", fields: [contactAId], references: [id], onDelete: Cascade)
+  contactB  Contact  @relation("DuplicateCandidateB", fields: [contactBId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactAId, contactBId])
+  @@index([campaignId, decision])
+  @@map("duplicate_candidates")
+}
+
+model MergeHistory {
+  id                   String   @id @default(cuid())
+  campaignId           String
+  survivorContactId    String
+  absorbedContactId    String
+  mergedByUserId       String
+  // Field-level decisions: { supportLevel: "survivor", phone: "absorbed" }
+  fieldDecisionsJson   Json
+  // Full JSON snapshot of absorbed contact record at time of merge
+  absorbedSnapshotJson Json
+  createdAt            DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([survivorContactId])
+  @@map("merge_history")
+}
+
+model ContactAuditLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  contactId    String
+  // entity that was changed: contact | note | relationship | role_profile | support_profile
+  entityType   String
+  entityId     String
+  // action taken: created | updated | deleted | merged | support_changed | tag_added | tag_removed | flag_changed
+  action       String
+  fieldName    String?  // which specific field changed
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String?
+  // source of the change: manual | import | api | canvass | automation | system
+  source       String   @default("manual")
+  createdAt    DateTime @default(now())
+
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt])
+  @@index([campaignId, createdAt])
+  @@map("contact_audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FIELD OPS DOMAIN MODEL — PHASE 1
+// The field execution nervous system: programs, routes, shifts, targets,
+// attempts, follow-ups, teams, and the immutable audit trail.
+// All entities are campaignId-scoped. Multi-tenant safe.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum FieldProgramType {
+  canvass
+  lit_drop
+  phone_bank
+  sign_install
+  sign_remove
+  gotv
+  event_outreach
+  advance_vote
+  hybrid
+}
+
+enum FieldProgramStatus {
+  planning
+  active
+  paused
+  completed
+  archived
+}
+
+enum RouteStatus {
+  draft
+  published
+  assigned
+  in_progress
+  completed
+  locked
+  archived
+}
+
+enum FieldTargetStatus {
+  pending
+  in_progress
+  contacted
+  no_answer
+  not_home
+  refused
+  moved
+  inaccessible
+  revisit
+  complete
+}
+
+enum FieldTargetPriority {
+  normal
+  high
+  urgent
+}
+
+enum FieldShiftType {
+  canvassing
+  literature
+  sign_install
+  sign_remove
+  event_field
+  office
+  gotv
+  poll_day
+}
+
+enum FieldShiftStatus {
+  draft
+  open
+  full
+  in_progress
+  completed
+  cancelled
+}
+
+enum FieldShiftAssignmentStatus {
+  invited
+  confirmed
+  declined
+  checked_in
+  completed
+  no_show
+}
+
+enum ScriptTemplateType {
+  id_script
+  persuasion
+  gotv
+  sign_ask
+  donor_ask
+  volunteer_ask
+  general
+  follow_up
+}
+
+enum FieldAttemptOutcome {
+  contacted
+  no_answer
+  not_home
+  moved
+  refused
+  hostile
+  supporter
+  undecided
+  opposition
+  volunteer_interest
+  donor_interest
+  sign_requested
+  follow_up
+  bad_data
+  inaccessible
+  do_not_return
+}
+
+enum FollowUpActionType {
+  revisit
+  sign_ops
+  donor_referral
+  volunteer_referral
+  crm_cleanup
+  bad_data
+  lit_missed
+  building_retry
+  gotv_target
+  press_opportunity
+  other
+}
+
+enum FollowUpActionStatus {
+  pending
+  assigned
+  in_progress
+  completed
+  dismissed
+}
+
+enum FieldAuditAction {
+  created
+  updated
+  deleted
+  assigned
+  started
+  completed
+  cancelled
+  checked_in
+  checked_out
+  outcome_recorded
+  override
+  reassigned
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FieldProgram {
+  id             String             @id @default(cuid())
+  campaignId     String
+  name           String
+  description    String?
+  programType    FieldProgramType   @default(canvass)
+  status         FieldProgramStatus @default(planning)
+  targetWard     String?
+  targetPolls    String[]           @default([])
+  startDate      DateTime?
+  endDate        DateTime?
+  goalDoors      Int?
+  goalContacts   Int?
+  goalSupporters Int?
+  isActive       Boolean            @default(true)
+  createdById    String
+  deletedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation("FieldProgramCreatedBy", fields: [createdById], references: [id])
+  routes        Route[]
+  shifts        FieldShift[]
+  targets       FieldTarget[]
+  attempts      FieldAttempt[]
+  scriptPackages ScriptPackage[]
+
+  @@index([campaignId, status])
+  @@index([campaignId, isActive])
+  @@map("field_programs")
+}
+
+model Route {
+  id               String      @id @default(cuid())
+  campaignId       String
+  fieldProgramId   String?
+  turfId           String?
+  name             String
+  description      String?
+  status           RouteStatus @default(draft)
+  ward             String?
+  pollNumber       String?
+  streets          String[]    @default([])
+  oddEven          String      @default("all") // all | odd | even
+  totalStops       Int         @default(0)
+  totalDoors       Int         @default(0)
+  estimatedMinutes Int?
+  routeDistance    Float?      // km
+  optimizedRoute   Json?       // GeoJSON LineString
+  isLocked         Boolean     @default(false)
+  notes            String?
+  createdById      String
+  deletedAt        DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldProgram FieldProgram? @relation(fields: [fieldProgramId], references: [id])
+  turf         Turf?         @relation(fields: [turfId], references: [id])
+  createdBy    User          @relation("RouteCreatedBy", fields: [createdById], references: [id])
+  targets      FieldTarget[]
+  shifts       FieldShift[]
+  attempts     FieldAttempt[]
+
+  @@index([campaignId, status])
+  @@index([campaignId, fieldProgramId])
+  @@map("routes")
+}
+
+model FieldTarget {
+  id             String              @id @default(cuid())
+  campaignId     String
+  fieldProgramId String?
+  routeId        String?
+  contactId      String?
+  householdId    String?
+  // FK to legacy FieldAssignment — bridges old and new systems during migration
+  assignmentId   String?
+  priority       FieldTargetPriority @default(normal)
+  status         FieldTargetStatus   @default(pending)
+  // Reuses existing AssignmentType: canvass | lit_drop | sign_install | sign_remove
+  targetType     AssignmentType
+  sortOrder      Int                 @default(0)
+  notes          String?
+  resolvedAt     DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldProgram FieldProgram? @relation(fields: [fieldProgramId], references: [id])
+  route        Route?        @relation(fields: [routeId], references: [id])
+  contact      Contact?      @relation(fields: [contactId], references: [id])
+  household    Household?    @relation(fields: [householdId], references: [id])
+  attempts     FieldAttempt[]
+  followUps    FollowUpAction[]
+
+  @@index([campaignId, status])
+  @@index([campaignId, fieldProgramId])
+  @@index([routeId, sortOrder])
+  @@map("field_targets")
+}
+
+model FieldShift {
+  id             String           @id @default(cuid())
+  campaignId     String
+  fieldProgramId String?
+  shiftType      FieldShiftType   @default(canvassing)
+  name           String
+  description    String?
+  status         FieldShiftStatus @default(draft)
+  scheduledDate  DateTime
+  startTime      String           // wall-clock: "09:00"
+  endTime        String           // wall-clock: "13:00"
+  timezone       String           @default("America/Toronto")
+  meetingPoint   String?
+  meetingAddress String?
+  maxCapacity    Int?
+  minCapacity    Int?
+  ward           String?
+  pollNumber     String?
+  turfId         String?
+  routeId        String?
+  leadUserId     String?
+  materialsJson  Json?            // what-to-bring checklist
+  notes          String?
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  campaign     Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldProgram FieldProgram?          @relation(fields: [fieldProgramId], references: [id])
+  turf         Turf?                  @relation(fields: [turfId], references: [id])
+  route        Route?                 @relation(fields: [routeId], references: [id])
+  leadUser     User?                  @relation("FieldShiftLead", fields: [leadUserId], references: [id])
+  assignments  FieldShiftAssignment[]
+  attempts     FieldAttempt[]
+
+  @@index([campaignId, scheduledDate])
+  @@index([campaignId, fieldProgramId])
+  @@index([campaignId, status])
+  @@map("field_shifts")
+}
+
+model FieldShiftAssignment {
+  id                    String                     @id @default(cuid())
+  campaignId            String
+  shiftId               String
+  userId                String?
+  volunteerId           String?
+  status                FieldShiftAssignmentStatus @default(invited)
+  confirmedAt           DateTime?
+  checkedInAt           DateTime?
+  checkedOutAt          DateTime?
+  assignedMaterialsJson Json?
+  hoursLogged           Float?
+  notes                 String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  campaign   Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shift      FieldShift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  user       User?             @relation("FieldShiftAssignmentUser", fields: [userId], references: [id])
+  volunteer  VolunteerProfile? @relation("FieldShiftAssignmentVolunteer", fields: [volunteerId], references: [id])
+
+  @@unique([shiftId, userId])
+  @@index([campaignId, shiftId])
+  @@index([campaignId, userId])
+  @@index([campaignId, volunteerId])
+  @@map("field_shift_assignments")
+}
+
+model ScriptTemplate {
+  id                   String             @id @default(cuid())
+  campaignId           String
+  name                 String
+  description          String?
+  scriptType           ScriptTemplateType @default(general)
+  version              Int                @default(1)
+  contentJson          Json               // branching script tree
+  targetSupportLevels  SupportLevel[]     @default([])
+  language             String             @default("en")
+  isActive             Boolean            @default(true)
+  createdById          String
+  deletedAt            DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation("ScriptTemplateCreatedBy", fields: [createdById], references: [id])
+  scriptPackages ScriptPackage[] @relation("ScriptPackagePrimary")
+
+  @@index([campaignId, scriptType, isActive])
+  @@map("script_templates")
+}
+
+model ScriptPackage {
+  id              String    @id @default(cuid())
+  campaignId      String
+  fieldProgramId  String?
+  name            String
+  description     String?
+  primaryScriptId String?
+  scriptIds       String[]  @default([]) // Array of ScriptTemplate ids
+  isActive        Boolean   @default(true)
+  createdById     String
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldProgram   FieldProgram?   @relation(fields: [fieldProgramId], references: [id])
+  primaryScript  ScriptTemplate? @relation("ScriptPackagePrimary", fields: [primaryScriptId], references: [id])
+  createdBy      User            @relation("ScriptPackageCreatedBy", fields: [createdById], references: [id])
+
+  @@index([campaignId, isActive])
+  @@map("script_packages")
+}
+
+model FieldAttempt {
+  id                   String              @id @default(cuid())
+  campaignId           String
+  contactId            String?
+  householdId          String?
+  signId               String?
+  fieldProgramId       String?
+  routeId              String?
+  shiftId              String?
+  fieldTargetId        String?
+  attemptedById        String
+  attemptedAt          DateTime            @default(now())
+  outcome              FieldAttemptOutcome
+  outcomeNotes         String?
+  supportLevelCaptured SupportLevel?
+  proofPhotoUrl        String?
+  latitude             Float?
+  longitude            Float?
+  isProxy              Boolean             @default(false) // canvasser reporting for absent resident
+  isOfflineSynced      Boolean             @default(false)
+  // Reuses existing InteractionSource: canvass | internal_phone | call_center | event | social | self | simulation
+  source               InteractionSource   @default(canvass)
+  deletedAt            DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact      Contact?      @relation(fields: [contactId], references: [id])
+  household    Household?    @relation(fields: [householdId], references: [id])
+  sign         Sign?         @relation(fields: [signId], references: [id])
+  fieldProgram FieldProgram? @relation(fields: [fieldProgramId], references: [id])
+  route        Route?        @relation(fields: [routeId], references: [id])
+  shift        FieldShift?   @relation(fields: [shiftId], references: [id])
+  fieldTarget  FieldTarget?  @relation(fields: [fieldTargetId], references: [id])
+  attemptedBy  User          @relation("FieldAttemptLogger", fields: [attemptedById], references: [id])
+  followUps    FollowUpAction[]
+
+  @@index([campaignId, attemptedAt])
+  @@index([campaignId, contactId])
+  @@index([campaignId, fieldProgramId])
+  @@index([campaignId, outcome])
+  @@map("field_attempts")
+}
+
+model FollowUpAction {
+  id             String               @id @default(cuid())
+  campaignId     String
+  fieldAttemptId String?
+  contactId      String?
+  householdId    String?
+  signId         String?
+  fieldTargetId  String?
+  followUpType   FollowUpActionType
+  status         FollowUpActionStatus @default(pending)
+  priority       FieldTargetPriority  @default(normal)
+  dueDate        DateTime?
+  assignedToId   String?
+  notes          String?
+  completedAt    DateTime?
+  completedById  String?
+  deletedAt      DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldAttempt FieldAttempt? @relation(fields: [fieldAttemptId], references: [id])
+  contact      Contact?      @relation(fields: [contactId], references: [id])
+  household    Household?    @relation(fields: [householdId], references: [id])
+  sign         Sign?         @relation(fields: [signId], references: [id])
+  fieldTarget  FieldTarget?  @relation(fields: [fieldTargetId], references: [id])
+  assignedTo   User?         @relation("FollowUpAssignee", fields: [assignedToId], references: [id])
+  completedBy  User?         @relation("FollowUpCompleter", fields: [completedById], references: [id])
+
+  @@index([campaignId, status, dueDate])
+  @@index([campaignId, followUpType])
+  @@index([campaignId, assignedToId])
+  @@map("follow_up_actions")
+}
+
+model FieldTeam {
+  id          String    @id @default(cuid())
+  campaignId  String
+  name        String
+  description String?
+  leadUserId  String?
+  ward        String?
+  isActive    Boolean   @default(true)
+  createdById String
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  campaign  Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadUser  User?             @relation("FieldTeamLead", fields: [leadUserId], references: [id])
+  createdBy User              @relation("FieldTeamCreatedBy", fields: [createdById], references: [id])
+  members   FieldTeamMember[]
+
+  @@unique([campaignId, name])
+  @@index([campaignId, isActive])
+  @@map("field_teams")
+}
+
+model FieldTeamMember {
+  id          String    @id @default(cuid())
+  teamId      String
+  campaignId  String
+  userId      String?
+  volunteerId String?
+  role        String    @default("member") // "leader" | "member"
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+
+  team      FieldTeam         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  campaign  Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user      User?             @relation("FieldTeamMemberUser", fields: [userId], references: [id])
+  volunteer VolunteerProfile? @relation("FieldTeamMemberVolunteer", fields: [volunteerId], references: [id])
+
+  @@unique([teamId, userId])
+  @@unique([teamId, volunteerId])
+  @@index([teamId])
+  @@index([campaignId, userId])
+  @@map("field_team_members")
+}
+
+model FieldAuditLog {
+  id           String           @id @default(cuid())
+  campaignId   String
+  // entity: field_program | route | field_target | field_shift | field_attempt | follow_up | field_team
+  entityType   String
+  entityId     String
+  action       FieldAuditAction
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String?
+  // source: manual | system | automation | mobile | paper_entry | offline_sync
+  source       String           @default("manual")
+  ipAddress    String?
+  createdAt    DateTime         @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("FieldAuditActor", fields: [actorUserId], references: [id])
+
+  @@index([campaignId, entityType, entityId])
+  @@index([campaignId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("field_audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMUNICATIONS PLATFORM — MESSAGE TEMPLATES
+// Reusable email + SMS content. Replaces campaign.customization.templates JSON.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MessageTemplate {
+  id          String                 @id @default(cuid())
+  campaignId  String
+  createdById String
+  channel     MessageTemplateChannel
+  name        String
+  subject     String?                // email only
+  bodyHtml    String?                // email: full HTML content
+  bodyText    String                 // SMS: message body; email: plain text fallback
+  previewText String?                // email preview snippet shown in inbox
+  // Token inventory: which {{tokens}} appear in this template's body
+  tokensUsed  String[]               @default([])
+  isActive    Boolean                @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("MessageTemplateAuthor", fields: [createdById], references: [id])
+
+  @@index([campaignId, channel])
+  @@index([campaignId, isActive])
+  @@map("message_templates")
 }

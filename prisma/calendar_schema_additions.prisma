@@ -1,0 +1,474 @@
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALENDAR & SCHEDULING SUITE — PHASE 1 DOMAIN MODEL
+// The campaign time-and-coordination operating system.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CalendarType {
+  master
+  candidate
+  volunteer
+  field_ops
+  print_production
+  events
+  communications
+  approvals
+}
+
+enum CalendarItemType {
+  campaign_event
+  candidate_appearance
+  staff_meeting
+  donor_meeting
+  debate
+  media_appearance
+  fundraiser
+  town_hall
+  community_meeting
+  volunteer_shift_item
+  canvassing_run
+  literature_drop_item
+  sign_install_item
+  sign_removal_item
+  phone_bank_item
+  poll_day_ops
+  scrutineer_duty
+  print_deadline
+  vendor_appointment
+  delivery_window
+  inventory_pickup
+  email_blast_item
+  sms_blast_item
+  social_post_item
+  voice_broadcast_item
+  press_release
+  approval_deadline
+  internal_deadline
+  milestone
+  travel_block
+  protected_time
+  prep_window
+  setup_teardown
+  other_item
+}
+
+enum CalendarItemStatus {
+  draft
+  tentative
+  scheduled
+  confirmed
+  in_progress
+  completed
+  cancelled
+  postponed
+  no_show
+}
+
+enum CalLocationType {
+  in_person
+  virtual
+  phone
+  hybrid
+  tbd
+}
+
+enum ConflictType {
+  person_double_booked
+  team_double_booked
+  location_conflict
+  resource_conflict
+  inventory_conflict
+  deadline_missed
+  travel_infeasible
+  protected_time_override
+  dependency_unmet
+  capacity_exceeded
+  comm_blackout_violation
+}
+
+enum ConflictSeverity {
+  info
+  warning
+  blocking
+}
+
+enum CalReminderChannel {
+  in_app
+  email
+  sms
+  push
+}
+
+enum CalReminderStatus {
+  pending
+  sent
+  failed
+  cancelled
+}
+
+enum DependencyType {
+  finish_to_start
+  start_to_start
+  finish_to_finish
+  start_to_finish
+}
+
+enum AvailabilityType {
+  available
+  unavailable
+  tentative
+  busy
+  out_of_office
+  preferred
+}
+
+enum CalResourceType {
+  vehicle
+  venue
+  equipment
+  inventory_item
+  print_material
+  volunteer_team
+  vendor
+}
+
+enum ReservationStatus {
+  requested
+  confirmed
+  released
+  cancelled
+  conflict
+}
+
+model Calendar {
+  id               String       @id @default(cuid())
+  campaignId       String
+  name             String
+  description      String?
+  calendarType     CalendarType @default(master)
+  color            String       @default("#1D9E75")
+  visibility       String       @default("internal")
+  isDefault        Boolean      @default(false)
+  isActive         Boolean      @default(true)
+  createdByUserId  String
+  updatedByUserId  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  items    CalendarItem[]
+
+  @@unique([campaignId, name])
+  @@index([campaignId, calendarType])
+  @@index([campaignId, isDefault])
+  @@map("calendars")
+}
+
+model CalendarItem {
+  id                      String             @id @default(cuid())
+  campaignId              String
+  calendarId              String?
+  parentCalendarItemId    String?
+  title                   String
+  description             String?
+  itemType                CalendarItemType   @default(other_item)
+  itemStatus              CalendarItemStatus @default(scheduled)
+  priority                TaskPriority       @default(medium)
+  startAt                 DateTime
+  endAt                   DateTime
+  allDay                  Boolean            @default(false)
+  timezone                String             @default("America/Toronto")
+  locationType            CalLocationType    @default(in_person)
+  locationName            String?
+  addressLine1            String?
+  addressLine2            String?
+  city                    String?
+  province                String?
+  postalCode              String?
+  latitude                Float?
+  longitude               Float?
+  virtualUrl              String?
+  ward                    String?
+  pollNumber              String?
+  turfId                  String?
+  eventId                 String?
+  taskId                  String?
+  fieldAssignmentId       String?
+  printJobId              String?
+  printOrderId            String?
+  signJobIds              String[]           @default([])
+  vendorBookingId         String?
+  communicationsSendId    String?
+  volunteerShiftId        String?
+  maxCapacity             Int?
+  minCapacity             Int?
+  recurrenceRule          String?
+  recurrenceParentId      String?
+  recurrenceIndex         Int?
+  createdByUserId         String
+  updatedByUserId         String?
+  cancelledAt             DateTime?
+  cancellationReason      String?
+  deletedAt               DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  campaign        Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  calendar        Calendar?                 @relation(fields: [calendarId], references: [id], onDelete: SetNull)
+  createdBy       User                      @relation("CalendarItemCreator", fields: [createdByUserId], references: [id])
+  updatedBy       User?                     @relation("CalendarItemUpdater", fields: [updatedByUserId], references: [id])
+  parentItem      CalendarItem?             @relation("CalendarItemChildren", fields: [parentCalendarItemId], references: [id])
+  childItems      CalendarItem[]            @relation("CalendarItemChildren")
+  assignments     CalendarItemAssignment[]
+  resources       CalendarItemResource[]
+  reminders       CalendarReminder[]
+  predecessors    CalendarDependency[]      @relation("DependencySuccessor")
+  successors      CalendarDependency[]      @relation("DependencyPredecessor")
+  conflictsSource ScheduleConflict[]        @relation("ConflictSource")
+  conflictsTarget ScheduleConflict[]        @relation("ConflictTarget")
+  checklists      CalendarItemChecklist[]
+  auditLogs       CalendarAuditLog[]
+
+  @@index([campaignId, startAt])
+  @@index([campaignId, itemType, itemStatus])
+  @@index([calendarId, startAt])
+  @@index([campaignId, eventId])
+  @@index([campaignId, fieldAssignmentId])
+  @@index([campaignId, volunteerShiftId])
+  @@map("calendar_items")
+}
+
+model CalendarItemAssignment {
+  id                  String    @id @default(cuid())
+  calendarItemId      String
+  assignedUserId      String?
+  assignedVolunteerId String?
+  assignedTeamId      String?
+  roleOnItem          String?
+  responseStatus      String    @default("pending")
+  checkInAt           DateTime?
+  checkOutAt          DateTime?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+  assignedUser User?        @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  @@unique([calendarItemId, assignedUserId])
+  @@index([calendarItemId])
+  @@index([assignedUserId])
+  @@index([assignedVolunteerId])
+  @@index([assignedTeamId])
+  @@map("calendar_item_assignments")
+}
+
+model CalendarItemResource {
+  id                String            @id @default(cuid())
+  calendarItemId    String
+  resourceType      CalResourceType
+  resourceId        String
+  resourceLabel     String?
+  quantity          Int               @default(1)
+  reservationStatus ReservationStatus @default(requested)
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+
+  @@index([calendarItemId])
+  @@index([resourceType, resourceId])
+  @@map("calendar_item_resources")
+}
+
+model AvailabilityBlock {
+  id               String           @id @default(cuid())
+  campaignId       String
+  userId           String?
+  volunteerId      String?
+  title            String?
+  availabilityType AvailabilityType @default(available)
+  startAt          DateTime
+  endAt            DateTime
+  allDay           Boolean          @default(false)
+  recurrenceRule   String?
+  timezone         String           @default("America/Toronto")
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, startAt, endAt])
+  @@index([userId, startAt])
+  @@index([volunteerId, startAt])
+  @@map("availability_blocks")
+}
+
+model CalendarReminder {
+  id              String             @id @default(cuid())
+  calendarItemId  String
+  reminderType    String             @default("pre_event")
+  deliveryChannel CalReminderChannel @default(in_app)
+  minutesBefore   Int
+  recipientType   String             @default("all_assigned")
+  recipientId     String?
+  scheduledFor    DateTime?
+  status          CalReminderStatus  @default(pending)
+  sentAt          DateTime?
+  errorMessage    String?
+  createdAt       DateTime           @default(now())
+
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+
+  @@index([calendarItemId])
+  @@index([status, scheduledFor])
+  @@map("calendar_reminders")
+}
+
+model CalendarDependency {
+  id                        String         @id @default(cuid())
+  campaignId                String
+  predecessorCalendarItemId String
+  successorCalendarItemId   String
+  dependencyType            DependencyType @default(finish_to_start)
+  lagMinutes                Int            @default(0)
+  ruleBehavior              String         @default("warn")
+  createdAt                 DateTime       @default(now())
+
+  predecessor CalendarItem @relation("DependencyPredecessor", fields: [predecessorCalendarItemId], references: [id], onDelete: Cascade)
+  successor   CalendarItem @relation("DependencySuccessor", fields: [successorCalendarItemId], references: [id], onDelete: Cascade)
+
+  @@unique([predecessorCalendarItemId, successorCalendarItemId])
+  @@index([campaignId])
+  @@index([predecessorCalendarItemId])
+  @@index([successorCalendarItemId])
+  @@map("calendar_dependencies")
+}
+
+model ScheduleConflict {
+  id                        String           @id @default(cuid())
+  campaignId                String
+  entityType                String
+  entityId                  String
+  entityLabel               String?
+  conflictType              ConflictType
+  sourceCalendarItemId      String
+  conflictingCalendarItemId String
+  severity                  ConflictSeverity @default(warning)
+  status                    String           @default("open")
+  detectedAt                DateTime         @default(now())
+  resolvedAt                DateTime?
+  resolvedByUserId          String?
+  resolutionNotes           String?
+
+  campaign        Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sourceItem      CalendarItem @relation("ConflictSource", fields: [sourceCalendarItemId], references: [id], onDelete: Cascade)
+  conflictingItem CalendarItem @relation("ConflictTarget", fields: [conflictingCalendarItemId], references: [id], onDelete: Cascade)
+  resolvedBy      User?        @relation("ConflictResolver", fields: [resolvedByUserId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([campaignId, severity, status])
+  @@index([sourceCalendarItemId])
+  @@map("schedule_conflicts")
+}
+
+model ChecklistTemplate {
+  id            String    @id @default(cuid())
+  campaignId    String?
+  name          String
+  checklistType String
+  description   String?
+  isActive      Boolean   @default(true)
+  isSystem      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campaign      Campaign?               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  itemTemplates ChecklistItemTemplate[]
+  checklists    CalendarItemChecklist[]
+
+  @@index([campaignId, isActive])
+  @@map("checklist_templates")
+}
+
+model ChecklistItemTemplate {
+  id                  String   @id @default(cuid())
+  checklistTemplateId String
+  label               String
+  sortOrder           Int      @default(0)
+  required            Boolean  @default(false)
+  itemType            String   @default("checkbox")
+  helpText            String?
+  createdAt           DateTime @default(now())
+
+  template ChecklistTemplate @relation(fields: [checklistTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([checklistTemplateId, sortOrder])
+  @@map("checklist_item_templates")
+}
+
+model CalendarItemChecklist {
+  id                  String    @id @default(cuid())
+  calendarItemId      String
+  checklistTemplateId String?
+  title               String?
+  createdByUserId     String
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+
+  calendarItem CalendarItem               @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+  template     ChecklistTemplate?         @relation(fields: [checklistTemplateId], references: [id])
+  entries      CalendarItemChecklistEntry[]
+
+  @@index([calendarItemId])
+  @@map("calendar_item_checklists")
+}
+
+model CalendarItemChecklistEntry {
+  id                      String    @id @default(cuid())
+  calendarItemChecklistId String
+  label                   String
+  sortOrder               Int       @default(0)
+  required                Boolean   @default(false)
+  itemType                String    @default("checkbox")
+  valueText               String?
+  valueNumber             Float?
+  completed               Boolean   @default(false)
+  completedAt             DateTime?
+  completedByUserId       String?
+  photoUrl                String?
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  checklist   CalendarItemChecklist @relation(fields: [calendarItemChecklistId], references: [id], onDelete: Cascade)
+  completedBy User?                 @relation(fields: [completedByUserId], references: [id])
+
+  @@index([calendarItemChecklistId, sortOrder])
+  @@map("calendar_item_checklist_entries")
+}
+
+model CalendarAuditLog {
+  id           String   @id @default(cuid())
+  campaignId   String
+  entityType   String
+  entityId     String
+  action       String
+  oldValueJson Json?
+  newValueJson Json?
+  actorUserId  String
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actor    User     @relation("CalendarAuditActor", fields: [actorUserId], references: [id])
+
+  @@index([campaignId, entityType, entityId])
+  @@index([campaignId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("calendar_audit_logs")
+}

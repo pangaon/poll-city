@@ -439,5 +439,183 @@ Every major user action. Every downstream effect. Honest status.
 
 ---
 
+---
+
+## PRINT INVENTORY + PRINT PACKS
+
+*Added 2026-04-10 — Phase 1 of the enterprise Print Platform*
+
+### Receive Print Inventory (POST /api/print/inventory)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| PrintInventory record created | ✓ CONNECTED | wired 2026-04-10 |
+| PrintInventoryLog entry (action=received) | ✓ CONNECTED | wired 2026-04-10 — audit trail starts here |
+| campaignId scoped + membership check | ✓ CONNECTED | wired 2026-04-10 |
+| CAMPAIGN_MANAGER+ only | ✓ CONNECTED | wired 2026-04-10 — VOLUNTEER cannot create |
+| Optional link to source PrintOrder | ✓ CONNECTED | wired 2026-04-10 — orderId FK, unique constraint |
+| Auto-generated SKU | ✓ CONNECTED | wired 2026-04-10 — <PRODUCT>-<base36 timestamp> |
+| Reorder threshold stored | ✓ CONNECTED | wired 2026-04-10 — alert check on GET |
+
+### Assign Inventory (POST /api/print/inventory/[id]/assign)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| availableQty decremented atomically | ✓ CONNECTED | wired 2026-04-10 — Prisma transaction, race condition safe |
+| reservedQty incremented | ✓ CONNECTED | wired 2026-04-10 |
+| PrintInventoryLog entry (action=assigned) | ✓ CONNECTED | wired 2026-04-10 |
+| 409 on insufficient inventory (EC-006) | ✓ CONNECTED | wired 2026-04-10 — check inside transaction |
+| referenceId stored (field assignment, pack, etc.) | ✓ CONNECTED | wired 2026-04-10 |
+
+### Return Inventory (POST /api/print/inventory/[id]/return)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| availableQty incremented | ✓ CONNECTED | wired 2026-04-10 |
+| reservedQty decremented | ✓ CONNECTED | wired 2026-04-10 |
+| PrintInventoryLog entry (action=returned) | ✓ CONNECTED | wired 2026-04-10 |
+| Over-return blocked (409) | ✓ CONNECTED | wired 2026-04-10 |
+
+### Deplete Inventory (POST /api/print/inventory/[id]/deplete)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| depletedQty incremented | ✓ CONNECTED | wired 2026-04-10 — drains reserved first, then available |
+| availableQty or reservedQty decremented | ✓ CONNECTED | wired 2026-04-10 |
+| PrintInventoryLog entry (action=depleted) | ✓ CONNECTED | wired 2026-04-10 |
+| Insufficient stock blocked (409) | ✓ CONNECTED | wired 2026-04-10 |
+
+### Adjust Inventory (POST /api/print/inventory/[id]/adjust)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| availableQty adjusted (manual reconciliation) | ✓ CONNECTED | wired 2026-04-10 — ADMIN+ only |
+| totalQty increases on positive adjust | ✓ CONNECTED | wired 2026-04-10 |
+| wastedQty increases on negative adjust | ✓ CONNECTED | wired 2026-04-10 |
+| PrintInventoryLog entry (action=adjusted) | ✓ CONNECTED | wired 2026-04-10 |
+| Notes required (audit requirement) | ✓ CONNECTED | wired 2026-04-10 — Zod min(1) |
+
+### Generate Print Pack (POST /api/print/packs/generate)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| PrintPack record created | ✓ CONNECTED | wired 2026-04-10 |
+| PrintPackItem records created (one per product type) | ✓ CONNECTED | wired 2026-04-10 |
+| targetCount from Turf.totalDoors (if turfId) | ✓ CONNECTED | wired 2026-04-10 |
+| targetCount from Household count (if pollNumber) | ✓ CONNECTED | wired 2026-04-10 — deletedAt filtered |
+| targetCount from Event.maxCapacity (if eventId) | ✓ CONNECTED | wired 2026-04-10 |
+| Sign count for sign_install_kit | ✓ CONNECTED | wired 2026-04-10 — status: requested\|scheduled |
+| Buffer calculation: ceil(targetCount × (1 + bufferPct) / 50) × 50 | ✓ CONNECTED | wired 2026-04-10 |
+| Inventory sufficiency check per product type | ✓ CONNECTED | wired 2026-04-10 — returns shortfall in response |
+| Best available inventory auto-selected | ✓ CONNECTED | wired 2026-04-10 — highest availableQty first |
+| campaignId scoped | ✓ CONNECTED | wired 2026-04-10 |
+| ActivityLog entry for pack generation | ✗ NOT CONNECTED | not yet wired |
+
+### Distribute Print Pack (PATCH /api/print/packs/[id] → distributed)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| PrintPack.status = distributed | ✓ CONNECTED | wired 2026-04-10 |
+| distributedAt timestamp set | ✓ CONNECTED | wired 2026-04-10 |
+| Inventory reserved for all items (availableQty - requiredQty) | ✓ CONNECTED | wired 2026-04-10 — atomic per item |
+| PrintInventoryLog entry per item (action=assigned, referenceType=pack) | ✓ CONNECTED | wired 2026-04-10 |
+| PrintPackItem.fulfilledQty updated | ✓ CONNECTED | wired 2026-04-10 |
+| Insufficient stock blocks distribution (409) | ✓ CONNECTED | wired 2026-04-10 |
+| FieldAssignment.printPacketUrl updated on distribute | ✗ NOT CONNECTED | pack→assignment link is stored but URL not generated |
+
+### Print Inventory → Low Stock Alert
+| Effect | Status | Notes |
+|--------|--------|-------|
+| reorderAlerts count in GET /api/print/inventory summary | ✓ CONNECTED | wired 2026-04-10 |
+| UI badge shows reorder alert count | ✓ CONNECTED | wired 2026-04-10 — inventory-client.tsx |
+| Push notification to campaign manager when below threshold | ✗ NOT CONNECTED | nightly cron not yet wired |
+| Adoni proactive shortage alert | ✗ NOT CONNECTED | Phase 9 |
+
+---
+
+---
+
+## FINANCE SUITE
+
+*Added 2026-04-10 — Phases 1-5 built. Phase 6 pending (cross-system integration).*
+*GAP-004: Finance ↔ Print/Signs/Events | GAP-005: Finance ↔ Fundraising reconciliation*
+
+### Budget Created (POST /api/finance/budgets)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| CampaignBudget record created | ✓ CONNECTED | wired 2026-04-10 |
+| BudgetLine records created (per category) | ✓ CONNECTED | wired 2026-04-10 |
+| campaignId scoped | ✓ CONNECTED | |
+| ActivityLog / FinanceAuditLog entry | ✓ CONNECTED | wired 2026-04-10 |
+| Print orders committed against budget line | ✗ NOT CONNECTED | GAP-004 |
+| Sign costs committed against budget line | ✗ NOT CONNECTED | GAP-004 |
+| Event costs committed against budget line | ✗ NOT CONNECTED | GAP-004 |
+| Donation revenue posted to budget (revenue side) | ✗ NOT CONNECTED | GAP-005 |
+
+### Expense Submitted (POST /api/finance/expenses)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| FinanceExpense record created (status=draft) | ✓ CONNECTED | wired 2026-04-10 |
+| BudgetLine.committedAmount incremented on submit | ✓ CONNECTED | wired 2026-04-10 |
+| BudgetLine.actualAmount incremented on approve | ✓ CONNECTED | wired 2026-04-10 |
+| FinanceAuditLog entry | ✓ CONNECTED | wired 2026-04-10 |
+| Approval task created for manager | ✗ NOT CONNECTED | no task auto-created on submit |
+| Push notification to approver | ✗ NOT CONNECTED | |
+| Vendor record linked | ✓ CONNECTED | optional vendorId FK |
+
+### Purchase Request Created + Approved
+| Effect | Status | Notes |
+|--------|--------|-------|
+| FinancePurchaseRequest record created | ✓ CONNECTED | wired 2026-04-10 |
+| Approval workflow: draft → submitted → approved/rejected | ✓ CONNECTED | wired 2026-04-10 |
+| FinancePurchaseOrder created from approved PR | ✓ CONNECTED | wired 2026-04-10 |
+| BudgetLine reserved on PR approval | ✓ CONNECTED | wired 2026-04-10 |
+| FinanceAuditLog entries | ✓ CONNECTED | wired 2026-04-10 |
+| Print order auto-created from approved PR | ✗ NOT CONNECTED | GAP-004 |
+
+### Reimbursement Submitted (POST /api/finance/reimbursements)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| FinanceReimbursement record created | ✓ CONNECTED | wired 2026-04-10 |
+| Approval flow: submitted → approved/rejected → paid | ✓ CONNECTED | wired 2026-04-10 |
+| BudgetLine.actualAmount updated on approval | ✓ CONNECTED | wired 2026-04-10 |
+| FinanceAuditLog entry | ✓ CONNECTED | wired 2026-04-10 |
+| Receipt attachment stored | ✗ NOT CONNECTED | receipt field exists, upload not wired |
+| Reimbursement payment auto-notification | ✗ NOT CONNECTED | |
+
+---
+
+## CALENDAR SUITE
+
+*Added 2026-04-10 — Schema in schema.prisma, db push required, APIs + UI in progress.*
+*GAP-002: db push required | GAP-006: ↔ Comms | GAP-007: ↔ Events | GAP-008: ↔ Print*
+
+### Calendar Item Created (POST /api/campaign-calendar/items)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| CalendarItem record created | — NOT YET (API not built) | schema ready, APIs in progress |
+| CalendarItemAssignment record created | — NOT YET | |
+| Conflict detection run | — NOT YET | ScheduleConflict model ready |
+| CalendarReminder scheduled | — NOT YET | CalendarReminder model ready |
+| CalendarAuditLog entry | — NOT YET | |
+| Event created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-007 |
+| ScheduledMessage created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-006 |
+| Print order confirmed → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-008 |
+| Field shift created → CalendarItem auto-created | ✗ NOT CONNECTED | Field Ops Phase 6 |
+| Google Calendar sync | ✗ NOT CONNECTED | GAP-024 |
+
+---
+
+## FUNDRAISING SUITE
+
+*Schema NOT yet in schema.prisma as of 2026-04-10. All API route stubs exist but will fail until Phase 1 schema is added.*
+*GAP-001: Schema missing | See TASK_BOARD: Fundraising Phase 1 for full schema spec*
+
+| Action | Status | Notes |
+|--------|--------|-------|
+| Donation recorded | — NOT YET (schema missing) | thin Donation model exists; full FundraisingCampaign/DonorProfile pending |
+| Receipt auto-generated | — NOT YET | DonationReceipt model pending |
+| Stripe webhook → donation created | — NOT YET | Phase 4 |
+| Recurring plan created | — NOT YET | Phase 2 |
+| Compliance limit check | — NOT YET | Phase 5 |
+| Donation → FunnelAdvance to donor | ✓ CONNECTED | existing thin model wires this |
+| Donation → FinanceExpense (revenue) | ✗ NOT CONNECTED | GAP-005 |
+| Donor tagged + engagement scored | ✓ CONNECTED | existing thin model |
+
+---
+
 *This file is the truth. If code and this file disagree, fix the code.*
 *Updated every session. Never let it fall behind.*
