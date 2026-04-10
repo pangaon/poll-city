@@ -658,7 +658,7 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
                     <Suspense fallback={<ViewLoader />}>
                       {canvassPanel === "walk"    && <WalkShell campaignId={campaignId} />}
                       {canvassPanel === "scripts" && <ScriptsClient campaignId={campaignId} />}
-                      {canvassPanel === "print"   && <PrintWalkListClient campaignId={campaignId} campaignName={campaignName} />}
+                      {canvassPanel === "print"   && <PrintWalkListClient campaignId={campaignId} campaignName={campaignName} mode="canvass" />}
                     </Suspense>
                   </motion.div>
                 )}

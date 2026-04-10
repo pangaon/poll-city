@@ -7,10 +7,11 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
  * GET /api/print/walk-list
  * Returns contacts formatted for a printable walk list.
  * Query params:
- *   campaignId  — required
- *   ids         — optional, comma-separated contact IDs
- *   wardId      — optional, filter by ward
+ *   campaignId     — required
+ *   ids            — optional, comma-separated contact IDs
+ *   wardId         — optional, filter by ward
  *   canvassingTurfId — optional, filter by turf (contacts in that turf)
+ *   assignmentId   — optional, filter to contacts in a specific FieldAssignment's stops
  */
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
   const idsParam = sp.get("ids");
   const wardId = sp.get("wardId");
   const canvassingTurfId = sp.get("canvassingTurfId");
+  const assignmentId = sp.get("assignmentId");
 
   if (!campaignId) {
     return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
@@ -48,6 +50,25 @@ export async function GET(req: NextRequest) {
   // Filter by ward
   if (wardId) {
     where.ward = wardId;
+  }
+
+  // Filter by assignment — find contact IDs from AssignmentStop records
+  if (assignmentId) {
+    const stops = await prisma.assignmentStop.findMany({
+      where: {
+        assignmentId,
+        assignment: { campaignId },
+        contactId: { not: null },
+      },
+      select: { contactId: true },
+    });
+    const assignmentContactIds = stops.map((s) => s.contactId!);
+    if (assignmentContactIds.length > 0) {
+      where.id = { in: assignmentContactIds };
+    } else {
+      // Assignment exists but has no canvass stops — return empty
+      return NextResponse.json({ data: [] });
+    }
   }
 
   // Filter by canvassing turf — find contact IDs via TurfStop records
@@ -79,6 +100,7 @@ export async function GET(req: NextRequest) {
       address2: true,
       city: true,
       ward: true,
+      municipalPoll: true,
       supportLevel: true,
       followUpNeeded: true,
       notes: true,
@@ -97,6 +119,7 @@ export async function GET(req: NextRequest) {
     address2: c.address2,
     city: c.city,
     ward: c.ward,
+    municipalPoll: c.municipalPoll,
     supportLevel: c.supportLevel,
     followUpNeeded: c.followUpNeeded,
     notes: c.notes,
