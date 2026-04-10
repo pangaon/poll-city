@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -141,6 +141,30 @@ function Shimmer({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-gray-100 ${className ?? "h-4 w-full"}`} />;
 }
 
+// ── Live feed types + helpers ─────────────────────────────────────────────────
+
+interface FeedItem {
+  id: string; message: string; category: string; who: string; time: string;
+}
+
+const CATEGORY_DOT: Record<string, string> = {
+  canvass:   "bg-blue-500",
+  gotv:      "bg-[#1D9E75]",
+  donation:  "bg-[#EF9F27]",
+  volunteer: "bg-purple-500",
+  sign:      "bg-emerald-500",
+  import:    "bg-gray-400",
+  system:    "bg-gray-400",
+};
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -164,6 +188,8 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
   const [statusFilter, setStatusFilter] = useState("all");
   const [tabCounts, setTabCounts] = useState<Partial<Record<string, number>>>({});
   const [briefing, setBriefing] = useState<BriefingSnap | null>(null);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const latestTsRef = useRef<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -189,6 +215,25 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
       }))
       .catch(() => {});
   }, [campaignId]);
+
+  // Live feed — poll every 10s, only when Dashboard tab is active
+  const fetchFeed = useCallback(async (incremental = false) => {
+    const params = new URLSearchParams({ campaignId, limit: "20" });
+    if (incremental && latestTsRef.current) params.set("since", latestTsRef.current);
+    const res = await fetch(`/api/activity/live-feed?${params}`).catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json();
+    if (!data.feed?.length) return;
+    setFeedItems((prev) => incremental ? [...data.feed, ...prev].slice(0, 30) : data.feed);
+    if (data.latestTimestamp) latestTsRef.current = data.latestTimestamp;
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (contextTab !== "dashboard") return;
+    fetchFeed(false);
+    const id = setInterval(() => fetchFeed(true), 10_000);
+    return () => clearInterval(id);
+  }, [contextTab, fetchFeed]);
 
   // Tab counts (totals per type)
   const loadCounts = useCallback(async () => {
@@ -503,10 +548,45 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
       {/* ── Tab content ─────────────────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
 
-        {/* Dashboard — all ops */}
+        {/* Dashboard — all ops + live feed */}
         {contextTab === "dashboard" && (
-          <motion.div key="dashboard" {...SLIDE}>
+          <motion.div key="dashboard" {...SLIDE} className="grid grid-cols-1 lg:grid-cols-[1fr_288px] gap-6 items-start">
             <AssignmentTable showType />
+
+            {/* Live activity feed */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-semibold text-gray-700">Live Activity</h3>
+                <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#1D9E75] animate-pulse" />live
+                </span>
+              </div>
+              <Card>
+                <CardContent className="p-0 divide-y divide-gray-50">
+                  {feedItems.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-xs text-gray-400">No recent activity</p>
+                  ) : (
+                    <AnimatePresence initial={false}>
+                      {feedItems.map((item) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          className="flex items-start gap-3 px-3 py-2.5"
+                        >
+                          <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${CATEGORY_DOT[item.category] ?? "bg-gray-400"}`} />
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-700 leading-snug">{item.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{relTime(item.time)}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </motion.div>
         )}
 
