@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     where: {
       campaignId,
       deletedAt: null,
-      ...(status ? { status: status as Parameters<typeof prisma.financePurchaseOrder.findMany>[0]["where"] extends { status?: infer E } ? E : never } : {}),
+      ...(status ? { status: status as NonNullable<Parameters<typeof prisma.financePurchaseOrder.findMany>[0]>["where"] extends { status?: infer E } ? E : never } : {}),
     },
     include: {
       vendor: { select: { id: true, name: true } },

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       campaignId,
       isActive: true,
       deletedAt: null,
-      ...(vendorType ? { vendorType: vendorType as Parameters<typeof prisma.financeVendor.findMany>[0]["where"] extends { vendorType?: infer E } ? E : never } : {}),
+      ...(vendorType ? { vendorType: vendorType as NonNullable<Parameters<typeof prisma.financeVendor.findMany>[0]>["where"] extends { vendorType?: infer E } ? E : never } : {}),
       ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
     },
     include: {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
@@ -85,37 +86,47 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Get current state for audit diff
   const before = await prisma.supportProfile.findUnique({ where: { contactId: params.id } });
 
+  // Handle nullable JSON field for Prisma
+  const { issueAffinityJson: rawAffinity, ...restData } = parsed.data;
+  const issueAffinityJson = rawAffinity === null
+    ? Prisma.JsonNull
+    : rawAffinity !== undefined
+      ? (rawAffinity as unknown as Prisma.InputJsonValue)
+      : undefined;
+
+  const sharedData = {
+    ...restData,
+    ...(issueAffinityJson !== undefined ? { issueAffinityJson } : {}),
+    lastAssessedAt: new Date(),
+    assessedByUserId: session!.user.id,
+  };
+
   const updated = await prisma.supportProfile.upsert({
     where: { contactId: params.id },
-    create: {
-      contactId: params.id,
-      ...parsed.data,
-      lastAssessedAt: new Date(),
-      assessedByUserId: session!.user.id,
-    },
-    update: {
-      ...parsed.data,
-      lastAssessedAt: new Date(),
-      assessedByUserId: session!.user.id,
-    },
+    create: { contactId: params.id, ...sharedData } as Parameters<typeof prisma.supportProfile.upsert>[0]["create"],
+    update: sharedData as Parameters<typeof prisma.supportProfile.upsert>[0]["update"],
   });
 
   // Write one audit entry per changed field
   const changedFields = Object.keys(parsed.data) as Array<keyof typeof parsed.data>;
   const auditEntries = changedFields
     .filter(field => parsed.data[field] !== undefined)
-    .map(field => ({
-      campaignId: access.contact.campaignId,
-      contactId: params.id,
-      entityType: "support_profile",
-      entityId: updated.id,
-      action: "updated",
-      fieldName: field,
-      oldValueJson: before ? { value: (before as Record<string, unknown>)[field] } : null,
-      newValueJson: { value: parsed.data[field] },
-      actorUserId: session!.user.id,
-      source: "manual",
-    }));
+    .map(field => {
+      const oldVal = before ? (before as Record<string, unknown>)[field] : undefined;
+      const newVal = (parsed.data as Record<string, unknown>)[field];
+      return {
+        campaignId: access.contact.campaignId,
+        contactId: params.id,
+        entityType: "support_profile",
+        entityId: updated.id,
+        action: "updated",
+        fieldName: field,
+        oldValueJson: oldVal !== undefined ? ({ value: oldVal } as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        newValueJson: { value: newVal } as unknown as Prisma.InputJsonValue,
+        actorUserId: session!.user.id,
+        source: "manual",
+      };
+    });
 
   if (auditEntries.length > 0) {
     await prisma.contactAuditLog.createMany({ data: auditEntries });

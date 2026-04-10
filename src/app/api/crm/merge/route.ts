@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Union issues array
-  const mergedIssues = [...new Set([...(survivor.issues ?? []), ...(absorbed.issues ?? [])])];
+  const mergedIssues = Array.from(new Set([...(survivor.issues ?? []), ...(absorbed.issues ?? [])]));
   survivorUpdate.issues = mergedIssues;
 
   // Union tags

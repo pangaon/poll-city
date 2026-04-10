@@ -108,14 +108,14 @@ function Shimmer({ className = "" }: { className?: string }) {
   );
 }
 
-const STATUS_BADGE: Record<string, { label: string; variant: "default" | "success" | "warning" | "destructive" | "secondary" }> = {
-  pledged:            { label: "Pledged",         variant: "secondary" },
+const STATUS_BADGE: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "info" }> = {
+  pledged:            { label: "Pledged",         variant: "default" },
   processing:         { label: "Processing",       variant: "warning" },
   processed:          { label: "Processed",        variant: "success" },
   receipted:          { label: "Receipted",        variant: "success" },
-  failed:             { label: "Failed",           variant: "destructive" },
-  cancelled:          { label: "Cancelled",        variant: "secondary" },
-  refunded:           { label: "Refunded",         variant: "destructive" },
+  failed:             { label: "Failed",           variant: "danger" },
+  cancelled:          { label: "Cancelled",        variant: "default" },
+  refunded:           { label: "Refunded",         variant: "danger" },
   partially_refunded: { label: "Part. Refunded",   variant: "warning" },
 };
 
@@ -533,7 +533,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           {stats.byStatus.map((s) => (
                             <div key={s.status} className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <Badge variant={STATUS_BADGE[s.status]?.variant ?? "secondary"}>
+                                <Badge variant={STATUS_BADGE[s.status]?.variant ?? "default"}>
                                   {STATUS_BADGE[s.status]?.label ?? s.status}
                                 </Badge>
                                 <span className="text-sm text-gray-500">{s.count} donation{s.count !== 1 ? "s" : ""}</span>
@@ -697,7 +697,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                             <td className="px-4 py-3 text-right font-semibold" style={{ color: GREEN }}>{fmt(d.amount, d.currency)}</td>
                             <td className="px-4 py-3 text-gray-600 capitalize">{d.paymentMethod?.replace(/_/g, " ") ?? d.method ?? "—"}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={STATUS_BADGE[d.status]?.variant ?? "secondary"}>
+                              <Badge variant={STATUS_BADGE[d.status]?.variant ?? "default"}>
                                 {STATUS_BADGE[d.status]?.label ?? d.status}
                               </Badge>
                             </td>
@@ -844,7 +844,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                                 <p className="font-semibold text-gray-800">{init.name}</p>
                                 {init.description && <p className="text-xs text-gray-500 mt-0.5">{init.description}</p>}
                               </div>
-                              <Badge variant={init.status === "active" ? "success" : "secondary"}>{init.status}</Badge>
+                              <Badge variant={init.status === "active" ? "success" : "default"}>{init.status}</Badge>
                             </div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-2xl font-bold" style={{ color: GREEN }}>{fmt(init.raisedAmount)}</span>
@@ -896,7 +896,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           <td className="px-4 py-3 text-right font-semibold" style={{ color: GREEN }}>{fmt(p.amount, p.currency)}</td>
                           <td className="px-4 py-3 capitalize text-gray-600">{p.frequency}</td>
                           <td className="px-4 py-3">
-                            <Badge variant={p.status === "active" ? "success" : p.status === "failed" ? "destructive" : "secondary"}>{p.status}</Badge>
+                            <Badge variant={p.status === "active" ? "success" : p.status === "failed" ? "danger" : "default"}>{p.status}</Badge>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500">{p.nextChargeDate ? new Date(p.nextChargeDate).toLocaleDateString() : "—"}</td>
                           <td className="px-4 py-3 text-center">{p.failureCount > 0 ? <span className="text-xs font-medium text-red-600">{p.failureCount}</span> : "—"}</td>
@@ -941,7 +941,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           <td className="px-4 py-3 text-right font-semibold" style={{ color: NAVY }}>{fmt(p.pledgedAmount)}</td>
                           <td className="px-4 py-3 text-right" style={{ color: GREEN }}>{fmt(p.fulfilledAmount)}</td>
                           <td className="px-4 py-3">
-                            <Badge variant={p.status === "fulfilled" ? "success" : p.status === "overdue" ? "destructive" : p.status === "partial" ? "warning" : "secondary"}>{p.status}</Badge>
+                            <Badge variant={p.status === "fulfilled" ? "success" : p.status === "overdue" ? "danger" : p.status === "partial" ? "warning" : "default"}>{p.status}</Badge>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500">{p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "—"}</td>
                           <td className="px-4 py-3 text-xs text-gray-500">{p.fundraisingCampaign?.name ?? "—"}</td>
@@ -980,7 +980,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           <td className="px-4 py-3">{r.donation.contact ? `${r.donation.contact.firstName} ${r.donation.contact.lastName}` : "—"}</td>
                           <td className="px-4 py-3 text-right font-semibold" style={{ color: GREEN }}>{fmt(r.donation.amount)}</td>
                           <td className="px-4 py-3">
-                            <Badge variant={["sent", "resent"].includes(r.receiptStatus) ? "success" : r.receiptStatus === "void" ? "destructive" : "secondary"}>{r.receiptStatus}</Badge>
+                            <Badge variant={["sent", "resent"].includes(r.receiptStatus) ? "success" : r.receiptStatus === "void" ? "danger" : "default"}>{r.receiptStatus}</Badge>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500">{r.issuedDate ? new Date(r.issuedDate).toLocaleDateString() : "—"}</td>
                           <td className="px-4 py-3 text-xs text-gray-500">{r.sentAt ? new Date(r.sentAt).toLocaleDateString() : "—"}</td>
@@ -1029,7 +1029,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           <td className="px-4 py-3 text-right font-semibold text-red-600">{fmt(r.refundAmount)}</td>
                           <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{r.refundReason}</td>
                           <td className="px-4 py-3">
-                            <Badge variant={r.status === "processed" ? "success" : ["rejected", "failed"].includes(r.status) ? "destructive" : "warning"}>{r.status}</Badge>
+                            <Badge variant={r.status === "processed" ? "success" : ["rejected", "failed"].includes(r.status) ? "danger" : "warning"}>{r.status}</Badge>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.refundDate).toLocaleDateString()}</td>
                           <td className="px-4 py-3">
@@ -1165,7 +1165,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                 <p className="text-2xl font-bold" style={{ color: GREEN }}>{fmt(selectedDonation.amount, selectedDonation.currency)}</p>
                 <p className="text-sm text-gray-500 mt-0.5 capitalize">{selectedDonation.donationType.replace(/_/g, " ")} · {selectedDonation.paymentMethod?.replace(/_/g, " ") ?? selectedDonation.method ?? "—"}</p>
               </div>
-              <Badge variant={STATUS_BADGE[selectedDonation.status]?.variant ?? "secondary"}>
+              <Badge variant={STATUS_BADGE[selectedDonation.status]?.variant ?? "default"}>
                 {STATUS_BADGE[selectedDonation.status]?.label ?? selectedDonation.status}
               </Badge>
             </div>

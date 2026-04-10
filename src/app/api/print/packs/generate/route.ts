@@ -79,22 +79,23 @@ export async function POST(req: NextRequest) {
     targetCount = turf.totalDoors;
     packName = `${packType === "walk_kit" ? "Walk Kit" : packType === "lit_drop_kit" ? "Lit Drop Kit" : "GOTV Kit"} — ${turf.name}`;
   } else if (pollNumber) {
-    // Count households in this poll
-    const householdCount = await prisma.household.count({
-      where: { campaignId, pollNumber, deletedAt: null },
+    // Count doors via turf with this poll number
+    const turfs = await prisma.turf.findMany({
+      where: { campaignId, pollNumber },
+      select: { totalDoors: true, name: true },
     });
-    targetCount = householdCount;
+    targetCount = turfs.reduce((sum, t) => sum + t.totalDoors, 0);
     packName = `${packType === "walk_kit" ? "Walk Kit" : "GOTV Kit"} — Poll ${pollNumber}`;
   } else if (eventId) {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, title: true, maxCapacity: true, campaignId: true, deletedAt: true },
+      select: { id: true, name: true, capacity: true, campaignId: true, deletedAt: true },
     });
     if (!event || event.campaignId !== campaignId || event.deletedAt) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-    targetCount = event.maxCapacity ?? 100;
-    packName = `Event Kit — ${event.title}`;
+    targetCount = event.capacity ?? 100;
+    packName = `Event Kit — ${event.name}`;
   } else {
     return NextResponse.json(
       { error: "Must provide one of: turfId, pollNumber, eventId (or use sign_install_kit without scope)" },

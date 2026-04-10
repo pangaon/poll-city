@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 
@@ -50,9 +51,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
   }
 
+  const { metadataJson: rawMeta, ...rest } = parsed.data;
+  const metadataJson = rawMeta === null
+    ? Prisma.JsonNull
+    : rawMeta !== undefined
+      ? (rawMeta as unknown as Prisma.InputJsonValue)
+      : undefined;
+
   const updated = await prisma.contactRoleProfile.update({
     where: { id: params.roleId },
-    data: parsed.data,
+    data: {
+      ...rest,
+      ...(metadataJson !== undefined ? { metadataJson } : {}),
+    },
   });
 
   return NextResponse.json({ data: updated });

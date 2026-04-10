@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     where: {
       campaignId,
       deletedAt: null,
-      ...(status ? { status: status as Parameters<typeof prisma.financeReimbursement.findMany>[0]["where"] extends { status?: infer E } ? E : never } : {}),
+      ...(status ? { status: status as NonNullable<Parameters<typeof prisma.financeReimbursement.findMany>[0]>["where"] extends { status?: infer E } ? E : never } : {}),
       ...(!isManager ? { userId: session!.user.id } : {}),
     },
     include: {

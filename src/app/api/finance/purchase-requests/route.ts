@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     where: {
       campaignId,
       deletedAt: null,
-      ...(status ? { requestStatus: status as Parameters<typeof prisma.financePurchaseRequest.findMany>[0]["where"] extends { requestStatus?: infer E } ? E : never } : {}),
+      ...(status ? { requestStatus: status as NonNullable<Parameters<typeof prisma.financePurchaseRequest.findMany>[0]>["where"] extends { requestStatus?: infer E } ? E : never } : {}),
       // Non-managers only see their own
       ...(!isManager ? { requestedByUserId: session!.user.id } : {}),
     },

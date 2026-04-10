@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
   const totalPlanned = budgets.reduce((s, b) => s + Number(b.totalBudget), 0);
   const totalActual = Number(expenseAgg._sum.amount ?? 0);
-  const totalCommitted = [...categoryMap.values()].reduce((s, v) => s + v.committed, 0);
+  const totalCommitted = Array.from(categoryMap.values()).reduce((s, v) => s + v.committed, 0);
 
   // At-risk categories: actual + committed > planned * warningThreshold
   const atRiskLines = budgets

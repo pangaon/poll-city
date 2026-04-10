@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { DuplicateDecision, type Prisma } from "@prisma/client";
 import { apiAuth } from "@/lib/auth/helpers";
 
 /**
@@ -26,10 +27,8 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(sp.get("page") ?? "1", 10));
   const limit = Math.min(100, parseInt(sp.get("limit") ?? "25", 10));
 
-  const where = {
-    campaignId,
-    ...(decision !== "all" ? { decision } : {}),
-  };
+  const where: Prisma.DuplicateCandidateWhereInput = { campaignId };
+  if (decision !== "all") where.decision = decision as DuplicateDecision;
 
   const [candidates, total] = await Promise.all([
     prisma.duplicateCandidate.findMany({

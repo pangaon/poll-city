@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma, { Prisma } from "@/lib/db/prisma";
+import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
@@ -69,10 +70,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // Upsert — one role type per contact
+  const metadataJson = parsed.data.metadataJson !== undefined
+    ? (parsed.data.metadataJson as unknown as Prisma.InputJsonValue)
+    : undefined;
   const role = await prisma.contactRoleProfile.upsert({
     where: { contactId_roleType: { contactId: params.id, roleType: parsed.data.roleType } },
-    create: { contactId: params.id, ...parsed.data },
-    update: { roleStatus: parsed.data.roleStatus, metadataJson: parsed.data.metadataJson },
+    create: { contactId: params.id, roleType: parsed.data.roleType, roleStatus: parsed.data.roleStatus, metadataJson: metadataJson ?? Prisma.JsonNull },
+    update: { roleStatus: parsed.data.roleStatus, metadataJson: metadataJson ?? Prisma.JsonNull },
   });
 
   await prisma.contactAuditLog.create({

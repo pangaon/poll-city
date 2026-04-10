@@ -1,4 +1,5 @@
 import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function logFinanceAudit({
   campaignId,
@@ -23,8 +24,8 @@ export async function logFinanceAudit({
       entityType,
       entityId,
       action,
-      oldValueJson: oldValue ?? undefined,
-      newValueJson: newValue ?? undefined,
+      oldValueJson: oldValue !== undefined ? (oldValue as unknown as Prisma.InputJsonValue) : undefined,
+      newValueJson: newValue !== undefined ? (newValue as unknown as Prisma.InputJsonValue) : undefined,
       actorUserId: actorUserId ?? null,
     },
   });

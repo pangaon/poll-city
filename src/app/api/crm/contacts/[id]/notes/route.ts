@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import type { Prisma } from "@prisma/client";
 
 async function verifyContactCampaignAccess(contactId: string, userId: string) {
   const contact = await prisma.contact.findUnique({
@@ -23,11 +24,11 @@ const createNoteSchema = z.object({
   isPinned: z.boolean().default(false),
 });
 
-function visibilityFilter(role: string) {
+function visibilityFilter(role: string): Prisma.ContactNoteWhereInput | undefined {
   if (role === "SUPER_ADMIN" || role === "ADMIN") return undefined; // see all
   if (role === "CAMPAIGN_MANAGER" || role === "VOLUNTEER_LEADER")
-    return { visibility: { in: ["all_members", "managers_only"] as ("all_members" | "managers_only")[] } };
-  return { visibility: "all_members" as const };
+    return { visibility: { in: ["all_members", "managers_only"] } };
+  return { visibility: "all_members" };
 }
 
 /**
