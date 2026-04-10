@@ -601,19 +601,71 @@ Every major user action. Every downstream effect. Honest status.
 
 ## FUNDRAISING SUITE
 
-*Schema NOT yet in schema.prisma as of 2026-04-10. All API route stubs exist but will fail until Phase 1 schema is added.*
-*GAP-001: Schema missing | See TASK_BOARD: Fundraising Phase 1 for full schema spec*
+*Full suite built 2026-04-10 — schema, APIs, compliance engine, Fundraising Command Center UI.*
+*Stripe integration (Phase 4) and automated comms (Phase 7) remain pending.*
 
-| Action | Status | Notes |
+### Donation recorded (offline / manual entry)
+| Effect | Status | Notes |
 |--------|--------|-------|
-| Donation recorded | — NOT YET (schema missing) | thin Donation model exists; full FundraisingCampaign/DonorProfile pending |
-| Receipt auto-generated | — NOT YET | DonationReceipt model pending |
-| Stripe webhook → donation created | — NOT YET | Phase 4 |
-| Recurring plan created | — NOT YET | Phase 2 |
-| Compliance limit check | — NOT YET | Phase 5 |
-| Donation → FunnelAdvance to donor | ✓ CONNECTED | existing thin model wires this |
-| Donation → FinanceExpense (revenue) | ✗ NOT CONNECTED | GAP-005 |
-| Donor tagged + engagement scored | ✓ CONNECTED | existing thin model |
+| Donation record created | ✓ CONNECTED | POST /api/fundraising/donations — full model |
+| Compliance evaluated (annual limit, anonymous cap, corporate check) | ✓ CONNECTED | compliance.ts evaluateCompliance() — runs on every intake |
+| complianceStatus set (approved/review/rejected) | ✓ CONNECTED | |
+| DonorProfile refreshed (lifetime total, tier, status) | ✓ CONNECTED | refreshDonorProfile() called after write |
+| FundraisingCampaign.raisedAmount synced | ✓ CONNECTED | atomic increment on parent campaign |
+| Contact.lastContactedAt updated | ✗ NOT CONNECTED | donation does not update lastContactedAt |
+| Contact → donor funnel advance | ✗ NOT CONNECTED | funnelStage not updated on donation |
+| ActivityLog entry | ✗ NOT CONNECTED | no ActivityLog on donation create |
+| DonorAuditLog entry | ✓ CONNECTED | sensitive donor changes logged to immutable audit table |
+
+### Compliance review queue
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Over-limit donations flagged | ✓ CONNECTED | complianceStatus = "review" |
+| Anonymous over-cap flagged | ✓ CONNECTED | |
+| Corporate/union entity detected | ✓ CONNECTED | entity name heuristic in compliance.ts |
+| Approve / Exempt / Block actions | ✓ CONNECTED | PATCH /api/fundraising/donations/[donationId] |
+
+### Receipt lifecycle
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Receipt generated on demand | ✓ CONNECTED | POST /api/fundraising/receipts — idempotent |
+| Receipt number format: REC-YEAR-RANDOM | ✓ CONNECTED | |
+| Receipt resend | ✓ CONNECTED | POST /api/fundraising/receipts/[id] |
+| Receipt void | ✓ CONNECTED | DELETE /api/fundraising/receipts/[id] |
+| Email delivery of receipt | ✗ NOT CONNECTED | Phase 7 |
+
+### Recurring plan
+| Effect | Status | Notes |
+|--------|--------|-------|
+| RecurrencePlan created | ✓ CONNECTED | POST /api/fundraising/recurring |
+| Pause / Resume / Cancel | ✓ CONNECTED | PATCH /api/fundraising/recurring/[planId] |
+| Auto-charge on schedule | ✗ NOT CONNECTED | Phase 4 (Stripe Billing) |
+| Failure alert to campaign manager | ✗ NOT CONNECTED | Phase 7 |
+
+### Refund lifecycle
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Refund requested | ✓ CONNECTED | POST /api/fundraising/refunds — validates refundable balance |
+| Approve / Reject / Process | ✓ CONNECTED | PATCH /api/fundraising/refunds/[id] |
+| Donation.refundedAmount updated on process | ✓ CONNECTED | |
+| Donation status → refunded / partially_refunded | ✓ CONNECTED | |
+| DonorProfile lifetime total corrected | ✓ CONNECTED | refreshDonorProfile() called after process |
+| Stripe refund API called | ✗ NOT CONNECTED | Phase 4 |
+
+### Pledge
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Pledge created | ✓ CONNECTED | POST /api/fundraising/pledges |
+| Pledge status updated (partial/fulfilled/overdue) | ✓ CONNECTED | PATCH /api/fundraising/pledges/[id] |
+| Donation linked to pledge | ✗ NOT CONNECTED | no auto-link when donation matches pledge |
+
+### Stripe integration (Phase 4 — NOT YET BUILT)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Stripe PaymentIntent created | — NOT BUILT | |
+| Webhook → donation created | — NOT BUILT | |
+| Stripe Billing → recurring plans | — NOT BUILT | |
+| Failed charge → RecurrencePlan.failureCount++ | — NOT BUILT | |
 
 ---
 
