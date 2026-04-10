@@ -2,9 +2,10 @@ import {
   PrismaClient, Role, SupportLevel, ElectionType, InteractionType,
   TaskStatus, TaskPriority, GovernmentLevel, PollType, PollVisibility,
   SignStatus, SupportSignalType, DonationStatus, EventStatus, EventVisibility,
-  AssignmentType, AssignmentStatus, StopStatus
+  AssignmentType, AssignmentStatus, StopStatus, EventRsvpStatus, Prisma
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -828,6 +829,215 @@ async function main() {
   ] });
   console.log("✅ 3 field assignments + 20 assignment stops");
 
+  // ── VOTER FILE SIMULATION — 25 polls, ~6 000 households, ~14 400 contacts ──
+  // Represents a CM having just uploaded their Elections Canada voter list.
+  const VOTER_FIRST_M = ["James","Robert","John","David","William","Richard","Joseph","Thomas","Charles","Daniel","Matthew","Anthony","Mark","Andrew","Paul","Joshua","Kevin","Brian","George","Samuel","Timothy","Patrick","Ryan","Eric","Jeffrey","Frank","Scott","Raymond","Gregory","Walter","Peter","Harold","Douglas","Henry","Carl","Arthur","Lawrence","Donald","Gerald","Wayne"];
+  const VOTER_FIRST_F = ["Mary","Patricia","Jennifer","Linda","Barbara","Susan","Jessica","Karen","Sarah","Lisa","Nancy","Betty","Margaret","Sandra","Ashley","Dorothy","Kimberly","Emily","Donna","Michelle","Carol","Amanda","Melissa","Deborah","Stephanie","Rebecca","Sharon","Laura","Cynthia","Amy","Angela","Helen","Anna","Brenda","Virginia","Katherine","Diane","Joyce","Victoria","Julie"];
+  const VOTER_LAST   = ["Smith","Brown","Johnson","Williams","Jones","Davis","Miller","Wilson","Moore","Taylor","Anderson","Jackson","White","Harris","Martin","Thompson","Garcia","Martinez","Robinson","Clark","Lewis","Walker","Hall","Allen","Young","Hernandez","King","Wright","Lopez","Hill","Scott","Green","Adams","Baker","Gonzalez","Nelson","Carter","Mitchell","Perez","Roberts","Nguyen","Kim","Patel","Singh","Chen","Zhang","Li","Tremblay","Bouchard","Roy","Gagnon","Osei","Hassan","Adeyemi","Ferreira","Santos","Kowalski","Petrov","Mensah","Diallo","Park","Lee","Guo","Russo","Aguilar","Lin","Wu","Chambers","Chang","Foster","Ali","Mbeki","Ababio","Marchetti"];
+  const WARD_STREETS = ["Danforth Avenue","Broadview Avenue","Coxwell Avenue","Main Street","Woodbine Avenue","Kingston Road","Greenwood Avenue","Gerrard Street East","Pape Avenue","Jones Avenue","Logan Avenue","Carlaw Avenue","Hastings Avenue","Strathmore Boulevard","Aldwych Avenue","Glebemount Avenue","Cedarvale Avenue","Swanwick Avenue","Clonmore Drive","Eastwood Road","Lawson Avenue","Roseheath Avenue","Langford Avenue","Arundel Avenue","Bowood Avenue","Hannaford Street","Dentonia Park Avenue","Barrington Avenue","Byng Avenue","Birchmount Road","Pharmacy Avenue","Victoria Park Avenue","Elward Boulevard","Kenilworth Avenue","Beech Avenue","Courcelette Road","Eastdale Avenue","Ferrier Avenue","Mountjoy Avenue","Holborne Avenue"];
+  const WARD_POSTALS = ["M4C 1A1","M4C 2B2","M4C 3C3","M4C 4D4","M4J 1A1","M4J 2B2","M4J 3C3","M4K 1A1","M4K 2B2","M4L 1A1","M4L 2B2","M4L 3C3","M4E 1A1","M4E 2B2","M4E 3C3","M4B 1A1","M4B 2B2","M1L 1A1","M1L 2B2","M1N 1A1"];
+
+  const WARD_POLL_LIST = [
+    { name: "Poll 1",  totalVoters: 611, lat: 43.6612, lng: -79.3650 },
+    { name: "Poll 2",  totalVoters: 587, lat: 43.6624, lng: -79.3620 },
+    { name: "Poll 3",  totalVoters: 634, lat: 43.6638, lng: -79.3590 },
+    { name: "Poll 4",  totalVoters: 601, lat: 43.6752, lng: -79.3295 },
+    { name: "Poll 5",  totalVoters: 578, lat: 43.6598, lng: -79.3700 },
+    { name: "Poll 6",  totalVoters: 623, lat: 43.6572, lng: -79.3680 },
+    { name: "Poll 7",  totalVoters: 597, lat: 43.6780, lng: -79.3380 },
+    { name: "Poll 8",  totalVoters: 611, lat: 43.6645, lng: -79.3540 },
+    { name: "Poll 9",  totalVoters: 584, lat: 43.6659, lng: -79.3510 },
+    { name: "Poll 10", totalVoters: 628, lat: 43.6673, lng: -79.3480 },
+    { name: "Poll 11", totalVoters: 593, lat: 43.6687, lng: -79.3450 },
+    { name: "Poll 12", totalVoters: 609, lat: 43.6720, lng: -79.3195 },
+    { name: "Poll 13", totalVoters: 576, lat: 43.6700, lng: -79.3140 },
+    { name: "Poll 14", totalVoters: 621, lat: 43.6714, lng: -79.3110 },
+    { name: "Poll 15", totalVoters: 599, lat: 43.6815, lng: -79.3082 },
+    { name: "Poll 16", totalVoters: 617, lat: 43.6728, lng: -79.3080 },
+    { name: "Poll 17", totalVoters: 582, lat: 43.6742, lng: -79.3050 },
+    { name: "Poll 18", totalVoters: 608, lat: 43.6855, lng: -79.2945 },
+    { name: "Poll 19", totalVoters: 591, lat: 43.6756, lng: -79.3020 },
+    { name: "Poll 20", totalVoters: 625, lat: 43.6770, lng: -79.2990 },
+    { name: "Poll 21", totalVoters: 603, lat: 43.6784, lng: -79.2960 },
+    { name: "Poll 22", totalVoters: 579, lat: 43.6798, lng: -79.2930 },
+    { name: "Poll 23", totalVoters: 618, lat: 43.6812, lng: -79.2900 },
+    { name: "Poll 24", totalVoters: 594, lat: 43.6826, lng: -79.2870 },
+    { name: "Poll 25", totalVoters: 607, lat: 43.6840, lng: -79.2840 },
+  ];
+
+  const bulkHouseholds: Prisma.HouseholdCreateManyInput[] = [];
+  const bulkContacts:   Prisma.ContactCreateManyInput[]   = [];
+
+  for (let pollIdx = 0; pollIdx < WARD_POLL_LIST.length; pollIdx++) {
+    const poll = WARD_POLL_LIST[pollIdx];
+    for (let hIdx = 0; hIdx < 240; hIdx++) {
+      const houseId    = randomUUID();
+      const streetIdx  = (pollIdx * 7  + hIdx * 3)  % WARD_STREETS.length;
+      const postalIdx  = (pollIdx * 3  + hIdx)       % WARD_POSTALS.length;
+      const houseNum   = 10 + pollIdx * 50 + hIdx * 3;
+      const votersHere = hIdx % 5 < 2 ? 3 : 2; // 40% triplets, 60% pairs → avg 2.4 → ~14 400 total
+      const latOff     = ((hIdx * 7)  % 100 - 50) * 0.00005;
+      const lngOff     = ((hIdx * 11) % 100 - 50) * 0.00006;
+      const addr       = `${houseNum} ${WARD_STREETS[streetIdx]}`;
+      const postal     = WARD_POSTALS[postalIdx];
+      bulkHouseholds.push({
+        id: houseId,
+        address1: addr,
+        city: "Toronto",
+        province: "ON",
+        postalCode: postal,
+        ward: "Ward 12",
+        riding: "Toronto—Danforth",
+        campaignId: campaign.id,
+        totalVoters: votersHere,
+        lat: poll.lat + latOff,
+        lng: poll.lng + lngOff,
+      });
+      for (let vIdx = 0; vIdx < votersHere; vIdx++) {
+        const pool = vIdx === 1 ? VOTER_FIRST_F : VOTER_FIRST_M;
+        const fi   = (pollIdx * 7  + hIdx * 3 + vIdx * 5) % pool.length;
+        const li   = (pollIdx * 11 + hIdx * 5 + vIdx * 3) % VOTER_LAST.length;
+        bulkContacts.push({
+          campaignId:   campaign.id,
+          householdId:  houseId,
+          firstName:    pool[fi],
+          lastName:     VOTER_LAST[li],
+          address1:     addr,
+          city:         "Toronto",
+          province:     "ON",
+          postalCode:   postal,
+          ward:         "Ward 12",
+          municipalPoll: poll.name,
+        });
+      }
+    }
+  }
+
+  // Batch insert — 500 households per batch, 1 000 contacts per batch
+  for (let i = 0; i < bulkHouseholds.length; i += 500) {
+    await prisma.household.createMany({ data: bulkHouseholds.slice(i, i + 500) });
+  }
+  for (let i = 0; i < bulkContacts.length; i += 1000) {
+    await prisma.contact.createMany({ data: bulkContacts.slice(i, i + 1000) });
+  }
+  console.log(`✅ Voter file simulation: ${bulkHouseholds.length} households, ${bulkContacts.length} contacts across 25 polls`);
+
+  // ── ENRICHMENT ── sign notes, removals, event RSVPs, interactions, tasks, logs
+
+  // Sign install notes on all installed signs
+  await prisma.sign.updateMany({
+    where: { campaignId: campaign.id, status: SignStatus.installed, notes: null },
+    data:  { notes: "Installed — resident home, confirmed placement. Sign facing street." },
+  });
+  // 2 sign removals
+  await prisma.sign.updateMany({
+    where: { campaignId: campaign.id, address1: "200 Danforth Ave" },
+    data:  { status: SignStatus.removed, removedAt: new Date(Date.now() - 1 * 86400000), notes: "Tenant moved out. Landlord requested removal." },
+  });
+  await prisma.sign.updateMany({
+    where: { campaignId: campaign.id, address1: "441 Woodbine Avenue" },
+    data:  { status: SignStatus.removed, removedAt: new Date(Date.now() - 2 * 86400000), notes: "Homeowner changed mind after neighbour pressure." },
+  });
+  console.log("✅ Sign enrichment: install notes + 2 removals");
+
+  // Event RSVPs — query events back by slug (created via createMany so no IDs captured above)
+  const [evHousing, evKickoff, evMeetSam, evGotv] = await Promise.all([
+    prisma.event.findFirst({ where: { slug: "housing-forum-mar-2026" } }),
+    prisma.event.findFirst({ where: { slug: "vol-kickoff-feb-2026" } }),
+    prisma.event.findFirst({ where: { slug: "meet-sam-east-apr-2026" } }),
+    prisma.event.findFirst({ where: { slug: "gotv-training-may-2026" } }),
+  ]);
+  if (evHousing && evKickoff && evMeetSam && evGotv) {
+    await prisma.eventRsvp.createMany({ data: [
+      // Housing Forum — 12 attendees (completed)
+      { eventId: evHousing.id, name: "Jennifer Walsh",     email: "jennifer.walsh@email.com",     status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 10 * 60000), source: "canvass",   contactId: contacts[0].id },
+      { eventId: evHousing.id, name: "Marcus Thompson",    email: "m.thompson@work.ca",            status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 15 * 60000), source: "website" },
+      { eventId: evHousing.id, name: "Priya Sharma",       email: "priya.sharma@gmail.com",        status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() +  5 * 60000), source: "canvass" },
+      { eventId: evHousing.id, name: "David Osei",         email: "dosei@hotmail.com",             status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 20 * 60000), source: "canvass" },
+      { eventId: evHousing.id, name: "Linda Foster",       email: "lfoster@rogers.ca",             status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() +  8 * 60000), source: "referral" },
+      { eventId: evHousing.id, name: "Samuel Park",        email: "sampark@email.ca",              status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 12 * 60000), source: "website" },
+      { eventId: evHousing.id, name: "Amara Diallo",       email: "amara.diallo@gmail.com",        status: EventRsvpStatus.no_show,      attended: false, source: "canvass" },
+      { eventId: evHousing.id, name: "Kevin Tremblay",     email: "ktremblay@bell.ca",             status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 25 * 60000), source: "referral" },
+      { eventId: evHousing.id, name: "Victoria Santos",    email: "vsantos@outlook.com",           status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 18 * 60000), source: "website" },
+      { eventId: evHousing.id, name: "Thomas Mensah",      email: "t.mensah@work.ca",              status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 30 * 60000), source: "canvass" },
+      { eventId: evHousing.id, name: "Helen Bouchard",     email: "hbouchard@gmail.com",           status: EventRsvpStatus.no_show,      attended: false, source: "website" },
+      { eventId: evHousing.id, name: "Grant Morrison",     email: "gmorrison@business.ca",         status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 35 * 60000), source: "canvass",   contactId: contacts[9].id },
+      // Volunteer Kickoff — 9 attended (internal)
+      { eventId: evKickoff.id, name: "Val Morrison",       email: "volunteer@pollcity.dev",        status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  5 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "James Fontaine",     email: "volunteer2@pollcity.dev",       status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() + 10 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Amara Osei",         email: "volunteers@pollcity.dev",       status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  8 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Carlos Beaumont",    email: "events@pollcity.dev",           status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() + 12 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Priya Okonkwo",      email: "field@pollcity.dev",            status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  3 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Rachel Dubois",      email: "manager@pollcity.dev",          status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  1 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Marcus Chen",        email: "comms@pollcity.dev",            status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  6 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Sanjay Patel",       email: "data@pollcity.dev",             status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evKickoff.eventDate.getTime() +  9 * 60000), source: "staff" },
+      { eventId: evKickoff.id, name: "Linda Kowalski",     email: "treasurer@pollcity.dev",        status: EventRsvpStatus.no_show,      attended: false, source: "staff" },
+      // Meet Sam — 8 RSVPs (upcoming, some registered)
+      { eventId: evMeetSam.id, name: "Patricia Singh",     email: "psingh@gmail.com",              status: EventRsvpStatus.going,        attended: false, source: "website" },
+      { eventId: evMeetSam.id, name: "Robert Gagnon",      email: "r.gagnon@outlook.com",          status: EventRsvpStatus.going,        attended: false, source: "canvass" },
+      { eventId: evMeetSam.id, name: "Susan Chambers",     email: "schambers@rogers.ca",           status: EventRsvpStatus.going,        attended: false, source: "website" },
+      { eventId: evMeetSam.id, name: "Michael Russo",      email: "mrusso@bell.ca",                status: EventRsvpStatus.interested,   attended: false, source: "website" },
+      { eventId: evMeetSam.id, name: "Angela Wu",          email: "awu@hotmail.com",               status: EventRsvpStatus.going,        attended: false, source: "canvass" },
+      { eventId: evMeetSam.id, name: "Joseph Petrov",      email: "j.petrov@email.ca",             status: EventRsvpStatus.interested,   attended: false, source: "referral" },
+      { eventId: evMeetSam.id, name: "Dorothy Chang",      email: "dchang@gmail.com",              status: EventRsvpStatus.going,        attended: false, source: "website" },
+      { eventId: evMeetSam.id, name: "William Aguilar",    email: "waguilar@work.ca",              status: EventRsvpStatus.going,        attended: false, source: "canvass" },
+      // GOTV Training — 6 registered (upcoming, internal)
+      { eventId: evGotv.id,    name: "Val Morrison",       email: "volunteer@pollcity.dev",        status: EventRsvpStatus.going,        attended: false, source: "staff" },
+      { eventId: evGotv.id,    name: "James Fontaine",     email: "volunteer2@pollcity.dev",       status: EventRsvpStatus.going,        attended: false, source: "staff" },
+      { eventId: evGotv.id,    name: "Amara Osei",         email: "volunteers@pollcity.dev",       status: EventRsvpStatus.going,        attended: false, source: "staff" },
+      { eventId: evGotv.id,    name: "Carlos Beaumont",    email: "events@pollcity.dev",           status: EventRsvpStatus.going,        attended: false, source: "staff" },
+      { eventId: evGotv.id,    name: "Priya Okonkwo",      email: "field@pollcity.dev",            status: EventRsvpStatus.going,        attended: false, source: "staff" },
+      { eventId: evGotv.id,    name: "New Volunteer A",    email: "newvolunteer.a@gmail.com",      status: EventRsvpStatus.interested,   attended: false, source: "website" },
+    ] });
+    console.log("✅ 35 event RSVPs seeded across 4 events");
+  }
+
+  // More interaction types — text, email, follow_up, field_encounter
+  await prisma.interaction.createMany({ data: [
+    { contactId: contacts[0].id, userId: volunteer1.id,  type: InteractionType.text,            notes: "Sent Sam's housing platform summary via text. Replied positively.", supportLevel: SupportLevel.strong_support,  createdAt: new Date(Date.now() -  3 * 86400000) },
+    { contactId: contacts[1].id, userId: manager.id,     type: InteractionType.email,           notes: "Thank-you email for pledge. Sent donation receipt PDF.",            supportLevel: SupportLevel.strong_support,  createdAt: new Date(Date.now() -  6 * 86400000) },
+    { contactId: contacts[3].id, userId: volunteer1.id,  type: InteractionType.follow_up,       notes: "Called back re: safety concerns. Connected with neighbourhood watch program info.", supportLevel: SupportLevel.leaning_support, createdAt: new Date(Date.now() -  4 * 86400000) },
+    { contactId: contacts[5].id, userId: field.id,       type: InteractionType.field_encounter, notes: "Met at Danforth farmer's market. Enthusiastic supporter. Wants a lawn sign.", supportLevel: SupportLevel.strong_support, createdAt: new Date(Date.now() -  8 * 86400000) },
+    { contactId: contacts[7].id, userId: manager.id,     type: InteractionType.email,           notes: "Invitation to Housing Forum sent. Responded — attending.",          supportLevel: SupportLevel.strong_support,  createdAt: new Date(Date.now() - 22 * 86400000) },
+    { contactId: contacts[9].id, userId: manager.id,     type: InteractionType.text,            notes: "Confirmed Housing Forum logistics. Mentioned he may bring two colleagues.", supportLevel: SupportLevel.strong_support, createdAt: new Date(Date.now() - 22 * 86400000) },
+    { contactId: contacts[2].id, userId: volunteer1.id,  type: InteractionType.follow_up,       notes: "Re-canvassed. Husband answered. Leaning support now. Left brochure.", supportLevel: SupportLevel.leaning_support, createdAt: new Date(Date.now() -  1 * 86400000) },
+  ] });
+  console.log("✅ 7 additional interactions seeded (text, email, follow_up, field_encounter)");
+
+  // Operational tasks — 10 covering full campaign workflow
+  await prisma.task.createMany({ data: [
+    { campaignId: campaign.id, assignedToId: manager.id,    createdById: admin.id,    title: "Follow up with Grant Morrison on May fundraiser co-host",                 status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  7 * 86400000) },
+    { campaignId: campaign.id, assignedToId: field.id,      createdById: manager.id,  title: "Finalise Poll 15 & 18 canvass route in Field Ops",                        status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  2 * 86400000) },
+    { campaignId: campaign.id, assignedToId: volcoord.id,   createdById: manager.id,  title: "Confirm GOTV Training headcount — send reminder to all registered volunteers", status: TaskStatus.pending, priority: TaskPriority.medium, dueDate: new Date(Date.now() + 21 * 86400000) },
+    { campaignId: campaign.id, assignedToId: comms.id,      createdById: manager.id,  title: "Draft social media posts for Meet Sam — East Ward 12 event",              status: TaskStatus.in_progress, priority: TaskPriority.high,   dueDate: new Date(Date.now() +  7 * 86400000) },
+    { campaignId: campaign.id, assignedToId: data.id,       createdById: manager.id,  title: "Export Poll 4 contact list for canvass refresher",                        status: TaskStatus.completed,   priority: TaskPriority.medium, dueDate: new Date(Date.now() -  5 * 86400000), completedAt: new Date(Date.now() - 4 * 86400000) },
+    { campaignId: campaign.id, assignedToId: treasurer.id,  createdById: admin.id,    title: "Prepare Q1 donation report for candidate review",                         status: TaskStatus.pending,     priority: TaskPriority.medium, dueDate: new Date(Date.now() + 10 * 86400000) },
+    { campaignId: campaign.id, assignedToId: events.id,     createdById: manager.id,  title: "Book venue and A/V for GOTV Training — confirm with campaign office",     status: TaskStatus.in_progress, priority: TaskPriority.high,   dueDate: new Date(Date.now() + 14 * 86400000) },
+    { campaignId: campaign.id, assignedToId: volunteer1.id, createdById: field.id,    title: "Complete remaining stops on Poll 4 & 7 assignment before Saturday",       status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  4 * 86400000) },
+    { campaignId: campaign.id, assignedToId: comms.id,      createdById: manager.id,  title: "Upload housing forum photos to campaign website gallery",                  status: TaskStatus.completed,   priority: TaskPriority.low,    dueDate: new Date(Date.now() - 14 * 86400000), completedAt: new Date(Date.now() - 13 * 86400000) },
+    { campaignId: campaign.id, assignedToId: data.id,       createdById: field.id,    title: "Verify all sign installation records in Signs module are up to date",     status: TaskStatus.pending,     priority: TaskPriority.medium, dueDate: new Date(Date.now() +  3 * 86400000) },
+  ] });
+  console.log("✅ 10 operational tasks seeded");
+
+  // Activity log — 14 entries covering campaign lifecycle events
+  await prisma.activityLog.createMany({ data: [
+    { campaignId: campaign.id, userId: volunteer1.id, action: "logged_interaction", entityType: "contact", entityId: contacts[4].id, details: { type: "door_knock", contactName: "Linda Osei", supportLevel: "strong_support" } },
+    { campaignId: campaign.id, userId: volunteer1.id, action: "logged_interaction", entityType: "contact", entityId: contacts[0].id, details: { type: "door_knock", contactName: "Jennifer Walsh", supportLevel: "strong_support" } },
+    { campaignId: campaign.id, userId: manager.id,    action: "donation_received",  entityType: "contact", entityId: contacts[9].id, details: { amount: 500, method: "e-transfer", contactName: "Grant Morrison" } },
+    { campaignId: campaign.id, userId: manager.id,    action: "donation_received",  entityType: "contact", entityId: contacts[0].id, details: { amount: 200, method: "e-transfer", contactName: "Jennifer Walsh" } },
+    { campaignId: campaign.id, userId: field.id,      action: "sign_installed",     entityType: "sign",    entityId: contacts[0].id, details: { address: "45 Danforth Ave", poll: "Poll 4" } },
+    { campaignId: campaign.id, userId: field.id,      action: "sign_installed",     entityType: "sign",    entityId: contacts[4].id, details: { address: "200 Main Street", poll: "Poll 15" } },
+    { campaignId: campaign.id, userId: volcoord.id,   action: "volunteer_onboarded",entityType: "user",    entityId: volunteer1.id,  details: { volunteerName: "Val Morrison", skills: ["canvassing", "phone_bank"] } },
+    { campaignId: campaign.id, userId: volcoord.id,   action: "volunteer_onboarded",entityType: "user",    entityId: volunteer2.id,  details: { volunteerName: "James Fontaine", skills: ["canvassing", "data_entry"] } },
+    { campaignId: campaign.id, userId: field.id,      action: "assignment_created", entityType: "assignment", entityId: fa1.id,     details: { name: "Poll 4 & 7 — April Blitz", stops: 9 } },
+    { campaignId: campaign.id, userId: field.id,      action: "assignment_created", entityType: "assignment", entityId: fa2.id,     details: { name: "Poll 15 & 18 — West-End Run", stops: 5 } },
+    { campaignId: campaign.id, userId: manager.id,    action: "event_created",      entityType: "event",   entityId: evHousing?.id ?? "", details: { eventName: "Affordable Housing Forum", eventDate: "2026-03-20" } },
+    { campaignId: campaign.id, userId: events.id,     action: "event_created",      entityType: "event",   entityId: evMeetSam?.id ?? "", details: { eventName: "Meet Sam Rivera — East Ward 12", eventDate: "2026-04-24" } },
+    { campaignId: campaign.id, userId: data.id,       action: "contact_updated",    entityType: "contact", entityId: contacts[3].id, details: { field: "supportLevel", from: "undecided", to: "leaning_support" } },
+    { campaignId: campaign.id, userId: volunteer1.id, action: "assignment_stop_completed", entityType: "assignment", entityId: fa1.id, details: { householdAddress: "24 Woodbine Avenue", stopOrder: 1, outcome: "strong_support" } },
+  ] });
+  console.log("✅ 14 activity log entries seeded");
+
   // ── Demo Campaign for admin@pollcity.dev ───────────────────────────────────
   const demoCampaign = await prisma.campaign.upsert({
     where: { slug: "demo-campaign-2026" },
@@ -880,7 +1090,7 @@ async function main() {
   console.log("               volunteer@pollcity.dev  / password123  (Val Morrison — Volunteer)");
   console.log("               volunteer2@pollcity.dev / password123  (James Fontaine — Volunteer)");
   console.log("SOCIAL APP:    voter@pollcity.dev      / password123  (Pat Public)\n");
-  console.log("3 officials · 69 contacts · 10 team members · 20 polls · 25 signs · 12 donations · 4 events · 3 field assignments");
+  console.log("3 officials · ~14 500 contacts · 6 069 households · 25 polls · 10 team members · 25 signs · 12 donations · 4 events · 3 field assignments · 35 RSVPs · 10 tasks · 14 activity logs");
   console.log("════════════════════════════════════════════════════");
 }
 
