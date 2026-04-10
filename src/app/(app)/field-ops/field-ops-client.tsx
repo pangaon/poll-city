@@ -66,6 +66,7 @@ interface AssignmentRow {
 
 interface Turf { id: string; name: string; ward: string | null }
 interface TeamMember { id: string; name: string; email: string | null }
+interface WardData { ward: string; contactCount: number; polls: { poll: string; contactCount: number }[] }
 
 interface BriefingSnap {
   doorsThisWeek: number;
@@ -197,8 +198,13 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
   const [assignUserId, setAssignUserId] = useState("");
   const [form, setForm] = useState({
     name: "", assignmentType: "canvass" as AssignmentType,
-    fieldUnitId: "", scheduledDate: "", assignedUserId: "", notes: "", description: "",
+    fieldUnitId: "", targetWard: "", targetPolls: [] as string[],
+    scheduledDate: "", assignedUserId: "", notes: "", description: "",
   });
+
+  // Ward/poll targeting data
+  const [wards, setWards] = useState<WardData[]>([]);
+  const [wardsLoading, setWardsLoading] = useState(false);
 
   // Reset panel + page when switching context tabs
   useEffect(() => { setCanvassPanel(null); setPage(1); setStatusFilter("all"); }, [contextTab]);
@@ -314,6 +320,8 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
     try {
       const body: Record<string, unknown> = { campaignId, assignmentType: form.assignmentType, name: form.name.trim() };
       if (form.description.trim()) body.description = form.description.trim();
+      if (form.targetWard) body.targetWard = form.targetWard;
+      if (form.targetPolls.length > 0) body.targetPolls = form.targetPolls;
       if (form.fieldUnitId) body.fieldUnitId = form.fieldUnitId;
       if (form.scheduledDate) body.scheduledDate = new Date(form.scheduledDate).toISOString();
       if (form.assignedUserId) body.assignedUserId = form.assignedUserId;
@@ -325,14 +333,25 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
       if (!res.ok) throw new Error(data.error ?? "Failed to create");
       toast.success(`Deployed — ${data.data._count.stops} stops generated`);
       setShowCreate(false);
-      setForm((f) => ({ name: "", assignmentType: f.assignmentType, fieldUnitId: "", scheduledDate: "", assignedUserId: "", notes: "", description: "" }));
+      setForm((f) => ({ name: "", assignmentType: f.assignmentType, fieldUnitId: "", targetWard: "", targetPolls: [], scheduledDate: "", assignedUserId: "", notes: "", description: "" }));
       load(); loadCounts();
     } catch (err) { toast.error((err as Error).message); }
     finally { setCreating(false); }
   }, [form, campaignId, load, loadCounts]);
 
+  // Fetch ward/poll data when modal opens (once per campaign)
+  useEffect(() => {
+    if (!showCreate || wards.length > 0) return;
+    setWardsLoading(true);
+    fetch(`/api/field-ops/ward-polls?campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((d) => setWards(d.wards ?? []))
+      .catch(() => {})
+      .finally(() => setWardsLoading(false));
+  }, [showCreate, campaignId, wards.length]);
+
   const openCreate = useCallback(() => {
-    setForm((f) => ({ ...f, assignmentType: DEPLOY_PRESET[contextTab] }));
+    setForm((f) => ({ ...f, assignmentType: DEPLOY_PRESET[contextTab], targetWard: "", targetPolls: [], fieldUnitId: "" }));
     setShowCreate(true);
   }, [contextTab]);
 
@@ -688,6 +707,8 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
       {/* ── Create modal ────────────────────────────────────────────────────── */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title={DEPLOY_LABEL[contextTab]} size="md">
         <div className="space-y-4">
+
+          {/* Operation type */}
           <FormField label="Operation Type" required>
             <Select value={form.assignmentType} onChange={(e) => setForm((f) => ({ ...f, assignmentType: e.target.value as AssignmentType }))}>
               <option value="canvass">Canvass — Door knocking</option>
@@ -696,35 +717,165 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
               <option value="sign_remove">Sign Remove — Retrieve signs</option>
             </Select>
           </FormField>
+
+          {/* Assignment name */}
           <FormField label="Assignment Name" required>
             <Input
-              placeholder={`e.g. Ward 5 ${form.assignmentType === "canvass" ? "Saturday Canvass" : form.assignmentType === "lit_drop" ? "Lit Drop Run" : "Sign Operation"}`}
+              placeholder={`e.g. ${form.targetWard || "Ward 12"} ${form.assignmentType === "canvass" ? "Saturday Canvass" : form.assignmentType === "lit_drop" ? "Lit Drop Run" : "Sign Operation"}`}
               value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </FormField>
+
+          {/* ── Poll targeting — primary assignment unit ─────────────────────── */}
+          <div className="rounded-lg border border-[#0A2342]/20 bg-[#0A2342]/5 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-[#0A2342]" />
+              <span className="text-sm font-semibold text-[#0A2342]">Poll Targeting</span>
+              <span className="text-xs text-gray-500 ml-1">— polls are the primary assignment unit</span>
+            </div>
+
+            {/* Ward selector */}
+            <FormField label="Ward">
+              {wardsLoading ? (
+                <div className="flex items-center gap-2 h-9 px-3 rounded-md border bg-white text-sm text-gray-400">
+                  <Spinner className="h-3.5 w-3.5" /> Loading wards…
+                </div>
+              ) : (
+                <Select
+                  value={form.targetWard}
+                  onChange={(e) => setForm((f) => ({ ...f, targetWard: e.target.value, targetPolls: [] }))}
+                >
+                  <option value="">All wards</option>
+                  {wards.map((w) => (
+                    <option key={w.ward} value={w.ward}>
+                      {w.ward} — {w.contactCount} contacts
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+
+            {/* Poll multi-select — only shown when a ward is selected */}
+            {form.targetWard && (() => {
+              const wardData = wards.find((w) => w.ward === form.targetWard);
+              if (!wardData) return null;
+              return (
+                <FormField label={`Polls in ${form.targetWard}`}>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {wardData.polls.map((p) => {
+                      const selected = form.targetPolls.includes(p.poll);
+                      return (
+                        <button
+                          key={p.poll}
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              targetPolls: selected
+                                ? f.targetPolls.filter((x) => x !== p.poll)
+                                : [...f.targetPolls, p.poll],
+                            }))
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            selected
+                              ? "border-[#0A2342] bg-[#0A2342] text-white"
+                              : "border-gray-300 bg-white text-gray-600 hover:border-[#0A2342] hover:text-[#0A2342]"
+                          }`}
+                        >
+                          {p.poll}
+                          <span className={`${selected ? "text-blue-200" : "text-gray-400"}`}>
+                            {p.contactCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {wardData.polls.length > 1 && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, targetPolls: wardData.polls.map((p) => p.poll) }))}
+                        className="text-xs text-[#0A2342] hover:underline"
+                      >
+                        Select all
+                      </button>
+                      <span className="text-gray-300">·</span>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, targetPolls: [] }))}
+                        className="text-xs text-gray-400 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </FormField>
+              );
+            })()}
+
+            {/* Contact count preview */}
+            {(() => {
+              if (form.targetWard) {
+                const wardData = wards.find((w) => w.ward === form.targetWard);
+                if (wardData) {
+                  const count = form.targetPolls.length > 0
+                    ? wardData.polls.filter((p) => form.targetPolls.includes(p.poll)).reduce((s, p) => s + p.contactCount, 0)
+                    : wardData.contactCount;
+                  return (
+                    <div className="text-xs text-[#1D9E75] font-medium">
+                      {count} contact{count !== 1 ? "s" : ""} targeted
+                      {form.targetPolls.length > 0 ? ` across ${form.targetPolls.length} poll${form.targetPolls.length !== 1 ? "s" : ""}` : ` across all polls in ${form.targetWard}`}
+                    </div>
+                  );
+                }
+              }
+              return (
+                <div className="text-xs text-gray-400">
+                  Select a ward to target specific polls, or leave blank for the whole campaign.
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Briefing notes */}
           <FormField label="Briefing Notes">
             <Textarea rows={2} placeholder="What should the team know before they go?" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </FormField>
+
+          {/* Date + assignee */}
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Turf (optional)">
-              <Select value={form.fieldUnitId} onChange={(e) => setForm((f) => ({ ...f, fieldUnitId: e.target.value }))}>
-                <option value="">Whole campaign</option>
-                {turfs.map((t) => <option key={t.id} value={t.id}>{t.name}{t.ward ? ` — ${t.ward}` : ""}</option>)}
-              </Select>
-            </FormField>
             <FormField label="Scheduled Date">
               <Input type="date" value={form.scheduledDate} onChange={(e) => setForm((f) => ({ ...f, scheduledDate: e.target.value }))} />
             </FormField>
+            <FormField label="Assign To">
+              <Select value={form.assignedUserId} onChange={(e) => setForm((f) => ({ ...f, assignedUserId: e.target.value }))}>
+                <option value="">Assign later</option>
+                {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </Select>
+            </FormField>
           </div>
-          <FormField label="Assign To (optional)">
-            <Select value={form.assignedUserId} onChange={(e) => setForm((f) => ({ ...f, assignedUserId: e.target.value }))}>
-              <option value="">Assign later</option>
-              {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </Select>
-          </FormField>
-          <div className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
-            {STOP_HINT[form.assignmentType]}{form.fieldUnitId ? " in the selected turf." : " across the full campaign."}
-          </div>
+
+          {/* Turf — secondary/optional */}
+          {turfs.length > 0 && (
+            <details className="group">
+              <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600 select-none list-none flex items-center gap-1">
+                <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                Turf override (advanced — optional)
+              </summary>
+              <div className="mt-2">
+                <FormField label="Turf">
+                  <Select value={form.fieldUnitId} onChange={(e) => setForm((f) => ({ ...f, fieldUnitId: e.target.value }))}>
+                    <option value="">No turf override</option>
+                    {turfs.map((t) => <option key={t.id} value={t.id}>{t.name}{t.ward ? ` — ${t.ward}` : ""}</option>)}
+                  </Select>
+                </FormField>
+                <p className="mt-1 text-xs text-gray-400">
+                  Turfs are drawn geographic boundaries. The system will still track stops by poll even when a turf is used.
+                </p>
+              </div>
+            </details>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={creating}>

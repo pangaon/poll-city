@@ -8,7 +8,9 @@ export const createFieldAssignmentSchema = z.object({
   assignmentType: z.nativeEnum(AssignmentType),
   name: z.string().min(1, "Name is required").max(200),
   description: z.string().max(1000).optional(),
-  fieldUnitId: z.string().optional(),        // Turf id — drives auto-query when no targetIds
+  fieldUnitId: z.string().optional(),        // Turf id — secondary geography override (optional)
+  targetWard: z.string().optional(),         // Primary targeting: ward name
+  targetPolls: z.array(z.string()).optional(), // Specific poll numbers within the ward; empty = whole ward
   scheduledDate: z.string().datetime({ offset: true }).optional(),
   notes: z.string().max(2000).optional(),
   /**

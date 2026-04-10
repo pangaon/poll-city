@@ -4134,7 +4134,9 @@ model FieldAssignment {
   name               String
   description        String?
   status             AssignmentStatus @default(draft)
-  fieldUnitId        String?          // FK to Turf (geography this assignment covers)
+  fieldUnitId        String?          // FK to Turf (geography — optional override)
+  targetWard         String?          // Primary targeting: ward name
+  targetPolls        String[]         @default([]) // Specific poll numbers within the ward; empty = whole ward
   assignedUserId     String?
   assignedVolunteerId String?
   assignedGroupId    String?

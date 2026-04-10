@@ -95,6 +95,8 @@ export async function POST(req: NextRequest) {
     name,
     description,
     fieldUnitId,
+    targetWard,
+    targetPolls,
     scheduledDate,
     notes,
     targetIds,
@@ -116,9 +118,9 @@ export async function POST(req: NextRequest) {
   let resolvedTargetIds: string[] = targetIds ?? [];
 
   if (resolvedTargetIds.length === 0) {
-    // Auto-query from the campaign (optionally scoped to the turf's ward)
+    // Resolve turf ward as fallback when no explicit targetWard/targetPolls given
     let turfWard: string | null = null;
-    if (fieldUnitId) {
+    if (fieldUnitId && !targetWard) {
       const turf = await prisma.turf.findUnique({
         where: { id: fieldUnitId },
         select: { ward: true, campaignId: true },
@@ -132,13 +134,18 @@ export async function POST(req: NextRequest) {
       turfWard = turf.ward ?? null;
     }
 
+    // Poll targeting: targetWard > turfWard > whole campaign
+    const effectiveWard = targetWard ?? turfWard;
+    const hasPolls = (targetPolls?.length ?? 0) > 0;
+
     switch (assignmentType) {
       case AssignmentType.canvass: {
         const contacts = await prisma.contact.findMany({
           where: {
             campaignId,
             deletedAt: null,
-            ...(turfWard ? { ward: turfWard } : {}),
+            ...(effectiveWard ? { ward: effectiveWard } : {}),
+            ...(hasPolls ? { municipalPoll: { in: targetPolls } } : {}),
           },
           select: { id: true },
           take: 500,
@@ -151,7 +158,7 @@ export async function POST(req: NextRequest) {
         const households = await prisma.household.findMany({
           where: {
             campaignId,
-            ...(turfWard ? { ward: turfWard } : {}),
+            ...(effectiveWard ? { ward: effectiveWard } : {}),
           },
           select: { id: true },
           take: 500,
@@ -205,6 +212,8 @@ export async function POST(req: NextRequest) {
         name,
         description,
         fieldUnitId,
+        targetWard,
+        targetPolls: targetPolls ?? [],
         scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
         notes,
         status: initialStatus,
