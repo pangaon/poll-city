@@ -161,7 +161,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print Packs (API + UI) | DONE | /api/print/packs, /print/packs |
 | Print Inventory (API + UI) | DONE | /api/print/inventory, /print/inventory |
 | Print → Finance auto-post on order | DONE — 730833e | post-print-expense.ts |
-| Print Design Engine Phase 2 | CLAIMED 2026-04-10 | Canvas editor, template thumbnails, asset upload |
+| Print Design Engine Phase 2 | DONE | Canvas editor, template thumbnails, asset upload — see commit |
 | Print order → CalendarItem wiring | PENDING | GAP-008 |
 
 ---

@@ -2,7 +2,12 @@ import {
   PrismaClient, Role, SupportLevel, ElectionType, InteractionType,
   TaskStatus, TaskPriority, GovernmentLevel, PollType, PollVisibility,
   SignStatus, SupportSignalType, DonationStatus, EventStatus, EventVisibility,
-  AssignmentType, AssignmentStatus, StopStatus, EventRsvpStatus, Prisma
+  AssignmentType, AssignmentStatus, StopStatus, EventRsvpStatus, Prisma,
+  FinanceBudgetStatus, FinanceBudgetLineCategory, FinanceVendorType,
+  FinanceExpenseStatus, FinancePaymentStatus, FinancePaymentMethod,
+  FinanceSourceType, FinancePurchaseRequestStatus, FinancePurchaseOrderStatus,
+  FinanceVendorBillStatus, FinanceReimbursementStatus, FinanceBudgetTransferStatus,
+  FinanceUrgency,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
@@ -1076,6 +1081,69 @@ async function main() {
   });
 
   console.log("✅ Demo Campaign 2026 created, admin active campaign set\n");
+
+  // ─── PRINT TEMPLATES ────────────────────────────────────────────────────────
+  const printTemplates = [
+    {
+      slug: "lawn-sign-modern",
+      name: "Lawn Sign — Modern",
+      category: "lawn-sign",
+      width: 18,
+      height: 24,
+      bleed: 0.125,
+      sortOrder: 1,
+      htmlTemplate: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden}body{background:{{PRIMARY_COLOR}};font-family:{{FONT_CSS}};display:flex;flex-direction:column}.top-bar{height:3.5vh;background:{{SECONDARY_COLOR}}}.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4vw 6vw;text-align:center;position:relative}.logo-wrap{position:absolute;top:4vh;left:4vw}.logo-wrap img{max-height:12vh;max-width:22%;width:auto}.candidate{font-size:clamp(3rem,13vw,14rem);font-weight:900;color:#fff;line-height:.88;letter-spacing:-.02em;text-transform:uppercase;text-shadow:0 4px 32px rgba(0,0,0,.3)}.tagline{font-size:clamp(.9rem,3.2vw,3.5rem);color:rgba(255,255,255,.88);margin-top:3vh;font-weight:400;letter-spacing:.06em;text-transform:uppercase}.bottom-bar{height:10vh;background:{{SECONDARY_COLOR}};display:flex;align-items:center;justify-content:space-between;padding:0 5vw}.campaign-name{font-size:clamp(.75rem,2.2vw,2.2rem);font-weight:700;color:{{PRIMARY_COLOR}};text-transform:uppercase;letter-spacing:.05em}.website{font-size:clamp(.65rem,1.8vw,1.8rem);color:{{PRIMARY_COLOR}};font-weight:600;opacity:.85}</style></head><body><div class="top-bar"></div><div class="main"><div class="logo-wrap">{{LOGO_HTML}}</div><div class="candidate">{{CANDIDATE_NAME}}</div><div class="tagline">{{TAGLINE}}</div></div><div class="bottom-bar"><div class="campaign-name">{{CAMPAIGN_NAME}}</div><div class="website">{{WEBSITE}}</div></div></body></html>`,
+    },
+    {
+      slug: "door-hanger-classic",
+      name: "Door Hanger — Classic",
+      category: "door-hanger",
+      width: 4.25,
+      height: 11,
+      bleed: 0.125,
+      sortOrder: 2,
+      htmlTemplate: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden}body{background:#fff;font-family:{{FONT_CSS}};display:flex;flex-direction:column}.header{background:{{PRIMARY_COLOR}};padding:6vh 5vw 4vh;display:flex;flex-direction:column;align-items:center;text-align:center}.logo-wrap{margin-bottom:2vh}.logo-wrap img{max-height:10vh;max-width:60%;width:auto}.candidate{font-size:clamp(2rem,8vw,5rem);font-weight:900;color:#fff;line-height:.92;text-transform:uppercase;letter-spacing:-.02em}.tagline{font-size:clamp(.75rem,2.8vw,1.8rem);color:rgba(255,255,255,.85);margin-top:1.5vh;font-weight:400;letter-spacing:.04em}.accent-bar{height:1.2vh;background:{{SECONDARY_COLOR}}}.body{flex:1;padding:5vw;display:flex;flex-direction:column;justify-content:center;gap:3vh}.body-text{font-size:clamp(.75rem,2.5vw,1.4rem);color:#334155;line-height:1.6;text-align:center}.contact-row{display:flex;flex-direction:column;gap:1.2vh;align-items:center}.contact-item{font-size:clamp(.65rem,2vw,1.1rem);color:#475569;font-weight:600}.footer{background:{{PRIMARY_COLOR}};padding:2.5vh 5vw;text-align:center}.footer-text{font-size:clamp(.6rem,1.8vw,1rem);color:rgba(255,255,255,.9);font-weight:700;text-transform:uppercase;letter-spacing:.08em}</style></head><body><div class="header"><div class="logo-wrap">{{LOGO_HTML}}</div><div class="candidate">{{CANDIDATE_NAME}}</div><div class="tagline">{{TAGLINE}}</div></div><div class="accent-bar"></div><div class="body"><div class="body-text">A strong voice for our community. Experienced, dedicated, and ready to serve.</div><div class="contact-row"><div class="contact-item">📞 {{PHONE}}</div><div class="contact-item">🌐 {{WEBSITE}}</div></div></div><div class="footer"><div class="footer-text">{{CAMPAIGN_NAME}} · Authorised by the official agent</div></div></body></html>`,
+    },
+    {
+      slug: "flyer-intro",
+      name: "Flyer — Introduction",
+      category: "flyer",
+      width: 8.5,
+      height: 11,
+      bleed: 0.125,
+      sortOrder: 3,
+      htmlTemplate: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden}body{background:#fff;font-family:{{FONT_CSS}};display:flex;flex-direction:column}.banner{background:linear-gradient(135deg,{{PRIMARY_COLOR}} 0%,{{SECONDARY_COLOR}} 100%);padding:5vh 5vw 4vh;position:relative}.logo-wrap{margin-bottom:2vh}.logo-wrap img{max-height:9vh;max-width:30%;width:auto}.candidate{font-size:clamp(2.5rem,7vw,6rem);font-weight:900;color:#fff;line-height:.9;text-transform:uppercase;letter-spacing:-.02em}.tagline{font-size:clamp(.9rem,2.5vw,2rem);color:rgba(255,255,255,.9);margin-top:1.5vh;font-weight:400}.content{flex:1;padding:4vh 5vw;display:flex;flex-direction:column;gap:3vh}.section-title{font-size:clamp(.85rem,2.2vw,1.5rem);font-weight:800;color:{{PRIMARY_COLOR}};text-transform:uppercase;letter-spacing:.06em;border-bottom:3px solid {{SECONDARY_COLOR}};padding-bottom:.8vh}.body-text{font-size:clamp(.75rem,2vw,1.2rem);color:#374151;line-height:1.7}.priorities{list-style:none;display:flex;flex-direction:column;gap:1.2vh}.priority-item{display:flex;align-items:flex-start;gap:1.5vw;font-size:clamp(.7rem,1.8vw,1.1rem);color:#374151}.priority-dot{width:1.2vw;height:1.2vw;min-width:8px;min-height:8px;border-radius:50%;background:{{SECONDARY_COLOR}};margin-top:.4em;flex-shrink:0}.footer{background:{{PRIMARY_COLOR}};padding:2.5vh 5vw;display:flex;justify-content:space-between;align-items:center}.footer-name{font-size:clamp(.7rem,2vw,1.2rem);font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.04em}.footer-contact{font-size:clamp(.6rem,1.6vw,1rem);color:rgba(255,255,255,.85);text-align:right}</style></head><body><div class="banner"><div class="logo-wrap">{{LOGO_HTML}}</div><div class="candidate">{{CANDIDATE_NAME}}</div><div class="tagline">{{TAGLINE}}</div></div><div class="content"><div><div class="section-title">Why I'm Running</div><div class="body-text">Our community deserves strong, accountable leadership. I'm committed to listening to residents and delivering real results for {{CAMPAIGN_NAME}}.</div></div><div><div class="section-title">My Priorities</div><ul class="priorities"><li class="priority-item"><div class="priority-dot"></div><span>Safer streets and well-maintained infrastructure</span></li><li class="priority-item"><div class="priority-dot"></div><span>Support for local businesses and job creation</span></li><li class="priority-item"><div class="priority-dot"></div><span>Transparent, responsive city hall</span></li></ul></div></div><div class="footer"><div class="footer-name">{{CANDIDATE_NAME}}</div><div class="footer-contact"><div>{{PHONE}}</div><div>{{WEBSITE}}</div></div></div></body></html>`,
+    },
+    {
+      slug: "palm-card-clean",
+      name: "Palm Card — Clean",
+      category: "palm-card",
+      width: 4,
+      height: 9,
+      bleed: 0.125,
+      sortOrder: 4,
+      htmlTemplate: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden}body{background:#fff;font-family:{{FONT_CSS}};display:flex;flex-direction:column}.top{background:{{PRIMARY_COLOR}};padding:5vh 5vw 3vh;display:flex;flex-direction:column;align-items:center;text-align:center}.logo-wrap{margin-bottom:1.5vh}.logo-wrap img{max-height:10vh;max-width:55%;width:auto}.name{font-size:clamp(2rem,9vw,5rem);font-weight:900;color:#fff;line-height:.88;text-transform:uppercase;letter-spacing:-.02em}.position{font-size:clamp(.7rem,2.5vw,1.4rem);color:rgba(255,255,255,.85);margin-top:1.2vh;font-weight:600;text-transform:uppercase;letter-spacing:.08em}.stripe{height:1.5vh;background:{{SECONDARY_COLOR}}}.middle{flex:1;padding:4vw 5vw;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2vh;text-align:center}.tagline{font-size:clamp(.85rem,3vw,1.8rem);font-weight:700;color:{{PRIMARY_COLOR}};line-height:1.3}.body-copy{font-size:clamp(.65rem,2.2vw,1.1rem);color:#64748b;line-height:1.6}.footer{background:{{PRIMARY_COLOR}};padding:2.5vh 5vw;display:flex;flex-direction:column;gap:1vh;align-items:center}.contact{font-size:clamp(.6rem,2vw,1rem);color:rgba(255,255,255,.9);font-weight:600}.auth{font-size:clamp(.5rem,1.4vw,.75rem);color:rgba(255,255,255,.6);text-align:center;margin-top:1vh}</style></head><body><div class="top"><div class="logo-wrap">{{LOGO_HTML}}</div><div class="name">{{CANDIDATE_NAME}}</div><div class="position">{{CAMPAIGN_NAME}}</div></div><div class="stripe"></div><div class="middle"><div class="tagline">{{TAGLINE}}</div><div class="body-copy">Dedicated to building a stronger, safer community for all residents.</div></div><div class="footer"><div class="contact">{{PHONE}}</div><div class="contact">{{WEBSITE}}</div><div class="auth">Authorised by the official agent of {{CAMPAIGN_NAME}}</div></div></body></html>`,
+    },
+    {
+      slug: "postcard-gotv",
+      name: "Postcard — GOTV",
+      category: "postcard",
+      width: 6,
+      height: 9,
+      bleed: 0.125,
+      sortOrder: 5,
+      htmlTemplate: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden}body{background:{{PRIMARY_COLOR}};font-family:{{FONT_CSS}};display:flex;flex-direction:column;position:relative}.bg-accent{position:absolute;bottom:0;right:0;width:40%;height:100%;background:{{SECONDARY_COLOR}};clip-path:polygon(30% 0%,100% 0%,100% 100%,0% 100%);opacity:.15}.content{position:relative;z-index:1;flex:1;padding:5vh 6vw;display:flex;flex-direction:column;justify-content:space-between}.logo-wrap img{max-height:9vh;max-width:40%;width:auto;filter:brightness(0) invert(1)}.headline{font-size:clamp(2.5rem,8vw,7rem);font-weight:900;color:#fff;line-height:.88;text-transform:uppercase;letter-spacing:-.03em;text-shadow:0 2px 16px rgba(0,0,0,.25)}.sub{font-size:clamp(.8rem,2.5vw,2rem);color:rgba(255,255,255,.85);margin-top:2vh;font-weight:400}.election-box{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.4);border-radius:1vw;padding:2.5vh 4vw;display:flex;flex-direction:column;gap:1.2vh}.election-label{font-size:clamp(.65rem,1.8vw,1.2rem);color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.08em;font-weight:700}.election-date{font-size:clamp(1.2rem,4vw,3.5rem);font-weight:900;color:#fff;line-height:1}.footer{display:flex;justify-content:space-between;align-items:flex-end}.name{font-size:clamp(.8rem,2.5vw,2rem);font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.04em}.contact{font-size:clamp(.6rem,1.8vw,1.2rem);color:rgba(255,255,255,.8);text-align:right;line-height:1.6}</style></head><body><div class="bg-accent"></div><div class="content"><div class="logo-wrap">{{LOGO_HTML}}</div><div><div class="headline">Vote {{CANDIDATE_NAME}}</div><div class="sub">{{TAGLINE}}</div></div><div class="election-box"><div class="election-label">Election Day</div><div class="election-date">October 26, 2026</div></div><div class="footer"><div class="name">{{CAMPAIGN_NAME}}</div><div class="contact"><div>{{PHONE}}</div><div>{{WEBSITE}}</div></div></div></div></body></html>`,
+    },
+  ];
+
+  for (const t of printTemplates) {
+    await prisma.printTemplate.upsert({
+      where: { slug: t.slug },
+      update: { name: t.name, htmlTemplate: t.htmlTemplate, sortOrder: t.sortOrder },
+      create: t,
+    });
+  }
+  console.log(`✅ ${printTemplates.length} print templates seeded\n`);
 
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
