@@ -162,6 +162,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print Inventory (API + UI) | DONE | /api/print/inventory, /print/inventory |
 | Print → Finance auto-post on order | DONE — 730833e | post-print-expense.ts |
 | Print Design Engine Phase 2 | DONE | Canvas editor, template thumbnails, asset upload — see commit |
+| **Print Enterprise Rebuild** | CLAIMED 2026-04-10 | 15 responsive templates, Command Centre, Design→Job bridge. DO NOT TOUCH /print/** or prisma/seeds/print-templates.ts |
 | Print order → CalendarItem wiring | PENDING | GAP-008 |
 
 ---
