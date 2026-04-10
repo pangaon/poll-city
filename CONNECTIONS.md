@@ -61,7 +61,7 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | Contact.supportLevel updated | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| GOTV priority list recalculates | ✗ NOT CONNECTED | stale until manual refresh |
+| GOTV priority list recalculates | ✓ CONNECTED | score computed dynamically from contact.supportLevel on each /api/gotv/tiers fetch (force-dynamic, no cache) |
 | Funnel stage advances | ✗ NOT CONNECTED | no automatic advance on support change |
 | Canvasser notified of change | ✗ NOT CONNECTED | |
 
@@ -91,7 +91,7 @@ Every major user action. Every downstream effect. Honest status.
 | Funnel advances (supporter/volunteer) | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
 | TurfStop.visited marked | ✓ CONNECTED | wired 2026-04-08 — updateMany by contactId, non-fatal |
-| GOTV priority recalculates | ✗ NOT CONNECTED | |
+| GOTV priority recalculates | ✓ CONNECTED | score computed dynamically from contact.supportLevel on each /api/gotv/tiers fetch |
 | Auto-create volunteer profile if interested | ✗ NOT CONNECTED | manual step required |
 
 ### Walk List Created
@@ -434,7 +434,7 @@ Every major user action. Every downstream effect. Honest status.
 | ActivityLog entry (stop update) | ✓ CONNECTED | wired 2026-04-10 |
 | ActivityLog entry (assignment auto-complete) | ✓ CONNECTED | wired 2026-04-10 |
 | Blocked on cancelled/completed assignment | ✓ CONNECTED | wired 2026-04-10 — 409 returned |
-| GOTV priority recalculates on canvass stop | ✗ NOT CONNECTED | not yet wired |
+| GOTV priority recalculates on canvass stop | ✓ CONNECTED | contact.supportLevel updated on completion → computeGotvScore() reads it live on next /api/gotv/tiers fetch |
 | Auto-create volunteer profile if interested | ✗ NOT CONNECTED | manual step required |
 
 ---

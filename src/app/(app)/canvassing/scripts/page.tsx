@@ -1,9 +1,5 @@
-import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
-import ScriptsClient from "./scripts-client";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Canvassing Scripts" };
-
-export default async function ScriptsPage() {
-  const { campaignId } = await resolveActiveCampaign();
-  return <ScriptsClient campaignId={campaignId} />;
+export default function ScriptsPage() {
+  redirect("/field-ops/scripts");
 }

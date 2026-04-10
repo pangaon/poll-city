@@ -108,7 +108,7 @@ const CANVASSER_SECTIONS: NavSection[] = [
     label: "Canvasser",
     icon: Map,
     items: [
-      { href: "/canvassing/walk", icon: Map, label: "My Turf" },
+      { href: "/field-ops/walk", icon: Map, label: "My Turf" },
       { href: "/tasks", icon: CheckCircle2, label: "My Tasks" },
       { href: "/ai-assist", icon: Bot, label: "Ask Adoni" },
     ],
