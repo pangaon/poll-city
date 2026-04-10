@@ -6,6 +6,22 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 ---
 
+## MANDATORY SESSION START — DO THIS BEFORE ANYTHING ELSE
+
+**Every session. No exceptions. Takes 30 seconds.**
+
+1. `git pull origin main` — sync with what other sessions have already shipped
+2. Read `WORK_QUEUE.md` — the session coordination file. It tells you what is done, what is claimed, and what is pending.
+3. Before starting any task: check it is `PENDING` in WORK_QUEUE.md. If it says `CLAIMED` or `DONE`, do not touch it.
+4. Claim your task: edit WORK_QUEUE.md, change `PENDING` → `CLAIMED [today's date]`, commit + push immediately.
+5. Only then begin building.
+
+**Why:** George runs multiple sessions. Without this, two sessions build the same thing, or one session overwrites another's work. The claim commit is the lock.
+
+**If WORK_QUEUE.md and the code disagree:** trust the code (read the files), update WORK_QUEUE.md to reflect reality.
+
+---
+
 ## WHO WE ARE
 
 Poll City is a full-stack political campaign platform serving Canadian candidates,
