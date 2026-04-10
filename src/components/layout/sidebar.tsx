@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, FileText, Mail, MessageSquare,
-  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2
+  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2, ClipboardList,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -37,6 +37,7 @@ const FIELD_OPS_SECTION: NavSection = {
   label: "Field Operations",
   icon: Map,
   items: [
+    { href: "/field-ops", icon: ClipboardList, label: "Assignments" },
     { href: "/canvassing", icon: Map, label: "Canvassing" },
     { href: "/canvassing/print-walk-list", icon: Printer, label: "Print Walk List" },
     { href: "/gotv", icon: Target, label: "GOTV" },
