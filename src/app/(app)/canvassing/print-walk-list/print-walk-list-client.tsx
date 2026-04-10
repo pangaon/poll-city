@@ -205,13 +205,15 @@ export default function PrintWalkListClient({ campaignId, campaignName, mode = "
 
   const selectedAssignment = assignments.find((a) => a.id === selectedAssignmentId);
 
-  // Build the URL for the print preview new tab
+  // Build the URL for the print preview new tab.
+  // Goes to /print/walk-list — outside (app) layout, no sidebar/topbar.
+  // window.print() on that page captures ONLY the document.
   function buildPrintUrl() {
     const p = new URLSearchParams({ campaignId, standalone: "1" });
     if (selectedAssignmentId) p.set("assignmentId", selectedAssignmentId);
     if (wardFilter) p.set("ward", wardFilter);
     if (supportFilter) p.set("support", supportFilter);
-    return `/field-ops/print?${p.toString()}`;
+    return `/print/walk-list?${p.toString()}`;
   }
 
   // ── Panel mode UI ─────────────────────────────────────────────────────────────

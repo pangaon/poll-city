@@ -524,7 +524,7 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
         {[
           { label: "All Ops",       value: tabCounts.all ?? "—",       icon: <ClipboardList className="h-5 w-5 text-[#0A2342]" />, sub: "total" },
           { label: "Canvass",       value: tabCounts.canvass ?? "—",   icon: <DoorOpen className="h-5 w-5 text-blue-500" />,      sub: "assignments" },
-          { label: "Sign Ops",      value: signCount || "—",           icon: <SignpostBig className="h-5 w-5 text-green-500" />,   sub: `${briefing?.totalSigns ?? "—"} signs total` },
+          { label: "Sign Ops",      value: signCount ?? "—",           icon: <SignpostBig className="h-5 w-5 text-green-500" />,   sub: `${briefing?.totalSigns ?? "—"} signs total` },
           { label: "Doors / Week",  value: briefing?.doorsThisWeek ?? "—", icon: <Activity className="h-5 w-5 text-amber-500" />, sub: `${briefing?.activeVolunteers ?? "—"} active vols` },
         ].map((stat) => (
           <Card key={stat.label} className="border-0 shadow-sm">
@@ -640,6 +640,7 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
                     campaignId={campaignId}
                     currentUserId={currentUserId}
                     teamMembers={teamMembers}
+                    embedded
                   />
                 </Suspense>
               </div>
@@ -670,7 +671,24 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
 
         {/* Signs — full command: crew deployments + inventory */}
         {contextTab === "signs" && (
-          <motion.div key="signs" {...SLIDE} className="space-y-6">
+          <motion.div key="signs" {...SLIDE} className="space-y-4">
+
+            {/* Control bar — matches Canvass/Lit Drop pattern */}
+            <div className="flex items-center justify-between rounded-xl border bg-gray-50 px-3 py-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/field-ops/print?campaignId=${campaignId}&mode=signs&standalone=1`, "_blank")}
+                >
+                  <Printer className="h-4 w-4" /><span className="ml-1.5">Print Sign Sheet</span>
+                </Button>
+              </div>
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="mr-1.5 h-4 w-4" />Deploy Sign Crew
+              </Button>
+            </div>
+
             {/* Sign deployment summary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
@@ -697,7 +715,41 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
 
         {/* Lit Drop */}
         {contextTab === "lit-drop" && (
-          <motion.div key="lit-drop" {...SLIDE}>
+          <motion.div key="lit-drop" {...SLIDE} className="space-y-3">
+
+            {/* Control bar — matches Canvass pattern */}
+            <div className="flex items-center justify-between rounded-xl border bg-gray-50 px-3 py-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/field-ops/print?campaignId=${campaignId}&mode=lit-drop&standalone=1`, "_blank")}
+                >
+                  <Printer className="h-4 w-4" /><span className="ml-1.5">Print Run Sheet</span>
+                </Button>
+              </div>
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="mr-1.5 h-4 w-4" />Deploy Lit Drop
+              </Button>
+            </div>
+
+            {/* Stats strip — mirrors Signs tab pattern */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Active Runs",   value: tabCounts.lit_drop ?? "—",              color: "text-purple-600" },
+                { label: "In Progress",   value: assignments.filter((a) => a.status === "in_progress").length || "—", color: "text-amber-600" },
+                { label: "Completed",     value: assignments.filter((a) => a.status === "completed").length || "—",   color: "text-green-600" },
+                { label: "Active Vols",   value: briefing?.activeVolunteers ?? "—",       color: "text-blue-600" },
+              ].map((s) => (
+                <Card key={s.label} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
             <AssignmentTable showType={false} />
           </motion.div>
         )}

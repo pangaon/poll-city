@@ -115,6 +115,8 @@ interface Props {
   campaignId: string;
   currentUserId: string;
   teamMembers: { id: string; name: string | null; email: string | null; role?: string }[];
+  /** When true, suppresses the built-in control bar (Field Ops hub provides its own) */
+  embedded?: boolean;
 }
 
 /* ─── Shimmer ───────────────────────────────────────────────────────────────── */
@@ -693,7 +695,7 @@ function LiveLegend({ turfs }: { turfs: TurfSummary[] }) {
 /* ═══════════════════════════════════════════════════════════════════════════════
    Main Component
    ═══════════════════════════════════════════════════════════════════════════════ */
-export default function CanvassingClient({ campaignId, currentUserId, teamMembers }: Props) {
+export default function CanvassingClient({ campaignId, currentUserId, teamMembers, embedded = false }: Props) {
   const [turfs, setTurfs] = useState<TurfSummary[]>([]);
   const [lists, setLists] = useState<CanvassList[]>([]);
   const [canvassers, setCanvassers] = useState<CanvasserLocation[]>([]);
@@ -975,11 +977,16 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
     <>
       {/* ── Command Surface Container ── */}
       <div
-        className="-mx-3 -mt-3 sm:-mx-4 sm:-mt-4 md:-mx-6 md:-mt-6 flex flex-col overflow-hidden bg-gray-50"
-        style={{ height: "calc(100dvh - 116px)" }}
+        className={cn(
+          "flex flex-col overflow-hidden bg-gray-50",
+          embedded
+            ? "w-full h-full"
+            : "-mx-3 -mt-3 sm:-mx-4 sm:-mt-4 md:-mx-6 md:-mt-6",
+        )}
+        style={embedded ? undefined : { height: "calc(100dvh - 116px)" }}
       >
-        {/* ── Zone 1: Control Bar ── */}
-        <div className="h-14 flex-shrink-0 border-b border-gray-200 bg-white flex items-center px-4 gap-3 shadow-sm">
+        {/* ── Zone 1: Control Bar — hidden when embedded (Field Ops hub provides its own) ── */}
+        <div className={cn("h-14 flex-shrink-0 border-b border-gray-200 bg-white flex items-center px-4 gap-3 shadow-sm", embedded && "hidden")}>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-gray-900 whitespace-nowrap hidden sm:block">Field Operations</h1>
             {canvassers.length > 0 && (
