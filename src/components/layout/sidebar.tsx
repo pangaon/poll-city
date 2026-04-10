@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Shield, Users, Map, Upload,
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, FileText, Mail, MessageSquare,
-  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2, ClipboardList,
+  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2, ClipboardList, TrendingUp,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -52,6 +52,7 @@ const FINANCE_SECTION: NavSection = {
   icon: DollarSign,
   items: [
     { href: "/finance", icon: DollarSign, label: "Finance Command" },
+    { href: "/fundraising", icon: TrendingUp, label: "Fundraising" },
     { href: "/donations", icon: DollarSign, label: "Donations" },
     { href: "/budget", icon: DollarSign, label: "Legacy Budget" },
     { href: "/billing", icon: CreditCard, label: "Billing" },
