@@ -80,6 +80,7 @@ function formatDate(iso: string | null): string {
 interface TeamClientProps {
   campaignId: string;
   currentUserRole: string;
+  globalUserRole: string;
   initialMembers: Member[];
 }
 
@@ -92,7 +93,7 @@ interface AuditEntry {
   createdAt: string;
 }
 
-export default function TeamClient({ campaignId, currentUserRole, initialMembers }: TeamClientProps) {
+export default function TeamClient({ campaignId, currentUserRole, globalUserRole, initialMembers }: TeamClientProps) {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -110,8 +111,8 @@ export default function TeamClient({ campaignId, currentUserRole, initialMembers
   const [joinLink, setJoinLink] = useState("");
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
 
-  const canManageTeam = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN";
-  const canManagePermissions = currentUserRole === "SUPER_ADMIN";
+  const canManageTeam = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN" || globalUserRole === "SUPER_ADMIN";
+  const canManagePermissions = currentUserRole === "SUPER_ADMIN" || globalUserRole === "SUPER_ADMIN";
 
   const tabs = useMemo(
     () => [

@@ -1580,7 +1580,7 @@ async function main() {
       amount: 2500, taxAmount: 325, currency: "CAD",
       expenseDate: new Date("2026-06-01"),
       description: "Facebook & Instagram ad campaign — June–July 2026 (PO-2026-003)",
-      paymentMethod: FinancePaymentMethod.invoice, paymentStatus: FinancePaymentStatus.pending,
+      paymentMethod: FinancePaymentMethod.invoice, paymentStatus: FinancePaymentStatus.unpaid,
       expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.purchase_order,
       externalReference: "PO-2026-003", enteredByUserId: comms.id, approvedByUserId: manager.id,
     },

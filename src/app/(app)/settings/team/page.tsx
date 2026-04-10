@@ -1,9 +1,13 @@
 import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import TeamClient from "./team-client";
 
 export default async function TeamPage() {
   const { campaignId, role: currentUserRole, userId } = await resolveActiveCampaign();
+  const session = await getServerSession(authOptions);
+  const globalUserRole = (session?.user as { role?: string } | null)?.role ?? "";
 
   const members = await prisma.membership.findMany({
     where: { campaignId },
@@ -26,6 +30,7 @@ export default async function TeamPage() {
     <TeamClient
       campaignId={campaignId}
       currentUserRole={currentUserRole}
+      globalUserRole={globalUserRole}
       initialMembers={initialMembers}
     />
   );
