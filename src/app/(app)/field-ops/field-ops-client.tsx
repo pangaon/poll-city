@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +16,36 @@ import {
 } from "@/components/ui";
 import { toast } from "sonner";
 
+// ── Lazy sub-views ─────────────────────────────────────────────────────────────
+
+const CanvassingClient = dynamic(
+  () => import("@/app/(app)/canvassing/canvassing-client"),
+  { ssr: false, loading: () => <ViewLoader /> },
+);
+const WalkShell = dynamic(
+  () => import("@/app/(app)/canvassing/walk/walk-shell"),
+  { ssr: false, loading: () => <ViewLoader /> },
+);
+const ScriptsClient = dynamic(
+  () => import("@/app/(app)/canvassing/scripts/scripts-client"),
+  { ssr: false, loading: () => <ViewLoader /> },
+);
+const PrintWalkListClient = dynamic(
+  () => import("@/app/(app)/canvassing/print-walk-list/print-walk-list-client"),
+  { ssr: false, loading: () => <ViewLoader /> },
+);
+
+function ViewLoader() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <Spinner className="h-6 w-6 text-gray-300" />
+    </div>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type ActiveView = "map" | "walk" | "scripts" | "print" | null;
 type AssignmentType = "canvass" | "lit_drop" | "sign_install" | "sign_remove";
 type AssignmentStatus =
   | "draft" | "published" | "assigned" | "in_progress"
@@ -37,6 +66,15 @@ interface AssignmentRow {
 
 interface Turf { id: string; name: string; ward: string | null }
 interface TeamMember { id: string; name: string; email: string | null }
+
+// ── View metadata ─────────────────────────────────────────────────────────────
+
+const VIEW_META: Record<NonNullable<ActiveView>, { label: string; icon: React.ReactNode }> = {
+  map:     { label: "Live Map",       icon: <Map className="h-4 w-4" /> },
+  walk:    { label: "Walk",           icon: <Navigation className="h-4 w-4" /> },
+  scripts: { label: "Scripts",        icon: <BookOpen className="h-4 w-4" /> },
+  print:   { label: "Print Walk List", icon: <Printer className="h-4 w-4" /> },
+};
 
 // ── Operation type tabs ───────────────────────────────────────────────────────
 
@@ -85,6 +123,13 @@ function Shimmer({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-gray-100 ${className ?? "h-4 w-full"}`} />;
 }
 
+const SLIDE = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  exit:    { opacity: 0, y: -8 },
+  transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+};
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -95,7 +140,9 @@ interface Props {
   teamMembers: TeamMember[];
 }
 
-export default function FieldOpsClient({ campaignId, campaignName: _campaignName, currentUserId: _currentUserId, turfs, teamMembers }: Props) {
+export default function FieldOpsClient({ campaignId, campaignName, currentUserId, turfs, teamMembers }: Props) {
+  const [activeView, setActiveView] = useState<ActiveView>(null);
+
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -227,217 +274,247 @@ export default function FieldOpsClient({ campaignId, campaignName: _campaignName
   const draft  = assignments.filter((a) => a.status === "draft").length;
   const done   = assignments.filter((a) => a.status === "completed").length;
 
+  // ── Sub-view tool strip (shown in both modes) ─────────────────────────────
+
+  const toolStrip = (
+    <div className="flex items-center gap-1 flex-wrap">
+      {(["map", "walk", "scripts", "print"] as const).map((v) => (
+        <Button
+          key={v}
+          variant={activeView === v ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveView(activeView === v ? null : v)}
+        >
+          {VIEW_META[v].icon}
+          <span className="ml-1.5">{VIEW_META[v].label}</span>
+        </Button>
+      ))}
+      {!activeView && (
+        <Button onClick={openCreate} size="sm" className="ml-1">
+          <Plus className="mr-1.5 h-4 w-4" /> Deploy Team
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-0 p-4 sm:p-6">
+    <div className="p-4 sm:p-6">
       <PageHeader
-        title="Field Operations"
-        description="Deploy your team — canvass, lit drops, sign installs and removals from one place."
-        actions={
-          <div className="flex items-center gap-2">
-            {/* Sub-view quick links */}
-            <Link href="/field-ops/map">
-              <Button variant="outline" size="sm" title="Live Map"><Map className="h-4 w-4 mr-1.5" />Live Map</Button>
-            </Link>
-            <Link href="/field-ops/walk">
-              <Button variant="outline" size="sm" title="Walk"><Navigation className="h-4 w-4 mr-1.5" />Walk</Button>
-            </Link>
-            <Link href="/field-ops/scripts">
-              <Button variant="outline" size="sm" title="Scripts"><BookOpen className="h-4 w-4 mr-1.5" />Scripts</Button>
-            </Link>
-            <Link href="/field-ops/print">
-              <Button variant="outline" size="sm" title="Print Walk List"><Printer className="h-4 w-4 mr-1.5" />Print</Button>
-            </Link>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Deploy Team
-            </Button>
-          </div>
-        }
+        title={activeView ? VIEW_META[activeView].label : "Field Operations"}
+        description={activeView ? undefined : "Deploy your team — canvass, lit drops, sign installs and removals from one place."}
+        actions={toolStrip}
       />
 
-      {/* ── Operation type tabs ──────────────────────────────────────────────── */}
-      <div className="mt-4 border-b border-gray-200">
-        <nav className="flex gap-1 overflow-x-auto">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.key;
-            const count = tabCounts[tab.key];
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  isActive
-                    ? `${tab.activeColor} bg-transparent`
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <span className={isActive ? "" : tab.color}>{tab.icon}</span>
-                {tab.label}
-                {count !== undefined && (
-                  <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      <AnimatePresence mode="wait">
+        {/* ── Sub-view panel ─────────────────────────────────────────────────── */}
+        {activeView && (
+          <motion.div key={activeView} {...SLIDE} className="mt-4">
+            <Suspense fallback={<ViewLoader />}>
+              {activeView === "map" && (
+                <CanvassingClient
+                  campaignId={campaignId}
+                  currentUserId={currentUserId}
+                  teamMembers={teamMembers}
+                />
+              )}
+              {activeView === "walk" && <WalkShell campaignId={campaignId} />}
+              {activeView === "scripts" && <ScriptsClient campaignId={campaignId} />}
+              {activeView === "print" && (
+                <PrintWalkListClient campaignId={campaignId} campaignName={campaignName} />
+              )}
+            </Suspense>
+          </motion.div>
+        )}
 
-      {/* ── Stat strip ──────────────────────────────────────────────────────── */}
-      {!loading && assignments.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 py-4">
-          {[
-            { label: "Active", value: active, icon: <Activity className="h-4 w-4 text-amber-500" /> },
-            { label: "Draft",  value: draft,  icon: <Clock className="h-4 w-4 text-gray-400" /> },
-            { label: "Done",   value: done,   icon: <CheckCircle2 className="h-4 w-4 text-green-500" /> },
-          ].map((s) => (
-            <Card key={s.label}>
-              <CardContent className="flex items-center gap-3 p-3">
-                {s.icon}
-                <div>
-                  <div className="text-lg font-bold leading-none">{s.value}</div>
-                  <div className="text-xs text-gray-400">{s.label}</div>
-                </div>
+        {/* ── Dispatch table ─────────────────────────────────────────────────── */}
+        {!activeView && (
+          <motion.div key="dispatch" {...SLIDE} className="mt-0">
+            {/* Operation type tabs */}
+            <div className="mt-4 border-b border-gray-200">
+              <nav className="flex gap-1 overflow-x-auto">
+                {TABS.map((tab) => {
+                  const isActive = activeTab === tab.key;
+                  const count = tabCounts[tab.key];
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                        isActive
+                          ? `${tab.activeColor} bg-transparent`
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <span className={isActive ? "" : tab.color}>{tab.icon}</span>
+                      {tab.label}
+                      {count !== undefined && (
+                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-gray-100 text-gray-500">
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Stat strip */}
+            {!loading && assignments.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 py-4">
+                {[
+                  { label: "Active", value: active, icon: <Activity className="h-4 w-4 text-amber-500" /> },
+                  { label: "Draft",  value: draft,  icon: <Clock className="h-4 w-4 text-gray-400" /> },
+                  { label: "Done",   value: done,   icon: <CheckCircle2 className="h-4 w-4 text-green-500" /> },
+                ].map((s) => (
+                  <Card key={s.label}>
+                    <CardContent className="flex items-center gap-3 p-3">
+                      {s.icon}
+                      <div>
+                        <div className="text-lg font-bold leading-none">{s.value}</div>
+                        <div className="text-xs text-gray-400">{s.label}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Filter row */}
+            <div className="flex items-center gap-3 pb-3">
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40">
+                <option value="all">All Statuses</option>
+                {Object.entries(STATUS_META).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </Select>
+              <Button variant="ghost" size="sm" onClick={() => { load(); loadCounts(); }} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <span className="ml-auto text-sm text-gray-400">{total} total</span>
+            </div>
+
+            {/* Table */}
+            <Card>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="space-y-3 p-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="flex gap-4">
+                        <Shimmer className="h-5 w-1/3" /><Shimmer className="h-5 w-1/6" />
+                        <Shimmer className="h-5 w-1/6" /><Shimmer className="h-5 w-1/6" />
+                      </div>
+                    ))}
+                  </div>
+                ) : assignments.length === 0 ? (
+                  <EmptyState
+                    icon={<ClipboardList className="h-8 w-8" />}
+                    title={activeTab === "all" ? "No assignments yet" : `No ${TYPE_LABEL[activeTab as AssignmentType] ?? ""} assignments`}
+                    description="Deploy your team by creating a new assignment."
+                    action={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Deploy Team</Button>}
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
+                          <th className="px-4 py-3">Assignment</th>
+                          {activeTab === "all" && <th className="px-4 py-3">Type</th>}
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Stops</th>
+                          <th className="px-4 py-3">Scheduled</th>
+                          <th className="px-4 py-3">Assignee</th>
+                          <th className="px-4 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <AnimatePresence initial={false}>
+                        <tbody>
+                          {assignments.map((a) => (
+                            <motion.tr
+                              key={a.id}
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                              className="border-b last:border-0 hover:bg-gray-50"
+                            >
+                              <td className="px-4 py-3">
+                                <Link href={`/field-ops/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                                  {a.name}
+                                </Link>
+                                {a.fieldUnit && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                                    <MapPin className="h-3 w-3" />{a.fieldUnit.name}
+                                  </div>
+                                )}
+                              </td>
+                              {activeTab === "all" && (
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TYPE_BADGE[a.assignmentType]}`}>
+                                    {TYPE_LABEL[a.assignmentType]}
+                                  </span>
+                                </td>
+                              )}
+                              <td className="px-4 py-3">
+                                <Badge variant={STATUS_META[a.status].badge}>{STATUS_META[a.status].label}</Badge>
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">{a._count.stops}</td>
+                              <td className="px-4 py-3 text-gray-500">
+                                {a.scheduledDate ? new Date(a.scheduledDate).toLocaleDateString("en-CA") : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-gray-600">
+                                {a.assignedUser?.name ?? <span className="text-gray-400">Unassigned</span>}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1">
+                                  {a.status === "draft" && (
+                                    <Button size="sm" variant="ghost" onClick={() => handlePublish(a)} title="Publish">
+                                      <Send className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {["draft", "published"].includes(a.status) && (
+                                    <Button size="sm" variant="ghost" onClick={() => { setShowAssign(a); setAssignUserId(a.assignedUser?.id ?? ""); }} title="Assign">
+                                      <Users className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {a.assignmentType === "canvass" && (
+                                    <Button size="sm" variant="ghost" title="Print Walk List" onClick={() => setActiveView("print")}>
+                                      <Printer className="h-4 w-4 text-gray-400" />
+                                    </Button>
+                                  )}
+                                  {!["completed", "cancelled"].includes(a.status) && (
+                                    <Button size="sm" variant="ghost" onClick={() => handleCancel(a)} title="Cancel" className="text-red-400 hover:text-red-600">
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </AnimatePresence>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
 
-      {/* ── Filter row ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 pb-3">
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40">
-          <option value="all">All Statuses</option>
-          {Object.entries(STATUS_META).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </Select>
-        <Button variant="ghost" size="sm" onClick={() => { load(); loadCounts(); }} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-        </Button>
-        <span className="ml-auto text-sm text-gray-400">{total} total</span>
-      </div>
+            {pages > 1 && (
+              <div className="flex items-center justify-end gap-2 pt-2 text-sm text-gray-500">
+                <Button size="sm" variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span>{page} / {pages}</span>
+                <Button size="sm" variant="ghost" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* ── Table ───────────────────────────────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="space-y-3 p-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex gap-4">
-                  <Shimmer className="h-5 w-1/3" /><Shimmer className="h-5 w-1/6" />
-                  <Shimmer className="h-5 w-1/6" /><Shimmer className="h-5 w-1/6" />
-                </div>
-              ))}
-            </div>
-          ) : assignments.length === 0 ? (
-            <EmptyState
-              icon={<ClipboardList className="h-8 w-8" />}
-              title={activeTab === "all" ? "No assignments yet" : `No ${TYPE_LABEL[activeTab as AssignmentType] ?? ""} assignments`}
-              description="Deploy your team by creating a new assignment."
-              action={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Deploy Team</Button>}
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
-                    <th className="px-4 py-3">Assignment</th>
-                    {activeTab === "all" && <th className="px-4 py-3">Type</th>}
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Stops</th>
-                    <th className="px-4 py-3">Scheduled</th>
-                    <th className="px-4 py-3">Assignee</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <AnimatePresence initial={false}>
-                  <tbody>
-                    {assignments.map((a) => (
-                      <motion.tr
-                        key={a.id}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="border-b last:border-0 hover:bg-gray-50"
-                      >
-                        <td className="px-4 py-3">
-                          <Link href={`/field-ops/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600">
-                            {a.name}
-                          </Link>
-                          {a.fieldUnit && (
-                            <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-                              <MapPin className="h-3 w-3" />{a.fieldUnit.name}
-                            </div>
-                          )}
-                        </td>
-                        {activeTab === "all" && (
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TYPE_BADGE[a.assignmentType]}`}>
-                              {TYPE_LABEL[a.assignmentType]}
-                            </span>
-                          </td>
-                        )}
-                        <td className="px-4 py-3">
-                          <Badge variant={STATUS_META[a.status].badge}>{STATUS_META[a.status].label}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{a._count.stops}</td>
-                        <td className="px-4 py-3 text-gray-500">
-                          {a.scheduledDate ? new Date(a.scheduledDate).toLocaleDateString("en-CA") : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {a.assignedUser?.name ?? <span className="text-gray-400">Unassigned</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            {a.status === "draft" && (
-                              <Button size="sm" variant="ghost" onClick={() => handlePublish(a)} title="Publish">
-                                <Send className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {["draft", "published"].includes(a.status) && (
-                              <Button size="sm" variant="ghost" onClick={() => { setShowAssign(a); setAssignUserId(a.assignedUser?.id ?? ""); }} title="Assign">
-                                <Users className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {a.assignmentType === "canvass" && (
-                              <Link href={a.fieldUnit ? `/field-ops/print?canvassingTurfId=${a.fieldUnit.id}` : "/field-ops/print"}>
-                                <Button size="sm" variant="ghost" title="Print Walk List">
-                                  <Printer className="h-4 w-4 text-gray-400" />
-                                </Button>
-                              </Link>
-                            )}
-                            {!["completed", "cancelled"].includes(a.status) && (
-                              <Button size="sm" variant="ghost" onClick={() => handleCancel(a)} title="Cancel" className="text-red-400 hover:text-red-600">
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </AnimatePresence>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* ── Modals (always mounted, outside AnimatePresence) ──────────────────── */}
 
-      {pages > 1 && (
-        <div className="flex items-center justify-end gap-2 pt-2 text-sm text-gray-500">
-          <Button size="sm" variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span>{page} / {pages}</span>
-          <Button size="sm" variant="ghost" onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
-      {/* ── Create Modal ─────────────────────────────────────────────────────── */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Deploy Team" size="md">
         <div className="space-y-4">
           <FormField label="Operation Type" required>
@@ -489,7 +566,6 @@ export default function FieldOpsClient({ campaignId, campaignName: _campaignName
         </div>
       </Modal>
 
-      {/* ── Assign Modal ─────────────────────────────────────────────────────── */}
       <Modal open={!!showAssign} onClose={() => { setShowAssign(null); setAssignUserId(""); }} title={`Assign "${showAssign?.name}"`} size="sm">
         <div className="space-y-4">
           <FormField label="Assign To" required>
