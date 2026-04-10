@@ -40,7 +40,6 @@ const FIELD_OPS_SECTION: NavSection = {
     { href: "/field-ops", icon: ClipboardList, label: "Field Ops" },
     { href: "/gotv", icon: Target, label: "GOTV" },
     { href: "/election-night", icon: Gauge, label: "Election Night" },
-    { href: "/signs", icon: Map, label: "Signs" },
     { href: "/events", icon: CalendarDays, label: "Events" },
     { href: "/polls", icon: BarChart3, label: "Polls" },
     { href: "/lookup", icon: Search, label: "Voter Lookup" },
