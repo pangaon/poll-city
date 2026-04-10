@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, AlertTriangle,
   MapPin, Phone, Users, Send, Play, Ban, SkipForward,
-  Home, SignpostBig, BookOpen, DoorOpen, ChevronDown, ChevronUp,
+  Home, SignpostBig, BookOpen, DoorOpen, ChevronDown, ChevronUp, Printer,
 } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Modal, FormField, Select, Textarea, Spinner } from "@/components/ui";
 import { toast } from "sonner";
@@ -158,6 +158,14 @@ export default function AssignmentDetailClient({ assignment: initial, teamMember
   const canComplete = assignment.status === "in_progress";
   const canCancel   = !["completed", "cancelled"].includes(assignment.status);
 
+  // Print Walk List — canvass only, links to /canvassing/print-walk-list with contact IDs pre-loaded
+  const walkListUrl = (() => {
+    if (assignment.assignmentType !== "canvass") return null;
+    const contactIds = stops.map((s) => s.contact?.id).filter(Boolean).join(",");
+    if (!contactIds) return null;
+    return `/canvassing/print-walk-list?ids=${contactIds}`;
+  })();
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
 
@@ -190,6 +198,11 @@ export default function AssignmentDetailClient({ assignment: initial, teamMember
           {canStart    && <Button size="sm" onClick={() => transition("start")} disabled={actioning}><Play className="mr-1.5 h-3.5 w-3.5" />Start</Button>}
           {canComplete && <Button size="sm" onClick={() => transition("complete")} disabled={actioning}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Complete</Button>}
           {canCancel   && <Button size="sm" variant="ghost" onClick={() => { if (confirm("Cancel this assignment?")) transition("cancel"); }} disabled={actioning} className="text-red-500 hover:text-red-700"><XCircle className="mr-1.5 h-3.5 w-3.5" />Cancel</Button>}
+          {walkListUrl && (
+            <Link href={walkListUrl} target="_blank">
+              <Button size="sm" variant="outline"><Printer className="mr-1.5 h-3.5 w-3.5" />Print Walk List</Button>
+            </Link>
+          )}
         </div>
       </div>
 
