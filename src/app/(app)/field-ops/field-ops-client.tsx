@@ -8,7 +8,7 @@ import {
   ClipboardList, Plus, XCircle, Users, MapPin,
   ChevronLeft, ChevronRight, RefreshCw, Send, DoorOpen,
   BookOpen, SignpostBig, Trash2, Activity, CheckCircle2, Clock,
-  Printer, Map, Navigation, LayoutDashboard, Footprints,
+  Printer, Navigation, LayoutDashboard, Footprints,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState, FormField,
@@ -50,7 +50,7 @@ function ViewLoader() {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type ContextTab = "dashboard" | "canvass" | "signs" | "lit-drop";
-type CanvassPanel = "map" | "walk" | "scripts" | "print" | null;
+type CanvassPanel = "walk" | "scripts" | "print" | null;
 type AssignmentType = "canvass" | "lit_drop" | "sign_install" | "sign_remove";
 type AssignmentStatus =
   | "draft" | "published" | "assigned" | "in_progress"
@@ -97,10 +97,9 @@ const DEPLOY_LABEL: Record<ContextTab, string> = {
 };
 
 const CANVASS_PANELS: { key: NonNullable<CanvassPanel>; label: string; icon: React.ReactNode }[] = [
-  { key: "map",     label: "Live Map", icon: <Map className="h-4 w-4" /> },
-  { key: "walk",    label: "Walk",     icon: <Navigation className="h-4 w-4" /> },
-  { key: "scripts", label: "Scripts",  icon: <BookOpen className="h-4 w-4" /> },
-  { key: "print",   label: "Print",    icon: <Printer className="h-4 w-4" /> },
+  { key: "walk",    label: "Walk",    icon: <Navigation className="h-4 w-4" /> },
+  { key: "scripts", label: "Scripts", icon: <BookOpen className="h-4 w-4" /> },
+  { key: "print",   label: "Print",   icon: <Printer className="h-4 w-4" /> },
 ];
 
 const TYPE_BADGE: Record<AssignmentType, string> = {
@@ -590,39 +589,63 @@ export default function FieldOpsClient({ campaignId, campaignName, currentUserId
           </motion.div>
         )}
 
-        {/* Canvass — assignments + embedded tools */}
+        {/* Canvass — map is always primary, tools open as side panels */}
         {contextTab === "canvass" && (
-          <motion.div key="canvass" {...SLIDE} className="space-y-4">
-            {/* Tool strip */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {CANVASS_PANELS.map((p) => (
-                <Button
-                  key={p.key}
-                  variant={canvassPanel === p.key ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCanvassPanel(canvassPanel === p.key ? null : p.key)}
-                >
-                  {p.icon}<span className="ml-1.5">{p.label}</span>
-                </Button>
-              ))}
+          <motion.div key="canvass" {...SLIDE} className="space-y-3">
+
+            {/* Control bar — tools + deploy, embedded in the map context */}
+            <div className="flex items-center justify-between rounded-xl border bg-gray-50 px-3 py-2">
+              <div className="flex gap-2 flex-wrap">
+                {CANVASS_PANELS.map((p) => (
+                  <Button
+                    key={p.key}
+                    variant={canvassPanel === p.key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCanvassPanel(canvassPanel === p.key ? null : p.key)}
+                  >
+                    {p.icon}<span className="ml-1.5">{p.label}</span>
+                  </Button>
+                ))}
+              </div>
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="mr-1.5 h-4 w-4" />Deploy Canvassers
+              </Button>
             </div>
 
-            <AnimatePresence mode="wait">
-              {canvassPanel ? (
-                <motion.div key={canvassPanel} {...SLIDE}>
-                  <Suspense fallback={<ViewLoader />}>
-                    {canvassPanel === "map"     && <CanvassingClient campaignId={campaignId} currentUserId={currentUserId} teamMembers={teamMembers} />}
-                    {canvassPanel === "walk"    && <WalkShell campaignId={campaignId} />}
-                    {canvassPanel === "scripts" && <ScriptsClient campaignId={campaignId} />}
-                    {canvassPanel === "print"   && <PrintWalkListClient campaignId={campaignId} campaignName={campaignName} />}
-                  </Suspense>
-                </motion.div>
-              ) : (
-                <motion.div key="canvass-table" {...SLIDE}>
-                  <AssignmentTable showType={false} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Map always visible — side panel slides in alongside it */}
+            <div className="flex flex-col lg:flex-row rounded-xl border overflow-hidden min-h-0">
+              {/* Map — takes remaining width, shrinks when panel is open */}
+              <div className={canvassPanel ? "lg:flex-1 min-w-0" : "w-full"}>
+                <Suspense fallback={<ViewLoader />}>
+                  <CanvassingClient
+                    campaignId={campaignId}
+                    currentUserId={currentUserId}
+                    teamMembers={teamMembers}
+                  />
+                </Suspense>
+              </div>
+
+              {/* Side panel — opens alongside the map */}
+              <AnimatePresence>
+                {canvassPanel && (
+                  <motion.div
+                    key={canvassPanel}
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="lg:w-[400px] flex-shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto bg-white"
+                  >
+                    <Suspense fallback={<ViewLoader />}>
+                      {canvassPanel === "walk"    && <WalkShell campaignId={campaignId} />}
+                      {canvassPanel === "scripts" && <ScriptsClient campaignId={campaignId} />}
+                      {canvassPanel === "print"   && <PrintWalkListClient campaignId={campaignId} campaignName={campaignName} />}
+                    </Suspense>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
           </motion.div>
         )}
 
