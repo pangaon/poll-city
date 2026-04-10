@@ -169,6 +169,160 @@ export interface OcrResult {
 }
 
 // ---------------------------------------------------------------------------
+// Field Operations Engine
+// ---------------------------------------------------------------------------
+
+export type AssignmentType = "canvass" | "lit_drop" | "sign_install" | "sign_remove";
+
+export type AssignmentStatus =
+  | "draft"
+  | "published"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "reassigned";
+
+export type StopStatus =
+  | "pending"
+  | "completed"
+  | "skipped"
+  | "exception"
+  | "not_home"
+  | "no_access";
+
+export type ExceptionType =
+  | "aggressive_resident"
+  | "no_access"
+  | "gated_property"
+  | "wrong_address"
+  | "sign_already_removed"
+  | "sign_damaged"
+  | "sign_missing"
+  | "weather"
+  | "other";
+
+// Type-specific outcome shapes — compose into UpdateStopPayload.outcome
+export interface CanvassOutcome {
+  supportLevel?: SupportLevel;
+  interactionNotes?: string;
+  doNotContact?: boolean;
+}
+
+export interface LitDropOutcome {
+  delivered: boolean;
+  quantity?: number;
+}
+
+export interface SignInstallOutcome {
+  photoUrl?: string;
+  notes?: string;
+}
+
+export interface SignRemoveOutcome {
+  photoUrl?: string;
+  condition?: "good" | "damaged" | "missing";
+  notes?: string;
+}
+
+export type StopOutcome =
+  | CanvassOutcome
+  | LitDropOutcome
+  | SignInstallOutcome
+  | SignRemoveOutcome;
+
+export interface AssignmentContactSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  address1: string | null;
+  city: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  supportLevel: SupportLevel;
+  doNotContact: boolean;
+  notes: string | null;
+}
+
+export interface AssignmentHouseholdSummary {
+  id: string;
+  address1: string;
+  city: string | null;
+  postalCode: string | null;
+  lat: number | null;
+  lng: number | null;
+  totalVoters: number | null;
+}
+
+export interface AssignmentSignSummary {
+  id: string;
+  address1: string;
+  city: string | null;
+  postalCode: string | null;
+  status: string;
+  lat: number | null;
+  lng: number | null;
+  signType: string;
+  quantity: number;
+}
+
+export interface AssignmentStop {
+  id: string;
+  assignmentId: string;
+  contactId: string | null;
+  householdId: string | null;
+  signId: string | null;
+  order: number;
+  status: StopStatus;
+  outcome: StopOutcome | null;
+  exceptionType: ExceptionType | null;
+  exceptionNotes: string | null;
+  completedAt: string | null;
+  completedById: string | null;
+  notes: string | null;
+  createdAt: string;
+  contact: AssignmentContactSummary | null;
+  household: AssignmentHouseholdSummary | null;
+  sign: AssignmentSignSummary | null;
+}
+
+export interface AssignmentResourcePackage {
+  id: string;
+  assignmentId: string;
+  scriptPackageId: string | null;
+  literaturePackageId: string | null;
+  plannedLiteratureQty: number | null;
+  actualLiteratureQty: number | null;
+  signInventoryItemId: string | null;
+  signsAllocated: number | null;
+  signsInstalled: number | null;
+  signsRecovered: number | null;
+}
+
+export interface FieldAssignment {
+  id: string;
+  campaignId: string;
+  assignmentType: AssignmentType;
+  name: string;
+  description: string | null;
+  status: AssignmentStatus;
+  fieldUnitId: string | null;
+  assignedUserId: string | null;
+  assignedVolunteerId: string | null;
+  assignedGroupId: string | null;
+  scheduledDate: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  printPacketUrl: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  fieldUnit: { id: string; name: string; ward: string | null } | null;
+  resourcePackage: AssignmentResourcePackage | null;
+  stops: AssignmentStop[];
+}
+
+// ---------------------------------------------------------------------------
 // Sync queue
 // ---------------------------------------------------------------------------
 

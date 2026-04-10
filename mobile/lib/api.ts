@@ -10,16 +10,21 @@
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import type {
+  AssignmentStatus,
   AuthTokens,
   Campaign,
   Contact,
   CreateInteractionPayload,
+  FieldAssignment,
   Interaction,
   LoginResponse,
   OcrResult,
   PaginatedResponse,
   ScrutineerAssignment,
   ShiftSummary,
+  StopOutcome,
+  StopStatus,
+  ExceptionType,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -356,4 +361,90 @@ export async function submitResultEntry(
     "/api/results/entry",
     { method: "POST", body: payload },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Field Operations Engine
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch all actionable assignments for the current user.
+ * Returns published, assigned, and in_progress assignments with full stop details.
+ */
+export async function fetchMyAssignments(
+  campaignId: string,
+): Promise<{ data: FieldAssignment[] }> {
+  return apiFetch<{ data: FieldAssignment[] }>(
+    "/api/field-assignments/my-assignments",
+    { params: { campaignId } },
+  );
+}
+
+/**
+ * Fetch a single assignment by ID with full stop details and resource package.
+ */
+export async function fetchAssignment(
+  id: string,
+  campaignId: string,
+): Promise<{ data: FieldAssignment }> {
+  return apiFetch<{ data: FieldAssignment }>(
+    `/api/field-assignments/${id}`,
+    { params: { campaignId } },
+  );
+}
+
+// Assignment status action payloads
+
+export interface AssignmentStartPayload {
+  action: "start";
+}
+
+export interface AssignmentCompletePayload {
+  action: "complete";
+}
+
+export type AssignmentActionPayload =
+  | AssignmentStartPayload
+  | AssignmentCompletePayload;
+
+/**
+ * Transition an assignment's status.
+ * Mobile users only call start (assigned → in_progress) and
+ * complete (in_progress → completed) — management actions live on web.
+ */
+export async function updateAssignmentStatus(
+  id: string,
+  payload: AssignmentActionPayload,
+): Promise<{ data: Omit<FieldAssignment, "stops" | "resourcePackage"> & { _count: { stops: number } } }> {
+  return apiFetch(`/api/field-assignments/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+// Stop update payload
+
+export interface UpdateStopPayload {
+  status: StopStatus;
+  outcome?: StopOutcome;
+  exceptionType?: ExceptionType;
+  exceptionNotes?: string;
+  notes?: string;
+}
+
+/**
+ * Record the outcome of a single assignment stop.
+ * Downstream effects fire server-side: Contact.lastContactedAt,
+ * TurfStop.visited, Sign status, Household.operationHistory,
+ * and auto-completion of the parent assignment when all stops are terminal.
+ */
+export async function updateAssignmentStop(
+  assignmentId: string,
+  stopId: string,
+  payload: UpdateStopPayload,
+): Promise<{ data: { id: string; status: StopStatus; completedAt: string | null } }> {
+  return apiFetch(`/api/field-assignments/${assignmentId}/stops/${stopId}`, {
+    method: "PATCH",
+    body: payload,
+  });
 }
