@@ -413,6 +413,12 @@ model User {
   scrutineerAssignments       ScrutineerAssignment[] @relation("ScrutineerUser")
   scrutineerAssignedBy        ScrutineerAssignment[] @relation("ScrutineerAssigner")
 
+  // Field operations
+  fieldAssignmentsAssigned    FieldAssignment[]      @relation("FieldAssignmentAssignee")
+  fieldAssignmentsCreated     FieldAssignment[]      @relation("FieldAssignmentCreator")
+  assignmentStopsCompleted    AssignmentStop[]       @relation("StopCompleter")
+  signAssignments             Sign[]                 @relation("SignAssignee")
+
   // Civic social
   civicProfile   CivicProfile?    @relation("UserCivicProfile")
   voterPassport  VoterPassport?   @relation("UserVoterPassport")
@@ -558,6 +564,10 @@ model Campaign {
   forms                     Form[]
   scrutineerAssignments     ScrutineerAssignment[]
   liveResults               LiveResult[]
+  fieldAssignments          FieldAssignment[]
+  literaturePieces          LiteraturePiece[]
+  literaturePackages        LiteraturePackage[]
+  signInventoryItems        SignInventoryItem[]
   // Alert routing: controls who receives which push notification types.
   // Schema: { "<alertType>": { "mode": "roles"|"users"|"all", "roles"?: Role[], "userIds"?: string[] } }
   // Default (null): falls back to all ADMIN + CAMPAIGN_MANAGER members.
@@ -728,12 +738,14 @@ model Household {
   visited     Boolean   @default(false)
   visitedAt   DateTime?
   totalVoters Int? // from official voter file
+  operationHistory Json? // { canvass: DateTime, lit_drop: DateTime, sign_install: DateTime, sign_remove: DateTime }
   campaignId  String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contacts Contact[]
+  campaign         Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contacts         Contact[]
+  assignmentStops  AssignmentStop[]
 
   @@map("households")
 }
@@ -850,6 +862,7 @@ model Contact {
   constituents         Constituent[]
   eventRsvps           EventRsvp[]
   voiceBroadcastCalls  VoiceBroadcastCall[]
+  assignmentStops      AssignmentStop[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -1005,21 +1018,24 @@ model Sign {
   lng          Float?
   signType     String     @default("standard") // standard | large | window
   status       SignStatus @default(requested)
-  assignedTeam String?
-  notes        String?
-  requestedAt  DateTime   @default(now())
-  installedAt  DateTime?
-  removedAt    DateTime?
-  photoUrl     String?
-  quantity     Int        @default(1)
-  isOpponent   Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime?
-  deletedById  String?
+  assignedTeam   String?    // deprecated — use assignedUserId
+  assignedUserId String?
+  notes          String?
+  requestedAt    DateTime   @default(now())
+  installedAt    DateTime?
+  removedAt      DateTime?
+  photoUrl       String?
+  quantity       Int        @default(1)
+  isOpponent     Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+  deletedById    String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact  Contact? @relation(fields: [contactId], references: [id])
+  campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  assignedUser    User?            @relation("SignAssignee", fields: [assignedUserId], references: [id])
+  assignmentStops AssignmentStop[]
 
   @@index([campaignId, status])
   @@index([lat, lng])
@@ -1052,10 +1068,11 @@ model VolunteerProfile {
   user              User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact           Contact?               @relation(fields: [contactId], references: [id], onDelete: Cascade)
   campaign          Campaign?              @relation(fields: [campaignId], references: [id])
-  ledGroups         VolunteerGroup[]       @relation("VolunteerGroupLeader")
-  groupMemberships  VolunteerGroupMember[]
-  shiftSignups      VolunteerShiftSignup[]
-  submittedExpenses VolunteerExpense[]
+  ledGroups          VolunteerGroup[]       @relation("VolunteerGroupLeader")
+  groupMemberships   VolunteerGroupMember[]
+  shiftSignups       VolunteerShiftSignup[]
+  submittedExpenses  VolunteerExpense[]
+  fieldAssignments   FieldAssignment[]      @relation("FieldAssignmentVolunteer")
 
   @@index([campaignId])
   @@index([isActive])
@@ -1917,11 +1934,12 @@ model Turf {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  assignedUser  User?           @relation("TurfAssignee", fields: [assignedUserId], references: [id])
-  assignedVolunteer Membership? @relation("TurfAssignedVolunteer", fields: [assignedVolunteerId], references: [id])
-  assignedGroup VolunteerGroup? @relation(fields: [assignedGroupId], references: [id])
-  stops         TurfStop[]
+  campaign          Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedUser      User?            @relation("TurfAssignee", fields: [assignedUserId], references: [id])
+  assignedVolunteer Membership?      @relation("TurfAssignedVolunteer", fields: [assignedVolunteerId], references: [id])
+  assignedGroup     VolunteerGroup?  @relation(fields: [assignedGroupId], references: [id])
+  stops             TurfStop[]
+  fieldAssignments  FieldAssignment[]
 
   @@index([campaignId])
   @@map("turfs")
@@ -1959,9 +1977,10 @@ model VolunteerGroup {
   updatedAt       DateTime @updatedAt
 
   campaign      Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  leaderProfile VolunteerProfile?      @relation("VolunteerGroupLeader", fields: [leaderProfileId], references: [id])
-  members       VolunteerGroupMember[]
-  turfs         Turf[]
+  leaderProfile    VolunteerProfile?      @relation("VolunteerGroupLeader", fields: [leaderProfileId], references: [id])
+  members          VolunteerGroupMember[]
+  turfs            Turf[]
+  fieldAssignments FieldAssignment[]      @relation("FieldAssignmentGroup")
 
   @@unique([campaignId, name])
   @@index([campaignId])
@@ -2036,7 +2055,12 @@ model CanvassingScript {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignmentTypes     AssignmentType[] @default([])
+  literaturePackageId String?
+
+  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  literaturePackage LiteraturePackage? @relation(fields: [literaturePackageId], references: [id])
+  resourcePackages  AssignmentResourcePackage[]
 
   @@index([campaignId, scriptType])
   @@map("canvassing_scripts")
@@ -3958,4 +3982,234 @@ model ScrutineerAssignment {
   @@index([campaignId])
   @@index([campaignId, electionDate])
   @@map("scrutineer_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UNIFIED FIELD OPERATIONS ENGINE v1
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AssignmentType {
+  canvass
+  lit_drop
+  sign_install
+  sign_remove
+}
+
+enum AssignmentStatus {
+  draft
+  published
+  assigned
+  in_progress
+  completed
+  cancelled
+  reassigned
+}
+
+enum StopStatus {
+  pending
+  completed
+  skipped
+  exception
+  not_home
+  no_access
+}
+
+enum ExceptionType {
+  aggressive_resident
+  no_access
+  gated_property
+  wrong_address
+  sign_already_removed
+  sign_damaged
+  sign_missing
+  weather
+  other
+}
+
+enum SignCondition {
+  new
+  good
+  fair
+  damaged
+  retired
+}
+
+enum LiteraturePieceType {
+  flyer
+  door_hanger
+  palm_card
+  mailer_postcard
+  lawn_sign_rider
+  push_card
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LITERATURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LiteraturePiece {
+  id              String              @id @default(cuid())
+  campaignId      String
+  name            String
+  pieceType       LiteraturePieceType
+  version         String              @default("v1")
+  description     String?
+  printUrl        String?
+  quantityInStock Int                 @default(0)
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  campaign              Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  literaturePackageItems LiteraturePackageItem[]
+
+  @@index([campaignId, isActive])
+  @@map("literature_pieces")
+}
+
+model LiteraturePackage {
+  id          String   @id @default(cuid())
+  campaignId  String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign         Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  items            LiteraturePackageItem[]
+  canvassingScripts CanvassingScript[]
+  resourcePackages AssignmentResourcePackage[]
+
+  @@index([campaignId, isActive])
+  @@map("literature_packages")
+}
+
+model LiteraturePackageItem {
+  id                  String   @id @default(cuid())
+  packageId           String
+  literaturePieceId   String
+  quantityPerStop     Int      @default(1)
+  createdAt           DateTime @default(now())
+
+  package        LiteraturePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  literaturePiece LiteraturePiece  @relation(fields: [literaturePieceId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, literaturePieceId])
+  @@index([packageId])
+  @@map("literature_package_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGN INVENTORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SignInventoryItem {
+  id               String        @id @default(cuid())
+  campaignId       String
+  signType         String        // standard | large | window | road | banner
+  totalQuantity    Int           @default(0)
+  deployedQuantity Int           @default(0)
+  storageLocation  String?
+  condition        SignCondition @default(good)
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  campaign         Campaign                    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  resourcePackages AssignmentResourcePackage[]
+
+  @@index([campaignId])
+  @@map("sign_inventory_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FIELD ASSIGNMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FieldAssignment {
+  id                 String           @id @default(cuid())
+  campaignId         String
+  assignmentType     AssignmentType
+  name               String
+  description        String?
+  status             AssignmentStatus @default(draft)
+  fieldUnitId        String?          // FK to Turf (geography this assignment covers)
+  assignedUserId     String?
+  assignedVolunteerId String?
+  assignedGroupId    String?
+  scheduledDate      DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  printPacketUrl     String?
+  createdById        String
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  deletedAt          DateTime?
+
+  campaign          Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  fieldUnit         Turf?                      @relation(fields: [fieldUnitId], references: [id])
+  assignedUser      User?                      @relation("FieldAssignmentAssignee", fields: [assignedUserId], references: [id])
+  assignedVolunteer VolunteerProfile?          @relation("FieldAssignmentVolunteer", fields: [assignedVolunteerId], references: [id])
+  assignedGroup     VolunteerGroup?            @relation("FieldAssignmentGroup", fields: [assignedGroupId], references: [id])
+  createdBy         User                       @relation("FieldAssignmentCreator", fields: [createdById], references: [id])
+  stops             AssignmentStop[]
+  resourcePackage   AssignmentResourcePackage?
+
+  @@index([campaignId, assignmentType])
+  @@index([campaignId, status])
+  @@index([assignedUserId])
+  @@index([assignedGroupId])
+  @@map("field_assignments")
+}
+
+model AssignmentStop {
+  id              String         @id @default(cuid())
+  assignmentId    String
+  contactId       String?
+  householdId     String?
+  signId          String?
+  order           Int
+  status          StopStatus     @default(pending)
+  outcome         Json?          // type-specific — validated by Zod at API layer
+  exceptionType   ExceptionType?
+  exceptionNotes  String?
+  completedAt     DateTime?
+  completedById   String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  assignment    FieldAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  contact       Contact?        @relation(fields: [contactId], references: [id])
+  household     Household?      @relation(fields: [householdId], references: [id])
+  sign          Sign?           @relation(fields: [signId], references: [id])
+  completedBy   User?           @relation("StopCompleter", fields: [completedById], references: [id])
+
+  @@unique([assignmentId, order])
+  @@index([assignmentId])
+  @@index([assignmentId, status])
+  @@map("assignment_stops")
+}
+
+model AssignmentResourcePackage {
+  id                    String   @id @default(cuid())
+  assignmentId          String   @unique
+  scriptPackageId       String?
+  literaturePackageId   String?
+  plannedLiteratureQty  Int?
+  actualLiteratureQty   Int?
+  signInventoryItemId   String?
+  signsAllocated        Int?
+  signsInstalled        Int?
+  signsRecovered        Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  assignment          FieldAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  scriptPackage       CanvassingScript?  @relation(fields: [scriptPackageId], references: [id])
+  literaturePackage   LiteraturePackage? @relation(fields: [literaturePackageId], references: [id])
+  signInventoryItem   SignInventoryItem? @relation(fields: [signInventoryItemId], references: [id])
+
+  @@map("assignment_resource_packages")
 }
