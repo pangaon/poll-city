@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   ClipboardList, Plus, XCircle, Users, MapPin,
   ChevronLeft, ChevronRight, RefreshCw, Send, DoorOpen,
-  BookOpen, SignpostBig, Trash2, Activity, CheckCircle2, Clock,
+  BookOpen, SignpostBig, Trash2, Activity, CheckCircle2, Clock, Printer,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState, FormField,
@@ -273,9 +274,18 @@ export default function FieldOpsClient({ campaignId, turfs, teamMembers }: Props
         title="Field Operations"
         description="Deploy your team — canvass, lit drops, sign installs and removals from one place."
         actions={
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Deploy Team
-          </Button>
+          <div className="flex items-center gap-2">
+            {(activeTab === "all" || activeTab === "canvass") && (
+              <Link href="/canvassing/print-walk-list" target="_blank">
+                <Button variant="outline" size="sm">
+                  <Printer className="mr-1.5 h-4 w-4" /> Print Walk List
+                </Button>
+              </Link>
+            )}
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" /> Deploy Team
+            </Button>
+          </div>
         }
       />
 
@@ -425,6 +435,13 @@ export default function FieldOpsClient({ campaignId, turfs, teamMembers }: Props
                               <Button size="sm" variant="ghost" onClick={() => { setShowAssign(a); setAssignUserId(a.assignedUser?.id ?? ""); }} title="Assign">
                                 <Users className="h-4 w-4" />
                               </Button>
+                            )}
+                            {a.assignmentType === "canvass" && (
+                              <Link href={a.fieldUnit ? `/canvassing/print-walk-list?canvassingTurfId=${a.fieldUnit.id}` : "/canvassing/print-walk-list"} target="_blank">
+                                <Button size="sm" variant="ghost" title="Print Walk List">
+                                  <Printer className="h-4 w-4 text-gray-400" />
+                                </Button>
+                              </Link>
                             )}
                             {!["completed", "cancelled"].includes(a.status) && (
                               <Button size="sm" variant="ghost" onClick={() => handleCancel(a)} title="Cancel" className="text-red-400 hover:text-red-600">
