@@ -1145,6 +1145,805 @@ async function main() {
   }
   console.log(`✅ ${printTemplates.length} print templates seeded\n`);
 
+  // ── Finance Command Center — full mature campaign data ────────────────────
+  // $35,000 budget · 18 lines · 6 vendors · 5 PRs · 4 POs · 3 bills
+  // 26 expenses · 4 reimbursements · 1 split expense · 1 budget transfer
+  // Story: Ward 12 campaign is ~5 months in, ~47% of budget committed/spent.
+
+  // ── Campaign Budget ──────────────────────────────────────────────────────
+  const finBudget = await prisma.campaignBudget.upsert({
+    where: { id: "fin-budget-w12-2026" },
+    update: {},
+    create: {
+      id: "fin-budget-w12-2026",
+      campaignId: campaign.id,
+      name: "Ward 12 — 2026 Municipal Election Budget",
+      electionCycle: "2026 Ontario Municipal",
+      totalBudget: 35000,
+      currency: "CAD",
+      status: FinanceBudgetStatus.active,
+      startDate: new Date("2026-03-01"),
+      endDate: new Date("2026-11-30"),
+      notes: "Official campaign budget approved by official agent. Governed by Municipal Elections Act (Ontario).",
+      createdByUserId: treasurer.id,
+    },
+  });
+
+  // ── Budget Lines ─────────────────────────────────────────────────────────
+  // actualAmount set to match the approved expenses seeded below.
+  const blPrint = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-print" }, update: {}, create: {
+      id: "fin-bl-print", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "PRNT", name: "Print Materials", category: FinanceBudgetLineCategory.print,
+      description: "Door hangers, flyers, palm cards, GOTV postcards",
+      plannedAmount: 4500, actualAmount: 2800, sortOrder: 1, ownerUserId: manager.id,
+    },
+  });
+  const blSigns = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-signs" }, update: {}, create: {
+      id: "fin-bl-signs", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "SIGN", name: "Signs & Display", category: FinanceBudgetLineCategory.signs,
+      description: "Lawn signs, stakes, window signs, banners",
+      plannedAmount: 3200, actualAmount: 1800, sortOrder: 2, ownerUserId: manager.id,
+    },
+  });
+  const blAds = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-ads" }, update: {}, create: {
+      id: "fin-bl-ads", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "ADVT", name: "Advertising", category: FinanceBudgetLineCategory.advertising,
+      description: "Paid media, radio, print ads, sponsorships",
+      plannedAmount: 4800, actualAmount: 3470, sortOrder: 3, ownerUserId: comms.id,
+    },
+  });
+  const blDigital = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-digital" }, update: {}, create: {
+      id: "fin-bl-digital", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "DGTL", name: "Digital & Social", category: FinanceBudgetLineCategory.digital_ads,
+      description: "Social media boosts, email platform, digital tools",
+      plannedAmount: 2800, actualAmount: 80, sortOrder: 4, ownerUserId: comms.id,
+    },
+  });
+  const blLit = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-lit" }, update: {}, create: {
+      id: "fin-bl-lit", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "LIT", name: "Literature Distribution", category: FinanceBudgetLineCategory.literature,
+      description: "Lit drops, mail, targeted voter outreach packages",
+      plannedAmount: 1500, actualAmount: 0, sortOrder: 5,
+    },
+  });
+  const blEvents = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-events" }, update: {}, create: {
+      id: "fin-bl-events", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "EVNT", name: "Events & Outreach", category: FinanceBudgetLineCategory.events,
+      description: "Venues, catering, rental equipment for town halls and community events",
+      plannedAmount: 2000, actualAmount: 730, sortOrder: 6, ownerUserId: events.id,
+    },
+  });
+  const blStaff = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-staff" }, update: {}, create: {
+      id: "fin-bl-staff", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "STFF", name: "Staffing", category: FinanceBudgetLineCategory.staffing,
+      description: "Paid campaign coordinator, stipends, staff costs",
+      plannedAmount: 4000, actualAmount: 2700, sortOrder: 7, ownerUserId: manager.id,
+    },
+  });
+  const blContractors = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-contractors" }, update: {}, create: {
+      id: "fin-bl-contractors", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "CNTR", name: "Contractors & Consultants", category: FinanceBudgetLineCategory.contractors,
+      description: "Graphic design, web development, photography, video",
+      plannedAmount: 2500, actualAmount: 2000, sortOrder: 8, ownerUserId: manager.id,
+    },
+  });
+  const blTravel = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-travel" }, update: {}, create: {
+      id: "fin-bl-travel", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "TRVL", name: "Travel & Transportation", category: FinanceBudgetLineCategory.travel,
+      description: "Gas, TTC fares, parking for canvassing and events",
+      plannedAmount: 600, actualAmount: 200, sortOrder: 9,
+    },
+  });
+  const blOffice = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-office" }, update: {}, create: {
+      id: "fin-bl-office", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "OFFC", name: "Office & Supplies", category: FinanceBudgetLineCategory.office,
+      description: "Stationery, printer supplies, office equipment",
+      plannedAmount: 1000, actualAmount: 237, sortOrder: 10,
+    },
+  });
+  const blPhones = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-phones" }, update: {}, create: {
+      id: "fin-bl-phones", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "PHON", name: "Phones & Communications", category: FinanceBudgetLineCategory.phones,
+      description: "Campaign cell phone, calling tools, phone banking app",
+      plannedAmount: 500, actualAmount: 90, sortOrder: 11,
+    },
+  });
+  const blCompliance = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-compliance" }, update: {}, create: {
+      id: "fin-bl-compliance", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "COMP", name: "Compliance & Legal", category: FinanceBudgetLineCategory.compliance,
+      description: "Official agent fees, filing fees, legal review, financial reporting",
+      plannedAmount: 500, actualAmount: 200, sortOrder: 12, ownerUserId: treasurer.id,
+    },
+  });
+  const blPhoto = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-photo" }, update: {}, create: {
+      id: "fin-bl-photo", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "PHTO", name: "Photography & Video", category: FinanceBudgetLineCategory.photography,
+      description: "Headshots, event photography, campaign video",
+      plannedAmount: 400, actualAmount: 0, sortOrder: 13,
+    },
+  });
+  const blOutreach = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-outreach" }, update: {}, create: {
+      id: "fin-bl-outreach", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "OUTR", name: "Outreach & Community", category: FinanceBudgetLineCategory.outreach,
+      description: "Community sponsorships, donations in kind, outreach materials",
+      plannedAmount: 800, actualAmount: 0, sortOrder: 14,
+    },
+  });
+  const blCanvassing = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-canvassing" }, update: {}, create: {
+      id: "fin-bl-canvassing", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "CNVS", name: "Canvassing Ops", category: FinanceBudgetLineCategory.canvassing,
+      description: "Clipboards, weatherproof materials, door kits",
+      plannedAmount: 400, actualAmount: 0, sortOrder: 15,
+    },
+  });
+  const blFundraising = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-fundraising" }, update: {}, create: {
+      id: "fin-bl-fundraising", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "FUND", name: "Fundraising", category: FinanceBudgetLineCategory.fundraising,
+      description: "Donor events, cultivation costs, thank-you materials",
+      plannedAmount: 600, actualAmount: 0, sortOrder: 16,
+    },
+  });
+  const blMerch = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-merch" }, update: {}, create: {
+      id: "fin-bl-merch", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "MRCH", name: "Merchandise", category: FinanceBudgetLineCategory.merchandise,
+      description: "Buttons, stickers, branded merchandise",
+      plannedAmount: 300, actualAmount: 0, sortOrder: 17,
+    },
+  });
+  const blContingency = await prisma.budgetLine.upsert({
+    where: { id: "fin-bl-contingency" }, update: {}, create: {
+      id: "fin-bl-contingency", campaignId: campaign.id, campaignBudgetId: finBudget.id,
+      code: "CTGN", name: "Contingency Reserve", category: FinanceBudgetLineCategory.contingency,
+      description: "Unallocated reserve for unforeseen campaign needs",
+      plannedAmount: 1000, actualAmount: 0, sortOrder: 18,
+    },
+  });
+  console.log("✅ Finance: 1 budget + 18 budget lines seeded");
+
+  // ── Vendors ──────────────────────────────────────────────────────────────
+  const vendorPrint = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-printex" }, update: {}, create: {
+      id: "fin-vendor-printex", campaignId: campaign.id,
+      vendorType: FinanceVendorType.print_shop, name: "Toronto Print Express",
+      contactName: "Kevin Lam", email: "kevin@torontoprintexpress.ca",
+      phone: "416-555-7001", address: "1247 Danforth Ave, Toronto ON M4J 1M1",
+      website: "torontoprintexpress.ca", paymentTerms: "Net 30",
+      taxNumber: "BN 123456789 RT0001", isPreferred: true,
+      notes: "Fast turnaround, great quality. Used for all print runs.",
+    },
+  });
+  const vendorSigns = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-wardsigns" }, update: {}, create: {
+      id: "fin-vendor-wardsigns", campaignId: campaign.id,
+      vendorType: FinanceVendorType.sign_company, name: "Ward Signs & Display",
+      contactName: "Mike Papadopoulos", email: "mike@wardsigns.ca",
+      phone: "416-555-7002", address: "88 Eastern Ave, Toronto ON M5A 1H8",
+      paymentTerms: "50% deposit, 50% on delivery", isPreferred: true,
+      notes: "Handles lawn signs, window signs, and yard stakes. Always on time.",
+    },
+  });
+  const vendorDigital = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-digitalpulse" }, update: {}, create: {
+      id: "fin-vendor-digitalpulse", campaignId: campaign.id,
+      vendorType: FinanceVendorType.advertising_agency, name: "Digital Pulse Media",
+      contactName: "Aisha Koroma", email: "aisha@digitalpulsemedia.ca",
+      phone: "416-555-7003", website: "digitalpulsemedia.ca",
+      paymentTerms: "Monthly invoicing", isPreferred: true,
+      notes: "Handles FB/IG/Google ads. Access shared with comms team.",
+    },
+  });
+  const vendorDesign = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-greenleaf" }, update: {}, create: {
+      id: "fin-vendor-greenleaf", campaignId: campaign.id,
+      vendorType: FinanceVendorType.other, name: "GreenLeaf Design Studio",
+      contactName: "Sophie Tremblay", email: "sophie@greenleafdesign.ca",
+      phone: "416-555-7004", website: "greenleafdesign.ca",
+      paymentTerms: "50% upfront, 50% on delivery",
+      notes: "Logo, brand guide, all print-ready files. Excellent communicator.",
+    },
+  });
+  const vendorEvents = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-eventsco" }, update: {}, create: {
+      id: "fin-vendor-eventsco", campaignId: campaign.id,
+      vendorType: FinanceVendorType.event_vendor, name: "Community Events Co.",
+      contactName: "Terrence Williams", email: "t.williams@communityeventsco.ca",
+      phone: "416-555-7005", paymentTerms: "Net 15",
+      notes: "Tent, table, and chair rentals for outdoor events. Weekend availability.",
+    },
+  });
+  const vendorOffice = await prisma.financeVendor.upsert({
+    where: { id: "fin-vendor-staples" }, update: {}, create: {
+      id: "fin-vendor-staples", campaignId: campaign.id,
+      vendorType: FinanceVendorType.other, name: "Staples Business Centre",
+      contactName: "Store Manager", email: "danforth@staples.ca",
+      phone: "416-555-7006", address: "835 Danforth Ave, Toronto ON M4J 1L2",
+      paymentTerms: "Immediate",
+      notes: "Office supplies, print copies, binding. Receipt always obtained.",
+    },
+  });
+  console.log("✅ Finance: 6 vendors seeded");
+
+  // ── Purchase Requests ─────────────────────────────────────────────────────
+  const pr001 = await prisma.financePurchaseRequest.upsert({
+    where: { id: "fin-pr-001" }, update: {}, create: {
+      id: "fin-pr-001", campaignId: campaign.id, budgetLineId: blPrint.id,
+      vendorId: vendorPrint.id, requestedByUserId: manager.id, approverUserId: treasurer.id,
+      title: "Door hangers — 2,000 units (two-sided, full colour)",
+      description: "Standard door hanger design for the June canvassing push. 4×11in, 100lb gloss.",
+      requestedAmount: 1200, approvedAmount: 1200,
+      urgency: FinanceUrgency.high,
+      requestStatus: FinancePurchaseRequestStatus.approved,
+      requestedDate: new Date("2026-04-15"),
+      decidedDate: new Date("2026-04-17"),
+      notes: "Approved by Linda Kowalski. Rush order for May canvass launch.",
+    },
+  });
+  const pr002 = await prisma.financePurchaseRequest.upsert({
+    where: { id: "fin-pr-002" }, update: {}, create: {
+      id: "fin-pr-002", campaignId: campaign.id, budgetLineId: blSigns.id,
+      vendorId: vendorSigns.id, requestedByUserId: field.id, approverUserId: treasurer.id,
+      title: "Lawn signs — 50 units (24×18in, wire H-stake)",
+      description: "Initial sign deployment batch. Design approved by Rachel. Stakes included.",
+      requestedAmount: 1800, approvedAmount: 1800,
+      urgency: FinanceUrgency.normal,
+      requestStatus: FinancePurchaseRequestStatus.approved,
+      requestedDate: new Date("2026-04-10"),
+      decidedDate: new Date("2026-04-12"),
+    },
+  });
+  const pr003 = await prisma.financePurchaseRequest.upsert({
+    where: { id: "fin-pr-003" }, update: {}, create: {
+      id: "fin-pr-003", campaignId: campaign.id, budgetLineId: blAds.id,
+      vendorId: vendorDigital.id, requestedByUserId: comms.id, approverUserId: manager.id,
+      title: "Facebook & Instagram ad campaign — June–July 2026",
+      description: "Targeted ad campaign to Ward 12 residents aged 25–65. Goal: 80K impressions. Two creatives.",
+      requestedAmount: 2500, approvedAmount: 2500,
+      urgency: FinanceUrgency.normal,
+      requestStatus: FinancePurchaseRequestStatus.approved,
+      requestedDate: new Date("2026-05-01"),
+      decidedDate: new Date("2026-05-05"),
+    },
+  });
+  const pr004 = await prisma.financePurchaseRequest.upsert({
+    where: { id: "fin-pr-004" }, update: {}, create: {
+      id: "fin-pr-004", campaignId: campaign.id, budgetLineId: blPhoto.id,
+      requestedByUserId: comms.id,
+      title: "Campaign photography session — headshots + 10 community photos",
+      description: "Professional photographer for candidate headshots and community event coverage.",
+      requestedAmount: 400,
+      urgency: FinanceUrgency.low,
+      requestStatus: FinancePurchaseRequestStatus.submitted,
+      requestedDate: new Date("2026-06-10"),
+      notes: "Still sourcing photographer options. Three quotes requested.",
+    },
+  });
+  const pr005 = await prisma.financePurchaseRequest.upsert({
+    where: { id: "fin-pr-005" }, update: {}, create: {
+      id: "fin-pr-005", campaignId: campaign.id, budgetLineId: blPrint.id,
+      vendorId: vendorPrint.id, requestedByUserId: manager.id, approverUserId: treasurer.id,
+      title: "GOTV postcards — 1,000 units (6×9in, addressed mailer)",
+      description: "Get Out The Vote mailer for strong supporters. October drop. Address list from CRM.",
+      requestedAmount: 1600, approvedAmount: 1600,
+      urgency: FinanceUrgency.normal,
+      requestStatus: FinancePurchaseRequestStatus.approved,
+      requestedDate: new Date("2026-05-20"),
+      decidedDate: new Date("2026-05-22"),
+    },
+  });
+  console.log("✅ Finance: 5 purchase requests seeded");
+
+  // ── Purchase Orders ───────────────────────────────────────────────────────
+  const po001 = await prisma.financePurchaseOrder.upsert({
+    where: { campaignId_poNumber: { campaignId: campaign.id, poNumber: "PO-2026-001" } },
+    update: {}, create: {
+      id: "fin-po-001", campaignId: campaign.id, vendorId: vendorPrint.id,
+      budgetLineId: blPrint.id, purchaseRequestId: pr001.id,
+      poNumber: "PO-2026-001", totalAmount: 1200, taxAmount: 156,
+      issueDate: new Date("2026-04-18"),
+      expectedDate: new Date("2026-05-02"),
+      status: FinancePurchaseOrderStatus.received,
+      notes: "Door hangers received May 1. Quality checked by Priya. All 2,000 units accounted for.",
+    },
+  });
+  const po002 = await prisma.financePurchaseOrder.upsert({
+    where: { campaignId_poNumber: { campaignId: campaign.id, poNumber: "PO-2026-002" } },
+    update: {}, create: {
+      id: "fin-po-002", campaignId: campaign.id, vendorId: vendorSigns.id,
+      budgetLineId: blSigns.id, purchaseRequestId: pr002.id,
+      poNumber: "PO-2026-002", totalAmount: 1800, taxAmount: 234,
+      issueDate: new Date("2026-04-13"),
+      expectedDate: new Date("2026-04-28"),
+      status: FinancePurchaseOrderStatus.received,
+      notes: "50 signs received April 27. Stored at HQ. Deployment begins May long weekend.",
+    },
+  });
+  const po003 = await prisma.financePurchaseOrder.upsert({
+    where: { campaignId_poNumber: { campaignId: campaign.id, poNumber: "PO-2026-003" } },
+    update: {}, create: {
+      id: "fin-po-003", campaignId: campaign.id, vendorId: vendorDigital.id,
+      budgetLineId: blAds.id, purchaseRequestId: pr003.id,
+      poNumber: "PO-2026-003", totalAmount: 2500, taxAmount: 325,
+      issueDate: new Date("2026-05-06"),
+      expectedDate: new Date("2026-07-31"),
+      status: FinancePurchaseOrderStatus.acknowledged,
+      notes: "Digital ad campaign running June–July. Aisha sends weekly performance reports.",
+    },
+  });
+  const po004 = await prisma.financePurchaseOrder.upsert({
+    where: { campaignId_poNumber: { campaignId: campaign.id, poNumber: "PO-2026-004" } },
+    update: {}, create: {
+      id: "fin-po-004", campaignId: campaign.id, vendorId: vendorPrint.id,
+      budgetLineId: blPrint.id, purchaseRequestId: pr005.id,
+      poNumber: "PO-2026-004", totalAmount: 1600, taxAmount: 208,
+      issueDate: new Date("2026-05-23"),
+      expectedDate: new Date("2026-09-15"),
+      status: FinancePurchaseOrderStatus.sent,
+      notes: "GOTV postcard order placed. Address file to be delivered to printer by Aug 15.",
+    },
+  });
+  console.log("✅ Finance: 4 purchase orders seeded");
+
+  // ── Vendor Bills ──────────────────────────────────────────────────────────
+  await prisma.financeVendorBill.upsert({
+    where: { id: "fin-bill-001" }, update: {}, create: {
+      id: "fin-bill-001", campaignId: campaign.id, vendorId: vendorPrint.id,
+      purchaseOrderId: po001.id, billNumber: "TPE-INV-2026-0412",
+      amount: 1200, taxAmount: 156, currency: "CAD",
+      dueDate: new Date("2026-05-18"), receivedDate: new Date("2026-05-01"),
+      paidDate: new Date("2026-05-15"),
+      status: FinanceVendorBillStatus.paid,
+      notes: "Paid by e-transfer. Confirmation #: TRX-884421.",
+    },
+  });
+  await prisma.financeVendorBill.upsert({
+    where: { id: "fin-bill-002" }, update: {}, create: {
+      id: "fin-bill-002", campaignId: campaign.id, vendorId: vendorSigns.id,
+      purchaseOrderId: po002.id, billNumber: "WSD-2026-0088",
+      amount: 1800, taxAmount: 234, currency: "CAD",
+      dueDate: new Date("2026-05-12"), receivedDate: new Date("2026-04-27"),
+      paidDate: new Date("2026-05-10"),
+      status: FinanceVendorBillStatus.paid,
+      notes: "Paid by cheque #4412. Copy filed with official agent.",
+    },
+  });
+  await prisma.financeVendorBill.upsert({
+    where: { id: "fin-bill-003" }, update: {}, create: {
+      id: "fin-bill-003", campaignId: campaign.id, vendorId: vendorDigital.id,
+      purchaseOrderId: po003.id, billNumber: "DPM-INV-2026-JUN",
+      amount: 1250, taxAmount: 162.50, currency: "CAD",
+      dueDate: new Date("2026-07-15"), receivedDate: new Date("2026-06-30"),
+      status: FinanceVendorBillStatus.approved,
+      notes: "June portion of $2,500 total. July invoice expected end of July.",
+    },
+  });
+  console.log("✅ Finance: 3 vendor bills seeded");
+
+  // ── Expenses ──────────────────────────────────────────────────────────────
+  // 26 expenses spanning all budget lines, sources, statuses, and touchpoints.
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-001" }, update: {}, create: {
+      id: "fin-exp-001", campaignId: campaign.id, budgetLineId: blPrint.id,
+      vendorId: vendorPrint.id, purchaseOrderId: po001.id, purchaseRequestId: pr001.id,
+      amount: 1200, taxAmount: 156, currency: "CAD",
+      expenseDate: new Date("2026-05-01"),
+      description: "Door hangers — 2,000 units, two-sided, full colour (PO-2026-001)",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.purchase_order,
+      externalReference: "PO-2026-001", enteredByUserId: treasurer.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-002" }, update: {}, create: {
+      id: "fin-exp-002", campaignId: campaign.id, budgetLineId: blPrint.id,
+      vendorId: vendorPrint.id, purchaseOrderId: po004.id, purchaseRequestId: pr005.id,
+      amount: 1600, taxAmount: 208, currency: "CAD",
+      expenseDate: new Date("2026-05-23"),
+      description: "GOTV postcards — 1,000 units, 6×9in, addressed mailer (PO-2026-004)",
+      paymentMethod: FinancePaymentMethod.invoice, paymentStatus: FinancePaymentStatus.unpaid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.purchase_order,
+      externalReference: "PO-2026-004", enteredByUserId: treasurer.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-003" }, update: {}, create: {
+      id: "fin-exp-003", campaignId: campaign.id, budgetLineId: blSigns.id,
+      vendorId: vendorSigns.id, purchaseOrderId: po002.id, purchaseRequestId: pr002.id,
+      amount: 1800, taxAmount: 234, currency: "CAD",
+      expenseDate: new Date("2026-04-27"),
+      description: "Lawn signs — 50 units, 24×18in with wire H-stakes (PO-2026-002)",
+      paymentMethod: FinancePaymentMethod.cheque, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.purchase_order,
+      externalReference: "PO-2026-002", enteredByUserId: treasurer.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-004" }, update: {}, create: {
+      id: "fin-exp-004", campaignId: campaign.id, budgetLineId: blAds.id,
+      vendorId: vendorDigital.id, purchaseOrderId: po003.id, purchaseRequestId: pr003.id,
+      amount: 2500, taxAmount: 325, currency: "CAD",
+      expenseDate: new Date("2026-06-01"),
+      description: "Facebook & Instagram ad campaign — June–July 2026 (PO-2026-003)",
+      paymentMethod: FinancePaymentMethod.invoice, paymentStatus: FinancePaymentStatus.pending,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.purchase_order,
+      externalReference: "PO-2026-003", enteredByUserId: comms.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-005" }, update: {}, create: {
+      id: "fin-exp-005", campaignId: campaign.id, budgetLineId: blAds.id,
+      vendorId: vendorDigital.id,
+      amount: 850, taxAmount: 110.50, currency: "CAD",
+      expenseDate: new Date("2026-06-15"),
+      description: "Google Search campaign — Ward 12 voter targeting, June 2026",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: comms.id, approvedByUserId: manager.id,
+      notes: "Charged to campaign Visa. Receipt emailed by Google Ads.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-006" }, update: {}, create: {
+      id: "fin-exp-006", campaignId: campaign.id, budgetLineId: blAds.id,
+      amount: 120, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-03-15"),
+      description: "Campaign website — domain registration + 12-month hosting (ward12sam.ca)",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: data.id, approvedByUserId: manager.id,
+      notes: "Annual renewal. Renew March 2027. Hosting: Cloudflare Pages.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-007" }, update: {}, create: {
+      id: "fin-exp-007", campaignId: campaign.id, budgetLineId: blDigital.id,
+      vendorId: vendorDigital.id,
+      amount: 450, taxAmount: 58.50, currency: "CAD",
+      expenseDate: new Date("2026-06-20"),
+      description: "Instagram reel boost — platform infrastructure video, 14-day run",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.unpaid,
+      expenseStatus: FinanceExpenseStatus.submitted, sourceType: FinanceSourceType.manual,
+      enteredByUserId: comms.id,
+      notes: "Submitted by Marcus — awaiting Rachel's approval. Budget check needed.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-008" }, update: {}, create: {
+      id: "fin-exp-008", campaignId: campaign.id, budgetLineId: blDigital.id,
+      amount: 80, taxAmount: 10.40, currency: "CAD",
+      expenseDate: new Date("2026-04-01"),
+      description: "Mailchimp subscription — monthly, campaign plan (up to 10K contacts)",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.recurring,
+      isRecurring: true, enteredByUserId: comms.id, approvedByUserId: manager.id,
+      notes: "Recurring monthly. $80/month × 8 months campaign cycle.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-009" }, update: {}, create: {
+      id: "fin-exp-009", campaignId: campaign.id, budgetLineId: blEvents.id,
+      vendorId: vendorEvents.id,
+      amount: 200, taxAmount: 26, currency: "CAD",
+      expenseDate: new Date("2026-05-30"),
+      description: "Broadview Community Centre — room booking, Town Hall, June 12",
+      paymentMethod: FinancePaymentMethod.cheque, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.event,
+      enteredByUserId: events.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-010" }, update: {}, create: {
+      id: "fin-exp-010", campaignId: campaign.id, budgetLineId: blEvents.id,
+      vendorId: vendorEvents.id,
+      amount: 350, taxAmount: 45.50, currency: "CAD",
+      expenseDate: new Date("2026-06-08"),
+      description: "Tent (20×20), 10 tables, 60 chairs — Community BBQ, June 22",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.event,
+      enteredByUserId: events.id, approvedByUserId: manager.id,
+      notes: "Event had ~85 attendees. Positive coverage in Danforth East Community News.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-011" }, update: {}, create: {
+      id: "fin-exp-011", campaignId: campaign.id, budgetLineId: blEvents.id,
+      amount: 180, taxAmount: 23.40, currency: "CAD",
+      expenseDate: new Date("2026-06-22"),
+      description: "Catering supplies — Community BBQ (burgers, drinks, condiments)",
+      paymentMethod: FinancePaymentMethod.debit, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.event,
+      enteredByUserId: events.id, approvedByUserId: manager.id,
+      notes: "Purchased at Costco Danforth. Receipt retained.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-012" }, update: {}, create: {
+      id: "fin-exp-012", campaignId: campaign.id, budgetLineId: blStaff.id,
+      amount: 1200, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-06-30"),
+      description: "Campaign coordinator — Rachel Dubois, June 2026",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      notes: "Paid to registered contractor. HST number on file.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-013" }, update: {}, create: {
+      id: "fin-exp-013", campaignId: campaign.id, budgetLineId: blStaff.id,
+      amount: 1200, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-07-31"),
+      description: "Campaign coordinator — Rachel Dubois, July 2026",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.unpaid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      notes: "Approved, scheduled for payment Aug 1.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-014" }, update: {}, create: {
+      id: "fin-exp-014", campaignId: campaign.id, budgetLineId: blStaff.id,
+      amount: 300, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-06-30"),
+      description: "Data entry volunteer stipend — Sanjay Patel, Q2",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.volunteer_expense,
+      enteredByUserId: treasurer.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-015" }, update: {}, create: {
+      id: "fin-exp-015", campaignId: campaign.id, budgetLineId: blContractors.id,
+      vendorId: vendorDesign.id,
+      amount: 800, taxAmount: 104, currency: "CAD",
+      expenseDate: new Date("2026-03-20"),
+      description: "Campaign brand package — logo, colour system, typography, brand guide PDF",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.manual,
+      enteredByUserId: manager.id, approvedByUserId: admin.id,
+      notes: "Delivered March 18. Files in Google Drive /Brand. Approved by candidate.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-016" }, update: {}, create: {
+      id: "fin-exp-016", campaignId: campaign.id, budgetLineId: blContractors.id,
+      vendorId: vendorDesign.id,
+      amount: 1200, taxAmount: 156, currency: "CAD",
+      expenseDate: new Date("2026-04-05"),
+      description: "Campaign website design and build — ward12sam.ca, responsive, bilingual",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.manual,
+      enteredByUserId: manager.id, approvedByUserId: admin.id,
+      notes: "Launched April 1. Includes donation page integration and CMS for issues page.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-017" }, update: {}, create: {
+      id: "fin-exp-017", campaignId: campaign.id, budgetLineId: blTravel.id,
+      amount: 120, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-06-15"),
+      description: "Gas reimbursement — Priya Okonkwo, canvassing routes June 7–14",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.volunteer_expense,
+      enteredByUserId: field.id, approvedByUserId: manager.id,
+      notes: "Receipts submitted. 6 canvassing sessions, ~340 doors knocked.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-018" }, update: {}, create: {
+      id: "fin-exp-018", campaignId: campaign.id, budgetLineId: blTravel.id,
+      amount: 80, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-06-01"),
+      description: "TTC Presto fare cards — canvassing team (5 × $16 reload)",
+      paymentMethod: FinancePaymentMethod.debit, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: volcoord.id, approvedByUserId: manager.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-019" }, update: {}, create: {
+      id: "fin-exp-019", campaignId: campaign.id, budgetLineId: blOffice.id,
+      vendorId: vendorOffice.id,
+      amount: 145, taxAmount: 18.85, currency: "CAD",
+      expenseDate: new Date("2026-04-08"),
+      description: "Office supplies — printer paper (4 reams), toner, clipboards, folders",
+      paymentMethod: FinancePaymentMethod.debit, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: manager.id, approvedByUserId: treasurer.id,
+      notes: "Staples Danforth. Receipt #STP-20260408-441.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-020" }, update: {}, create: {
+      id: "fin-exp-020", campaignId: campaign.id, budgetLineId: blOffice.id,
+      vendorId: vendorOffice.id,
+      amount: 92, taxAmount: 11.96, currency: "CAD",
+      expenseDate: new Date("2026-05-12"),
+      description: "Canada Post postage stamps — 200-pack (bulk rate, community mail)",
+      paymentMethod: FinancePaymentMethod.debit, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: manager.id, approvedByUserId: treasurer.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-021" }, update: {}, create: {
+      id: "fin-exp-021", campaignId: campaign.id, budgetLineId: blPhones.id,
+      amount: 45, taxAmount: 5.85, currency: "CAD",
+      expenseDate: new Date("2026-06-01"),
+      description: "Campaign cell phone plan — June 2026 (WIND Mobile, campaign number)",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.recurring,
+      isRecurring: true, enteredByUserId: manager.id, approvedByUserId: treasurer.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-022" }, update: {}, create: {
+      id: "fin-exp-022", campaignId: campaign.id, budgetLineId: blPhones.id,
+      amount: 45, taxAmount: 5.85, currency: "CAD",
+      expenseDate: new Date("2026-07-01"),
+      description: "Campaign cell phone plan — July 2026",
+      paymentMethod: FinancePaymentMethod.credit_card, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.recurring,
+      isRecurring: true, enteredByUserId: manager.id, approvedByUserId: treasurer.id,
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-023" }, update: {}, create: {
+      id: "fin-exp-023", campaignId: campaign.id, budgetLineId: blCompliance.id,
+      amount: 200, taxAmount: 0, currency: "CAD",
+      expenseDate: new Date("2026-03-05"),
+      description: "Official agent appointment registration — City of Toronto filing fee",
+      paymentMethod: FinancePaymentMethod.cheque, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      notes: "Cheque #4401 to Receiver General. Receipt #MEA-2026-00441.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-024" }, update: {}, create: {
+      id: "fin-exp-024", campaignId: campaign.id, budgetLineId: blCompliance.id,
+      amount: 350, taxAmount: 45.50, currency: "CAD",
+      expenseDate: new Date("2026-06-25"),
+      description: "Election law review — compliance checklist and advertising rules (1.5h)",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.unpaid,
+      expenseStatus: FinanceExpenseStatus.needs_review, sourceType: FinanceSourceType.manual,
+      enteredByUserId: manager.id,
+      notes: "Submitted for review. Linda to confirm scope of legal work before approving.",
+    },
+  });
+  await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-025" }, update: {}, create: {
+      id: "fin-exp-025", campaignId: campaign.id, budgetLineId: blPhoto.id,
+      amount: 200, taxAmount: 26, currency: "CAD",
+      expenseDate: new Date("2026-07-01"),
+      description: "Photography session deposit — headshots + community event coverage",
+      paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.unpaid,
+      expenseStatus: FinanceExpenseStatus.draft, sourceType: FinanceSourceType.manual,
+      enteredByUserId: comms.id,
+      notes: "PR-004 still in approval. Do not pay until PR approved.",
+      missingReceipt: true,
+    },
+  });
+
+  // ── Split Expense (shows split line feature) ──────────────────────────────
+  // Campaign kickoff event costs split across Events and Canvassing lines.
+  const expSplit = await prisma.financeExpense.upsert({
+    where: { id: "fin-exp-split" }, update: {}, create: {
+      id: "fin-exp-split", campaignId: campaign.id,
+      amount: 280, taxAmount: 36.40, currency: "CAD",
+      expenseDate: new Date("2026-05-15"),
+      description: "Campaign kickoff supplies (split: events + canvassing)",
+      paymentMethod: FinancePaymentMethod.debit, paymentStatus: FinancePaymentStatus.paid,
+      expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
+      isSplit: true, enteredByUserId: manager.id, approvedByUserId: treasurer.id,
+      notes: "Refreshments + door-knocking kits purchased same Costco run — split accordingly.",
+    },
+  });
+  await prisma.financeExpenseSplit.upsert({
+    where: { id: "fin-split-a" }, update: {}, create: {
+      id: "fin-split-a", expenseId: expSplit.id, budgetLineId: blEvents.id,
+      amount: 160, notes: "Refreshments for kickoff event",
+    },
+  });
+  await prisma.financeExpenseSplit.upsert({
+    where: { id: "fin-split-b" }, update: {}, create: {
+      id: "fin-split-b", expenseId: expSplit.id, budgetLineId: blCanvassing.id,
+      amount: 120, notes: "Door-knocking kits and clipboards",
+    },
+  });
+  console.log("✅ Finance: 26 expenses + 1 split expense seeded");
+
+  // ── Reimbursements ────────────────────────────────────────────────────────
+  await prisma.financeReimbursement.upsert({
+    where: { id: "fin-reimb-001" }, update: {}, create: {
+      id: "fin-reimb-001", campaignId: campaign.id, budgetLineId: blTravel.id,
+      userId: volunteer1.id, approverUserId: manager.id,
+      title: "Gas reimbursement — canvassing May 24–June 7",
+      amountRequested: 48.50, amountApproved: 48.50,
+      status: FinanceReimbursementStatus.paid,
+      submittedDate: new Date("2026-06-08"), decidedDate: new Date("2026-06-10"),
+      payoutMethod: "e-transfer", notes: "Gas receipts attached. 4 weekend canvassing sessions.",
+    },
+  });
+  await prisma.financeReimbursement.upsert({
+    where: { id: "fin-reimb-002" }, update: {}, create: {
+      id: "fin-reimb-002", campaignId: campaign.id, budgetLineId: blOffice.id,
+      userId: field.id, approverUserId: manager.id,
+      title: "Field supplies — weatherproof sheet protectors, markers, lanyards",
+      amountRequested: 127.30, amountApproved: 127.30,
+      status: FinanceReimbursementStatus.approved,
+      submittedDate: new Date("2026-06-20"), decidedDate: new Date("2026-06-22"),
+      payoutMethod: "e-transfer", notes: "Dollarama + Staples receipts. For canvassing binders.",
+    },
+  });
+  await prisma.financeReimbursement.upsert({
+    where: { id: "fin-reimb-003" }, update: {}, create: {
+      id: "fin-reimb-003", campaignId: campaign.id, budgetLineId: blEvents.id,
+      userId: events.id,
+      title: "Catering run — last-minute supplies, Community BBQ June 22",
+      amountRequested: 89.75,
+      status: FinanceReimbursementStatus.submitted,
+      submittedDate: new Date("2026-06-23"),
+      notes: "Nofrills receipt + Shoppers receipt. Waiting for approval.",
+    },
+  });
+  await prisma.financeReimbursement.upsert({
+    where: { id: "fin-reimb-004" }, update: {}, create: {
+      id: "fin-reimb-004", campaignId: campaign.id, budgetLineId: blTravel.id,
+      userId: volunteer2.id,
+      title: "TTC fares — June canvassing (8 trips × $4.00)",
+      amountRequested: 32.00,
+      status: FinanceReimbursementStatus.draft,
+      notes: "Draft — James to add Presto card screenshot before submitting.",
+    },
+  });
+  console.log("✅ Finance: 4 reimbursements seeded");
+
+  // ── Budget Transfer ───────────────────────────────────────────────────────
+  // Advertising ran over — transferred $200 from Digital Ads to Advertising.
+  await prisma.budgetTransfer.upsert({
+    where: { id: "fin-transfer-001" }, update: {}, create: {
+      id: "fin-transfer-001", campaignId: campaign.id,
+      campaignBudgetId: finBudget.id,
+      fromBudgetLineId: blDigital.id, toBudgetLineId: blAds.id,
+      amount: 200,
+      reason: "Advertising line is approaching threshold due to strong Google Ads performance. Transferring underutilised Digital balance to cover additional placement buys.",
+      requestedByUserId: comms.id, approvedByUserId: treasurer.id,
+      status: FinanceBudgetTransferStatus.approved,
+      transferDate: new Date("2026-06-28"),
+      notes: "Approved by Linda Kowalski. Reflects reallocation from underutilised Digital Ads.",
+    },
+  });
+  console.log("✅ Finance: 1 budget transfer seeded");
+
+  console.log("════════════════════════════════════════════════════");
+  console.log("💰 Finance Command Center seeded:\n");
+  console.log("   Budget: $35,000 active · 18 lines covering all categories");
+  console.log("   Vendors: 6 (print, signs, advertising, design, events, office)");
+  console.log("   Purchase Requests: 5 (3 approved · 1 submitted · 1 draft)");
+  console.log("   Purchase Orders: 4 (1 received · 1 received · 1 acknowledged · 1 sent)");
+  console.log("   Vendor Bills: 3 (2 paid · 1 approved)");
+  console.log("   Expenses: 26 (paid/approved/submitted/needs_review/draft across all lines)");
+  console.log("   Reimbursements: 4 (paid/approved/submitted/draft)");
+  console.log("   Budget Transfer: 1 (Digital → Advertising, $200, approved)");
+  console.log("   ~$16,500 committed/spent of $35,000 (~47% through budget)");
+
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
   console.log("CAMPAIGN APP:  admin@pollcity.dev      / password123  (George Hatzis — SUPER_ADMIN)");
