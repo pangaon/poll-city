@@ -115,10 +115,10 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 4 — Procurement (vendors, purchase requests, purchase orders) | DONE | |
 | Phase 5 — Reimbursements + approval queue | DONE | |
 | Print → Finance expense bridge | DONE — 730833e | src/lib/finance/post-print-expense.ts |
-| Phase 6 — Reports + variance analysis | PENDING | /finance/reports |
-| Phase 6 — CSV import/export | PENDING | /finance/imports |
+| Phase 6 — Reports + variance analysis | CLAIMED 2026-04-10 | /finance/reports |
+| Phase 6 — CSV export | CLAIMED 2026-04-10 | /api/finance/exports/expenses |
 | Phase 6 — Finance ↔ Fundraising reconciliation | PENDING | GAP-005 |
-| Phase 6 — Audit trail UI | PENDING | /finance/audit |
+| Phase 6 — Audit trail UI | CLAIMED 2026-04-10 | /finance/audit |
 | Phase 7 — AI assist | PENDING | |
 | Phase 8 — Hardening + permissions | PENDING | |
 
