@@ -388,5 +388,56 @@ Every major user action. Every downstream effect. Honest status.
 
 ---
 
+---
+
+## FIELD OPERATIONS ENGINE
+
+*Added 2026-04-10 — Unified Field Assignment system (canvass, lit_drop, sign_install, sign_remove)*
+
+### Create FieldAssignment (POST /api/field-assignments)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| FieldAssignment record created | ✓ CONNECTED | wired 2026-04-10 |
+| AssignmentStop list auto-generated | ✓ CONNECTED | wired 2026-04-10 — canvass→contacts, lit_drop→households, sign_install→signs(requested\|scheduled), sign_remove→signs(installed) |
+| AssignmentResourcePackage created | ✓ CONNECTED | wired 2026-04-10 — optional, in same transaction |
+| Initial status set to assigned if assignee provided | ✓ CONNECTED | wired 2026-04-10 |
+| ActivityLog entry | ✓ CONNECTED | wired 2026-04-10 |
+| Scoped by campaignId + canvassing:manage | ✓ CONNECTED | wired 2026-04-10 |
+
+### FieldAssignment Status Transitions (PATCH /api/field-assignments/[id])
+| Action | Transition | Status | Notes |
+|--------|-----------|--------|-------|
+| publish | draft → published | ✓ CONNECTED | wired 2026-04-10 — canvassing:manage |
+| assign | draft\|published → assigned | ✓ CONNECTED | wired 2026-04-10 — sets assignedUser/Volunteer/Group |
+| start | assigned\|published → in_progress | ✓ CONNECTED | wired 2026-04-10 — sets startedAt, canvassing:write |
+| complete | in_progress → completed | ✓ CONNECTED | wired 2026-04-10 — sets completedAt, canvassing:write |
+| cancel | any → cancelled | ✓ CONNECTED | wired 2026-04-10 — canvassing:manage |
+| update | no status change | ✓ CONNECTED | wired 2026-04-10 — metadata fields only |
+| 409 on invalid transition | ✓ CONNECTED | wired 2026-04-10 — guard checks current status |
+
+### Complete AssignmentStop (PATCH /api/field-assignments/[id]/stops/[stopId])
+| Effect | Status | Notes |
+|--------|--------|-------|
+| AssignmentStop.status updated | ✓ CONNECTED | wired 2026-04-10 |
+| AssignmentStop.outcome recorded (type-validated) | ✓ CONNECTED | wired 2026-04-10 — Zod schema per type |
+| AssignmentStop.completedAt + completedById set | ✓ CONNECTED | wired 2026-04-10 |
+| Contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-10 — on any terminal status with contactId |
+| Contact.supportLevel updated from canvass outcome | ✓ CONNECTED | wired 2026-04-10 — only on completed canvass stop |
+| Contact.doNotContact set from canvass outcome | ✓ CONNECTED | wired 2026-04-10 — only on completed canvass stop |
+| TurfStop.visited + visitedAt marked | ✓ CONNECTED | wired 2026-04-10 — updateMany by contactId, non-fatal |
+| Sign.status = installed + installedAt (sign_install) | ✓ CONNECTED | wired 2026-04-10 — matches existing sign route pattern |
+| Sign contact escalation + signPlaced (sign_install) | ✓ CONNECTED | wired 2026-04-10 — mirrors signs/route.ts logic |
+| notifySignInstalled fired (sign_install) | ✓ CONNECTED | wired 2026-04-10 — async, non-fatal |
+| Sign.status = removed + removedAt (sign_remove) | ✓ CONNECTED | wired 2026-04-10 |
+| Household.operationHistory updated (lit_drop) | ✓ CONNECTED | wired 2026-04-10 — lit_drop timestamp recorded |
+| FieldAssignment auto-completed when all stops terminal | ✓ CONNECTED | wired 2026-04-10 — counts pending stops, fires if 0 |
+| ActivityLog entry (stop update) | ✓ CONNECTED | wired 2026-04-10 |
+| ActivityLog entry (assignment auto-complete) | ✓ CONNECTED | wired 2026-04-10 |
+| Blocked on cancelled/completed assignment | ✓ CONNECTED | wired 2026-04-10 — 409 returned |
+| GOTV priority recalculates on canvass stop | ✗ NOT CONNECTED | not yet wired |
+| Auto-create volunteer profile if interested | ✗ NOT CONNECTED | manual step required |
+
+---
+
 *This file is the truth. If code and this file disagree, fix the code.*
 *Updated every session. Never let it fall behind.*

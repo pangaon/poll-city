@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AssignmentType, AssignmentStatus } from "@prisma/client";
+import { AssignmentType, AssignmentStatus, StopStatus, ExceptionType, SupportLevel } from "@prisma/client";
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
@@ -76,6 +76,58 @@ export const patchFieldAssignmentSchema = z.discriminatedUnion("action", [
     printPacketUrl: z.string().url().optional().nullable(),
   }),
 ]);
+
+// ─── Stop update ─────────────────────────────────────────────────────────────
+
+/**
+ * Body schema for PATCH /api/field-assignments/[id]/stops/[stopId].
+ * outcome is validated separately against a type-specific schema in the route
+ * handler once the assignment type is known.
+ */
+export const updateStopSchema = z
+  .object({
+    status: z.nativeEnum(StopStatus),
+    outcome: z.record(z.unknown()).optional(),
+    exceptionType: z.nativeEnum(ExceptionType).optional(),
+    exceptionNotes: z.string().max(2000).optional(),
+    notes: z.string().max(2000).optional(),
+  })
+  .refine(
+    (d) => d.status !== StopStatus.exception || d.exceptionType !== undefined,
+    { message: "exceptionType is required when status is exception", path: ["exceptionType"] },
+  );
+
+// Type-specific outcome validators (applied after assignment type is resolved)
+
+export const canvassOutcomeSchema = z
+  .object({
+    supportLevel: z.nativeEnum(SupportLevel).optional(),
+    interactionNotes: z.string().max(2000).optional(),
+    doNotContact: z.boolean().optional(),
+  })
+  .optional();
+
+export const litDropOutcomeSchema = z
+  .object({
+    delivered: z.boolean(),
+    quantity: z.number().int().min(1).optional(),
+  })
+  .optional();
+
+export const signInstallOutcomeSchema = z
+  .object({
+    photoUrl: z.string().url().optional(),
+    notes: z.string().max(1000).optional(),
+  })
+  .optional();
+
+export const signRemoveOutcomeSchema = z
+  .object({
+    photoUrl: z.string().url().optional(),
+    condition: z.enum(["good", "damaged", "missing"]).optional(),
+    notes: z.string().max(1000).optional(),
+  })
+  .optional();
 
 // ─── Query params ─────────────────────────────────────────────────────────────
 
