@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth, requirePermission } from "@/lib/auth/helpers";
 import { PrintJobStatus } from "@prisma/client";
+import {
+  budgetCategoryForProduct,
+  findPrintBudgetLine,
+  postPrintExpense,
+  printExpenseExists,
+} from "@/lib/finance/post-print-expense";
 
 export async function GET(
   req: NextRequest,
@@ -76,12 +82,14 @@ export async function PATCH(
   }
 
   // When awarding a bid, update the bid and set status to awarded
+  let awardedBidPrice: number | null = null;
   if (body.awardedBidId) {
     // Verify bid belongs to this job
     const bid = await prisma.printBid.findUnique({ where: { id: body.awardedBidId } });
     if (!bid || bid.jobId !== params.id) {
       return NextResponse.json({ error: "Bid not found on this job" }, { status: 400 });
     }
+    awardedBidPrice = bid.price;
     // Mark all bids as not accepted, then accept the chosen one
     await prisma.printBid.updateMany({ where: { jobId: params.id }, data: { isAccepted: false } });
     await prisma.printBid.update({ where: { id: body.awardedBidId }, data: { isAccepted: true } });
@@ -111,6 +119,32 @@ export async function PATCH(
       bids: { include: { shop: true } },
     },
   });
+
+  // Auto-post finance expense when a bid is awarded (idempotent — skip if already posted)
+  if (body.awardedBidId && awardedBidPrice !== null) {
+    try {
+      const alreadyPosted = await printExpenseExists({
+        campaignId: job.campaignId,
+        printJobId: job.id,
+      });
+      if (!alreadyPosted) {
+        const category = budgetCategoryForProduct(job.productType);
+        const budgetLineId = await findPrintBudgetLine(job.campaignId, category);
+        await postPrintExpense({
+          campaignId: job.campaignId,
+          amount: awardedBidPrice,
+          description: `Print job awarded: ${job.title} ×${job.quantity}`,
+          sourceType: "print_order",
+          budgetLineId,
+          printJobId: job.id,
+          userId: session!.user.id,
+        });
+      }
+    } catch (expenseErr) {
+      console.error("[print/jobs] expense auto-post failed", expenseErr);
+      // Non-fatal: job was updated successfully, expense can be posted manually
+    }
+  }
 
   return NextResponse.json({ data: updated });
 }

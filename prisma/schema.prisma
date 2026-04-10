@@ -678,6 +678,7 @@ model User {
   conflictsResolved          ScheduleConflict[]       @relation("ConflictResolver")
   checklistEntriesCompleted  CalendarItemChecklistEntry[]
   calendarAuditActed         CalendarAuditLog[]       @relation("CalendarAuditActor")
+  calendarSyncAccounts       CalendarSyncAccount[]
 
   // CRM Suite
   contactNotesAuthored       ContactNote[]            @relation("ContactNoteAuthor")
@@ -697,6 +698,7 @@ model User {
   fieldTeamMemberships        FieldTeamMember[]        @relation("FieldTeamMemberUser")
   fieldAuditActed             FieldAuditLog[]          @relation("FieldAuditActor")
   messageTemplatesAuthored    MessageTemplate[]        @relation("MessageTemplateAuthor")
+  savedSegmentsAuthored       SavedSegment[]           @relation("SavedSegmentAuthor")
 
   @@map("users")
 }
@@ -880,6 +882,8 @@ model Campaign {
   scheduleConflicts         ScheduleConflict[]
   checklistTemplates        ChecklistTemplate[]
   calendarAuditLogs         CalendarAuditLog[]
+  candidateAppearances      CandidateAppearance[]
+  calendarSyncAccounts      CalendarSyncAccount[]
 
   // CRM Suite
   contactNotes              ContactNote[]
@@ -902,6 +906,7 @@ model Campaign {
   fieldTeamMembers          FieldTeamMember[]
   fieldAuditLogs            FieldAuditLog[]
   messageTemplates          MessageTemplate[]
+  savedSegments             SavedSegment[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -5737,7 +5742,8 @@ model CalendarItem {
   successors      CalendarDependency[]      @relation("DependencyPredecessor")
   conflictsSource ScheduleConflict[]        @relation("ConflictSource")
   conflictsTarget ScheduleConflict[]        @relation("ConflictTarget")
-  checklists      CalendarItemChecklist[]
+  checklists          CalendarItemChecklist[]
+  candidateAppearance CandidateAppearance?
   @@index([campaignId, startAt])
   @@index([campaignId, itemType, itemStatus])
   @@index([calendarId, startAt])
@@ -5980,6 +5986,135 @@ model CalendarAuditLog {
   @@index([campaignId, createdAt])
   @@index([actorUserId, createdAt])
   @@map("calendar_audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALENDAR SUITE — PHASE 3: CANDIDATE SCHEDULE + CALENDAR SYNC STUB
+// Candidate appearance detail model, blocked-time is CalendarItemType
+// (protected_time / travel_block / prep_window). Sync stub is provider-agnostic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CandidateAppearanceFormat {
+  speech
+  panel_discussion
+  debate
+  media_interview
+  media_scrum
+  meet_and_greet
+  canvassing_walk
+  ribbon_cutting
+  endorsement_event
+  community_consultation
+  town_hall_speaker
+  fundraiser_appearance
+  door_to_door
+  phone_bank_shift
+  other
+}
+
+enum CalendarSyncProvider {
+  google_calendar
+  apple_calendar
+  outlook
+  ical_feed
+}
+
+enum CalendarSyncStatus {
+  pending_auth
+  active
+  paused
+  error
+  disconnected
+}
+
+enum SyncDirection {
+  push_only
+  pull_only
+  bidirectional
+}
+
+// Appearance-specific detail record — one per CalendarItem of type candidate_appearance
+model CandidateAppearance {
+  id                      String                    @id @default(cuid())
+  campaignId              String
+  calendarItemId          String                    @unique
+  appearanceFormat        CandidateAppearanceFormat @default(other)
+  hostOrganization        String?
+  hostContactName         String?
+  hostContactPhone        String?
+  hostContactEmail        String?
+  expectedAttendees       Int?
+  mediaPresent            Boolean                   @default(false)
+  mediaOutlets            String[]                  @default([])
+  hasLiveStream           Boolean                   @default(false)
+  liveStreamUrl           String?
+  speakingDurationMinutes Int?
+  prepWindowMinutes       Int                       @default(30)
+  travelRequiresVehicle   Boolean                   @default(false)
+  travelNotes             String?
+  talkingPoints           String[]                  @default([])
+  briefingNotes           String?
+  briefingDocumentUrl     String?
+  dresscode               String?
+  staffingNotes           String?
+  securityNotes           String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  calendarItem CalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("candidate_appearances")
+}
+
+// Provider connection record — one per user × provider × external calendar
+model CalendarSyncAccount {
+  id                       String             @id @default(cuid())
+  campaignId               String
+  userId                   String
+  provider                 CalendarSyncProvider
+  externalCalendarId       String?
+  externalCalendarName     String?
+  syncDirection            SyncDirection      @default(bidirectional)
+  syncStatus               CalendarSyncStatus @default(pending_auth)
+  accessTokenEncrypted     String?
+  refreshTokenEncrypted    String?
+  tokenExpiresAt           DateTime?
+  syncToken                String?
+  lastSyncAt               DateTime?
+  lastSyncError            String?
+  pushCalendarIds          String[]           @default([])
+  pullCalendarIds          String[]           @default([])
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  campaign Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncLogs CalendarSyncLog[]
+
+  @@unique([userId, provider, externalCalendarId])
+  @@index([campaignId])
+  @@index([userId])
+  @@map("calendar_sync_accounts")
+}
+
+// One row per sync run — success or failure audit trail
+model CalendarSyncLog {
+  id                    String              @id @default(cuid())
+  calendarSyncAccountId String
+  syncStartedAt         DateTime            @default(now())
+  syncCompletedAt       DateTime?
+  itemsPushed           Int                 @default(0)
+  itemsPulled           Int                 @default(0)
+  itemsConflicted       Int                 @default(0)
+  errorMessage          String?
+  success               Boolean             @default(false)
+
+  syncAccount CalendarSyncAccount @relation(fields: [calendarSyncAccountId], references: [id], onDelete: Cascade)
+
+  @@index([calendarSyncAccountId, syncStartedAt])
+  @@map("calendar_sync_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6704,4 +6839,34 @@ model MessageTemplate {
   @@index([campaignId, channel])
   @@index([campaignId, isActive])
   @@map("message_templates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMUNICATIONS PLATFORM — SAVED SEGMENTS
+// Reusable named audience filters. Replaces campaign.customization.segments JSON.
+// filterDefinition JSONB: { supportLevels, wards, tagIds, channel, volunteerOnly,
+//                           hasEmail, hasPhone, excludeDnc }
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SavedSegment {
+  id               String    @id @default(cuid())
+  campaignId       String
+  createdById      String
+  name             String
+  description      String?
+  // Audience filter criteria stored as JSONB
+  filterDefinition Json      @default("{}")
+  // isDynamic: count is recalculated live; false = use cached lastCount
+  isDynamic        Boolean   @default(true)
+  lastCount        Int?
+  lastCountedAt    DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("SavedSegmentAuthor", fields: [createdById], references: [id])
+
+  @@index([campaignId])
+  @@map("saved_segments")
 }

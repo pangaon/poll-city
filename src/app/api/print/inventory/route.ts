@@ -3,6 +3,12 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { PrintProductType } from "@prisma/client";
+import {
+  budgetCategoryForProduct,
+  findPrintBudgetLine,
+  postPrintExpense,
+  printExpenseExists,
+} from "@/lib/finance/post-print-expense";
 
 const createSchema = z.object({
   campaignId: z.string().min(1),
@@ -146,6 +152,40 @@ export async function POST(req: NextRequest) {
 
     return inv;
   });
+
+  // Auto-post finance expense when inventory is received from a PrintOrder that has a price.
+  // Idempotency key: "printorder:{orderId}" — skips if an expense was already posted at order creation.
+  if (orderId) {
+    try {
+      const order = await prisma.printOrder.findUnique({
+        where: { id: orderId },
+        select: { totalPriceCad: true, productType: true },
+      });
+      if (order?.totalPriceCad) {
+        const refKey = `printorder:${orderId}`;
+        const alreadyPosted = await printExpenseExists({
+          campaignId,
+          externalReference: refKey,
+        });
+        if (!alreadyPosted) {
+          const category = budgetCategoryForProduct(order.productType);
+          const budgetLineId = await findPrintBudgetLine(campaignId, category);
+          await postPrintExpense({
+            campaignId,
+            amount: order.totalPriceCad,
+            description: `Print inventory received: ${order.productType.replace(/_/g, " ")} ×${totalQty}`,
+            sourceType: "print_order",
+            budgetLineId,
+            externalReference: refKey,
+            userId: session!.user.id,
+          });
+        }
+      }
+    } catch (expenseErr) {
+      console.error("[print/inventory] expense auto-post failed", expenseErr);
+      // Non-fatal: inventory was created successfully
+    }
+  }
 
   return NextResponse.json({ data: inventory }, { status: 201 });
 }

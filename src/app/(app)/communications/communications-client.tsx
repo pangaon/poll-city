@@ -2046,16 +2046,26 @@ function HistoryTab({ campaignId, channelFilter }: { campaignId: string; channel
 // TAB: AUDIENCES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+interface SavedSegmentFilter {
+  supportLevels?: string[];
+  wards?: string[];
+  tagIds?: string[];
+  channel?: "email" | "sms" | "all";
+  volunteerOnly?: boolean;
+  hasEmail?: boolean;
+  hasPhone?: boolean;
+  excludeDnc?: boolean;
+}
+
 interface SavedSegment {
   id: string;
   name: string;
-  supportLevels: string[];
-  wards: string[];
-  tagIds: string[];
-  volunteerOnly: boolean;
-  hasEmail: boolean;
-  hasPhone: boolean;
-  count?: number;
+  description?: string | null;
+  filterDefinition: SavedSegmentFilter;
+  isDynamic: boolean;
+  lastCount?: number | null;
+  lastCountedAt?: string | null;
+  createdAt: string;
 }
 
 function AudiencesTab({
@@ -2072,6 +2082,8 @@ function AudiencesTab({
   const [loading, setLoading] = useState(false);
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   // Create segment form state
   const [segName, setSegName] = useState("");
@@ -2104,14 +2116,14 @@ function AudiencesTab({
 
   useEffect(() => { fetchAudience(); }, [fetchAudience]);
 
-  // Load saved segments from campaign customization
+  // Load saved segments from real API
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/campaigns/current");
+        const res = await fetch(`/api/comms/segments?campaignId=${campaignId}`);
         if (res.ok) {
           const data = await res.json();
-          setSavedSegments(data.data?.customization?.segments ?? []);
+          setSavedSegments(data.segments ?? []);
         }
       } catch (e) { /* graceful degradation */ }
     })();
@@ -2133,8 +2145,6 @@ function AudiencesTab({
             wards: segWards.length ? segWards : undefined,
             tagIds: segTags.length ? segTags : undefined,
             volunteerOnly: segVolunteerOnly || undefined,
-            hasEmail: segHasEmail || undefined,
-            hasPhone: segHasPhone || undefined,
           }),
         });
         if (res.ok) {
@@ -2145,43 +2155,36 @@ function AudiencesTab({
       setSegPreviewLoading(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [campaignId, channel, showCreateForm, segSupportLevels, segWards, segTags, segVolunteerOnly, segHasEmail, segHasPhone]);
+  }, [campaignId, channel, showCreateForm, segSupportLevels, segWards, segTags, segVolunteerOnly]);
 
   async function saveSegment() {
     if (!segName.trim()) return;
     setSavingSegment(true);
     try {
-      const campaignRes = await fetch("/api/campaigns/current");
-      let existingSegments: SavedSegment[] = [];
-      if (campaignRes.ok) {
-        const campaignData = await campaignRes.json();
-        existingSegments = campaignData.data?.customization?.segments ?? [];
-      }
-
-      const newSegment: SavedSegment = {
-        id: `seg-${Date.now()}`,
-        name: segName.trim(),
-        supportLevels: segSupportLevels,
-        wards: segWards,
-        tagIds: segTags,
-        volunteerOnly: segVolunteerOnly,
-        hasEmail: segHasEmail,
-        hasPhone: segHasPhone,
-        count: segPreviewCount ?? undefined,
-      };
-
-      const res = await fetch("/api/campaigns/current", {
+      const res = await fetch("/api/comms/segments", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          customization: {
-            segments: [...existingSegments, newSegment],
+          campaignId,
+          name: segName.trim(),
+          filterDefinition: {
+            supportLevels: segSupportLevels.length ? segSupportLevels : undefined,
+            wards: segWards.length ? segWards : undefined,
+            tagIds: segTags.length ? segTags : undefined,
+            channel,
+            volunteerOnly: segVolunteerOnly || undefined,
+            hasEmail: segHasEmail || undefined,
+            hasPhone: segHasPhone || undefined,
+            excludeDnc: true,
           },
+          isDynamic: true,
         }),
       });
 
       if (res.ok) {
-        setSavedSegments((prev) => [...prev, newSegment]);
+        const data = await res.json();
+        const created: SavedSegment = { ...data.segment, lastCount: segPreviewCount ?? null };
+        setSavedSegments((prev) => [created, ...prev]);
         setShowCreateForm(false);
         setSegName("");
         setSegSupportLevels([]);
@@ -2196,14 +2199,44 @@ function AudiencesTab({
     setSavingSegment(false);
   }
 
+  async function deleteSegment(segId: string) {
+    setDeletingId(segId);
+    try {
+      const res = await fetch(`/api/comms/segments/${segId}`, { method: "DELETE" });
+      if (res.ok) {
+        setSavedSegments((prev) => prev.filter((s) => s.id !== segId));
+      }
+    } catch (e) { /* graceful degradation */ }
+    setDeletingId(null);
+  }
+
+  async function refreshSegmentCount(segId: string) {
+    setRefreshingId(segId);
+    try {
+      const res = await fetch(`/api/comms/segments/${segId}/count`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedSegments((prev) =>
+          prev.map((s) =>
+            s.id === segId
+              ? { ...s, lastCount: data.count, lastCountedAt: data.countedAt }
+              : s,
+          ),
+        );
+      }
+    } catch (e) { /* graceful degradation */ }
+    setRefreshingId(null);
+  }
+
   function segmentFilterSummary(seg: SavedSegment): string {
+    const fd = seg.filterDefinition;
     const parts: string[] = [];
-    if (seg.supportLevels.length) parts.push(`${seg.supportLevels.length} support level${seg.supportLevels.length > 1 ? "s" : ""}`);
-    if (seg.wards.length) parts.push(`${seg.wards.length} ward${seg.wards.length > 1 ? "s" : ""}`);
-    if (seg.tagIds.length) parts.push(`${seg.tagIds.length} tag${seg.tagIds.length > 1 ? "s" : ""}`);
-    if (seg.volunteerOnly) parts.push("volunteers");
-    if (seg.hasEmail) parts.push("has email");
-    if (seg.hasPhone) parts.push("has phone");
+    if (fd.supportLevels?.length) parts.push(`${fd.supportLevels.length} support level${fd.supportLevels.length > 1 ? "s" : ""}`);
+    if (fd.wards?.length) parts.push(`${fd.wards.length} ward${fd.wards.length > 1 ? "s" : ""}`);
+    if (fd.tagIds?.length) parts.push(`${fd.tagIds.length} tag${fd.tagIds.length > 1 ? "s" : ""}`);
+    if (fd.volunteerOnly) parts.push("volunteers");
+    if (fd.hasEmail) parts.push("has email");
+    if (fd.hasPhone) parts.push("has phone");
     return parts.length ? parts.join(" · ") : "All contacts";
   }
 
@@ -2274,9 +2307,31 @@ function AudiencesTab({
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-slate-900">{seg.name}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{segmentFilterSummary(seg)}</p>
-                    {seg.count !== undefined && (
-                      <p className="text-xs font-medium text-blue-600 mt-0.5">{seg.count.toLocaleString()} contacts</p>
+                    {seg.lastCount != null && (
+                      <p className="text-xs font-medium text-blue-600 mt-0.5">{seg.lastCount.toLocaleString()} contacts</p>
                     )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => refreshSegmentCount(seg.id)}
+                      disabled={refreshingId === seg.id}
+                      title="Refresh count"
+                      className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors"
+                    >
+                      {refreshingId === seg.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <RefreshCw className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => deleteSegment(seg.id)}
+                      disabled={deletingId === seg.id}
+                      title="Delete segment"
+                      className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      {deletingId === seg.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
                 </div>
               </div>
