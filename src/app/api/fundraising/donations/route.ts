@@ -6,6 +6,10 @@ import { z } from "zod";
 import { evaluateCompliance, refreshDonorProfile } from "@/lib/fundraising/compliance";
 import { audit } from "@/lib/audit";
 
+// funnelStage values that should advance to "donor" when a donation is recorded.
+// If already donor or voter, leave unchanged.
+const ADVANCE_TO_DONOR_FROM = new Set(["unknown", "contact", "supporter", "volunteer"]);
+
 const createSchema = z.object({
   campaignId: z.string(),
   contactId: z.string().optional(),
@@ -173,12 +177,50 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Update donor profile if contact linked
+  // ── CRM: update donor profile + funnel stage + lastContactedAt ──────────────
   if (d.contactId) {
     await refreshDonorProfile(d.campaignId, d.contactId);
+
+    // Advance funnelStage to "donor" if not already at donor/voter level.
+    const contactRow = await prisma.contact.findUnique({
+      where: { id: d.contactId },
+      select: { funnelStage: true },
+    });
+    await prisma.contact.update({
+      where: { id: d.contactId },
+      data: {
+        lastContactedAt: new Date(),
+        ...(contactRow && ADVANCE_TO_DONOR_FROM.has(contactRow.funnelStage as string)
+          ? { funnelStage: "donor" as const }
+          : {}),
+      },
+    });
   }
 
-  // Update fundraising campaign raised total
+  // ── Comms: ensure a "Donors" SavedSegment exists for this campaign ──────────
+  // Dynamic segment — contacts with a DonorProfile, have email, not on DNC.
+  // Idempotent: no-op if segment already exists.
+  const existingSegment = await prisma.savedSegment.findFirst({
+    where: { campaignId: d.campaignId, name: "Donors", deletedAt: null },
+    select: { id: true },
+  });
+  if (!existingSegment) {
+    await prisma.savedSegment.create({
+      data: {
+        campaignId: d.campaignId,
+        createdById: session!.user.id,
+        name: "Donors",
+        description: "All contacts who have made at least one donation to this campaign",
+        filterDefinition: { donorOnly: true, hasEmail: true, excludeDnc: true },
+        isDynamic: true,
+      },
+    }).catch((err: unknown) => {
+      // Race condition on concurrent donations is acceptable — segment already created.
+      console.warn("[donations] Donors segment create race:", err instanceof Error ? err.message : err);
+    });
+  }
+
+  // ── Finance: sync fundraising campaign raised total ─────────────────────────
   if (d.fundraisingCampaignId) {
     const agg = await prisma.donation.aggregate({
       where: { fundraisingCampaignId: d.fundraisingCampaignId, status: { notIn: ["cancelled", "failed"] }, deletedAt: null },
@@ -191,6 +233,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // ── Audit: ActivityLog entry via audit() ────────────────────────────────────
   await audit(prisma, "donation.create", {
     campaignId: d.campaignId,
     userId: session!.user.id,

@@ -4,6 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
+import { sendReceiptEmail } from "@/lib/fundraising/receipt-email";
 
 const generateSchema = z.object({
   campaignId: z.string(),
@@ -102,6 +103,11 @@ export async function POST(req: NextRequest) {
     entityType: "DonationReceipt",
     ip: req.headers.get("x-forwarded-for"),
   });
+
+  // Send receipt email — fire-and-forget, never fail the request
+  sendReceiptEmail(receipt.id).catch((e: unknown) =>
+    console.error("[receipts] email dispatch failed:", e),
+  );
 
   return NextResponse.json({ data: receipt }, { status: 201 });
 }

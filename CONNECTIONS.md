@@ -670,7 +670,7 @@ Every major user action. Every downstream effect. Honest status.
 ## FUNDRAISING SUITE
 
 *Full suite built 2026-04-10 — schema, APIs, compliance engine, Fundraising Command Center UI.*
-*Stripe integration (Phase 4) and automated comms (Phase 7) remain pending.*
+*Phase 7 (comms integration) wired 2026-04-11. Phase 4 (Stripe) skeleton present — needs STRIPE_SECRET_KEY in Railway env.*
 
 ### Donation recorded (offline / manual entry)
 | Effect | Status | Notes |
@@ -680,9 +680,10 @@ Every major user action. Every downstream effect. Honest status.
 | complianceStatus set (approved/review/rejected) | ✓ CONNECTED | |
 | DonorProfile refreshed (lifetime total, tier, status) | ✓ CONNECTED | refreshDonorProfile() called after write |
 | FundraisingCampaign.raisedAmount synced | ✓ CONNECTED | atomic increment on parent campaign |
-| Contact.lastContactedAt updated | ✗ NOT CONNECTED | donation does not update lastContactedAt |
-| Contact → donor funnel advance | ✗ NOT CONNECTED | funnelStage not updated on donation |
-| ActivityLog entry | ✗ NOT CONNECTED | no ActivityLog on donation create |
+| Contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-11 Phase 7 |
+| Contact → donor funnel advance | ✓ CONNECTED | funnelStage → donor if ≤ volunteer; wired 2026-04-11 Phase 7 |
+| ActivityLog entry | ✓ CONNECTED | audit() writes to activityLog on every donation.create |
+| "Donors" SavedSegment auto-created | ✓ CONNECTED | idempotent upsert on first donation per campaign; wired 2026-04-11 Phase 7 |
 | DonorAuditLog entry | ✓ CONNECTED | sensitive donor changes logged to immutable audit table |
 
 ### Compliance review queue
@@ -700,7 +701,8 @@ Every major user action. Every downstream effect. Honest status.
 | Receipt number format: REC-YEAR-RANDOM | ✓ CONNECTED | |
 | Receipt resend | ✓ CONNECTED | POST /api/fundraising/receipts/[id] |
 | Receipt void | ✓ CONNECTED | DELETE /api/fundraising/receipts/[id] |
-| Email delivery of receipt | ✗ NOT CONNECTED | Phase 7 |
+| Email delivery of receipt (Stripe payments) | ✓ CONNECTED | sendDonationReceiptEmail() → Stripe webhook on payment_intent.succeeded + invoice.payment_succeeded; wired 2026-04-11 Phase 7 |
+| Email delivery of receipt (manual trigger) | ✓ CONNECTED | POST /api/fundraising/receipts → sendReceiptEmail() via receipt-email.ts; wired 2026-04-11 Phase 7 |
 
 ### Recurring plan
 | Effect | Status | Notes |

@@ -76,7 +76,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 4 — Stripe integration | CLAIMED 2026-04-11 | PaymentIntent, webhooks, Stripe Billing recurring |
 | Phase 5 — Full compliance wiring (configurable limits per campaign) | DONE — d71673f | /api/fundraising/compliance-config + Limits UI tab |
 | Phase 6 — Reports + CSV export + Adoni fundraising tools | DONE — d71673f | /api/fundraising/reports + Reports UI tab + CSV export |
-| Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | CLAIMED 2026-04-11 session-2 | receipt email (Stripe webhook), CRM funnel advance, ActivityLog, Donors segment |
+| Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | DONE — see push | receipt email (Stripe webhook + manual), CRM funnel advance to donor, ActivityLog, "Donors" SavedSegment auto-create |
 | Donation pages (public-facing) | PENDING | /api/fundraising/pages not built |
 
 ---
@@ -152,8 +152,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Household CRM APIs | DONE — 730833e | /api/crm/households (CRUD + members) |
 | guardCampaignRoute migration (145 routes) | DONE — 0188808 | GAP-010 — 91 routes migrated in batch |
 | sanitizeUserText on remaining fields | DONE — 0188808 | GAP-015 — event/social/print/volunteer/budget notes |
-| Contact → funnel advance on donation | CLAIMED 2026-04-11 session-2 | Building in same commit as Phase 7 |
-| ActivityLog on donation create | CLAIMED 2026-04-11 session-2 | Building in same commit as Phase 7 |
+| Contact → funnel advance on donation | DONE — see push | funnelStage → donor if ≤ volunteer; lastContactedAt updated |
+| ActivityLog on donation create | DONE — see push | audit() writes to ActivityLog on donation.create |
 
 ---
 
