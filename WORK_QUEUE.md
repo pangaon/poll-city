@@ -53,7 +53,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Field Programs API + UI | DONE — 730833e | /api/field/programs, /field/programs |
 | Field Routes API + UI | DONE — 730833e | /api/field/routes, /field/routes |
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
-| Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — pending-push | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
+| Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — a4435be | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
 | Chunk 9 — Literature Drop Operations | PENDING | |
 | Chunk 10 — Sign Ops inside Field | PENDING | |
 | Chunk 11 — Volunteer + Team + Shift Execution | PENDING | |
@@ -94,7 +94,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Saved Segment model (SavedSegment) | DONE — 730833e | In schema.prisma |
 | Phase 1 — Message Templates | PENDING | MessageTemplate model + API + UI |
 | Phase 2 — Segment builder UI + Audiences tab | PENDING | Component: segment-builder.tsx |
-| Phase 3 — Scheduled messages + cron | DONE — pending-push | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
+| Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | PENDING | GAP-017 |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
