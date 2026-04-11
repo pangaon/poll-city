@@ -134,8 +134,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 3 — Candidate schedule view + appearances API | DONE — b5170f0 | /calendar/candidate, /api/campaign-calendar/appearances, /candidate-schedule |
 | Phase 3 — Calendar sync stub (connect + trigger) | DONE — b5170f0 | /api/campaign-calendar/sync — stub only, no real OAuth |
 | Calendar demo seed (Ward 20, 37 items, 12 appearances) | DONE — 9981bc4 | npm run db:seed:calendar |
-| **REQUIRED: npx prisma db push** | BLOCKED — George must run | Run against Railway to activate all calendar models in prod |
-| Phase 4 — Cross-system wiring (events, comms, print, field) | PENDING | GAP-006, GAP-007, GAP-008 |
+| **REQUIRED: npx prisma db push** | DONE — George confirmed | Run against Railway to activate all calendar models in prod |
+| Phase 4 — Cross-system wiring (events, comms, print, field) | CLAIMED 2026-04-11 | GAP-006, GAP-007, GAP-008 |
 | Phase 5 — Reminders + notifications cron | PENDING | |
 | Phase 6 — Google/Outlook real OAuth sync | PENDING | GAP-024 |
 
