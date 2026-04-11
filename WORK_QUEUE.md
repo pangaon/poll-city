@@ -197,5 +197,5 @@ These cannot be done by AI sessions:
 
 ---
 
-*Last updated: 2026-04-11 (session — Chunk 8 + Comms Phase 3 built, pending push) by Claude Sonnet 4.6*
+*Last updated: 2026-04-11 (Chunk 8 a4435be + Comms Phase 3 57b4177 live on Vercel) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
