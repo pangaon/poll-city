@@ -196,7 +196,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 | # | Action | Priority |
 |---|---|---|
-| 1 | `npx prisma db push` against Railway | CRITICAL |
+| ~~1~~ | ~~`npx prisma db push` against Railway~~ | ✅ DONE 2026-04-11 |
 | 2-3 | Add Stripe secret + publishable keys to Railway | High |
 | 4-5 | Register fundraising webhook in Stripe Dashboard + add signing secret | High |
 | 6-9 | Platform billing Stripe webhook + Price IDs | Medium |

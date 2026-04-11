@@ -10,15 +10,7 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 
 ## 🔴 CRITICAL — Platform is broken without these
 
-- [ ] **1. Run `npx prisma db push` against Railway**
-  - Why: Calendar models, ScheduledMessage, ScheduledMessageStatus enum,
-    NotificationLog.sendKey — comms scheduling + calendar UI both 500 until this runs
-  - How:
-    1. Open your Railway project → Poll City service
-    2. Go to the Variables tab — copy `DATABASE_URL`
-    3. In your terminal: `DATABASE_URL="<paste>" npx prisma db push`
-    4. Confirm output shows "Your database is now in sync with your Prisma schema"
-  - Risk: Safe — `db push` never drops existing data, only adds new tables/columns
+- [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
 
 ---
 
@@ -218,7 +210,7 @@ Protects public forms from bot submissions.
 
 ## ✅ COMPLETED
 
-*(Move items here when done — one line each with date)*
+- #1 `npx prisma db push` — 2026-04-11 — "database already in sync"
 
 ---
 
