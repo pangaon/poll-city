@@ -86,6 +86,10 @@
     {
       "path": "/api/cron/team-activity",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/calendar-reminders",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
