@@ -54,14 +54,14 @@ No session may start a task already marked CLAIMED or DONE.
 | Field Routes API + UI | DONE — 730833e | /api/field/routes, /field/routes |
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
 | Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — a4435be | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
-| Chunk 9 — Literature Drop Operations | CLAIMED 2026-04-11 | /field/lit-drops, /api/field/lit-drops |
+| Chunk 9 — Literature Drop Operations | DONE — c7f9f51 | /field/lit-drops, /api/field/lit-drops |
 | Chunk 10 — Sign Ops inside Field | DONE — 0188808 | /api/field/signs, /field-ops/signs UI |
-| Chunk 11 — Volunteer + Team + Shift Execution | CLAIMED 2026-04-11 | /field/teams, /api/field/teams, check-in flow |
-| Chunk 12 — Inventory + Print + Materials Packaging | CLAIMED 2026-04-11 | /field/materials, /api/field/materials, GAP-011 |
-| Chunk 13 — Mobile + Offline + Paper Fallback | CLAIMED 2026-04-11 | /field/mobile, /api/field/paper-export |
-| Chunk 14 — Follow-Up Logic + GOTV + Cross-System Automations | CLAIMED 2026-04-11 | /field/follow-ups, /api/field/gotv-targets |
-| Chunk 15 — AI Assist (Adoni) + Hardening + Audit | CLAIMED 2026-04-11 | Adoni field tools, /field/audit |
-| Chunk 16 — Field Ops enrichment: stop completion, route detail, program detail | CLAIMED 2026-04-11 | Turf stop visited rollup, /field/routes/[routeId], /field/programs/[programId] |
+| Chunk 11 — Volunteer + Team + Shift Execution | DONE — c7f9f51 | /field/teams, /api/field/teams, check-in flow |
+| Chunk 12 — Inventory + Print + Materials Packaging | DONE — c7f9f51 | /field/materials, /api/field/materials, GAP-011 |
+| Chunk 13 — Mobile + Offline + Paper Fallback | DONE — c7f9f51 | /field/mobile, /api/field/paper-export |
+| Chunk 14 — Follow-Up Logic + GOTV + Cross-System Automations | DONE — c7f9f51 | /field/follow-ups, /api/field/gotv-targets |
+| Chunk 15 — AI Assist (Adoni) + Hardening + Audit | DONE — c7f9f51 | Adoni field tools, /field/audit |
+| Chunk 16 — Field Ops enrichment: stop completion, route detail, program detail | DONE — d8e7314 | Turf stop visited rollup, /field/routes/[routeId], /field/programs/[programId] |
 
 ---
 
@@ -198,5 +198,5 @@ These cannot be done by AI sessions:
 
 ---
 
-*Last updated: 2026-04-11 (Chunk 8 a4435be + Comms Phase 3 57b4177 live on Vercel) by Claude Sonnet 4.6*
+*Last updated: 2026-04-11 (Chunks 9-16 c7f9f51+d8e7314 confirmed DONE — WORK_QUEUE.md reconciled) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
