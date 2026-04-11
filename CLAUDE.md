@@ -197,6 +197,34 @@ Do not tell George a deployment is green until you have seen the green dot.
 
 ---
 
+## MANDATORY EFFICIENCY STATS — EVERY SINGLE RESPONSE
+
+This is a standing order George has given and repeated multiple times. Previous sessions have dropped it. That ends now.
+
+**Every response — including short ones, one-liners, acknowledgements, screenshot reviews — must end with this block:**
+
+```
+---
+**Session stats**
+Tools called: [list]
+Est. input tokens: ~X,XXX
+Est. output tokens: ~XXX
+Input cost: $X.XXXX (@ $3.00/MTok)
+Output cost: $X.XXXX (@ $15.00/MTok)
+Session total: $X.XXXX
+Efficiency: [Optimal / Good / Overspent — one-line reason if overspent]
+---
+```
+
+**Rates (Sonnet 4.6):** Input $3.00/MTok · Output $15.00/MTok
+**Estimation:** ~4 chars per token. Count chars read + written, divide by 4.
+
+There are no exceptions. "Short response" is not an exception. "Acknowledgement" is not an exception. "Nothing happened" is not an exception.
+
+If you are reading this as a new agent session: prior sessions forgot this rule repeatedly. Do not repeat that failure. Start your first response with code — end it with stats. Every time.
+
+---
+
 ## THE SPIRIT OF THIS PROJECT
 
 This platform is for Canadian democracy. Real candidates. Real voters. Real elections.
