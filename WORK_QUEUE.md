@@ -53,7 +53,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Field Programs API + UI | DONE — 730833e | /api/field/programs, /field/programs |
 | Field Routes API + UI | DONE — 730833e | /api/field/routes, /field/routes |
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
-| Chunk 8 — Canvassing Runs + Scripts + Outcomes | CLAIMED 2026-04-10 | |
+| Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — pending-push | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
 | Chunk 9 — Literature Drop Operations | PENDING | |
 | Chunk 10 — Sign Ops inside Field | PENDING | |
 | Chunk 11 — Volunteer + Team + Shift Execution | PENDING | |
@@ -94,7 +94,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Saved Segment model (SavedSegment) | DONE — 730833e | In schema.prisma |
 | Phase 1 — Message Templates | PENDING | MessageTemplate model + API + UI |
 | Phase 2 — Segment builder UI + Audiences tab | PENDING | Component: segment-builder.tsx |
-| Phase 3 — Scheduled messages + cron | CLAIMED 2026-04-11 | ScheduledMessage model + send cron |
+| Phase 3 — Scheduled messages + cron | DONE — pending-push | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | PENDING | GAP-017 |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
@@ -191,11 +191,11 @@ These cannot be done by AI sessions:
 
 | Action | Priority | Why |
 |---|---|---|
-| `npx prisma db push` against Railway | **CRITICAL** | CandidateAppearance, CalendarSyncAccount, CalendarSyncLog and prior calendar models are in schema but not in prod DB — calendar UI will 500 until this runs |
+| `npx prisma db push` against Railway | **CRITICAL** | Calendar models + ScheduledMessage + ScheduledMessageStatus enum + NotificationLog.sendKey — comms scheduling + calendar UI both 500 until this runs |
 | `npm run db:seed:calendar` (against Railway) | High | Populates Ward 20 beta demo data — 37 items, 12 appearances, 2 calendars |
 | Confirm Stripe keys in Railway env vars | Medium | Phase 4 fundraising needs STRIPE_SECRET_KEY |
 
 ---
 
-*Last updated: 2026-04-10 (session close — Calendar Phase 3 complete) by Claude Sonnet 4.6*
+*Last updated: 2026-04-11 (session — Chunk 8 + Comms Phase 3 built, pending push) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
