@@ -105,10 +105,20 @@ interface HistoryItem {
 
 interface ScheduledItem {
   id: string;
-  title: string;
-  body: string;
-  scheduledFor: string;
-  status?: string;
+  channel: "email" | "sms" | "push";
+  subject: string | null;
+  bodyText: string;
+  sendAt: string;
+  timezone: string;
+  status: "queued" | "processing" | "sent" | "cancelled" | "failed";
+  sentAt: string | null;
+  sentCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+  sendKey: string;
+  segment: { id: string; name: string } | null;
+  createdBy: { id: string; name: string | null };
+  createdAt: string;
 }
 
 // Legacy: kept for backward compatibility during migration
@@ -1904,12 +1914,12 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
   const fetchScheduled = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/notifications/schedule?campaignId=${campaignId}`);
+      const res = await fetch(`/api/comms/scheduled?campaignId=${campaignId}`);
       if (res.ok) {
         const data = await res.json();
-        setItems(data.data ?? []);
+        setItems(data.messages ?? []);
       }
-    } catch (e) { /* graceful degradation */ }
+    } catch { /* graceful degradation */ }
     setLoading(false);
   }, [campaignId]);
 
@@ -1918,13 +1928,26 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
   async function cancelScheduled(id: string) {
     setCancelling(id);
     try {
-      const res = await fetch(`/api/notifications/schedule?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/comms/scheduled/${id}`, { method: "DELETE" });
       if (res.ok) {
-        await fetchScheduled();
+        // Optimistic: remove immediately, then refresh
+        setItems((prev) => prev.filter((i) => i.id !== id));
       }
-    } catch (e) { /* graceful degradation */ }
+    } catch { /* graceful degradation */ }
     setCancelling(null);
   }
+
+  const statusBadge = (status: ScheduledItem["status"]) => {
+    const map: Record<ScheduledItem["status"], { label: string; cls: string }> = {
+      queued:     { label: "Queued",     cls: "bg-blue-50 text-blue-700" },
+      processing: { label: "Sending…",   cls: "bg-amber-50 text-amber-700" },
+      sent:       { label: "Sent",       cls: "bg-green-50 text-green-700" },
+      cancelled:  { label: "Cancelled",  cls: "bg-slate-100 text-slate-500" },
+      failed:     { label: "Failed",     cls: "bg-red-50 text-red-700" },
+    };
+    const { label, cls } = map[status] ?? { label: status, cls: "bg-slate-100 text-slate-500" };
+    return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cls}`}>{label}</span>;
+  };
 
   if (loading) {
     return (
@@ -1940,7 +1963,7 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
         <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
         <p className="text-lg font-bold text-slate-700">No scheduled sends</p>
         <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-          When you schedule a message for later, it will appear here. You can pause, cancel, or reschedule from this view.
+          When you schedule a message for later, it will appear here. You can cancel or reschedule from this view.
         </p>
       </div>
     );
@@ -1948,29 +1971,56 @@ function ScheduledTab({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="grid grid-cols-[1fr_1fr_140px_100px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Title</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Message</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Scheduled For</span>
+      <div className="grid grid-cols-[32px_1fr_1fr_130px_80px_100px] gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+        <span />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Subject / Body</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Audience</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Send At</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Actions</span>
       </div>
       <div className="divide-y divide-slate-100">
         {items.map((item) => (
-          <div key={item.id} className="grid grid-cols-[1fr_1fr_140px_100px] gap-4 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-slate-900 truncate">{item.title || "Untitled"}</p>
+          <div key={item.id} className="grid grid-cols-[32px_1fr_1fr_130px_80px_100px] gap-3 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
+            <div className="flex items-center justify-center">
+              {item.channel === "email"
+                ? <Mail className="w-4 h-4 text-blue-500" />
+                : <MessageSquare className="w-4 h-4 text-violet-500" />}
             </div>
-            <p className="text-xs text-slate-500 truncate">{item.body?.replace(/<[^>]*>/g, "").slice(0, 80)}</p>
-            <p className="text-xs text-slate-600 tabular-nums">{formatDate(item.scheduledFor)}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-slate-900 truncate">
+                {item.subject ?? item.bodyText.slice(0, 60)}
+              </p>
+              {item.subject && (
+                <p className="text-xs text-slate-400 truncate mt-0.5">{item.bodyText.slice(0, 60)}</p>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 truncate">
+              {item.segment?.name ?? "All contacts"}
+            </p>
+            <p className="text-xs text-slate-600 tabular-nums">{formatDate(item.sendAt)}</p>
+            <div>{statusBadge(item.status)}</div>
             <div className="flex items-center justify-end">
-              <button
-                onClick={() => cancelScheduled(item.id)}
-                disabled={cancelling === item.id}
-                className="h-7 px-3 rounded-md text-[11px] font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1 transition-colors disabled:opacity-50"
-              >
-                {cancelling === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                Cancel
-              </button>
+              {(item.status === "queued") && (
+                <button
+                  onClick={() => cancelScheduled(item.id)}
+                  disabled={cancelling === item.id}
+                  className="h-7 px-3 rounded-md text-[11px] font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  {cancelling === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  Cancel
+                </button>
+              )}
+              {item.status === "sent" && (
+                <span className="text-[11px] text-green-600 font-semibold tabular-nums">
+                  {item.sentCount} sent
+                </span>
+              )}
+              {item.status === "failed" && (
+                <span className="text-[11px] text-red-500 font-semibold truncate max-w-[90px]" title={item.errorMessage ?? ""}>
+                  Error
+                </span>
+              )}
             </div>
           </div>
         ))}

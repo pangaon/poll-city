@@ -699,6 +699,7 @@ model User {
   fieldAuditActed             FieldAuditLog[]          @relation("FieldAuditActor")
   messageTemplatesAuthored    MessageTemplate[]        @relation("MessageTemplateAuthor")
   savedSegmentsAuthored       SavedSegment[]           @relation("SavedSegmentAuthor")
+  scheduledMessagesAuthored   ScheduledMessage[]       @relation("ScheduledMessageAuthor")
 
   @@map("users")
 }
@@ -907,6 +908,7 @@ model Campaign {
   fieldAuditLogs            FieldAuditLog[]
   messageTemplates          MessageTemplate[]
   savedSegments             SavedSegment[]
+  scheduledMessages         ScheduledMessage[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -2275,6 +2277,8 @@ model NotificationLog {
   deliveredCount   Int       @default(0)
   failedCount      Int       @default(0)
   failedEndpoints  String[]  @default([])
+  // E-001 idempotency: unique per-send key prevents double-send on retried requests
+  sendKey          String?   @unique
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -6833,8 +6837,9 @@ model MessageTemplate {
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
-  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdBy User     @relation("MessageTemplateAuthor", fields: [createdById], references: [id])
+  campaign           Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy          User               @relation("MessageTemplateAuthor", fields: [createdById], references: [id])
+  scheduledMessages  ScheduledMessage[]
 
   @@index([campaignId, channel])
   @@index([campaignId, isActive])
@@ -6864,9 +6869,68 @@ model SavedSegment {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdBy User     @relation("SavedSegmentAuthor", fields: [createdById], references: [id])
+  campaign           Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy          User               @relation("SavedSegmentAuthor", fields: [createdById], references: [id])
+  scheduledMessages  ScheduledMessage[]
 
   @@index([campaignId])
   @@map("saved_segments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMUNICATIONS PLATFORM — SCHEDULED MESSAGES
+// Future-dated blast sends. Cron runner picks up queued rows every 5 minutes,
+// uses an atomic compare-and-set on status to prevent double-send (E-002).
+// Audience is re-resolved at send time from filterDefinition so dynamic segments
+// reflect contacts added after scheduling.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ScheduledMessageStatus {
+  queued
+  processing
+  sent
+  cancelled
+  failed
+}
+
+model ScheduledMessage {
+  id               String                 @id @default(cuid())
+  campaignId       String
+  createdById      String
+  channel          MessageTemplateChannel
+  // Content — at least bodyText required; subject + bodyHtml for email
+  subject          String?
+  bodyHtml         String?
+  bodyText         String
+  // Audience — segmentId XOR inline filterDefinition
+  segmentId        String?
+  filterDefinition Json                   @default("{}")
+  // Optional template reference (informational — content is copied at schedule time)
+  templateId       String?
+  // When to send
+  sendAt           DateTime
+  timezone         String                 @default("America/Toronto")
+  // Status lifecycle: queued → processing → sent | failed | cancelled
+  status           ScheduledMessageStatus @default(queued)
+  // Atomic lock: cron sets to processing via compare-and-set; prevents E-002 double-send
+  processingKey    String?
+  // Send results
+  sentAt           DateTime?
+  sentCount        Int                    @default(0)
+  failedCount      Int                    @default(0)
+  errorMessage     String?
+  // Idempotency key: generated client-side, prevents duplicate creates
+  sendKey          String                 @unique
+  deletedAt        DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  campaign    Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User             @relation("ScheduledMessageAuthor", fields: [createdById], references: [id])
+  template    MessageTemplate? @relation(fields: [templateId], references: [id])
+  segment     SavedSegment?    @relation(fields: [segmentId], references: [id])
+
+  @@index([campaignId, status, sendAt])
+  @@index([sendAt, status])
+  @@map("scheduled_messages")
 }

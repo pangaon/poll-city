@@ -18,6 +18,8 @@ const schema = z.object({
   tagIds: z.array(z.string()).optional(),
   excludeDnc: z.boolean().default(true),
   testOnly: z.boolean().default(false),
+  // E-001: client-generated idempotency key prevents double-send on retry
+  sendKey: z.string().optional(),
 });
 
 async function sendSms(to: string, body: string): Promise<boolean> {
@@ -65,7 +67,31 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, body: msgBody, supportLevels, wards, tagIds, excludeDnc, testOnly } = parsed.data;
+  const { campaignId, body: msgBody, supportLevels, wards, tagIds, excludeDnc, testOnly, sendKey } = parsed.data;
+
+  // E-008: fail loudly when Twilio is not configured
+  const hasTwilio = Boolean(
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    (process.env.TWILIO_PHONE_NUMBER ?? process.env.TWILIO_FROM),
+  );
+  if (!hasTwilio) {
+    return NextResponse.json(
+      { error: "SMS sending is not configured for this environment.", code: "INTEGRATION_UNAVAILABLE" },
+      { status: 400 },
+    );
+  }
+
+  // E-001: idempotency — reject duplicate sendKey
+  if (sendKey) {
+    const existing = await prisma.notificationLog.findUnique({ where: { sendKey } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Duplicate send — this sendKey was already processed.", code: "DUPLICATE_SEND" },
+        { status: 409 },
+      );
+    }
+  }
 
   const m = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
@@ -103,15 +129,10 @@ export async function POST(req: NextRequest) {
 
   let sent = 0;
   let failed = 0;
-  const hasTwilio = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && (process.env.TWILIO_PHONE_NUMBER ?? process.env.TWILIO_FROM));
   const sentContactIds: string[] = [];
 
   for (const r of recipients) {
     if (!r.phone) continue;
-    if (!hasTwilio) {
-      console.log(`[comms/sms] (no Twilio config) would send to ${r.phone}`);
-      continue;
-    }
     const personalized = msgBody
       .replace(/\{\{firstName\}\}/g, r.firstName ?? "")
       .replace(/\{\{ward\}\}/g, r.ward ?? "")
@@ -143,6 +164,7 @@ export async function POST(req: NextRequest) {
       deliveredCount: sent,
       failedCount: failed,
       audience: { supportLevels, wards, tagIds, excludeDnc, testOnly },
+      ...(sendKey ? { sendKey } : {}),
     },
   }).catch(() => {});
 
@@ -155,5 +177,5 @@ export async function POST(req: NextRequest) {
     details: { audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: recipients.length, twilioConfigured: hasTwilio });
+  return NextResponse.json({ sent, failed, audienceSize: recipients.length });
 }

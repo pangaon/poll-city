@@ -11,10 +11,6 @@ import prisma from "@/lib/db/prisma";
 // Mobile JWT auth — accepts Bearer tokens issued by /api/auth/mobile/token
 // ---------------------------------------------------------------------------
 
-const MOBILE_JWT_SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET ?? "dev-secret-only-for-local-development",
-);
-
 /**
  * Minimal session shape returned by mobileAuth — compatible with getSession().
  */
@@ -37,9 +33,12 @@ async function verifyBearerToken(req: NextRequest): Promise<MobileSession | null
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
+  const rawSecret = process.env.NEXTAUTH_SECRET;
+  if (!rawSecret) return null; // refuse to verify without a configured secret
+
   const token = authHeader.slice(7);
   try {
-    const { payload } = await jose.jwtVerify(token, MOBILE_JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, new TextEncoder().encode(rawSecret));
     if (payload.type !== "access" || typeof payload.sub !== "string") return null;
 
     // Verify user is still active and session version hasn't changed

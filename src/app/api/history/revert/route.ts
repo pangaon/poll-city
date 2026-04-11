@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   // Only ADMIN+ can revert
-  if (!["ADMIN", "MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
     return NextResponse.json({ error: "Only campaign admins can revert changes" }, { status: 403 });
   }
 

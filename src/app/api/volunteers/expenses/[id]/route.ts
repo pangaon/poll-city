@@ -3,7 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 
-const MANAGER_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "MANAGER"]);
+const MANAGER_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"]);
 
 function isAllowedTransition(from: string, to: string): boolean {
   if (from === "pending") return to === "approved" || to === "rejected";

@@ -20,6 +20,8 @@ const schema = z.object({
   tagIds: z.array(z.string()).optional(),
   excludeDnc: z.boolean().default(true),
   testOnly: z.boolean().default(false),
+  // E-001: client-generated idempotency key prevents double-send on retry
+  sendKey: z.string().optional(),
 });
 
 // POST /api/communications/email — send bulk campaign email via Resend,
@@ -43,7 +45,26 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, subject, bodyHtml, supportLevels, wards, tagIds, excludeDnc, testOnly } = parsed.data;
+  const { campaignId, subject, bodyHtml, supportLevels, wards, tagIds, excludeDnc, testOnly, sendKey } = parsed.data;
+
+  // E-007: fail loudly when Resend is not configured
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json(
+      { error: "Email sending is not configured for this environment.", code: "INTEGRATION_UNAVAILABLE" },
+      { status: 400 },
+    );
+  }
+
+  // E-001: idempotency — reject duplicate sendKey within last 5 minutes
+  if (sendKey) {
+    const existing = await prisma.notificationLog.findUnique({ where: { sendKey } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Duplicate send — this sendKey was already processed.", code: "DUPLICATE_SEND" },
+        { status: 409 },
+      );
+    }
+  }
 
   const m = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
@@ -95,7 +116,6 @@ export async function POST(req: NextRequest) {
 
   let sent = 0;
   let failed = 0;
-  const hasResend = Boolean(process.env.RESEND_API_KEY);
 
   for (const r of recipients) {
     if (!r.email) continue;
@@ -107,11 +127,6 @@ export async function POST(req: NextRequest) {
       .replace(/\{\{campaignName\}\}/g, brand.campaignName);
     const footer = caslFooter.replace("{{contactId}}", r.id);
     const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a">${personalized}</div>${footer}`;
-
-    if (!hasResend) {
-      console.log(`[comms/email] (no RESEND_API_KEY) would send to ${r.email}: ${subject}`);
-      continue;
-    }
     try {
       await sendEmail({
         to: r.email,
@@ -140,6 +155,7 @@ export async function POST(req: NextRequest) {
       deliveredCount: sent,
       failedCount: failed,
       audience: { supportLevels, wards, tagIds, excludeDnc, testOnly },
+      ...(sendKey ? { sendKey } : {}),
     },
   }).catch(() => {});
 
@@ -152,5 +168,5 @@ export async function POST(req: NextRequest) {
     details: { subject, audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: recipients.length, resendConfigured: hasResend });
+  return NextResponse.json({ sent, failed, audienceSize: recipients.length });
 }

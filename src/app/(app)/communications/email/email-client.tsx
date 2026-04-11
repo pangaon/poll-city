@@ -102,9 +102,18 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [sanitizedPreview, setSanitizedPreview] = useState<string>("");
   const [scheduleDate, setScheduleDate] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Sanitize email body before preview (client-side only — DOMPurify requires window)
+  useEffect(() => {
+    if (!showPreview) return;
+    import("dompurify").then(({ default: DOMPurify }) => {
+      setSanitizedPreview(DOMPurify.sanitize(body));
+    });
+  }, [body, showPreview]);
 
   // Live audience count (debounced)
   useEffect(() => {
@@ -336,7 +345,7 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                     <div
                       className="border-2 border-slate-200 rounded-lg p-4 min-h-[300px] prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
-                        __html: body || '<p class="text-slate-400">Nothing to preview</p>',
+                        __html: sanitizedPreview || '<p class="text-slate-400">Nothing to preview</p>',
                       }}
                     />
                   ) : (
