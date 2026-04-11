@@ -460,6 +460,38 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  {
+    name: "get_field_summary",
+    description:
+      "Get a live summary of field operations: active shifts today, total doors knocked, lit drops in progress, outstanding follow-ups, and canvassing teams deployed.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_shift_status",
+    description:
+      "Get the status of today's field shifts: who has checked in, how many doors each shift has knocked, and which shifts are still active. Use when someone asks 'how's canvassing going today' or 'who's checked in'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        shiftType: { type: "string" as const, description: "Filter by type: canvassing, literature, sign_install, gotv, poll_day — or omit for all" },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_lit_drop_progress",
+    description:
+      "Get the progress of literature drop operations: how many lit drop runs are scheduled, how many stops have been recorded, and how many follow-ups remain.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -498,6 +530,9 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   get_election_calendar: "analytics:read",
   get_finance_summary: "budget:read",
   get_budget_alerts: "budget:read",
+  get_field_summary: "canvassing:read",
+  get_shift_status: "canvassing:read",
+  get_lit_drop_progress: "canvassing:read",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -609,6 +644,12 @@ export async function executeAction(
         return await getFinanceSummary(ctx);
       case "get_budget_alerts":
         return await getBudgetAlerts(ctx);
+      case "get_field_summary":
+        return await getFieldSummary(ctx);
+      case "get_shift_status":
+        return await getShiftStatus(input, ctx);
+      case "get_lit_drop_progress":
+        return await getLitDropProgress(ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -2021,7 +2062,7 @@ async function getFinanceSummary(ctx: ActionContext): Promise<ActionResult> {
   const cid = ctx.campaignId;
   const [budgets, expenses, donations] = await Promise.all([
     prisma.campaignBudget.findMany({ where: { campaignId: cid }, select: { totalBudget: true } }),
-    prisma.financeExpense.aggregate({ where: { campaignId: cid, deletedAt: null }, _sum: { amount: true } }),
+    prisma.financeExpense.aggregate({ where: { campaignId: cid, deletedAt: null, expenseStatus: { in: ["approved", "paid"] } }, _sum: { amount: true } }),
     prisma.donation.findMany({
       where: { campaignId: cid, deletedAt: null, status: { notIn: ["cancelled", "failed"] } },
       select: { amount: true, status: true },
@@ -2076,5 +2117,88 @@ async function getBudgetAlerts(ctx: ActionContext): Promise<ActionResult> {
     success: true,
     message: parts.length ? `Budget alerts: ${parts.join(". ")}.` : "No budget alerts — everything looks clean.",
     data: { overBudget, nearThreshold, pendingApprovals, missingReceipts, openPRs },
+  };
+}
+
+// ─── Field Ops Executors ────────────────────────────────────────────────────
+
+async function getFieldSummary(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [activeShifts, totalAttempts, openFollowUps, litDropShifts] = await Promise.all([
+    prisma.fieldShift.count({
+      where: { campaignId: cid, deletedAt: null, status: { in: ["open", "in_progress"] }, scheduledDate: { gte: today } },
+    }),
+    prisma.fieldAttempt.count({ where: { campaignId: cid, deletedAt: null } }),
+    prisma.followUpAction.count({ where: { campaignId: cid, status: { notIn: ["completed", "dismissed"] } } }),
+    prisma.fieldShift.count({
+      where: { campaignId: cid, deletedAt: null, shiftType: "literature", status: { in: ["open", "in_progress"] } },
+    }),
+  ]);
+
+  return {
+    success: true,
+    message: `Field ops summary: ${activeShifts} active shift${activeShifts !== 1 ? "s" : ""} today, ${totalAttempts.toLocaleString()} total door attempts recorded, ${litDropShifts} lit drop run${litDropShifts !== 1 ? "s" : ""} in progress, ${openFollowUps} open follow-up${openFollowUps !== 1 ? "s" : ""} outstanding.`,
+    data: { activeShifts, totalAttempts, litDropShifts, openFollowUps },
+  };
+}
+
+async function getShiftStatus(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const shiftTypeFilter = typeof input.shiftType === "string" ? input.shiftType : null;
+  const validTypes = ["canvassing", "literature", "sign_install", "sign_remove", "event_field", "office", "gotv", "poll_day"];
+
+  const shifts = await prisma.fieldShift.findMany({
+    where: {
+      campaignId: cid,
+      deletedAt: null,
+      scheduledDate: { gte: today },
+      ...(shiftTypeFilter && validTypes.includes(shiftTypeFilter) ? { shiftType: shiftTypeFilter as never } : {}),
+    },
+    include: {
+      _count: { select: { assignments: true, attempts: true } },
+      leadUser: { select: { name: true } },
+    },
+    orderBy: [{ scheduledDate: "asc" }, { startTime: "asc" }],
+    take: 10,
+  });
+
+  if (shifts.length === 0) {
+    return { success: true, message: "No shifts scheduled for today." };
+  }
+
+  const lines = shifts.map((s) =>
+    `${s.name} (${s.status}) — ${s._count.assignments} assigned, ${s._count.attempts} doors recorded${s.leadUser ? `, led by ${s.leadUser.name}` : ""}`
+  );
+
+  return {
+    success: true,
+    message: `Today's shifts:\n${lines.join("\n")}`,
+    data: { shifts: shifts.map((s) => ({ id: s.id, name: s.name, status: s.status, assignments: s._count.assignments, attempts: s._count.attempts })) },
+  };
+}
+
+async function getLitDropProgress(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+
+  const [total, active, completed, totalDeliveries, missed] = await Promise.all([
+    prisma.fieldShift.count({ where: { campaignId: cid, deletedAt: null, shiftType: "literature" } }),
+    prisma.fieldShift.count({ where: { campaignId: cid, deletedAt: null, shiftType: "literature", status: { in: ["open", "in_progress"] } } }),
+    prisma.fieldShift.count({ where: { campaignId: cid, deletedAt: null, shiftType: "literature", status: "completed" } }),
+    prisma.fieldAttempt.count({
+      where: { campaignId: cid, deletedAt: null, shift: { shiftType: "literature" } },
+    }),
+    prisma.followUpAction.count({ where: { campaignId: cid, followUpType: "lit_missed", status: { notIn: ["completed", "dismissed"] } } }),
+  ]);
+
+  return {
+    success: true,
+    message: `Lit drop progress: ${total} total run${total !== 1 ? "s" : ""} (${active} active, ${completed} completed). ${totalDeliveries.toLocaleString()} stops recorded. ${missed} building${missed !== 1 ? "s" : ""} flagged as inaccessible still need a retry.`,
+    data: { total, active, completed, totalDeliveries, missedBuildings: missed },
   };
 }

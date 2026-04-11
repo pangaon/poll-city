@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { AlertTriangle, CheckCircle2, Download, TrendingDown, TrendingUp, BarChart3, Clock, FileText } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, TrendingDown, TrendingUp, BarChart3, Clock, FileText, Scale } from "lucide-react";
 import Link from "next/link";
 
 interface VarianceLine {
@@ -24,6 +24,20 @@ interface Overview {
   alerts: { pendingApprovals: number; missingReceipts: number; unpaidBillsCount: number; unpaidBillsAmount: number; openPurchaseRequests: number };
 }
 
+interface ReconciliationData {
+  totalBudget: number;
+  totalSpent: number;
+  totalTax: number;
+  totalRaised: number;
+  totalPledged: number;
+  totalRefunded: number;
+  netPosition: number;
+  budgetRemaining: number;
+  fundingGap: number;
+  donationCount: number;
+  byDonationType: Array<{ type: string; raised: number; pledged: number; count: number }>;
+}
+
 function cad(v: number) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(v);
 }
@@ -36,8 +50,11 @@ function fmtMonth(ym: string) {
 }
 
 export default function ReportsClient({ campaignId }: { campaignId: string }) {
+  const [tab, setTab] = useState<"budget" | "reconciliation">("budget");
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [recon, setRecon] = useState<ReconciliationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reconLoading, setReconLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
@@ -47,7 +64,16 @@ export default function ReportsClient({ campaignId }: { campaignId: string }) {
     setLoading(false);
   }, [campaignId]);
 
+  const loadRecon = useCallback(async () => {
+    if (recon) return;
+    setReconLoading(true);
+    const res = await fetch(`/api/finance/reconciliation?campaignId=${campaignId}`).then((r) => r.json());
+    if (res.data) setRecon(res.data);
+    setReconLoading(false);
+  }, [campaignId, recon]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (tab === "reconciliation") loadRecon(); }, [tab, loadRecon]);
 
   async function handleExport() {
     setExporting(true);
@@ -98,8 +124,103 @@ export default function ReportsClient({ campaignId }: { campaignId: string }) {
   const maxMonthAmount = Math.max(...monthlyBurn.map((m) => m.amount), 1);
   const maxCumulative = Math.max(...monthlyBurn.map((m) => m.cumulative), 1);
 
+  // Reconciliation panel rendered in place of budget view
+  if (tab === "reconciliation") {
+    return (
+      <div className="space-y-6">
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 border-b border-gray-200 dark:border-slate-700">
+          <button onClick={() => setTab("budget")} className="px-4 py-2 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">Budget &amp; Variance</button>
+          <button className="px-4 py-2 text-sm font-semibold text-[#0A2342] dark:text-blue-400 border-b-2 border-[#0A2342] dark:border-blue-400 -mb-px">Reconciliation</button>
+        </div>
+
+        {reconLoading || !recon ? (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-24 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />)}
+          </div>
+        ) : (
+          <>
+            {/* Net position banner */}
+            <div className={`rounded-xl p-4 flex items-center gap-3 ${recon.netPosition >= 0 ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800"}`}>
+              {recon.netPosition >= 0
+                ? <TrendingUp className="w-5 h-5 text-emerald-600 shrink-0" />
+                : <TrendingDown className="w-5 h-5 text-red-600 shrink-0" />}
+              <div>
+                <p className={`text-sm font-semibold ${recon.netPosition >= 0 ? "text-emerald-800 dark:text-emerald-300" : "text-red-800 dark:text-red-300"}`}>
+                  Net cash position: {cad(recon.netPosition)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                  Raised {cad(recon.totalRaised)} confirmed − Spent {cad(recon.totalSpent)} approved
+                </p>
+              </div>
+            </div>
+
+            {/* KPI grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { label: "Total Budget", value: cad(recon.totalBudget), colour: "text-gray-800 dark:text-white", sub: "active + draft budgets" },
+                { label: "Confirmed Raised", value: cad(recon.totalRaised), colour: "text-[#1D9E75]", sub: `${recon.donationCount} donations` },
+                { label: "Pledged", value: cad(recon.totalPledged), colour: "text-amber-600", sub: "not yet processed" },
+                { label: "Approved Spend", value: cad(recon.totalSpent), colour: recon.totalSpent > recon.totalRaised ? "text-red-600" : "text-[#0A2342] dark:text-blue-300", sub: recon.totalTax > 0 ? `incl. ${cad(recon.totalTax)} tax` : "approved + paid" },
+                { label: "Budget Remaining", value: cad(recon.budgetRemaining), colour: recon.budgetRemaining < 0 ? "text-red-600" : "text-[#1D9E75]", sub: "budget − approved spend" },
+                { label: "Funding Gap", value: recon.fundingGap > 0 ? cad(recon.fundingGap) : "None", colour: recon.fundingGap > 0 ? "text-red-600" : "text-[#1D9E75]", sub: recon.fundingGap > 0 ? "still need to raise" : "budget covered" },
+              ].map((card) => (
+                <div key={card.label} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">{card.label}</p>
+                  <p className={`text-xl font-bold ${card.colour}`}>{card.value}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{card.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* By donation type */}
+            {recon.byDonationType.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+                  <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Donations by Type</h2>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/30">
+                      <th className="text-left text-xs font-medium text-gray-500 dark:text-slate-400 px-4 py-2.5">Type</th>
+                      <th className="text-right text-xs font-medium text-gray-500 dark:text-slate-400 px-3 py-2.5">Count</th>
+                      <th className="text-right text-xs font-medium text-gray-500 dark:text-slate-400 px-3 py-2.5">Confirmed</th>
+                      <th className="text-right text-xs font-medium text-gray-500 dark:text-slate-400 px-4 py-2.5">Pledged</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
+                    {recon.byDonationType.map((row) => (
+                      <tr key={row.type} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/30">
+                        <td className="px-4 py-2.5 text-xs font-medium text-gray-800 dark:text-slate-200 capitalize">{row.type.replace(/_/g, " ")}</td>
+                        <td className="px-3 py-2.5 text-right text-xs text-gray-500 dark:text-slate-400">{row.count}</td>
+                        <td className="px-3 py-2.5 text-right text-xs font-medium text-[#1D9E75]">{row.raised > 0 ? cad(row.raised) : "—"}</td>
+                        <td className="px-4 py-2.5 text-right text-xs text-amber-600">{row.pledged > 0 ? cad(row.pledged) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {recon.totalRefunded > 0 && (
+              <p className="text-xs text-gray-400 text-right">Total refunded: {cad(recon.totalRefunded)} (already deducted from confirmed raised)</p>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-slate-700">
+        <button className="px-4 py-2 text-sm font-semibold text-[#0A2342] dark:text-blue-400 border-b-2 border-[#0A2342] dark:border-blue-400 -mb-px">Budget &amp; Variance</button>
+        <button onClick={() => setTab("reconciliation")} className="px-4 py-2 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1.5">
+          <Scale className="w-3.5 h-3.5" /> Reconciliation
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>

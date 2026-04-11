@@ -186,6 +186,10 @@ export function Switch({ checked, onCheckedChange, disabled, className }: Switch
 interface TabsProps {
   children: React.ReactNode;
   defaultValue: string;
+  /** Controlled value — supply with onValueChange for fully controlled tabs. */
+  value?: string;
+  /** Called when the active tab changes. Required for controlled usage. */
+  onValueChange?: (value: string) => void;
   className?: string;
 }
 
@@ -196,8 +200,13 @@ interface TabsContextType {
 
 const TabsContext = React.createContext<TabsContextType | undefined>(undefined);
 
-export function Tabs({ children, defaultValue, className }: TabsProps) {
-  const [value, setValue] = React.useState(defaultValue);
+export function Tabs({ children, defaultValue, value: controlledValue, onValueChange, className }: TabsProps) {
+  const [internalValue, setInternalValue] = React.useState(defaultValue);
+  const value = controlledValue !== undefined ? controlledValue : internalValue;
+  const setValue = (v: string) => {
+    setInternalValue(v);
+    onValueChange?.(v);
+  };
 
   return (
     <TabsContext.Provider value={{ value, onValueChange: setValue }}>

@@ -5698,6 +5698,7 @@ model Calendar {
   updatedByUserId  String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  deletedAt        DateTime?
 
   campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   items    CalendarItem[]

@@ -588,7 +588,7 @@ Every major user action. Every downstream effect. Honest status.
 | Print orders committed against budget line | ✗ NOT CONNECTED | GAP-004 |
 | Sign costs committed against budget line | ✗ NOT CONNECTED | GAP-004 |
 | Event costs committed against budget line | ✗ NOT CONNECTED | GAP-004 |
-| Donation revenue posted to budget (revenue side) | ✗ NOT CONNECTED | GAP-005 |
+| Donation revenue posted to budget (revenue side) | ✗ NOT CONNECTED | GAP-005 — write-through not wired; read-side reconciliation surfaced at /finance/reports → Reconciliation tab (0188808) |
 
 ### Expense Submitted (POST /api/finance/expenses)
 | Effect | Status | Notes |
@@ -625,21 +625,27 @@ Every major user action. Every downstream effect. Honest status.
 
 ## CALENDAR SUITE
 
-*Phase 1+2 APIs built (730833e). Phase 3 candidate schedule + sync stub built (b5170f0). db push required on Railway.*
-*GAP-002: db push required | GAP-006: ↔ Comms | GAP-007: ↔ Events | GAP-008: ↔ Print*
+*Phase 1+2 APIs built (730833e). Phase 3 candidate schedule + sync stub built (b5170f0). Phase 4 cross-system wiring + Phase 5 reminders cron wired 2026-04-11.*
+*GAP-002: db push required on Railway | GAP-006: CONNECTED (0188808) | GAP-007: CONNECTED (0188808) | GAP-008: CONNECTED (0188808)*
 
 ### Calendar Item Created (POST /api/campaign-calendar/items)
 | Effect | Status | Notes |
 |--------|--------|-------|
 | CalendarItem record created | ✓ CONNECTED | /api/campaign-calendar/items — CRUD built 730833e |
+| Role check (WRITE_ROLES only) | ✓ CONNECTED | POST/PATCH/DELETE require ADMIN/CM/SUPER_ADMIN — hardened 2026-04-11 |
+| sanitizeUserText on title/description/location | ✓ CONNECTED | prompt injection guard — hardened 2026-04-11 |
+| IDOR validation on eventId/taskId | ✓ CONNECTED | cross-campaign entity leak blocked — hardened 2026-04-11 |
 | CalendarItemAssignment record created | ✓ CONNECTED | included in POST /items |
-| Conflict detection run | ✓ CONNECTED | ScheduleConflict model — checked on item create/update |
-| CalendarReminder scheduled | ✓ CONNECTED | CalendarReminder — created via API |
+| Conflict detection run | ✓ CONNECTED | ScheduleConflict auto-created for high-priority types (candidate_appearance, debate, media_appearance, protected_time, travel_block) — hardened 2026-04-11 |
+| CalendarReminder scheduled | ✓ CONNECTED | CalendarReminder created via POST /api/campaign-calendar/items/[itemId]/reminders |
+| CalendarReminder cron fired | ✓ CONNECTED | /api/cron/calendar-reminders — dispatches in_app/email/sms — wired 2026-04-11 |
 | CalendarAuditLog entry | ✓ CONNECTED | every mutation logs to CalendarAuditLog |
-| Event created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-007 |
-| ScheduledMessage created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-006 |
-| Print order confirmed → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-008 |
-| Field shift created → CalendarItem auto-created | ✗ NOT CONNECTED | Field Ops Phase 6 |
+| Event created → CalendarItem auto-created | ✓ CONNECTED | GAP-006 — postEventCalendarItem() wired in POST /api/events — 0188808 |
+| ScheduledMessage created → CalendarItem auto-created | ✓ CONNECTED | GAP-007 — postScheduledMessageCalendarItem() wired in POST /api/comms/scheduled — 0188808 |
+| Print order confirmed → CalendarItem auto-created | ✓ CONNECTED | GAP-008 — postPrintOrderCalendarItem() wired in POST /api/print/orders — 0188808 |
+| Volunteer shift created → CalendarItem auto-created | ✓ CONNECTED | GAP-009 — postVolunteerShiftCalendarItem() wired in POST /api/volunteers/shifts — 2026-04-11 |
+| Task created (with dueDate) → CalendarItem auto-created | ✓ CONNECTED | GAP-010 — postTaskCalendarItem() wired in POST /api/tasks — 2026-04-11 |
+| Field assignment created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-011 — helper exists (postFieldAssignmentCalendarItem), no wiring point yet |
 
 ### Candidate Appearance (Phase 3 — built b5170f0)
 | Effect | Status | Notes |

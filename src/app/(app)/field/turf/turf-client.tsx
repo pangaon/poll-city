@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Map as MapIcon, Plus, X, CheckCircle2, Clock, PlayCircle,
   UserCheck, Users, ChevronRight, Navigation, AlertCircle,
-  Trash2, Zap, BarChart3, RotateCcw,
+  Trash2, Zap, BarChart3, RotateCcw, Home,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState,
@@ -43,6 +43,23 @@ interface TurfRow {
 interface Program { id: string; name: string; programType: FieldProgramType }
 interface TeamMember { id: string; name: string | null; email: string }
 interface DensityRow { poll: string; ward: string | null; contactCount: number }
+
+interface StopDetail {
+  id: string;
+  order: number;
+  visited: boolean;
+  visitedAt: string | null;
+  notes: string | null;
+  contact: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    address1: string | null;
+    streetNumber: string | null;
+    streetName: string | null;
+    supportLevel: string | null;
+  } | null;
+}
 
 interface Props {
   campaignId: string;
@@ -306,7 +323,53 @@ function EditPanel({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [stops, setStops] = useState<StopDetail[] | null>(null);
+  const [loadingStops, setLoadingStops] = useState(true);
+  const [stopsExpanded, setStopsExpanded] = useState(false);
+
   const assignee = assigneeName(turf);
+
+  // Lazy-load stops when panel opens
+  useEffect(() => {
+    setLoadingStops(true);
+    fetch(`/api/field/turf/${turf.id}?campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((json: { data: { stops: StopDetail[] } }) => {
+        setStops(json.data.stops ?? []);
+      })
+      .catch(() => toast.error("Could not load stops"))
+      .finally(() => setLoadingStops(false));
+  }, [turf.id, campaignId]);
+
+  async function handleToggleStop(stop: StopDetail) {
+    const newVisited = !stop.visited;
+    // Optimistic update
+    setStops((prev) =>
+      prev?.map((s) => (s.id === stop.id ? { ...s, visited: newVisited } : s)) ?? null,
+    );
+    try {
+      const res = await fetch(`/api/field/turf/${turf.id}/stops/${stop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, visited: newVisited }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json() as {
+        data: { turf: { completedStops: number; completionPercent: number } };
+      };
+      onUpdate({
+        ...turf,
+        completedStops: data.data.turf.completedStops,
+        completionPercent: data.data.turf.completionPercent,
+      });
+    } catch {
+      // Revert
+      setStops((prev) =>
+        prev?.map((s) => (s.id === stop.id ? { ...s, visited: stop.visited } : s)) ?? null,
+      );
+      toast.error("Failed to update stop");
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -442,6 +505,76 @@ function EditPanel({
           <Zap className="h-4 w-4" />
           Optimize Walk Route
         </Button>
+
+        {/* Stops list */}
+        <div className="rounded-lg border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => setStopsExpanded((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Home className="h-4 w-4 text-gray-400" />
+              Stops
+              {!loadingStops && stops !== null && (
+                <span className="text-xs text-gray-500 font-normal">
+                  ({stops.filter((s) => s.visited).length}/{stops.length} visited)
+                </span>
+              )}
+            </span>
+            <ChevronRight
+              className={`h-4 w-4 text-gray-400 transition-transform ${stopsExpanded ? "rotate-90" : ""}`}
+            />
+          </button>
+
+          {stopsExpanded && (
+            <div className="border-t border-gray-100">
+              {loadingStops ? (
+                <div className="flex justify-center py-4">
+                  <Spinner />
+                </div>
+              ) : stops === null || stops.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-gray-400">No stops in this turf.</p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                  {stops.map((stop) => {
+                    const contactName =
+                      [stop.contact?.firstName, stop.contact?.lastName]
+                        .filter(Boolean)
+                        .join(" ") || "Unknown";
+                    const address =
+                      stop.contact?.address1 ??
+                      [stop.contact?.streetNumber, stop.contact?.streetName]
+                        .filter(Boolean)
+                        .join(" ") ??
+                      "No address";
+                    return (
+                      <label
+                        key={stop.id}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={stop.visited}
+                          onChange={() => handleToggleStop(stop)}
+                          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {contactName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{address}</p>
+                        </div>
+                        {stop.visited && (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <FormField label="Turf Name" required>
           <Input value={name} onChange={(e) => setName(e.target.value)} />

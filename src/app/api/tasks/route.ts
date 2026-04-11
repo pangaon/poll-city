@@ -6,6 +6,7 @@ import { createTaskSchema } from "@/lib/validators";
 import { parsePagination, paginate } from "@/lib/utils";
 import { TaskStatus } from "@prisma/client";
 import { createBackboneTask } from "@/lib/operations/task-backbone";
+import { postTaskCalendarItem } from "@/lib/calendar/post-calendar-item";
 
 /** GET /api/tasks */
 export async function GET(req: NextRequest) {
@@ -80,6 +81,17 @@ export async function POST(req: NextRequest) {
     dueDate: data.dueDate ? new Date(data.dueDate) : null,
     sourceAction: "tasks.api_create",
   });
+
+  // GAP-010: wire task due date into calendar (non-fatal)
+  if (task.dueDate) {
+    postTaskCalendarItem({
+      campaignId: data.campaignId,
+      taskId: task.id,
+      title: task.title,
+      dueDate: task.dueDate,
+      userId: session!.user.id,
+    }).catch((err) => console.error("[tasks] calendar wiring failed", err));
+  }
 
   return NextResponse.json({ data: task }, { status: 201 });
 }

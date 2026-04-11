@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { sanitizeUserText } from "@/lib/security/monitor";
+import { postVolunteerShiftCalendarItem } from "@/lib/calendar/post-calendar-item";
 
 function randomCode() {
   return Math.random().toString(36).slice(2, 10).toUpperCase();
@@ -88,6 +89,19 @@ export async function POST(req: NextRequest) {
       details: { name: created.name, shiftDate: body.shiftDate },
     },
   });
+
+  // GAP-009: wire new shift into calendar (non-fatal)
+  postVolunteerShiftCalendarItem({
+    campaignId: body.campaignId,
+    shiftId: created.id,
+    name: created.name,
+    shiftDate: created.shiftDate,
+    startTime: created.startTime,
+    endTime: created.endTime,
+    meetingLocation: created.meetingLocation,
+    maxVolunteers: created.maxVolunteers,
+    userId: session!.user.id,
+  }).catch((err) => console.error("[volunteers/shifts] calendar wiring failed", err));
 
   return NextResponse.json({ data: created }, { status: 201 });
 }

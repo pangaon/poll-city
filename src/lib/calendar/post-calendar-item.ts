@@ -6,9 +6,12 @@
  * the primary operation — the campaign manager can create the calendar item
  * manually if needed.
  *
- * GAP-006 — Event create  → CalendarItem(campaign_event)
- * GAP-007 — Scheduled msg → CalendarItem(email_blast_item | sms_blast_item)
- * GAP-008 — Print order   → CalendarItem(print_deadline)
+ * GAP-006 — Event create          → CalendarItem(campaign_event)
+ * GAP-007 — Scheduled msg         → CalendarItem(email_blast_item | sms_blast_item)
+ * GAP-008 — Print order           → CalendarItem(print_deadline)
+ * GAP-009 — Volunteer shift create → CalendarItem(volunteer_shift_item)
+ * GAP-010 — Task create (dueDate) → CalendarItem(internal_deadline)
+ * GAP-011 — Field assignment      → CalendarItem(appropriate type)
  */
 import prisma from "@/lib/db/prisma";
 import { CalendarItemType, CalendarItemStatus, CalLocationType } from "@prisma/client";
@@ -156,6 +159,135 @@ export async function postPrintOrderCalendarItem(
       timezone: "America/Toronto",
       locationType: CalLocationType.tbd,
       printOrderId: opts.printOrderId,
+      createdByUserId: opts.userId,
+    },
+  });
+}
+
+// ─── GAP-009: Volunteer Shift ─────────────────────────────────────────────────
+
+/** Pads a time string to HH:MM format if needed. */
+function padTime(t: string): string {
+  const parts = t.split(":");
+  return `${parts[0].padStart(2, "0")}:${(parts[1] ?? "00").padStart(2, "0")}`;
+}
+
+export interface PostVolunteerShiftCalendarItemInput {
+  campaignId: string;
+  shiftId: string;
+  name: string;
+  shiftDate: Date;
+  startTime: string; // e.g. "09:00"
+  endTime: string;   // e.g. "17:00"
+  meetingLocation?: string | null;
+  maxVolunteers?: number | null;
+  userId: string;
+}
+
+export async function postVolunteerShiftCalendarItem(
+  opts: PostVolunteerShiftCalendarItemInput,
+): Promise<void> {
+  const dateStr = opts.shiftDate.toISOString().split("T")[0];
+  const startAt = new Date(`${dateStr}T${padTime(opts.startTime)}:00`);
+  const endAt = new Date(`${dateStr}T${padTime(opts.endTime)}:00`);
+  // Handle midnight crossover (e.g. 22:00–02:00)
+  if (endAt <= startAt) endAt.setDate(endAt.getDate() + 1);
+
+  await prisma.calendarItem.create({
+    data: {
+      campaignId: opts.campaignId,
+      title: opts.name,
+      itemType: CalendarItemType.volunteer_shift_item,
+      itemStatus: CalendarItemStatus.scheduled,
+      startAt,
+      endAt,
+      timezone: "America/Toronto",
+      locationType: opts.meetingLocation ? CalLocationType.in_person : CalLocationType.tbd,
+      locationName: opts.meetingLocation ?? null,
+      maxCapacity: opts.maxVolunteers ?? null,
+      volunteerShiftId: opts.shiftId,
+      createdByUserId: opts.userId,
+    },
+  });
+}
+
+// ─── GAP-010: Task Due Date ───────────────────────────────────────────────────
+
+export interface PostTaskCalendarItemInput {
+  campaignId: string;
+  taskId: string;
+  title: string;
+  dueDate: Date;
+  userId: string;
+}
+
+export async function postTaskCalendarItem(
+  opts: PostTaskCalendarItemInput,
+): Promise<void> {
+  const startAt = new Date(opts.dueDate);
+  startAt.setHours(9, 0, 0, 0);
+  const endAt = new Date(opts.dueDate);
+  endAt.setHours(17, 0, 0, 0);
+
+  await prisma.calendarItem.create({
+    data: {
+      campaignId: opts.campaignId,
+      title: opts.title,
+      itemType: CalendarItemType.internal_deadline,
+      itemStatus: CalendarItemStatus.scheduled,
+      allDay: true,
+      startAt,
+      endAt,
+      timezone: "America/Toronto",
+      locationType: CalLocationType.tbd,
+      taskId: opts.taskId,
+      createdByUserId: opts.userId,
+    },
+  });
+}
+
+// ─── GAP-011: Field Assignment ────────────────────────────────────────────────
+
+const ASSIGNMENT_TYPE_MAP: Record<string, CalendarItemType> = {
+  lit_drop: CalendarItemType.literature_drop_item,
+  literature_drop: CalendarItemType.literature_drop_item,
+  sign_install: CalendarItemType.sign_install_item,
+  sign_removal: CalendarItemType.sign_removal_item,
+  canvass: CalendarItemType.canvassing_run,
+  canvassing: CalendarItemType.canvassing_run,
+  phone_bank: CalendarItemType.phone_bank_item,
+  scrutineer: CalendarItemType.scrutineer_duty,
+};
+
+export interface PostFieldAssignmentCalendarItemInput {
+  campaignId: string;
+  assignmentId: string;
+  assignmentType: string;
+  name: string;
+  scheduledDate: Date;
+  userId: string;
+}
+
+export async function postFieldAssignmentCalendarItem(
+  opts: PostFieldAssignmentCalendarItemInput,
+): Promise<void> {
+  const itemType = ASSIGNMENT_TYPE_MAP[opts.assignmentType] ?? CalendarItemType.other_item;
+  const startAt = new Date(opts.scheduledDate);
+  startAt.setHours(9, 0, 0, 0);
+  const endAt = new Date(opts.scheduledDate);
+  endAt.setHours(17, 0, 0, 0);
+
+  await prisma.calendarItem.create({
+    data: {
+      campaignId: opts.campaignId,
+      title: opts.name,
+      itemType,
+      itemStatus: CalendarItemStatus.scheduled,
+      startAt,
+      endAt,
+      timezone: "America/Toronto",
+      locationType: CalLocationType.in_person,
+      fieldAssignmentId: opts.assignmentId,
       createdByUserId: opts.userId,
     },
   });

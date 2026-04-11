@@ -61,6 +61,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Chunk 13 — Mobile + Offline + Paper Fallback | CLAIMED 2026-04-11 | /field/mobile, /api/field/paper-export |
 | Chunk 14 — Follow-Up Logic + GOTV + Cross-System Automations | CLAIMED 2026-04-11 | /field/follow-ups, /api/field/gotv-targets |
 | Chunk 15 — AI Assist (Adoni) + Hardening + Audit | CLAIMED 2026-04-11 | Adoni field tools, /field/audit |
+| Chunk 16 — Field Ops enrichment: stop completion, route detail, program detail | CLAIMED 2026-04-11 | Turf stop visited rollup, /field/routes/[routeId], /field/programs/[programId] |
 
 ---
 

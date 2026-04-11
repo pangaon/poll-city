@@ -8,7 +8,27 @@ import {
   CalendarItemStatus,
   CalLocationType,
   TaskPriority,
+  ConflictType,
+  ConflictSeverity,
 } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
+
+const WRITE_ROLES = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"] as const;
+
+/** Item types where time conflicts must be auto-detected (candidate-level priority). */
+const HIGH_PRIORITY_TYPES = new Set<CalendarItemType>([
+  CalendarItemType.candidate_appearance,
+  CalendarItemType.debate,
+  CalendarItemType.media_appearance,
+  CalendarItemType.protected_time,
+  CalendarItemType.travel_block,
+]);
+
+/** High-priority types that escalate to blocking severity. */
+const BLOCKING_TYPES = new Set<CalendarItemType>([
+  CalendarItemType.protected_time,
+  CalendarItemType.travel_block,
+]);
 
 const CreateItemSchema = z.object({
   calendarId: z.string().optional(),
@@ -127,6 +147,14 @@ export async function POST(req: NextRequest) {
   const campaignId = session!.user.activeCampaignId;
   if (!campaignId) return apiError("No active campaign", 400);
 
+  // Role check — calendar write requires at least Campaign Manager
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership || !WRITE_ROLES.includes(membership.role as (typeof WRITE_ROLES)[number])) {
+    return apiError("Forbidden", 403);
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -141,6 +169,18 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  // Sanitize user-supplied text fields (prompt injection risk — Adoni reads calendar data)
+  const sanitizedTitle = sanitizeUserText(data.title) ?? data.title;
+  const sanitizedDescription = data.description
+    ? (sanitizeUserText(data.description) ?? data.description)
+    : data.description;
+  const sanitizedLocationName = data.locationName
+    ? (sanitizeUserText(data.locationName) ?? data.locationName)
+    : data.locationName;
+  const sanitizedAddressLine1 = data.addressLine1
+    ? (sanitizeUserText(data.addressLine1) ?? data.addressLine1)
+    : data.addressLine1;
+
   // Validate time window
   if (new Date(data.endAt) <= new Date(data.startAt)) {
     return apiError("endAt must be after startAt", 400);
@@ -154,14 +194,32 @@ export async function POST(req: NextRequest) {
     if (!cal) return apiError("Calendar not found", 404);
   }
 
+  // IDOR: eventId must belong to this campaign
+  if (data.eventId) {
+    const ev = await prisma.event.findFirst({
+      where: { id: data.eventId, campaignId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!ev) return apiError("Event not found", 404);
+  }
+
+  // IDOR: taskId must belong to this campaign
+  if (data.taskId) {
+    const t = await prisma.task.findFirst({
+      where: { id: data.taskId, campaignId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!t) return apiError("Task not found", 404);
+  }
+
   try {
     const item = await prisma.calendarItem.create({
       data: {
         campaignId,
         calendarId: data.calendarId,
         parentCalendarItemId: data.parentCalendarItemId,
-        title: data.title,
-        description: data.description,
+        title: sanitizedTitle,
+        description: sanitizedDescription,
         itemType: data.itemType,
         itemStatus: data.itemStatus,
         priority: data.priority,
@@ -170,8 +228,8 @@ export async function POST(req: NextRequest) {
         allDay: data.allDay,
         timezone: data.timezone,
         locationType: data.locationType,
-        locationName: data.locationName,
-        addressLine1: data.addressLine1,
+        locationName: sanitizedLocationName,
+        addressLine1: sanitizedAddressLine1,
         city: data.city,
         province: data.province,
         postalCode: data.postalCode,
@@ -208,6 +266,42 @@ export async function POST(req: NextRequest) {
         actorUserId: session!.user.id as string,
       },
     });
+
+    // Auto-conflict detection for high-priority item types (non-fatal)
+    if (HIGH_PRIORITY_TYPES.has(item.itemType)) {
+      const startAt = new Date(data.startAt);
+      const endAt = new Date(data.endAt);
+
+      prisma.calendarItem.findMany({
+        where: {
+          campaignId,
+          id: { not: item.id },
+          deletedAt: null,
+          itemStatus: { not: CalendarItemStatus.cancelled },
+          startAt: { lt: endAt },
+          endAt: { gt: startAt },
+        },
+        select: { id: true, title: true },
+        take: 10,
+      }).then((overlapping) => {
+        if (overlapping.length === 0) return;
+        const severity = BLOCKING_TYPES.has(item.itemType)
+          ? ConflictSeverity.blocking
+          : ConflictSeverity.warning;
+        return prisma.scheduleConflict.createMany({
+          data: overlapping.map((other) => ({
+            campaignId,
+            entityType: "calendar_item",
+            entityId: item.id,
+            entityLabel: item.title,
+            conflictType: ConflictType.person_double_booked,
+            sourceCalendarItemId: item.id,
+            conflictingCalendarItemId: other.id,
+            severity,
+          })),
+        });
+      }).catch((err) => console.error("[calendar/items] conflict detection failed", err));
+    }
 
     return NextResponse.json({ data: item }, { status: 201 });
   } catch (err) {

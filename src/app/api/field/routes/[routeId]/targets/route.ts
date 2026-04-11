@@ -4,6 +4,11 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { FieldTargetStatus } from "@prisma/client";
 
+const VALID_TARGET_STATUSES: FieldTargetStatus[] = [
+  "pending", "in_progress", "contacted", "no_answer", "not_home",
+  "refused", "moved", "inaccessible", "revisit", "complete",
+];
+
 type Params = { params: Promise<{ routeId: string }> };
 
 // ── GET /api/field/routes/[routeId]/targets ───────────────────────────────────
@@ -126,4 +131,59 @@ export async function GET(req: NextRequest, { params }: Params) {
   }));
 
   return NextResponse.json({ data });
+}
+
+// ── PATCH /api/field/routes/[routeId]/targets ─────────────────────────────────
+// Update the status (and optionally notes) on a single FieldTarget.
+// Body: { campaignId, targetId, status?, notes? }
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+
+  const { routeId } = await params;
+
+  const body = (await req.json().catch(() => null)) as {
+    campaignId?: string;
+    targetId?: string;
+    status?: FieldTargetStatus;
+    notes?: string | null;
+  } | null;
+
+  if (!body?.campaignId || !body?.targetId) {
+    return NextResponse.json(
+      { error: "campaignId and targetId are required" },
+      { status: 400 },
+    );
+  }
+
+  const { forbidden } = await guardCampaignRoute(
+    session!.user.id,
+    body.campaignId,
+    "canvassing:write",
+  );
+  if (forbidden) return forbidden;
+
+  const target = await prisma.fieldTarget.findFirst({
+    where: { id: body.targetId, routeId, campaignId: body.campaignId, deletedAt: null },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "Target not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.fieldTarget.update({
+    where: { id: body.targetId },
+    data: {
+      ...(body.status && VALID_TARGET_STATUSES.includes(body.status)
+        ? {
+            status: body.status,
+            resolvedAt: body.status !== "pending" ? new Date() : null,
+          }
+        : {}),
+      ...(body.notes !== undefined ? { notes: body.notes?.trim() ?? null } : {}),
+    },
+    select: { id: true, status: true, resolvedAt: true, notes: true },
+  });
+
+  return NextResponse.json({ data: updated });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export const dynamic = "force-dynamic";
 
@@ -9,27 +10,22 @@ export async function GET(req: NextRequest) {
   if (error) return error;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId)
-    return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership)
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "budget:read");
+  if (forbidden) return forbidden;
+  const cid = campaignId!;
 
   // ── Fetch all three data sources in parallel ─────────────────────────────
   const [budgets, expenseAgg, donationRows] = await Promise.all([
     // Budget totals (active + draft)
     prisma.campaignBudget.findMany({
-      where: { campaignId, status: { in: ["active", "draft"] } },
+      where: { campaignId: cid, status: { in: ["active", "draft"] } },
       select: { totalBudget: true },
     }),
 
     // Expense totals — paid/approved only (hard spend)
     prisma.financeExpense.aggregate({
       where: {
-        campaignId,
+        campaignId: cid,
         deletedAt: null,
         expenseStatus: { in: ["approved", "paid"] },
       },
@@ -39,7 +35,7 @@ export async function GET(req: NextRequest) {
     // Donations grouped by status — excludes deleted + failed/cancelled/refunded
     prisma.donation.findMany({
       where: {
-        campaignId,
+        campaignId: cid,
         deletedAt: null,
         status: { notIn: ["failed", "cancelled", "refunded"] },
       },

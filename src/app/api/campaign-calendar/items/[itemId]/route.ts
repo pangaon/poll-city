@@ -9,6 +9,9 @@ import {
   CalLocationType,
   TaskPriority,
 } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
+
+const WRITE_ROLES = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"] as const;
 
 const UpdateItemSchema = z.object({
   calendarId: z.string().optional(),
@@ -113,6 +116,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const campaignId = session!.user.activeCampaignId;
   if (!campaignId) return apiError("No active campaign", 400);
 
+  // Role check — calendar write requires at least Campaign Manager
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership || !WRITE_ROLES.includes(membership.role as (typeof WRITE_ROLES)[number])) {
+    return apiError("Forbidden", 403);
+  }
+
   const { itemId } = await params;
 
   // Special action: ?action=cancel
@@ -173,10 +184,28 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return apiError("endAt must be after startAt", 400);
     }
 
+    // Sanitize user-supplied text fields
+    const sanitizedTitle = data.title != null
+      ? (sanitizeUserText(data.title) ?? data.title)
+      : data.title;
+    const sanitizedDescription = data.description != null
+      ? (sanitizeUserText(data.description) ?? data.description)
+      : data.description;
+    const sanitizedLocationName = data.locationName != null
+      ? (sanitizeUserText(data.locationName) ?? data.locationName)
+      : data.locationName;
+    const sanitizedAddressLine1 = data.addressLine1 != null
+      ? (sanitizeUserText(data.addressLine1) ?? data.addressLine1)
+      : data.addressLine1;
+
     const updated = await prisma.calendarItem.update({
       where: { id: itemId },
       data: {
         ...data,
+        title: sanitizedTitle,
+        description: sanitizedDescription,
+        locationName: sanitizedLocationName,
+        addressLine1: sanitizedAddressLine1,
         startAt: data.startAt ? new Date(data.startAt) : undefined,
         endAt: data.endAt ? new Date(data.endAt) : undefined,
         updatedByUserId: session!.user.id as string,
@@ -221,6 +250,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const campaignId = session!.user.activeCampaignId;
   if (!campaignId) return apiError("No active campaign", 400);
+
+  // Role check — calendar delete requires at least Campaign Manager
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+  });
+  if (!membership || !WRITE_ROLES.includes(membership.role as (typeof WRITE_ROLES)[number])) {
+    return apiError("Forbidden", 403);
+  }
 
   const { itemId } = await params;
 
