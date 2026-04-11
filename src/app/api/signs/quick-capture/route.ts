@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     address?: string;
     signType?: string;
     notes?: string;
+    quantity?: number;
   };
 
   try {
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
       signType: body.signType?.trim() || "standard",
       notes: body.notes?.trim() || null,
       status: "requested",
+      quantity: typeof body.quantity === "number" && body.quantity > 0 ? body.quantity : 1,
     },
   });
 

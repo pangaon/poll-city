@@ -6,6 +6,7 @@ import {
   MapPin, Search, ChevronLeft, ChevronRight, Camera, Plus, Download,
   ChevronUp, ChevronDown, ArrowUpDown, Package, Truck, CheckCircle2,
   XCircle, Clock, AlertTriangle, Eye, List, Layers, Map as MapIcon,
+  Home, Maximize2, AppWindow, Grid3X3, CornerDownRight, Building2, Minus,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, CardHeader, CardTitle, FormField,
@@ -63,6 +64,16 @@ const SIGN_TYPES = [
   { value: "large", label: "Large Sign" },
   { value: "window", label: "Window Sign" },
 ] as const;
+
+const CAPTURE_SIGN_TYPES = [
+  { value: "small_yard",  label: "Small Yard",  Icon: Home },
+  { value: "large_yard",  label: "Large Yard",  Icon: Maximize2 },
+  { value: "window",      label: "Window",      Icon: AppWindow },
+  { value: "fence",       label: "Fence",       Icon: Grid3X3 },
+  { value: "corner_lot",  label: "Corner Lot",  Icon: CornerDownRight },
+  { value: "business",    label: "Business",    Icon: Building2 },
+] as const;
+type CaptureSignTypeValue = typeof CAPTURE_SIGN_TYPES[number]["value"];
 
 const pageSize = 25;
 
@@ -618,34 +629,164 @@ function NewSignModal({ open, onClose, onCreate }: { open: boolean; onClose: () 
 // ── Quick Capture Modal ──────────────────────────────────────────────────────
 
 function QuickCaptureModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (d: Record<string, unknown>) => Promise<boolean> }) {
-  const [address, setAddress] = useState("");
-  const [signType, setSignType] = useState("standard");
-  const [notes, setNotes] = useState("");
+  const [address, setAddress]       = useState("");
+  const [signType, setSignType]     = useState<CaptureSignTypeValue>("small_yard");
+  const [name, setName]             = useState("");
+  const [phone, setPhone]           = useState("");
+  const [notes, setNotes]           = useState("");
+  const [showNotes, setShowNotes]   = useState(false);
+  const [quantity, setQuantity]     = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  const reset = () => {
+    setAddress(""); setSignType("small_yard"); setName(""); setPhone("");
+    setNotes(""); setShowNotes(false); setQuantity(1);
+  };
 
   const handleSubmit = async () => {
     if (!address.trim()) { toast.error("Address is required"); return; }
     setSubmitting(true);
-    const ok = await onCreate({ address: address.trim(), signType, notes: notes.trim() || "Quick capture — installed in field" });
+    const parts     = name.trim().split(" ");
+    const firstName = parts[0] || undefined;
+    const lastName  = parts.slice(1).join(" ") || undefined;
+    const ok = await onCreate({
+      address:   address.trim(),
+      signType,
+      notes:     notes.trim() || undefined,
+      firstName,
+      lastName,
+      phone:     phone.trim() || undefined,
+      quantity,
+    });
     setSubmitting(false);
-    if (ok) { setAddress(""); setNotes(""); onClose(); }
+    if (ok) { reset(); onClose(); }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Quick Capture — Field Install" size="sm">
+    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Capture Sign Request" size="sm">
       <div className="space-y-4">
-        <p className="text-sm text-gray-500">Mark a sign as installed in the field.</p>
-        <div><Label required>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 Main St" className="min-h-[44px]" autoFocus /></div>
-        <div>
-          <Label>Sign Type</Label>
-          <Select value={signType} onChange={e => setSignType(e.target.value)} className="min-h-[44px]">
-            {SIGN_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </Select>
+
+        {/* Subtitle */}
+        <div className="flex items-center gap-2 -mt-1">
+          <div className="w-6 h-6 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+            <Camera className="w-3 h-3 text-white" />
+          </div>
+          <p className="text-xs text-gray-500">Field canvassing · quick entry</p>
         </div>
-        <div><Label>Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" className="min-h-[44px]" /></div>
-        <MotionButton onClick={handleSubmit} loading={submitting} className="w-full bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white">
-          <Camera className="w-4 h-4" /> Capture Install
-        </MotionButton>
+
+        {/* Address */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Address</label>
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Input
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="123 Main St..."
+              className="pl-9 min-h-[44px]"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Sign Type Grid */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Sign Type Requested</label>
+          <div className="grid grid-cols-3 gap-2">
+            {CAPTURE_SIGN_TYPES.map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSignType(value)}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-all ${
+                  signType === value
+                    ? "border-[#1D9E75] bg-[#1D9E75]/10 text-[#1D9E75]"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Name + Phone + Photo */}
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Name</label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Optional" className="min-h-[40px] text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Phone</label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" className="min-h-[40px] text-sm" type="tel" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Photo</label>
+            <button
+              type="button"
+              onClick={() => toast.info("Photo upload coming soon")}
+              className="w-full min-h-[40px] border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Notes — expandable */}
+        {!showNotes ? (
+          <button
+            type="button"
+            onClick={() => setShowNotes(true)}
+            className="flex items-center gap-1 text-xs text-[#1D9E75] hover:text-[#1D9E75]/80 transition-colors"
+          >
+            <Plus className="w-3 h-3" /> Add notes (sign type, colour, etc.)
+          </button>
+        ) : (
+          <Textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Sign type, colour, placement preference..."
+            rows={2}
+          />
+        )}
+
+        {/* Quantity + Actions */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="text-sm font-semibold w-5 text-center">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => setQuantity(q => q + 1)}
+              className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs">
+              {CAPTURE_SIGN_TYPES.find(t => t.value === signType)?.label ?? "sign"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { reset(); onClose(); }}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors px-3 py-1.5"
+            >
+              Cancel
+            </button>
+            <MotionButton onClick={handleSubmit} loading={submitting} size="sm" className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 text-white">
+              <Camera className="w-3.5 h-3.5" /> Capture Request
+            </MotionButton>
+          </div>
+        </div>
+
       </div>
     </Modal>
   );
