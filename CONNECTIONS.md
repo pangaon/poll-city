@@ -580,22 +580,39 @@ Every major user action. Every downstream effect. Honest status.
 
 ## CALENDAR SUITE
 
-*Added 2026-04-10 — Schema in schema.prisma, db push required, APIs + UI in progress.*
+*Phase 1+2 APIs built (730833e). Phase 3 candidate schedule + sync stub built (b5170f0). db push required on Railway.*
 *GAP-002: db push required | GAP-006: ↔ Comms | GAP-007: ↔ Events | GAP-008: ↔ Print*
 
 ### Calendar Item Created (POST /api/campaign-calendar/items)
 | Effect | Status | Notes |
 |--------|--------|-------|
-| CalendarItem record created | — NOT YET (API not built) | schema ready, APIs in progress |
-| CalendarItemAssignment record created | — NOT YET | |
-| Conflict detection run | — NOT YET | ScheduleConflict model ready |
-| CalendarReminder scheduled | — NOT YET | CalendarReminder model ready |
-| CalendarAuditLog entry | — NOT YET | |
+| CalendarItem record created | ✓ CONNECTED | /api/campaign-calendar/items — CRUD built 730833e |
+| CalendarItemAssignment record created | ✓ CONNECTED | included in POST /items |
+| Conflict detection run | ✓ CONNECTED | ScheduleConflict model — checked on item create/update |
+| CalendarReminder scheduled | ✓ CONNECTED | CalendarReminder — created via API |
+| CalendarAuditLog entry | ✓ CONNECTED | every mutation logs to CalendarAuditLog |
 | Event created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-007 |
 | ScheduledMessage created → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-006 |
 | Print order confirmed → CalendarItem auto-created | ✗ NOT CONNECTED | GAP-008 |
 | Field shift created → CalendarItem auto-created | ✗ NOT CONNECTED | Field Ops Phase 6 |
-| Google Calendar sync | ✗ NOT CONNECTED | GAP-024 |
+
+### Candidate Appearance (Phase 3 — built b5170f0)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| CandidateAppearance record created | ✓ CONNECTED | POST /api/campaign-calendar/appearances |
+| One-per-CalendarItem enforced | ✓ CONNECTED | 409 if duplicate |
+| Appearance updated | ✓ CONNECTED | PATCH /api/campaign-calendar/appearances/[appearanceId] |
+| Candidate schedule view (full joined read) | ✓ CONNECTED | GET /api/campaign-calendar/candidate-schedule |
+| Schedule meta (next debate, next media, election day) | ✓ CONNECTED | returned in meta field |
+| CalendarAuditLog entry | ✓ CONNECTED | every appearance mutation logged |
+
+### Calendar Sync (Phase 3 stub — built b5170f0)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| CalendarSyncAccount created (pending_auth) | ✓ CONNECTED (stub) | POST /api/campaign-calendar/sync |
+| Sync trigger | ✓ CONNECTED (stub) | POST /api/campaign-calendar/sync/[accountId]/trigger — logs run, no real sync |
+| Google Calendar sync (real OAuth) | ✗ NOT CONNECTED | GAP-024 — stub only |
+| Apple / Outlook / iCal sync (real OAuth) | ✗ NOT CONNECTED | GAP-024 |
 
 ---
 

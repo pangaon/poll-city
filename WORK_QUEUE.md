@@ -128,14 +128,16 @@ No session may start a task already marked CLAIMED or DONE.
 
 | Task | Status | Notes |
 |---|---|---|
-| Full calendar domain model (11 models, 43 enums) | DONE — 730833e | In schema.prisma |
-| calendar-client.tsx UI (base) | DONE | Exists; type errors fixed |
-| **REQUIRED: npx prisma db push** | BLOCKED — George must run | Run against Railway before calendar APIs will work |
-| Phase 1 — Calendar APIs | BLOCKED | Needs db push first |
-| Phase 2 — Full calendar UI (monthly/weekly/daily views) | PENDING | |
-| Phase 3 — Cross-system wiring (events, comms, print, field) | PENDING | GAP-006, GAP-007, GAP-008 |
-| Phase 4 — Reminders + notifications cron | PENDING | |
-| Phase 5 — Google/Outlook sync | PENDING | Future |
+| Full calendar domain model (13 models + Phase 3 enums) | DONE — 730833e + 73f9017 | schema.prisma — includes CandidateAppearance, CalendarSyncAccount, CalendarSyncLog |
+| calendar-client.tsx UI (4-view command centre) | DONE — 0bf659f | month/week/agenda/dashboard views |
+| Phase 1+2 — Calendar item CRUD + assignment + conflict + reminder APIs | DONE — 730833e | /api/campaign-calendar/items, /assignments, /conflicts, /reminders, /calendars |
+| Phase 3 — Candidate schedule view + appearances API | DONE — b5170f0 | /calendar/candidate, /api/campaign-calendar/appearances, /candidate-schedule |
+| Phase 3 — Calendar sync stub (connect + trigger) | DONE — b5170f0 | /api/campaign-calendar/sync — stub only, no real OAuth |
+| Calendar demo seed (Ward 20, 37 items, 12 appearances) | DONE — 9981bc4 | npm run db:seed:calendar |
+| **REQUIRED: npx prisma db push** | BLOCKED — George must run | Run against Railway to activate all calendar models in prod |
+| Phase 4 — Cross-system wiring (events, comms, print, field) | PENDING | GAP-006, GAP-007, GAP-008 |
+| Phase 5 — Reminders + notifications cron | PENDING | |
+| Phase 6 — Google/Outlook real OAuth sync | PENDING | GAP-024 |
 
 ---
 
@@ -189,11 +191,11 @@ These cannot be done by AI sessions:
 
 | Action | Priority | Why |
 |---|---|---|
-| `npx prisma db push` against Railway | **CRITICAL** | Calendar models + SavedSegment + 4 new models are in schema but not in production DB |
-| Watch Vercel green on commit `0a8d74b` | High | Finance Phase 6 + Print rebuild deploying |
+| `npx prisma db push` against Railway | **CRITICAL** | CandidateAppearance, CalendarSyncAccount, CalendarSyncLog and prior calendar models are in schema but not in prod DB — calendar UI will 500 until this runs |
+| `npm run db:seed:calendar` (against Railway) | High | Populates Ward 20 beta demo data — 37 items, 12 appearances, 2 calendars |
 | Confirm Stripe keys in Railway env vars | Medium | Phase 4 fundraising needs STRIPE_SECRET_KEY |
 
 ---
 
-*Last updated: 2026-04-10 (session close) by Claude Sonnet 4.6*
+*Last updated: 2026-04-10 (session close — Calendar Phase 3 complete) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
