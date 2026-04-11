@@ -4,6 +4,8 @@
 import { NextResponse } from "next/server";
 import { FORM_TEMPLATES } from "@/lib/forms/templates";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return NextResponse.json({
     templates: FORM_TEMPLATES.map((t) => ({

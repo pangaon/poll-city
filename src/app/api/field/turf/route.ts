@@ -4,6 +4,8 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { TurfStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 // ── GET /api/field/turf?campaignId=X&status=Y&assignedUserId=Z ───────────────
 
 export async function GET(req: NextRequest) {

@@ -119,7 +119,7 @@ function contextualFallbackSuggestions(path: string): string[] {
 
 export default function AdoniButton() {
   const pathname = usePathname();
-  const fallbackSuggestions = useMemo(() => contextualFallbackSuggestions(pathname), [pathname]);
+  const fallbackSuggestions = useMemo(() => contextualFallbackSuggestions(pathname ?? ""), [pathname]);
   const [mode, setMode] = useState<AdoniMode>("bubble");
   const [prompt, setPrompt] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -193,7 +193,7 @@ export default function AdoniButton() {
 
   useEffect(() => {
     let mounted = true;
-    fetch(`/api/adoni/suggestions?page=${encodeURIComponent(pathname)}`)
+    fetch(`/api/adoni/suggestions?page=${encodeURIComponent(pathname ?? "")}`)
       .then((r) => r.json())
       .then((data: SuggestionPayload) => {
         if (!mounted) return;
@@ -338,7 +338,7 @@ export default function AdoniButton() {
 
   const unreadCount = useMemo(() => (suggestions.length > 0 ? Math.min(suggestions.length, 9) : 0), [suggestions]);
   const isWalkListPath = useMemo(
-    () => pathname.includes("/canvassing/walk") || pathname === "/canvass" || pathname.startsWith("/canvass/"),
+    () => (pathname ?? "").includes("/canvassing/walk") || pathname === "/canvass" || (pathname ?? "").startsWith("/canvass/"),
     [pathname],
   );
   const showMobileBubble = !(isMobile && (mobileKeyboardOpen || mobileScrollHidden));
@@ -359,7 +359,7 @@ export default function AdoniButton() {
       const res = await fetch("/api/adoni/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: pathname, messages: nextMessages }),
+        body: JSON.stringify({ page: pathname ?? "", messages: nextMessages }),
       });
 
       if (!res.ok || !res.body) {

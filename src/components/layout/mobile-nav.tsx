@@ -151,7 +151,7 @@ export default function MobileNav() {
             const Icon = tab.icon;
 
             if (tab.type === "route") {
-              const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+              const active = pathname === tab.href || (pathname ?? "").startsWith(`${tab.href}/`);
               return (
                 <Link
                   key={tab.href}
@@ -274,7 +274,7 @@ export default function MobileNav() {
                       </p>
                       <div className="space-y-0.5">
                         {group.items.map((item) => {
-                          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                          const active = pathname === item.href || (pathname ?? "").startsWith(`${item.href}/`);
                           return (
                             <Link
                               key={item.href}

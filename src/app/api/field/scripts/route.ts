@@ -4,6 +4,8 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { Prisma, ScriptTemplateType } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 // ── GET /api/field/scripts?campaignId=X ─────────────────────────────────────
 
 export async function GET(req: NextRequest) {

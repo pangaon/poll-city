@@ -13,7 +13,7 @@ export default function WidgetStandalonePage() {
       <DashboardStudio
         campaignId={campaignId}
         campaignName="Widget Standalone"
-        popoutWidgetId={params.widgetId}
+        popoutWidgetId={params?.widgetId}
         isPopout
       />
     </div>

@@ -387,6 +387,7 @@ function ResultsDisplay({
 /* ── Main page ───────────────────────────────────────────────────────────── */
 export default function PollDetailPage() {
   const params = useParams();
+  const pollId = (params?.id ?? "") as string;
   const router = useRouter();
   const [result, setResult] = useState<PollResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -394,13 +395,13 @@ export default function PollDetailPage() {
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/polls/${params.id}/respond`)
+    fetch(`/api/polls/${pollId}/respond`)
       .then(r => r.json())
       .then(d => { setResult(d.data); setLoading(false); });
-  }, [params.id]);
+  }, [pollId]);
 
   async function vote(value: string, optionId?: string) {
-    const res = await fetch(`/api/polls/${params.id}/respond`, {
+    const res = await fetch(`/api/polls/${pollId}/respond`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value, optionId }),
     });
@@ -410,7 +411,7 @@ export default function PollDetailPage() {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2500);
       toast.success("Vote recorded!");
-      const d = await fetch(`/api/polls/${params.id}/respond`).then(r => r.json());
+      const d = await fetch(`/api/polls/${pollId}/respond`).then(r => r.json());
       setResult(d.data);
     } else {
       toast.error("Failed to record vote");
@@ -418,7 +419,7 @@ export default function PollDetailPage() {
   }
 
   async function voteRanked(ranked: { optionId: string; rank: number }[]) {
-    const res = await fetch(`/api/polls/${params.id}/respond`, {
+    const res = await fetch(`/api/polls/${pollId}/respond`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rankedResponses: ranked }),
     });
@@ -427,7 +428,7 @@ export default function PollDetailPage() {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2500);
       toast.success("Vote recorded!");
-      const d = await fetch(`/api/polls/${params.id}/respond`).then(r => r.json());
+      const d = await fetch(`/api/polls/${pollId}/respond`).then(r => r.json());
       setResult(d.data);
     } else {
       toast.error("Failed to record vote");
@@ -470,7 +471,7 @@ export default function PollDetailPage() {
               setVoted(true);
               setShowConfetti(true);
               setTimeout(() => setShowConfetti(false), 2500);
-              fetch(`/api/polls/${params.id}/respond`).then(r => r.json()).then(d => setResult(d.data));
+              fetch(`/api/polls/${pollId}/respond`).then(r => r.json()).then(d => setResult(d.data));
             }}
           />
         </div>

@@ -8,6 +8,6 @@ const CampaignTour = dynamic(() => import("./campaign-tour"), { ssr: false });
 
 export default function CampaignTourGate() {
   const searchParams = useSearchParams();
-  const demo = searchParams.get("demo") === "true";
+  const demo = searchParams?.get("demo") === "true";
   return <CampaignTour demo={demo} />;
 }

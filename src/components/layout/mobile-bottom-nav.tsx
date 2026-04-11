@@ -101,7 +101,7 @@ export function MobileBottomNav() {
           {ITEMS.map((item) => {
             const Icon = item.icon;
             if (item.type === "route") {
-              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && (pathname ?? "").startsWith(item.href));
               return (
                 <Link
                   key={item.href}
@@ -183,7 +183,7 @@ function MoreSheet({ onClose, onOpenSearch }: { onClose: () => void; onOpenSearc
               </p>
               <div className="space-y-0.5">
                 {section.items.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const isActive = pathname === item.href || (pathname ?? "").startsWith(`${item.href}/`);
                   return (
                     <Link
                       key={item.href}

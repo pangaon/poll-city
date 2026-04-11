@@ -14,7 +14,7 @@ export default function TwoFactorVerifyPage() {
   const router = useRouter();
   const params = useSearchParams();
   const { update } = useSession();
-  const callbackUrl = params.get("callbackUrl") || "/dashboard";
+  const callbackUrl = params?.get("callbackUrl") || "/dashboard";
 
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [error, setError] = useState<string | null>(null);

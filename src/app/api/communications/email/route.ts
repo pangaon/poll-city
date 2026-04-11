@@ -19,6 +19,7 @@ const schema = z.object({
   wards: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
   excludeDnc: z.boolean().default(true),
+  excludeEmailBounced: z.boolean().default(true),
   testOnly: z.boolean().default(false),
   // E-001: client-generated idempotency key prevents double-send on retry
   sendKey: z.string().optional(),
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, subject, bodyHtml, supportLevels, wards, tagIds, excludeDnc, testOnly, sendKey } = parsed.data;
+  const { campaignId, subject, bodyHtml, supportLevels, wards, tagIds, excludeDnc, excludeEmailBounced, testOnly, sendKey } = parsed.data;
 
   // E-007: fail loudly when Resend is not configured
   if (!process.env.RESEND_API_KEY) {
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
     deletedAt: null,
     isDeceased: false,
     ...(excludeDnc ? { doNotContact: false } : {}),
+    ...(excludeEmailBounced ? { emailBounced: false } : {}),
     email: { not: null },
     ...(supportLevels && supportLevels.length > 0
       ? { supportLevel: { in: supportLevels as never[] } }

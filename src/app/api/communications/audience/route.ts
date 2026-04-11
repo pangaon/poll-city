@@ -13,6 +13,8 @@ const schema = z.object({
   wards: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
   excludeDnc: z.boolean().default(true),
+  excludeEmailBounced: z.boolean().default(true),
+  excludeSmsOptOut: z.boolean().default(true),
   volunteerOnly: z.boolean().default(false),
 });
 
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, channel, supportLevels, wards, tagIds, excludeDnc, volunteerOnly } = parsed.data;
+  const { campaignId, channel, supportLevels, wards, tagIds, excludeDnc, excludeEmailBounced, excludeSmsOptOut, volunteerOnly } = parsed.data;
 
   const m = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
@@ -45,6 +47,8 @@ export async function POST(req: NextRequest) {
     deletedAt: null,
     isDeceased: false,
     ...(excludeDnc ? { doNotContact: false } : {}),
+    ...(channel === "email" && excludeEmailBounced ? { emailBounced: false } : {}),
+    ...(channel === "sms" && excludeSmsOptOut ? { smsOptOut: false } : {}),
     ...(volunteerOnly ? { volunteerInterest: true } : {}),
     ...(channel === "email" ? { email: { not: null } } : { phone: { not: null } }),
     ...(supportLevels && supportLevels.length > 0

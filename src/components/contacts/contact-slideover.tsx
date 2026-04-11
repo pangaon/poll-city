@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { X, Phone, Mail, MapPin, User, Tag as TagIcon, Clock, Edit2, Save, Loader2, Trash2, Plus } from "lucide-react";
+import { X, Phone, PhoneOff, Mail, MailX, MapPin, User, Tag as TagIcon, Clock, Edit2, Save, Loader2, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { SUPPORT_LEVEL_LABELS, type SupportLevel } from "@/types";
 
@@ -24,6 +24,9 @@ interface ContactDetail {
   volunteerInterest: boolean;
   signRequested: boolean;
   doNotContact: boolean;
+  emailBounced: boolean;
+  smsOptOut: boolean;
+  confidenceScore: number | null;
   notes: string | null;
   lastContactedAt: string | null;
   tags: { tag: { id: string; name: string; color: string } }[];
@@ -245,20 +248,26 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
             <div className="space-y-2">
               {contact.phone && (
                 <a
-                  href={`tel:${contact.phone}`}
-                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                  href={contact.smsOptOut ? undefined : `tel:${contact.phone}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${contact.smsOptOut ? "bg-gray-50 cursor-default" : "bg-gray-50 hover:bg-gray-100"}`}
                 >
-                  <Phone className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-900">{contact.phone}</span>
+                  {contact.smsOptOut
+                    ? <PhoneOff className="w-4 h-4 text-gray-300 flex-shrink-0" aria-label="SMS opt-out" />
+                    : <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                  <span className={`text-sm font-medium ${contact.smsOptOut ? "text-gray-400 line-through" : "text-gray-900"}`}>{contact.phone}</span>
+                  {contact.smsOptOut && <span className="text-xs text-red-500 font-semibold ml-auto">Opt-out</span>}
                 </a>
               )}
               {contact.email && (
                 <a
-                  href={`mailto:${contact.email}`}
-                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                  href={contact.emailBounced ? undefined : `mailto:${contact.email}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${contact.emailBounced ? "bg-gray-50 cursor-default" : "bg-gray-50 hover:bg-gray-100"}`}
                 >
-                  <Mail className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-900 truncate">{contact.email}</span>
+                  {contact.emailBounced
+                    ? <MailX className="w-4 h-4 text-red-400 flex-shrink-0" aria-label="Email bounced" />
+                    : <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                  <span className={`text-sm font-medium truncate ${contact.emailBounced ? "text-red-400 line-through" : "text-gray-900"}`}>{contact.email}</span>
+                  {contact.emailBounced && <span className="text-xs text-red-500 font-semibold ml-auto flex-shrink-0">Bounced</span>}
                 </a>
               )}
               <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
@@ -290,6 +299,22 @@ export function ContactSlideOver({ contactId, onClose, onUpdate }: Props) {
                 onChange={(v) => updateField({ signRequested: v })}
               />
             </div>
+
+            {/* Confidence score */}
+            {typeof contact.confidenceScore === "number" && contact.confidenceScore > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">Confidence</span>
+                <div className="flex gap-1 items-center">
+                  {[20, 40, 60, 80, 100].map((threshold) => (
+                    <span
+                      key={threshold}
+                      className={`w-3 h-3 rounded-sm ${contact.confidenceScore! >= threshold ? "bg-emerald-500" : "bg-gray-200"}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-gray-400">{contact.confidenceScore}/100</span>
+              </div>
+            )}
 
             {/* Tags */}
             {contact.tags.length > 0 && (

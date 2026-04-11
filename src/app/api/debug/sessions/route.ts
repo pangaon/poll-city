@@ -3,6 +3,8 @@ import { z } from "zod";
 import prisma from "@/lib/db/prisma";
 import { validateDebugAccess } from "@/lib/debug/access";
 
+export const dynamic = "force-dynamic";
+
 const createSessionSchema = z.object({
   title: z.string().trim().max(120).optional(),
 });

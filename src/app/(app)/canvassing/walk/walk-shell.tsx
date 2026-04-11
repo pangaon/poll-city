@@ -69,6 +69,7 @@ interface Person {
   issues: string[];
   notes: string | null;
   isDeceased: boolean;
+  doNotContact: boolean;
   _count?: { interactions: number };
 }
 
@@ -1048,6 +1049,9 @@ function PersonRow({ person: p, onUpdate, campaignFields, address, campaignId }:
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <SupportLevelBadge level={support} />
+              {p.doNotContact && (
+                <span className="text-xs bg-red-100 text-red-700 font-semibold px-1.5 rounded-full">⚠ DNC</span>
+              )}
               {/* Dynamic badges from campaign fields */}
               {campaignFields.some((f) => f.key === "__follow_up") && p.followUpNeeded && (
                 <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded-full">Follow-up</span>

@@ -226,7 +226,7 @@ export default function Sidebar() {
             </p>
             <div className="space-y-px">
               {section.items.map(({ href, icon: Icon, label }) => {
-                const active = pathname === href || pathname.startsWith(`${href}/`);
+                const active = pathname === href || (pathname ?? "").startsWith(`${href}/`);
                 return (
                   <Link
                     key={href}

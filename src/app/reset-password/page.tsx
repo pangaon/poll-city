@@ -9,7 +9,7 @@ type Stage = "loading" | "invalid" | "form" | "submitting" | "done" | "forgot" |
 export default function ResetPasswordPage() {
   const params = useSearchParams();
   const router = useRouter();
-  const token = params.get("token") ?? "";
+  const token = params?.get("token") ?? "";
 
   const [stage, setStage] = useState<Stage>(token ? "loading" : "forgot");
   const [email, setEmail] = useState("");

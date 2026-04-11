@@ -502,7 +502,7 @@ export function QaOverlay() {
   // Load annotations for current page
   const loadAnnotations = useCallback(async () => {
     try {
-      const res = await fetch(`/api/ops/qa-annotations?path=${encodeURIComponent(pathname)}`);
+      const res = await fetch(`/api/ops/qa-annotations?path=${encodeURIComponent(pathname ?? "")}`);
       if (!res.ok) return;
       const data = await res.json();
       setAnnotations(data.data ?? []);

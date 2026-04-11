@@ -17,6 +17,7 @@ const schema = z.object({
   wards: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
   excludeDnc: z.boolean().default(true),
+  excludeSmsOptOut: z.boolean().default(true),
   testOnly: z.boolean().default(false),
   // E-001: client-generated idempotency key prevents double-send on retry
   sendKey: z.string().optional(),
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, body: msgBody, supportLevels, wards, tagIds, excludeDnc, testOnly, sendKey } = parsed.data;
+  const { campaignId, body: msgBody, supportLevels, wards, tagIds, excludeDnc, excludeSmsOptOut, testOnly, sendKey } = parsed.data;
 
   // E-008: fail loudly when Twilio is not configured
   const hasTwilio = Boolean(
@@ -107,6 +108,7 @@ export async function POST(req: NextRequest) {
     deletedAt: null,
     isDeceased: false,
     ...(excludeDnc ? { doNotContact: false } : {}),
+    ...(excludeSmsOptOut ? { smsOptOut: false } : {}),
     phone: { not: null },
     ...(supportLevels && supportLevels.length > 0
       ? { supportLevel: { in: supportLevels as never[] } }

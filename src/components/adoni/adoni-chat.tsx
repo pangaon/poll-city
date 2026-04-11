@@ -673,7 +673,7 @@ export default function AdoniChat() {
   const tipIndexRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-  const suggestions = useMemo(() => contextualSuggestions(pathname), [pathname]);
+  const suggestions = useMemo(() => contextualSuggestions(pathname ?? ""), [pathname]);
 
   /* Load history from localStorage */
   useEffect(() => {

@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
   const volunteerInterest = sp.get("volunteerInterest") === "true" ? true : undefined;
   const signRequested = sp.get("signRequested") === "true" ? true : undefined;
   const doNotContact = sp.get("doNotContact") === "true" ? true : sp.get("doNotContact") === "false" ? false : undefined;
+  const emailBounced = sp.get("emailBounced") === "true" ? true : undefined;
+  const smsOptOut = sp.get("smsOptOut") === "true" ? true : undefined;
   const tagIds = sp.get("tags")?.split(",").filter(Boolean);
   const wards = sp.get("wards")?.split(",").filter(Boolean);
   // Custom field filters: ?customFilter=fieldKey:operator:value (can be repeated)
@@ -93,6 +95,8 @@ export async function GET(req: NextRequest) {
     ...(followUpNeeded !== undefined && { followUpNeeded }),
     ...(volunteerInterest !== undefined && { volunteerInterest }),
     ...(signRequested !== undefined && { signRequested }),
+    ...(emailBounced !== undefined && { emailBounced }),
+    ...(smsOptOut !== undefined && { smsOptOut }),
     ...(wards && wards.length > 0 && { ward: { in: wards } }),
     ...(tagIds && tagIds.length > 0 && {
       tags: {

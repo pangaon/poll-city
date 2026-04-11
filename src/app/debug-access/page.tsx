@@ -7,7 +7,7 @@ export default function DebugAccessPage() {
   const params = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"checking" | "success" | "failed">("checking");
-  const key = params.get("key");
+  const key = params?.get("key");
 
   useEffect(() => {
     let cancelled = false;

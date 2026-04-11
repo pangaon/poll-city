@@ -400,7 +400,7 @@ export default function CampaignTour({ demo = false }: CampaignTourProps) {
     if (!currentDef || currentDef.kind !== "nav-link") return;
 
     const isOnTrigger = currentDef.triggerPaths.some(
-      (p) => pathname === p || pathname.startsWith(`${p}/`),
+      (p) => pathname === p || (pathname ?? "").startsWith(`${p}/`),
     );
     if (!isOnTrigger) return;
 

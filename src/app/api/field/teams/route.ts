@@ -3,6 +3,8 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 
+export const dynamic = "force-dynamic";
+
 // ── GET /api/field/teams?campaignId=X ──────────────────────────────────────
 
 export async function GET(req: NextRequest) {

@@ -152,6 +152,7 @@ function DisclosureModal({ campaign, signalType, postalCode, onConfirm, onCancel
 
 export default function OfficialDetailPage() {
   const params = useParams();
+  const officialId = (params?.id ?? "") as string;
   const router = useRouter();
 
   const [official, setOfficial]       = useState<Official | null>(null);
@@ -177,20 +178,20 @@ export default function OfficialDetailPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/officials/${params.id}`).then(r => r.json()),
-      fetch(`/api/officials/${params.id}/questions`).then(r => r.json()),
+      fetch(`/api/officials/${officialId}`).then(r => r.json()),
+      fetch(`/api/officials/${officialId}/questions`).then(r => r.json()),
     ]).then(([off, qs]) => {
       setOfficial(off.data);
       setQuestions(qs.data ?? []);
       setLoading(false);
     });
-  }, [params.id]);
+  }, [officialId]);
 
   // Follow the official — no bridge trigger (no campaignSlug → no CRM write)
   async function follow() {
     const res = await fetch("/api/social/signal", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ officialId: params.id, type: "strong_support" }),
+      body: JSON.stringify({ officialId: officialId, type: "strong_support" }),
     });
     if (res.ok) {
       setFollowing(true);
@@ -217,7 +218,7 @@ export default function OfficialDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          officialId:   params.id,
+          officialId:   officialId,
           campaignSlug: pendingSignal.campaign.slug,
           type:         pendingSignal.signalType,
         }),
@@ -247,14 +248,14 @@ export default function OfficialDetailPage() {
     if (!newQuestion.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/officials/${params.id}/questions`, {
+      const res = await fetch(`/api/officials/${officialId}/questions`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: newQuestion }),
       });
       if (res.ok) {
         toast.success("Question submitted!");
         setNewQuestion("");
-        const qs = await fetch(`/api/officials/${params.id}/questions`).then(r => r.json());
+        const qs = await fetch(`/api/officials/${officialId}/questions`).then(r => r.json());
         setQuestions(qs.data ?? []);
       } else toast.error("Must be signed in to ask questions");
     } finally { setSubmitting(false); }

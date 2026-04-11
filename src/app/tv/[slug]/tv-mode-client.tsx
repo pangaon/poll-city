@@ -831,8 +831,8 @@ function ElectionDayOpsDisplay() {
 
 export default function TvModeClient({ slug }: { slug: string }) {
   const searchParams = useSearchParams();
-  const rotation = Number(searchParams.get("rotation") || 25);
-  const initialMode = searchParams.get("mode") as TvMode | null;
+  const rotation = Number(searchParams?.get("rotation") || 25);
+  const initialMode = searchParams?.get("mode") as TvMode | null;
 
   const initialIndex = initialMode
     ? MODES.findIndex((m) => m.id === initialMode)

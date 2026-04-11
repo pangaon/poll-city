@@ -30,7 +30,7 @@ interface SetupStatus {
 export default function SetupWizardGate() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const isDemo = searchParams.get("demo") === "true";
+  const isDemo = searchParams?.get("demo") === "true";
 
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [showWizard, setShowWizard] = useState(false);

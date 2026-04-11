@@ -9,7 +9,7 @@ type Submission = { id: string; data: Record<string, unknown>; completedAt: stri
 
 export default function FormResultsPage() {
   const params = useParams();
-  const formId = params.id as string;
+  const formId = (params?.id ?? "") as string;
   const [form, setForm] = useState<any>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);

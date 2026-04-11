@@ -6,6 +6,8 @@ import { createFormSchema } from "@/lib/validators/forms";
 import { getTemplate } from "@/lib/forms/templates";
 import { audit } from "@/lib/audit";
 
+export const dynamic = "force-dynamic";
+
 function slugify(name: string): string {
   return name
     .toLowerCase()

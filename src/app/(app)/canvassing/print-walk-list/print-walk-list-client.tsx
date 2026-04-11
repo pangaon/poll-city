@@ -124,12 +124,12 @@ export default function PrintWalkListClient({ campaignId, campaignName, mode = "
   const searchParams = useSearchParams();
 
   // Detect if we're on the standalone print page (no app chrome)
-  const isStandalone = searchParams.get("standalone") === "1";
+  const isStandalone = searchParams?.get("standalone") === "1";
 
   // Standalone mode: read params from URL and auto-print
-  const urlAssignmentId = searchParams.get("assignmentId") ?? defaultAssignmentId ?? "";
-  const urlWard = searchParams.get("ward") ?? "";
-  const urlSupport = searchParams.get("support") ?? "";
+  const urlAssignmentId = searchParams?.get("assignmentId") ?? defaultAssignmentId ?? "";
+  const urlWard = searchParams?.get("ward") ?? "";
+  const urlSupport = searchParams?.get("support") ?? "";
 
   // Panel state
   const [assignments, setAssignments] = useState<AssignmentOption[]>([]);

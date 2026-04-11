@@ -7,8 +7,8 @@ import { CheckCircle2, AlertTriangle, Loader2, Mail } from "lucide-react";
 
 export default function UnsubscribePage() {
   const searchParams = useSearchParams();
-  const contactId = searchParams.get("c");
-  const email = searchParams.get("email");
+  const contactId = searchParams?.get("c");
+  const email = searchParams?.get("email");
   const [status, setStatus] = useState<"pending" | "processing" | "done" | "error">("pending");
 
   async function handleUnsubscribe() {

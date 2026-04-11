@@ -13,8 +13,8 @@ const ROLE_LABELS: Record<string, { emoji: string; label: string; description: s
 export default function JoinByTokenPage({ params }: { params: { token: string } }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const kiosk = searchParams.get("kiosk") === "true";
-  const role = searchParams.get("role") || "VOLUNTEER";
+  const kiosk = searchParams?.get("kiosk") === "true";
+  const role = searchParams?.get("role") || "VOLUNTEER";
   const roleInfo = ROLE_LABELS[role] ?? ROLE_LABELS.VOLUNTEER;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

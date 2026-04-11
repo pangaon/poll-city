@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 
 export default function PublicEventRsvpPage() {
   const params = useParams<{ eventId: string }>();
-  const eventId = params.eventId;
+  const eventId = params?.eventId ?? "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

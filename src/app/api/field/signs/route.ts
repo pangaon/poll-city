@@ -5,6 +5,8 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parsePagination, paginate } from "@/lib/utils";
 import { SignStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 // ── GET /api/field/signs?campaignId=X ────────────────────────────────────────
 // Field-ops view of signs: enriched with linked follow-up (sign_ops) and
 // the canvasser who triggered the request.

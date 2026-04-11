@@ -559,6 +559,8 @@ function ComposeTab({
   const [wardFilter, setWardFilter] = useState<string[]>([]);
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [excludeDnc, setExcludeDnc] = useState(true);
+  const [excludeEmailBounced, setExcludeEmailBounced] = useState(true);
+  const [excludeSmsOptOut, setExcludeSmsOptOut] = useState(true);
   const [audience, setAudience] = useState<AudienceResult | null>(null);
   const [audienceLoading, setAudienceLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -635,6 +637,8 @@ function ComposeTab({
             wards: wardFilter.length ? wardFilter : undefined,
             tagIds: tagFilter.length ? tagFilter : undefined,
             excludeDnc,
+            excludeEmailBounced,
+            excludeSmsOptOut,
             volunteerOnly: volunteerOnly || undefined,
             hasEmail: hasEmail || undefined,
             hasPhone: hasPhone || undefined,
@@ -649,7 +653,7 @@ function ComposeTab({
       setAudienceLoading(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [campaignId, channel, supportLevels, wardFilter, tagFilter, excludeDnc, volunteerOnly, hasEmail, hasPhone, lastContactedFilter]);
+  }, [campaignId, channel, supportLevels, wardFilter, tagFilter, excludeDnc, excludeEmailBounced, excludeSmsOptOut, volunteerOnly, hasEmail, hasPhone, lastContactedFilter]);
 
   function toggle(arr: string[], val: string, setter: (v: string[]) => void) {
     setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -746,6 +750,7 @@ function ComposeTab({
         wards: wardFilter.length ? wardFilter : undefined,
         tagIds: tagFilter.length ? tagFilter : undefined,
         excludeDnc,
+        ...(channel === "email" ? { excludeEmailBounced } : { excludeSmsOptOut }),
         testOnly,
       };
       const res = await fetch(endpoint, {
@@ -1086,6 +1091,30 @@ function ComposeTab({
             />
             <span className="text-xs text-slate-600">Exclude Do-Not-Contact</span>
           </label>
+
+          {/* Bounce / opt-out exclusions */}
+          {channel === "email" && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={excludeEmailBounced}
+                onChange={(e) => setExcludeEmailBounced(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-600">Exclude bounced emails</span>
+            </label>
+          )}
+          {channel === "sms" && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={excludeSmsOptOut}
+                onChange={(e) => setExcludeSmsOptOut(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-600">Exclude SMS opt-outs</span>
+            </label>
+          )}
 
           {/* Volunteer only */}
           <label className="flex items-center gap-2 cursor-pointer">
