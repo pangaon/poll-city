@@ -1,8 +1,8 @@
 // Poll City Service Worker — offline canvassing + push notifications + background sync
 // v2.0
 
-const SHELL_CACHE = 'pc-shell-v2';
-const CANVASS_CACHE = 'pc-canvass-v2';
+const SHELL_CACHE = 'pc-shell-v3';
+const CANVASS_CACHE = 'pc-canvass-v3';
 const SYNC_TAG = 'pc-canvass-sync';
 const DB_NAME = 'poll-city-db';
 const DB_VERSION = 1;
