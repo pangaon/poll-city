@@ -97,6 +97,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 2 — Segment builder UI + Audiences tab | DONE — 730833e | AudiencesTab in communications-client.tsx — full segment builder inline |
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | PENDING | GAP-017 |
+| Phase 4b — Email open + click tracking (tracking pixel) | PENDING | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — embed pixel in every email blast |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
 | Phase 7 — Automation Engine (triggers, steps, enrollment cron) | PENDING | |
