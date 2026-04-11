@@ -5,6 +5,7 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parsePagination, paginate } from "@/lib/utils";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
 import { FunnelStage } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
       maxHoursPerWeek: body.maxHoursPerWeek !== undefined ? (body.maxHoursPerWeek === null ? null : Number(body.maxHoursPerWeek)) : null,
       hasVehicle: typeof body.hasVehicle === "boolean" ? body.hasVehicle : false,
       isActive: typeof body.isActive === "boolean" ? body.isActive : true,
-      notes: typeof body.notes === "string" ? body.notes.trim() || null : null,
+      notes: sanitizeUserText(typeof body.notes === "string" ? body.notes : null),
     },
     include: {
       user: { select: { id: true, name: true, email: true, phone: true } },
@@ -153,7 +154,7 @@ export async function PATCH(req: NextRequest) {
       maxHoursPerWeek: body.maxHoursPerWeek !== undefined ? (body.maxHoursPerWeek === null ? null : Number(body.maxHoursPerWeek)) : undefined,
       hasVehicle: typeof body.hasVehicle === "boolean" ? body.hasVehicle : undefined,
       isActive: typeof body.isActive === "boolean" ? body.isActive : undefined,
-      notes: typeof body.notes === "string" ? body.notes.trim() || null : undefined,
+      notes: body.notes !== undefined ? sanitizeUserText(typeof body.notes === "string" ? body.notes : null) : undefined,
     },
     include: {
       user: { select: { id: true, name: true, email: true, phone: true } },

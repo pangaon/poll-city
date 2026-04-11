@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 function randomCode() {
   return Math.random().toString(36).slice(2, 10).toUpperCase();
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       targetTurfArea: body.targetTurfArea?.trim() || null,
       maxVolunteers: Number(body.maxVolunteers ?? 10),
       minVolunteers: Number(body.minVolunteers ?? 1),
-      notes: body.notes?.trim() || null,
+      notes: sanitizeUserText(body.notes),
       checkInCode: randomCode(),
     },
   });

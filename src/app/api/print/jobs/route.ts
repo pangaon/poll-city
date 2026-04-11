@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { PrintJobStatus, PrintProductType } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       productType,
       title,
       quantity,
-      description: body.description ?? null,
+      description: sanitizeUserText(body.description),
       specs: body.specs ? JSON.parse(JSON.stringify(body.specs)) : undefined,
       deadline: body.deadline ? new Date(body.deadline) : null,
       deliveryAddress: body.deliveryAddress ?? null,
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
       fileUrl: body.fileUrl ?? null,
       budgetMin: body.budgetMin ?? null,
       budgetMax: body.budgetMax ?? null,
-      notes: body.notes ?? null,
+      notes: sanitizeUserText(body.notes),
       status: body.status ?? "draft",
     },
   });

@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { logFinanceAudit } from "@/lib/finance/audit";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
         parentBudgetLineId: body.parentBudgetLineId ?? null,
         code: body.code?.trim() ?? null,
         name: body.name.trim(),
-        description: body.description?.trim() ?? null,
+        description: sanitizeUserText(body.description),
         category: body.category,
         subcategory: body.subcategory?.trim() ?? null,
         plannedAmount: body.plannedAmount,

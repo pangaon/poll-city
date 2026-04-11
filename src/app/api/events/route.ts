@@ -5,6 +5,7 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { EventStatus, EventVisibility } from "@prisma/client";
 import { audit } from "@/lib/audit";
 import { postEventCalendarItem } from "@/lib/calendar/post-calendar-item";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
       eventDate,
       location: body.location.trim(),
       capacity: body.capacity ?? null,
-      description: body.description?.trim() || null,
+      description: sanitizeUserText(body.description),
       isPublic: !!body.isPublic,
       status:
         body.status && Object.values(EventStatus).includes(body.status as EventStatus)

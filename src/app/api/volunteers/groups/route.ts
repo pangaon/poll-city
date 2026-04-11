@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     data: {
       campaignId: body.campaignId,
       name: body.name.trim(),
-      description: body.description?.trim() || null,
+      description: sanitizeUserText(body.description),
       targetWard: body.targetWard?.trim() || null,
       leaderProfileId: body.leaderProfileId || null,
     },

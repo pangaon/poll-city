@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(
   req: NextRequest,
@@ -63,7 +64,7 @@ export async function POST(
       shopId: body.shopId,
       price: body.price,
       turnaround: body.turnaround,
-      notes: body.notes ?? null,
+      notes: sanitizeUserText(body.notes),
       fileUrl: body.fileUrl ?? null,
     },
     include: { shop: true },

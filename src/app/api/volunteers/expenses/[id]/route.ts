@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 const MANAGER_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER"]);
 
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { id: expense.id },
     data: {
       status: nextStatus as "approved" | "rejected" | "reimbursed",
-      notes: body.notes === undefined ? undefined : body.notes?.trim() || null,
+      notes: body.notes === undefined ? undefined : sanitizeUserText(body.notes),
     },
     include: {
       volunteerProfile: {

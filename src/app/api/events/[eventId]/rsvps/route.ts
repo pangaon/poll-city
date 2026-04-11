@@ -5,6 +5,7 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { EventRsvpStatus, FunnelStage } from "@prisma/client";
 import { advanceFunnel } from "@/lib/operations/funnel-engine";
 import { autoTagContact } from "@/lib/automation/inbound-engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 async function ensureMembership(userId: string, campaignId: string) {
   return prisma.membership.findUnique({
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     phone: body.phone?.trim() || null,
     contactId: body.contactId || null,
     status: resolvedStatus,
-    notes: body.notes?.trim() || null,
+    notes: sanitizeUserText(body.notes),
     source: body.source?.trim() || "staff",
   };
 

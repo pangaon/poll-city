@@ -5,6 +5,7 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import type { Prisma } from "@prisma/client";
 import { EventStatus, EventVisibility } from "@prisma/client";
 import { audit } from "@/lib/audit";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -91,7 +92,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
   if (body.name !== undefined) data.name = body.name.trim();
   if (eventDate !== undefined) data.eventDate = eventDate;
   if (body.location !== undefined) data.location = body.location.trim();
-  if (body.description !== undefined) data.description = body.description?.trim() || null;
+  if (body.description !== undefined) data.description = sanitizeUserText(body.description);
   if (body.capacity !== undefined) data.capacity = body.capacity;
   if (body.isPublic !== undefined) data.isPublic = body.isPublic;
   if (body.allowPublicRsvp !== undefined) data.allowPublicRsvp = body.allowPublicRsvp;

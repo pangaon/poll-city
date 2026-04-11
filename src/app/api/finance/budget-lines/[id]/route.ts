@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { logFinanceAudit } from "@/lib/finance/audit";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { id: params.id },
     data: {
       ...(body.name ? { name: body.name.trim() } : {}),
-      ...(body.description !== undefined ? { description: body.description?.trim() ?? null } : {}),
+      ...(body.description !== undefined ? { description: sanitizeUserText(body.description) } : {}),
       ...(body.plannedAmount !== undefined ? { plannedAmount: body.plannedAmount } : {}),
       ...(body.warningThresholdPct !== undefined ? { warningThresholdPct: body.warningThresholdPct } : {}),
       ...(body.ownerUserId !== undefined ? { ownerUserId: body.ownerUserId } : {}),

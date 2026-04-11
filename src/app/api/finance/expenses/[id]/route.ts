@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { logFinanceAudit } from "@/lib/finance/audit";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -94,8 +95,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(body.amount !== undefined ? { amount: body.amount } : {}),
       ...(body.taxAmount !== undefined ? { taxAmount: body.taxAmount } : {}),
       ...(body.expenseDate ? { expenseDate: new Date(body.expenseDate) } : {}),
-      ...(body.description ? { description: body.description.trim() } : {}),
-      ...(body.notes !== undefined ? { notes: body.notes?.trim() ?? null } : {}),
+      ...(body.description ? { description: sanitizeUserText(body.description) ?? "" } : {}),
+      ...(body.notes !== undefined ? { notes: sanitizeUserText(body.notes) } : {}),
       ...(body.paymentMethod !== undefined ? { paymentMethod: body.paymentMethod } : {}),
       ...(body.receiptAssetId !== undefined ? { receiptAssetId: body.receiptAssetId } : {}),
       ...(body.invoiceAssetId !== undefined ? { invoiceAssetId: body.invoiceAssetId } : {}),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       amount: Number(body.amount),
       category: body.category.trim(),
       receiptUrl: body.receiptUrl?.trim() || null,
-      notes: body.notes?.trim() || null,
+      notes: sanitizeUserText(body.notes),
     },
   });
 

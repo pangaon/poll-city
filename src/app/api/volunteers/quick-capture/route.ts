@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
         email: body.email?.trim() || null,
         address1: body.address?.trim() || null,
         volunteerInterest: true,
-        notes: body.notes?.trim() || null,
+        notes: sanitizeUserText(body.notes),
         source: "volunteer_capture",
       },
     });
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
     update: {
       availability: body.availability?.trim() || null,
       hasVehicle: body.hasVehicle ?? false,
-      notes: body.notes?.trim() || null,
+      notes: sanitizeUserText(body.notes),
       campaignId,
     },
     create: {
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       campaignId,
       availability: body.availability?.trim() || null,
       hasVehicle: body.hasVehicle ?? false,
-      notes: body.notes?.trim() || null,
+      notes: sanitizeUserText(body.notes),
     },
   });
 

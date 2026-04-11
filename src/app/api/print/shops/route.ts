@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { PrintProductType } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
       email: body.email,
       phone: body.phone ?? null,
       website: body.website ?? null,
-      description: body.description ?? null,
+      description: sanitizeUserText(body.description),
       provincesServed: body.provincesServed ?? [],
       serviceAreas: body.provincesServed ?? [],
       specialties: body.specialties ?? [],

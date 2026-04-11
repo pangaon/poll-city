@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { logFinanceAudit } from "@/lib/finance/audit";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       userId: session!.user.id,
       title: body.title.trim(),
       amountRequested: body.amountRequested,
-      notes: body.notes?.trim() ?? null,
+      notes: sanitizeUserText(body.notes),
       payoutMethod: body.payoutMethod?.trim() ?? null,
     },
   });

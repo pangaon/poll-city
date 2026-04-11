@@ -4,6 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
 import { logFinanceAudit } from "@/lib/finance/audit";
 import { FinanceExpenseStatus } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
 
 export const dynamic = "force-dynamic";
 
@@ -147,8 +148,8 @@ export async function POST(req: NextRequest) {
         taxAmount: body.taxAmount,
         currency: body.currency,
         expenseDate: new Date(body.expenseDate),
-        description: body.description.trim(),
-        notes: body.notes?.trim() ?? null,
+        description: sanitizeUserText(body.description) ?? "",
+        notes: sanitizeUserText(body.notes),
         paymentMethod: body.paymentMethod ?? null,
         sourceType: body.sourceType,
         externalReference: body.externalReference?.trim() ?? null,
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
           expenseId: expense.id,
           budgetLineId: sl.budgetLineId,
           amount: sl.amount,
-          notes: sl.notes?.trim() ?? null,
+          notes: sanitizeUserText(sl.notes),
         })),
       });
     }

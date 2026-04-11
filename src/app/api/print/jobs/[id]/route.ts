@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { PrintJobStatus } from "@prisma/client";
+import { sanitizeUserText } from "@/lib/security/monitor";
 import {
   budgetCategoryForProduct,
   findPrintBudgetLine,
@@ -93,7 +94,7 @@ export async function PATCH(
       ...(body.awardedBidId !== undefined ? { awardedBidId: body.awardedBidId, status: "awarded" } : {}),
       ...(body.title !== undefined ? { title: body.title } : {}),
       ...(body.quantity !== undefined ? { quantity: body.quantity } : {}),
-      ...(body.description !== undefined ? { description: body.description } : {}),
+      ...(body.description !== undefined ? { description: sanitizeUserText(body.description) } : {}),
       ...(body.deadline !== undefined ? { deadline: new Date(body.deadline) } : {}),
       ...(body.deliveryAddress !== undefined ? { deliveryAddress: body.deliveryAddress } : {}),
       ...(body.deliveryCity !== undefined ? { deliveryCity: body.deliveryCity } : {}),
@@ -101,7 +102,7 @@ export async function PATCH(
       ...(body.fileUrl !== undefined ? { fileUrl: body.fileUrl } : {}),
       ...(body.budgetMin !== undefined ? { budgetMin: body.budgetMin } : {}),
       ...(body.budgetMax !== undefined ? { budgetMax: body.budgetMax } : {}),
-      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      ...(body.notes !== undefined ? { notes: sanitizeUserText(body.notes) } : {}),
       ...(body.trackingNumber !== undefined ? { trackingNumber: body.trackingNumber } : {}),
       ...(body.carrier !== undefined ? { carrier: body.carrier } : {}),
       ...(body.estimatedDelivery !== undefined ? { estimatedDelivery: new Date(body.estimatedDelivery) } : {}),
