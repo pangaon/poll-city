@@ -73,8 +73,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 3 — Fundraising Command Center UI | DONE — d0a9c81 | /fundraising tabbed UI, 9 tabs |
 | Compliance engine (evaluateCompliance, refreshDonorProfile) | DONE — d0a9c81 | src/lib/fundraising/compliance.ts |
 | Phase 4 — Stripe integration | PENDING | PaymentIntent, webhooks, Stripe Billing recurring |
-| Phase 5 — Full compliance wiring (configurable limits per campaign) | PENDING | Partially done; per-campaign config UI needed |
-| Phase 6 — Reports + CSV export + Adoni fundraising tools | PENDING | |
+| Phase 5 — Full compliance wiring (configurable limits per campaign) | CLAIMED 2026-04-11 | Partially done; per-campaign config UI needed |
+| Phase 6 — Reports + CSV export + Adoni fundraising tools | CLAIMED 2026-04-11 | |
 | Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | PENDING | |
 | Donation pages (public-facing) | PENDING | /api/fundraising/pages not built |
 
