@@ -18,6 +18,17 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 **Why:** George runs multiple sessions. Without this, two sessions build the same thing, or one session overwrites another's work. The claim commit is the lock.
 
+---
+
+## GEORGE'S MANUAL ACTION FILE
+
+`GEORGE_TODO.md` in the repo root is George's personal checklist of steps only he can do
+(Railway env vars, Stripe Dashboard setup, external service accounts, etc.).
+
+**AI session rule:** If your work creates a new manual step George must take, add it to
+`GEORGE_TODO.md` immediately — numbered, with exact step-by-step instructions.
+Do NOT just mention it in a response and assume he'll remember. It goes in the file.
+
 **If WORK_QUEUE.md and the code disagree:** trust the code (read the files), update WORK_QUEUE.md to reflect reality.
 
 ---

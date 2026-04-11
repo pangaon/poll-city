@@ -187,15 +187,28 @@ No session may start a task already marked CLAIMED or DONE.
 
 ---
 
-## GEORGE'S MANUAL ACTIONS NEEDED (do these yourself)
+## GEORGE'S MANUAL ACTIONS NEEDED
 
-These cannot be done by AI sessions:
+**Full checklist lives in `GEORGE_TODO.md` in the repo root.**
+AI sessions add new steps there. George checks them off.
 
-| Action | Priority | Why |
+Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
+
+| # | Action | Priority |
 |---|---|---|
-| `npx prisma db push` against Railway | **CRITICAL** | Calendar models + ScheduledMessage + ScheduledMessageStatus enum + NotificationLog.sendKey — comms scheduling + calendar UI both 500 until this runs |
-| `npm run db:seed:calendar` (against Railway) | High | Populates Ward 20 beta demo data — 37 items, 12 appearances, 2 calendars |
-| Confirm Stripe keys in Railway env vars | Medium | Phase 4 fundraising needs STRIPE_SECRET_KEY |
+| 1 | `npx prisma db push` against Railway | CRITICAL |
+| 2-3 | Add Stripe secret + publishable keys to Railway | High |
+| 4-5 | Register fundraising webhook in Stripe Dashboard + add signing secret | High |
+| 6-9 | Platform billing Stripe webhook + Price IDs | Medium |
+| 10-16 | Resend setup (domain verify + API key + env vars) | High |
+| 17-21 | Twilio setup (SMS) | Medium |
+| 22 | `ANTHROPIC_API_KEY` to Railway (Adoni) | High |
+| 23-26 | Security salts (`IP_HASH_SALT`, `POLL_ANONYMITY_SALT`, `GUEST_TOKEN_SECRET`, `CRON_SECRET`) | High |
+| 27-30 | Upstash Redis (rate limiting) | Medium |
+| 31-32 | VAPID keys (push notifications) | Low |
+| 33-34 | Cloudflare Turnstile (spam protection) | Low |
+| 35 | Run `npm run db:seed:calendar` against Railway | Medium |
+| 36-37 | Google OAuth credentials | Low |
 
 ---
 
