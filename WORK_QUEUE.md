@@ -92,7 +92,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Newsletter schema | DONE | NewsletterSubscriber, NewsletterCampaign |
 | Saved Segments API | DONE — 730833e | /api/comms/segments + count endpoint |
 | Saved Segment model (SavedSegment) | DONE — 730833e | In schema.prisma |
-| Phase 1 — Message Templates | CLAIMED 2026-04-11 | MessageTemplate model + API + UI |
+| Phase 1 — Message Templates | PENDING | MessageTemplate model + API + UI |
 | Phase 2 — Segment builder UI + Audiences tab | PENDING | Component: segment-builder.tsx |
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | PENDING | GAP-017 |
@@ -117,7 +117,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print → Finance expense bridge | DONE — 730833e | src/lib/finance/post-print-expense.ts |
 | Phase 6 — Reports + variance analysis | DONE — 0a8d74b | /finance/reports |
 | Phase 6 — CSV export | DONE — 0a8d74b | /api/finance/exports/expenses |
-| Phase 6 — Finance ↔ Fundraising reconciliation | CLAIMED 2026-04-11 | GAP-005 |
+| Phase 6 — Finance ↔ Fundraising reconciliation | PENDING | GAP-005 |
 | Phase 6 — Audit trail UI | DONE — 0a8d74b | /finance/audit |
 | Phase 7 — AI assist | PENDING | |
 | Phase 8 — Hardening + permissions | PENDING | |
@@ -148,7 +148,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Duplicate detection API | DONE — d0a9c81 | /api/crm/duplicates |
 | Duplicate Review UI | DONE — 730833e | /contacts/duplicates |
 | Household CRM APIs | DONE — 730833e | /api/crm/households (CRUD + members) |
-| guardCampaignRoute migration (145 routes) | CLAIMED 2026-04-11 | GAP-010 — replace requirePermission |
+| guardCampaignRoute migration (145 routes) | PENDING | GAP-010 — replace requirePermission |
 | sanitizeUserText on remaining fields | PENDING | GAP-015 — event/social/print/volunteer/budget notes |
 | Contact → funnel advance on donation | PENDING | GAP — lastContactedAt + funnelStage not updated |
 | ActivityLog on donation create | PENDING | Missing audit trail |
