@@ -137,7 +137,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Calendar demo seed (Ward 20, 37 items, 12 appearances) | DONE — 9981bc4 | npm run db:seed:calendar |
 | **REQUIRED: npx prisma db push** | DONE — George confirmed | Run against Railway to activate all calendar models in prod |
 | Phase 4 — Cross-system wiring (events, comms, print, field) | DONE — 0188808 | GAP-006, GAP-007, GAP-008 |
-| Phase 5 — Reminders + notifications cron | PENDING | |
+| Phase 5 — Reminders + notifications cron | DONE — c7f9f51 | /api/cron/calendar-reminders + /api/campaign-calendar/items/[itemId]/reminders CRUD |
 | Phase 6 — Google/Outlook real OAuth sync | PENDING | GAP-024 |
 
 ---
