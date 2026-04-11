@@ -53,7 +53,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Field Programs API + UI | DONE — 730833e | /api/field/programs, /field/programs |
 | Field Routes API + UI | DONE — 730833e | /api/field/routes, /field/routes |
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
-| Chunk 8 — Canvassing Runs + Scripts + Outcomes | PENDING | |
+| Chunk 8 — Canvassing Runs + Scripts + Outcomes | CLAIMED 2026-04-10 | |
 | Chunk 9 — Literature Drop Operations | PENDING | |
 | Chunk 10 — Sign Ops inside Field | PENDING | |
 | Chunk 11 — Volunteer + Team + Shift Execution | PENDING | |
