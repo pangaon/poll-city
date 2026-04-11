@@ -55,7 +55,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
 | Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — a4435be | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
 | Chunk 9 — Literature Drop Operations | CLAIMED 2026-04-11 | |
-| Chunk 10 — Sign Ops inside Field | PENDING | |
+| Chunk 10 — Sign Ops inside Field | CLAIMED 2026-04-11 | |
 | Chunk 11 — Volunteer + Team + Shift Execution | PENDING | |
 | Chunk 12 — Inventory + Print + Materials Packaging | PENDING | Connects GAP-011 |
 | Chunk 13 — Mobile + Offline + Paper Fallback | PENDING | |
