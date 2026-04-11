@@ -440,6 +440,26 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  {
+    name: "get_finance_summary",
+    description:
+      "Get the campaign's full financial position: total budget, actual spend, amount raised, net cash position, funding gap, and pledged donations. Use when someone asks about the campaign's finances, spending, fundraising totals, or whether the campaign is on budget.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_budget_alerts",
+    description:
+      "Get budget health alerts: lines that are over budget or approaching their threshold, pending expense approvals, missing receipts, and open purchase requests. Use when someone asks what needs financial attention.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -476,6 +496,8 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   flag_suspicious_activity: "adoni:write_tools",
   search_knowledge: "analytics:read",
   get_election_calendar: "analytics:read",
+  get_finance_summary: "budget:read",
+  get_budget_alerts: "budget:read",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -583,6 +605,10 @@ export async function executeAction(
         return await searchKnowledge(input);
       case "get_election_calendar":
         return await getElectionCalendar();
+      case "get_finance_summary":
+        return await getFinanceSummary(ctx);
+      case "get_budget_alerts":
+        return await getBudgetAlerts(ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -1988,5 +2014,67 @@ async function draftSocialPost(input: Record<string, unknown>, ctx: ActionContex
     success: true,
     message: `Social post drafted for ${platform}: "${topic}". I've saved it as a draft — open Communications → Social to review, edit, and publish. Post ID: ${post.id}`,
     data: { postId: post.id, navigateTo: "/communications/social" },
+  };
+}
+
+async function getFinanceSummary(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const [budgets, expenses, donations] = await Promise.all([
+    prisma.campaignBudget.findMany({ where: { campaignId: cid }, select: { totalBudget: true } }),
+    prisma.financeExpense.aggregate({ where: { campaignId: cid, deletedAt: null }, _sum: { amount: true } }),
+    prisma.donation.findMany({
+      where: { campaignId: cid, deletedAt: null, status: { notIn: ["cancelled", "failed"] } },
+      select: { amount: true, status: true },
+    }),
+  ]);
+  const totalBudget = budgets.reduce((s, b) => s + Number(b.totalBudget ?? 0), 0);
+  const totalSpent = Number(expenses._sum.amount ?? 0);
+  const confirmed = new Set(["processed", "receipted", "partially_refunded"]);
+  const totalRaised = donations.filter((d) => confirmed.has(d.status ?? "")).reduce((s, d) => s + d.amount, 0);
+  const totalPledged = donations.filter((d) => ["pledged", "processing"].includes(d.status ?? "")).reduce((s, d) => s + d.amount, 0);
+  const netPosition = totalRaised - totalSpent;
+  const budgetRemaining = totalBudget - totalSpent;
+  const fundingGap = totalSpent > totalRaised ? totalSpent - totalRaised : 0;
+  return {
+    success: true,
+    message: `Financial position: Budget $${totalBudget.toFixed(2)}, Spent $${totalSpent.toFixed(2)}, Raised $${totalRaised.toFixed(2)}, Pledged $${totalPledged.toFixed(2)}, Net position $${netPosition.toFixed(2)}, Budget remaining $${budgetRemaining.toFixed(2)}${fundingGap > 0 ? `, Funding gap $${fundingGap.toFixed(2)}` : ""}.`,
+    data: { totalBudget, totalSpent, totalRaised, totalPledged, netPosition, budgetRemaining, fundingGap },
+  };
+}
+
+async function getBudgetAlerts(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const [budgetsWithLines, pendingApprovals, missingReceipts, openPRs] = await Promise.all([
+    prisma.campaignBudget.findMany({
+      where: { campaignId: cid },
+      select: { name: true, budgetLines: { select: { name: true, plannedAmount: true, actualAmount: true, warningThresholdPct: true } } },
+    }),
+    prisma.financeExpense.count({ where: { campaignId: cid, deletedAt: null, expenseStatus: "submitted" } }),
+    prisma.financeExpense.count({ where: { campaignId: cid, deletedAt: null, missingReceipt: true } }),
+    prisma.financePurchaseRequest.count({ where: { campaignId: cid, requestStatus: "submitted" } }).catch(() => 0),
+  ]);
+  const overBudget: string[] = [];
+  const nearThreshold: string[] = [];
+  for (const budget of budgetsWithLines) {
+    for (const line of budget.budgetLines) {
+      const actual = Number(line.actualAmount ?? 0);
+      const planned = Number(line.plannedAmount ?? 0);
+      if (planned > 0) {
+        const pct = (actual / planned) * 100;
+        if (pct >= 100) overBudget.push(`${budget.name} / ${line.name} (${pct.toFixed(0)}%)`);
+        else if (pct >= (line.warningThresholdPct ?? 0.85) * 100) nearThreshold.push(`${budget.name} / ${line.name} (${pct.toFixed(0)}%)`);
+      }
+    }
+  }
+  const parts: string[] = [];
+  if (overBudget.length) parts.push(`Over budget: ${overBudget.join(", ")}`);
+  if (nearThreshold.length) parts.push(`Near threshold: ${nearThreshold.join(", ")}`);
+  if (pendingApprovals) parts.push(`${pendingApprovals} expense${pendingApprovals > 1 ? "s" : ""} awaiting approval`);
+  if (missingReceipts) parts.push(`${missingReceipts} expense${missingReceipts > 1 ? "s" : ""} missing receipts`);
+  if (openPRs) parts.push(`${openPRs} open purchase request${openPRs > 1 ? "s" : ""}`);
+  return {
+    success: true,
+    message: parts.length ? `Budget alerts: ${parts.join(". ")}.` : "No budget alerts — everything looks clean.",
+    data: { overBudget, nearThreshold, pendingApprovals, missingReceipts, openPRs },
   };
 }
