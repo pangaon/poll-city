@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
@@ -12,6 +12,12 @@ import {
   Share2,
   Mail,
 } from "lucide-react";
+import {
+  CANDIDATE_ROLES,
+  CANADIAN_JURISDICTIONS,
+  ELECTION_TYPES,
+  detectElectionType,
+} from "@/lib/canada/electoral-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,12 +64,6 @@ const SPRING = { type: "spring", stiffness: 300, damping: 30 } as const;
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
 
-const ELECTION_TYPES = [
-  { value: "municipal", label: "Municipal" },
-  { value: "provincial", label: "Provincial" },
-  { value: "federal", label: "Federal" },
-  { value: "other", label: "Other" },
-];
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -99,27 +99,106 @@ function Input({
   );
 }
 
-function Select({
+const INPUT_CLS =
+  "w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors";
+
+function AutocompleteInput({
   value,
   onChange,
-  options,
+  placeholder,
+  suggestions,
 }: {
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  placeholder?: string;
+  suggestions: string[];
 }) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return suggestions.slice(0, 8);
+    return suggestions.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
+  }, [value, suggestions]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  function select(item: string) {
+    onChange(item);
+    setOpen(false);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "Enter") setOpen(true);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      if (filtered[highlighted]) {
+        e.preventDefault();
+        select(filtered[highlighted]);
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-slate-500 transition-colors"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <div ref={wrapRef} className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setHighlighted(0);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck={false}
+        className={INPUT_CLS}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-52 overflow-y-auto">
+          {filtered.map((item, i) => (
+            <li
+              key={item}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                select(item);
+              }}
+              onMouseEnter={() => setHighlighted(i)}
+              className="px-3 py-2 text-sm cursor-pointer transition-colors"
+              style={{
+                color: i === highlighted ? "#1D9E75" : "#cbd5e1",
+                backgroundColor: i === highlighted ? "rgba(29,158,117,0.1)" : "transparent",
+              }}
+            >
+              {item}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -153,6 +232,13 @@ function Step1({
   onChange: (k: keyof WizardData, v: string) => void;
   firstName: string;
 }) {
+  function handleRoleChange(v: string) {
+    onChange("candidateTitle", v);
+    // Cross-detect election type from the role
+    const detected = detectElectionType(v);
+    if (detected) onChange("electionType", detected);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-2">
@@ -176,26 +262,29 @@ function Step1({
       </div>
       <div>
         <Label>Running for</Label>
-        <Input
+        <AutocompleteInput
           value={data.candidateTitle}
-          onChange={(v) => onChange("candidateTitle", v)}
+          onChange={handleRoleChange}
           placeholder="e.g. Ward 5 Councillor, MPP for Ottawa Centre"
+          suggestions={CANDIDATE_ROLES}
         />
       </div>
       <div>
         <Label>Riding / municipality</Label>
-        <Input
+        <AutocompleteInput
           value={data.jurisdiction}
           onChange={(v) => onChange("jurisdiction", v)}
           placeholder="e.g. City of Ottawa, Riding of Carleton"
+          suggestions={CANADIAN_JURISDICTIONS}
         />
       </div>
       <div>
         <Label>Election type</Label>
-        <Select
+        <AutocompleteInput
           value={data.electionType}
           onChange={(v) => onChange("electionType", v)}
-          options={ELECTION_TYPES}
+          placeholder="Municipal, Provincial, Federal…"
+          suggestions={ELECTION_TYPES}
         />
       </div>
     </div>
@@ -453,7 +542,9 @@ export default function SetupWizard({
     candidateName: initial.candidateName ?? "",
     candidateTitle: initial.candidateTitle ?? "",
     jurisdiction: initial.jurisdiction ?? "",
-    electionType: initial.electionType ?? "municipal",
+    electionType: initial.electionType
+      ? initial.electionType.charAt(0).toUpperCase() + initial.electionType.slice(1)
+      : "Municipal",
     electionDate: toDateInput(initial.electionDate),
     advanceVoteStart: toDateInput(initial.advanceVoteStart),
     advanceVoteEnd: toDateInput(initial.advanceVoteEnd),
@@ -477,6 +568,17 @@ export default function SetupWizard({
     try {
       // Convert date strings to ISO datetime strings for the API
       const toISO = (d: string) => d ? new Date(d).toISOString() : null;
+      // Normalize display election type → Prisma enum value (lowercase)
+      const ELECTION_TYPE_MAP: Record<string, string> = {
+        municipal: "municipal",
+        provincial: "provincial",
+        federal: "federal",
+        "by-election": "by_election",
+        "school board": "other",
+        regional: "other",
+      };
+      const rawType = (data.electionType || "").toLowerCase().trim();
+      const normalizedType = (ELECTION_TYPE_MAP[rawType] ?? rawType) || undefined;
       await fetch("/api/campaigns/setup", {
         method: "PATCH",
         headers: {
@@ -487,7 +589,7 @@ export default function SetupWizard({
           candidateName: data.candidateName || undefined,
           candidateTitle: data.candidateTitle || null,
           jurisdiction: data.jurisdiction || null,
-          electionType: data.electionType || undefined,
+          electionType: normalizedType || undefined,
           electionDate: toISO(data.electionDate),
           advanceVoteStart: toISO(data.advanceVoteStart),
           advanceVoteEnd: toISO(data.advanceVoteEnd),
