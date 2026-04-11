@@ -127,6 +127,13 @@ Generate each with: `openssl rand -base64 32`
 - [ ] **26. Add `CRON_SECRET` to Railway** (`openssl rand -base64 32`)
   - Also add this same value to Vercel → Environment Variables → `CRON_SECRET`
   - Vercel cron jobs use it to authenticate against the app
+- [ ] **27. Generate `DATABASE_ENCRYPTION_KEY`**: run `openssl rand -hex 32` in your terminal
+  - This activates at-rest encryption for sensitive database fields
+  - Without it the platform still works, but sensitive data is stored unencrypted
+- [ ] **28. Add `DATABASE_ENCRYPTION_KEY` to Railway** (the 64-char hex string from step 27)
+- [ ] **29. Generate `HEALTH_CHECK_SECRET`**: run `openssl rand -base64 32` in your terminal
+  - Used to authenticate requests to `/api/health` for detailed system status
+- [ ] **30. Add `HEALTH_CHECK_SECRET` to Railway**
 
 ---
 
@@ -134,29 +141,29 @@ Generate each with: `openssl rand -base64 32`
 
 Without Upstash, rate limiting falls back to in-memory (not safe under load, resets on restart).
 
-- [ ] **27. Create Upstash Redis database** at [upstash.com](https://upstash.com) → Redis → Create Database
+- [ ] **31. Create Upstash Redis database** at [upstash.com](https://upstash.com) → Redis → Create Database
   - Region: closest to Railway (us-east-1 or ca-central-1)
   - Plan: Free tier is fine to start
-- [ ] **28. Add to Railway**:
+- [ ] **32. Add to Railway**:
 
 | Variable | Where |
 |---|---|
 | `UPSTASH_REDIS_REST_URL` | Upstash dashboard → your database → REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash dashboard → your database → REST Token |
 
-- [ ] **29. Add `UPSTASH_REDIS_REST_URL` to Railway**
-- [ ] **30. Add `UPSTASH_REDIS_REST_TOKEN` to Railway**
+- [ ] **33. Add `UPSTASH_REDIS_REST_URL` to Railway**
+- [ ] **34. Add `UPSTASH_REDIS_REST_TOKEN` to Railway**
 
 ---
 
 ## 🔵 PUSH NOTIFICATIONS — Browser push for alerts
 
-- [ ] **31. Generate VAPID keys**:
+- [ ] **35. Generate VAPID keys**:
   ```
   npx web-push generate-vapid-keys
   ```
   This outputs a public and private key pair.
-- [ ] **32. Add to Railway**:
+- [ ] **36. Add to Railway**:
 
 | Variable | Value |
 |---|---|
@@ -170,10 +177,10 @@ Without Upstash, rate limiting falls back to in-memory (not safe under load, res
 
 Protects public forms from bot submissions.
 
-- [ ] **33. Create Turnstile widget** at [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile → Add site
+- [ ] **37. Create Turnstile widget** at [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile → Add site
   - Domain: `poll.city` and `app.poll.city`
   - Widget type: Managed
-- [ ] **34. Add to Railway**:
+- [ ] **38. Add to Railway**:
 
 | Variable | Value |
 |---|---|
@@ -182,29 +189,92 @@ Protects public forms from bot submissions.
 
 ---
 
+## 🔵 DEBUG SUITE — George's admin debug toolbar
+
+These activate your personal debug toolbar when you're logged in as yourself.
+
+- [ ] **39. Add `DEBUG_SECRET_KEY` to Railway** (value: `pollcity2026george`)
+- [ ] **40. Add `NEXT_PUBLIC_DEBUG_SECRET_KEY` to Railway** (value: `pollcity2026george`)
+- [ ] **41. Find your `GEORGE_USER_ID`**:
+  1. Log in to [app.poll.city](https://app.poll.city) as yourself
+  2. Go to `https://app.poll.city/api/auth/session` in the same browser
+  3. You'll see JSON — find the `"id"` field inside `"user"` and copy it
+- [ ] **42. Add `GEORGE_USER_ID` to Railway** (the ID you found in step 41)
+- [ ] **43. Activate your debug suite**:
+  1. Log in to [app.poll.city](https://app.poll.city)
+  2. Go to `https://app.poll.city/debug-access?key=pollcity2026george`
+  3. You should see a confirmation screen
+  4. Debug toolbar now appears when you are logged in
+
+---
+
 ## 🔵 DATABASE SEEDING — Demo data for beta
 
-- [ ] **35. Run calendar seed against Railway**:
+- [ ] **44. Run calendar seed against Railway**:
   ```
   DATABASE_URL="<railway-db-url>" npm run db:seed:calendar
   ```
   Populates Ward 20 demo data — 37 calendar items, 12 appearances, 2 calendars.
 
+- [ ] **45. Run Ward 20 voter file seed**:
+  ```
+  DATABASE_URL="<railway-db-url>" npm run db:seed:ward20
+  ```
+  Populates ~5,000 realistic Toronto contacts. Your maps and canvassing will look real.
+
+- [ ] **46. Run help content seed**:
+  ```
+  DATABASE_URL="<railway-db-url>" npm run db:seed:help
+  ```
+  Populates help articles in the system.
+
 ---
 
 ## 🔵 GOOGLE OAUTH — Social login + future calendar sync
 
-- [ ] **36. Create OAuth credentials** at [console.cloud.google.com](https://console.cloud.google.com)
+- [ ] **47. Create OAuth credentials** at [console.cloud.google.com](https://console.cloud.google.com)
   1. New project (or use existing)
   2. APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
   3. Application type: Web application
   4. Authorized redirect URIs: `https://app.poll.city/api/auth/callback/google`
-- [ ] **37. Add to Railway**:
+- [ ] **48. Add to Railway**:
 
 | Variable | Value |
 |---|---|
 | `GOOGLE_CLIENT_ID` | Client ID from Google Console |
 | `GOOGLE_CLIENT_SECRET` | Client secret from Google Console |
+
+---
+
+## 🔵 INFRASTRUCTURE — Required before first real customer
+
+- [ ] **49. Enable Railway daily backups**:
+  1. Go to [railway.app](https://railway.app)
+  2. Click your database project
+  3. Click Settings
+  4. Find Backups → turn on daily backups
+  This is the single most important infrastructure step — 2 minutes, do it now.
+
+- [ ] **50. Install Poll City as a PWA on your phone**:
+  - iPhone: open [app.poll.city](https://app.poll.city) in Safari → tap Share → Add to Home Screen
+  - Android: open in Chrome → tap three dots → Add to Home Screen
+  - Open it from your home screen and allow notifications
+
+---
+
+## 🔵 STRATEGIC (this week — not tonight)
+
+- [ ] **51. Contact Anthropic for Zero Data Retention**:
+  - Go to [console.anthropic.com](https://console.anthropic.com) → Support or Enterprise contact
+  - Message: "We process Canadian political data under PIPEDA and need Zero Data Retention for all API calls."
+  - This makes Adoni legally bulletproof for party and union customers.
+
+- [ ] **52. Create the private intelligence repo**:
+  1. Go to [github.com](https://github.com) → New repository
+  2. Name: `poll-city-intelligence`
+  3. Make it: **Private**
+  4. Do not add anything yet — just create the empty repo
+  This is where ATLAS (the proprietary approval-rating algorithm) will live.
 
 ---
 
@@ -216,3 +286,4 @@ Protects public forms from bot submissions.
 
 *This file is maintained by AI sessions. Last updated: 2026-04-11*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
+*`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

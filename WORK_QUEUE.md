@@ -203,14 +203,17 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | 10-16 | Resend setup (domain verify + API key + env vars) | High |
 | 17-21 | Twilio setup (SMS) | Medium |
 | 22 | `ANTHROPIC_API_KEY` to Railway (Adoni) | High |
-| 23-26 | Security salts (`IP_HASH_SALT`, `POLL_ANONYMITY_SALT`, `GUEST_TOKEN_SECRET`, `CRON_SECRET`) | High |
-| 27-30 | Upstash Redis (rate limiting) | Medium |
-| 31-32 | VAPID keys (push notifications) | Low |
-| 33-34 | Cloudflare Turnstile (spam protection) | Low |
-| 35 | Run `npm run db:seed:calendar` against Railway | Medium |
-| 36-37 | Google OAuth credentials | Low |
+| 23-30 | Security salts + `DATABASE_ENCRYPTION_KEY` + `HEALTH_CHECK_SECRET` | High |
+| 31-34 | Upstash Redis (rate limiting) | Medium |
+| 35-36 | VAPID keys (push notifications) | Low |
+| 37-38 | Cloudflare Turnstile (spam protection) | Low |
+| 39-43 | Debug suite + `GEORGE_USER_ID` | Medium |
+| 44-46 | DB seeding (calendar, Ward 20 voters, help articles) | Medium |
+| 47-48 | Google OAuth credentials | Low |
+| 49-50 | Infrastructure: Railway backups + PWA install | High |
+| 51-52 | Strategic: Anthropic ZDR + private intelligence repo | Medium |
 
 ---
 
-*Last updated: 2026-04-11 (Chunks 9-16 c7f9f51+d8e7314 confirmed DONE — WORK_QUEUE.md reconciled) by Claude Sonnet 4.6*
+*Last updated: 2026-04-11 (GEORGE_TODO.md consolidated — 52 items, all manual actions unified from docs/GEORGE-ACTION-LIST.md) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
