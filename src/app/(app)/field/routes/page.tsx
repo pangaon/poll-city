@@ -7,7 +7,7 @@ export const metadata = { title: "Field Routes — Poll City" };
 export default async function FieldRoutesPage() {
   const { campaignId, campaignName } = await resolveActiveCampaign();
 
-  const [routes, programs, turfs, wardData] = await Promise.all([
+  const [rawRoutes, programs, turfs, wardData] = await Promise.all([
     // Routes with target counts and program/turf associations
     prisma.route.findMany({
       where: { campaignId, deletedAt: null },
@@ -43,6 +43,31 @@ export default async function FieldRoutesPage() {
     poll: d.municipalPoll!,
     contactCount: d._count.id,
   }));
+
+  // Augment routes with completion percentages
+  const routeIds = rawRoutes.map((r) => r.id);
+  const targetStats = routeIds.length > 0
+    ? await prisma.fieldTarget.groupBy({
+        by: ["routeId", "status"],
+        where: { routeId: { in: routeIds }, deletedAt: null },
+        _count: { _all: true },
+      })
+    : [];
+
+  const statsByRoute = new Map<string, Record<string, number>>();
+  for (const stat of targetStats) {
+    if (!stat.routeId) continue;
+    if (!statsByRoute.has(stat.routeId)) statsByRoute.set(stat.routeId, {});
+    statsByRoute.get(stat.routeId)![stat.status] = stat._count._all;
+  }
+
+  const routes = rawRoutes.map((r) => {
+    const stats = statsByRoute.get(r.id) ?? {};
+    const total = Object.values(stats).reduce((a, b) => a + b, 0);
+    const done = (stats["contacted"] ?? 0) + (stats["refused"] ?? 0) +
+      (stats["moved"] ?? 0) + (stats["inaccessible"] ?? 0) + (stats["complete"] ?? 0);
+    return { ...r, completionPct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  });
 
   return (
     <RoutesClient

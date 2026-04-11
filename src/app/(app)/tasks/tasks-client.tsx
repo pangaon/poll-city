@@ -299,7 +299,13 @@ function TaskRow({
   onDelete: (id: string) => void;
   dimmed?: boolean;
 }) {
-  const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed";
+  const now = new Date();
+  const due = t.dueDate ? new Date(t.dueDate) : null;
+  const isOverdue = due && due < now && t.status !== "completed";
+  const isDueToday = due && !isOverdue && t.status !== "completed"
+    && due.toDateString() === now.toDateString();
+  const isDueSoon = due && !isOverdue && !isDueToday && t.status !== "completed"
+    && (due.getTime() - now.getTime()) < 48 * 60 * 60 * 1000;
 
   return (
     <div
@@ -307,6 +313,8 @@ function TaskRow({
         "group flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
         selected
           ? "border-blue-300 bg-blue-50 shadow-sm"
+          : isOverdue ? "border-red-200 bg-red-50/40 hover:border-red-300"
+          : isDueToday ? "border-amber-200 bg-amber-50/30 hover:border-amber-300"
           : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm",
         dimmed && "opacity-60",
       )}
@@ -348,9 +356,12 @@ function TaskRow({
             </span>
           )}
           {t.dueDate && (
-            <span className={cn("text-xs flex items-center gap-0.5", isOverdue ? "text-red-500 font-semibold" : "text-gray-400")}>
+            <span className={cn(
+              "text-xs flex items-center gap-0.5",
+              isOverdue ? "text-red-500 font-semibold" : isDueToday ? "text-amber-600 font-semibold" : isDueSoon ? "text-amber-500" : "text-gray-400"
+            )}>
               <Clock className="w-3 h-3" />
-              {isOverdue ? "Overdue" : formatDate(t.dueDate)}
+              {isOverdue ? "Overdue" : isDueToday ? "Due today" : isDueSoon ? "Due soon" : formatDate(t.dueDate)}
             </span>
           )}
         </div>

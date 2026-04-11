@@ -1023,11 +1023,19 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                               <Users className="h-3 w-3" />
                               {ev.totals?.goingCount ?? 0} going
                             </span>
-                            {ev.capacity ? (
-                              <span>
-                                {ev.totals?.goingCount ?? 0}/{ev.capacity} capacity
-                              </span>
-                            ) : null}
+                            {ev.capacity ? (() => {
+                              const going = ev.totals?.goingCount ?? 0;
+                              const pct = Math.min(100, Math.round((going / ev.capacity) * 100));
+                              const barColor = pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-amber-400" : "bg-emerald-400";
+                              return (
+                                <span className="flex items-center gap-1.5">
+                                  <span>{going}/{ev.capacity}</span>
+                                  <span className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden inline-flex">
+                                    <span className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                                  </span>
+                                </span>
+                              );
+                            })() : null}
                             {(ev.totals?.checkInCount ?? 0) > 0 && (
                               <span className="inline-flex items-center gap-1" style={{ color: GREEN }}>
                                 <UserCheck className="h-3 w-3" />

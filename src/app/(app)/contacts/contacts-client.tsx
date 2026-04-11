@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X, Users, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X, Users, CheckCircle2, MailX, PhoneOff, ShieldX } from "lucide-react";
 import { Button, Input, Select, Card, PageHeader, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, MultiSelect, Spinner } from "@/components/ui";
 import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
@@ -27,6 +27,8 @@ interface ContactRow {
   issues?: string[]; notes?: string | null; followUpDate?: string | null;
   captain?: string | null; signPlaced?: boolean; superSupporter?: boolean;
   partyMember?: boolean; preferredLanguage?: string | null;
+  // Smart indicator fields
+  emailBounced?: boolean; smsOptOut?: boolean; confidenceScore?: number;
   tags: { tag: { id: string; name: string; color: string } }[];
   _count: { interactions: number };
 }
@@ -1552,8 +1554,22 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                       )}
                       {key === "contact" && (
                         <div className="space-y-0.5">
-                          {c.phone && <div className="flex items-center gap-1 text-gray-600"><Phone className="w-3 h-3" />{formatPhone(c.phone)}</div>}
-                          {c.email && <div className="flex items-center gap-1 text-gray-500 text-xs truncate max-w-[160px]"><Mail className="w-3 h-3" />{c.email}</div>}
+                          {c.phone && (
+                            <div className="flex items-center gap-1 text-gray-600">
+                              {c.smsOptOut
+                                ? <PhoneOff className="w-3 h-3 text-gray-300" aria-label="SMS opt-out" />
+                                : <Phone className="w-3 h-3" />}
+                              <span className={c.smsOptOut ? "text-gray-400 line-through" : ""}>{formatPhone(c.phone)}</span>
+                            </div>
+                          )}
+                          {c.email && (
+                            <div className="flex items-center gap-1 text-xs truncate max-w-[160px]">
+                              {c.emailBounced
+                                ? <MailX className="w-3 h-3 text-red-400 flex-shrink-0" aria-label="Email bounced" />
+                                : <Mail className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+                              <span className={c.emailBounced ? "text-red-400 line-through" : "text-gray-500"}>{c.email}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                       {key === "support" && (
@@ -1608,12 +1624,35 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           {c.tags.length > 2 && <span className="text-xs text-gray-400">+{c.tags.length - 2}</span>}
                         </div>
                       )}
-                      {key === "lastContact" && <span className="text-gray-500">{formatDate(c.lastContactedAt)}</span>}
+                      {key === "lastContact" && (() => {
+                        const daysSince = c.lastContactedAt
+                          ? Math.floor((Date.now() - new Date(c.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24))
+                          : null;
+                        const staleClass = daysSince === null ? "text-gray-400" : daysSince > 30 ? "text-red-500 font-medium" : daysSince > 14 ? "text-amber-500" : "text-gray-500";
+                        return (
+                          <span className={staleClass} title={daysSince !== null ? `${daysSince} days ago` : "Never contacted"}>
+                            {formatDate(c.lastContactedAt)}
+                          </span>
+                        );
+                      })()}
                       {key === "flags" && (
-                        <div className="flex gap-1">
-                          {c.followUpNeeded && <span className="w-2 h-2 bg-amber-500 rounded-full" title="Follow-up needed" />}
-                          {c.volunteerInterest && <span className="w-2 h-2 bg-blue-500 rounded-full" title="Volunteer interest" />}
-                          {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full" title="Sign requested" />}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {c.doNotContact && (
+                            <ShieldX className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Do not contact" />
+                          )}
+                          {c.followUpNeeded && (() => {
+                            const isOverdue = c.followUpDate && new Date(c.followUpDate) < new Date();
+                            return <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOverdue ? "bg-red-500" : "bg-amber-500"}`} title={isOverdue ? "Follow-up overdue" : "Follow-up needed"} />;
+                          })()}
+                          {c.volunteerInterest && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" title="Volunteer interest" />}
+                          {c.signRequested && <span className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0" title="Sign requested" />}
+                          {typeof c.confidenceScore === "number" && c.confidenceScore > 0 && (
+                            <div className="flex gap-0.5 items-center" title={`Confidence: ${c.confidenceScore}/100`}>
+                              {[20, 40, 60, 80, 100].map((threshold) => (
+                                <span key={threshold} className={`w-1.5 h-1.5 rounded-full ${c.confidenceScore! >= threshold ? "bg-emerald-500" : "bg-gray-200"}`} />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                       {key === "phone" && (

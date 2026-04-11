@@ -32,6 +32,7 @@ interface RouteRow {
   fieldProgram: { id: string; name: string; programType: FieldProgramType } | null;
   turf: { id: string; name: string } | null;
   _count: { targets: number; shifts: number; attempts: number };
+  completionPct?: number;
 }
 
 interface Program {
@@ -347,6 +348,17 @@ function RouteCard({ route }: { route: RouteRow }) {
                     <span className={`font-medium ${balance.color}`}>{balance.text}</span>
                   )}
                 </div>
+                {typeof route.completionPct === "number" && route.completionPct > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${route.completionPct >= 100 ? "bg-emerald-500" : route.completionPct >= 60 ? "bg-blue-400" : "bg-blue-300"}`}
+                        style={{ width: `${route.completionPct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{route.completionPct}%</span>
+                  </div>
+                )}
               </div>
               <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0 mt-1" />
             </div>

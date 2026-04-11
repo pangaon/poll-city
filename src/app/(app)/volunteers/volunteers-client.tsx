@@ -631,8 +631,36 @@ export default function VolunteersClient({ campaignId }: Props) {
                             {v.skills.length > 3 && <Badge>+{v.skills.length - 3}</Badge>}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{(v.totalHours ?? 0).toFixed(1)}h</td>
-                        <td className="px-4 py-3"><Badge variant={v.isActive ? "success" : "warning"}>{v.isActive ? "Active" : "Inactive"}</Badge></td>
+                        <td className="px-4 py-3">
+                          {v.maxHoursPerWeek ? (
+                            <div className="min-w-[72px]">
+                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="font-medium text-gray-900">{(v.totalHours ?? 0).toFixed(1)}h</span>
+                                <span className="text-gray-400">/ {v.maxHoursPerWeek}h</span>
+                              </div>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-[#1D9E75] transition-all"
+                                  style={{ width: `${Math.min(100, Math.round(((v.totalHours ?? 0) / v.maxHoursPerWeek) * 100))}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="font-medium text-gray-900 text-sm">{(v.totalHours ?? 0).toFixed(1)}h</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant={v.isActive ? "success" : "warning"}>{v.isActive ? "Active" : "Inactive"}</Badge>
+                            {(() => {
+                              const days = Math.floor((Date.now() - new Date(v.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                              if (days < 14) return <Badge variant="info">New</Badge>;
+                              if (days > 365) return <Badge variant="default">1yr+</Badge>;
+                              if (days > 180) return <Badge variant="default">6mo+</Badge>;
+                              return null;
+                            })()}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <RowActions
                             volunteer={v}

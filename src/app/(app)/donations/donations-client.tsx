@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search, ChevronLeft, ChevronRight, DollarSign, CheckCircle2, Plus,
   AlertTriangle, Ban, Download, Receipt, ArrowUpDown,
-  Building2, UserX, FileText, ShieldAlert,
+  Building2, UserX, FileText, ShieldAlert, RefreshCw,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, CardHeader, EmptyState,
@@ -36,6 +36,7 @@ interface DonationRow {
   createdAt: string;
   collectedAt: string;
   receiptNumber: string | null;
+  isRecurring?: boolean;
   contact: { id: string; firstName: string; lastName: string; phone: string | null } | null;
   recordedBy: { id: string; name: string | null; email: string | null };
 }
@@ -579,10 +580,15 @@ export default function DonationsClient({ campaignId }: Props) {
                     </td>
                     <td className="px-4 py-3 font-semibold" style={{ color: NAVY }}>${d.amount.toFixed(2)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={
-                        d.status === "processed" || d.status === "receipted" ? "success" :
-                        d.status === "cancelled" || d.status === "refunded" ? "danger" : "default"
-                      }>{d.status}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={
+                          d.status === "processed" || d.status === "receipted" ? "success" :
+                          d.status === "cancelled" || d.status === "refunded" ? "danger" : "default"
+                        }>{d.status}</Badge>
+                        {d.isRecurring && (
+                          <RefreshCw className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" aria-label="Recurring donation" />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 capitalize">{d.method ?? "cash"}</td>
                     <td className="px-4 py-3 text-gray-600">{d.recordedBy?.name ?? "Unknown"}</td>
