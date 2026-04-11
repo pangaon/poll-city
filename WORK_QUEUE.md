@@ -55,7 +55,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Chunk 7 — Turf + Geography + Route Planning (APIs + UI full) | DONE — dca20be | /field/turf, /api/field/turf, nearest-neighbor optimizer |
 | Chunk 8 — Canvassing Runs + Scripts + Outcomes | DONE — a4435be | /field/runs UI, /api/field/shifts+scripts+attempts+follow-ups |
 | Chunk 9 — Literature Drop Operations | CLAIMED 2026-04-11 | |
-| Chunk 10 — Sign Ops inside Field | CLAIMED 2026-04-11 | |
+| Chunk 10 — Sign Ops inside Field | DONE — 0188808 | /api/field/signs, /field-ops/signs UI |
 | Chunk 11 — Volunteer + Team + Shift Execution | PENDING | |
 | Chunk 12 — Inventory + Print + Materials Packaging | PENDING | Connects GAP-011 |
 | Chunk 13 — Mobile + Offline + Paper Fallback | PENDING | |
@@ -73,8 +73,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 3 — Fundraising Command Center UI | DONE — d0a9c81 | /fundraising tabbed UI, 9 tabs |
 | Compliance engine (evaluateCompliance, refreshDonorProfile) | DONE — d0a9c81 | src/lib/fundraising/compliance.ts |
 | Phase 4 — Stripe integration | PENDING | PaymentIntent, webhooks, Stripe Billing recurring |
-| Phase 5 — Full compliance wiring (configurable limits per campaign) | CLAIMED 2026-04-11 | Partially done; per-campaign config UI needed |
-| Phase 6 — Reports + CSV export + Adoni fundraising tools | CLAIMED 2026-04-11 | |
+| Phase 5 — Full compliance wiring (configurable limits per campaign) | DONE — 0188808 | /api/fundraising/compliance-config |
+| Phase 6 — Reports + CSV export + Adoni fundraising tools | DONE — 0188808 | /api/fundraising/reports rebuilt |
 | Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | PENDING | |
 | Donation pages (public-facing) | PENDING | /api/fundraising/pages not built |
 
@@ -117,7 +117,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print → Finance expense bridge | DONE — 730833e | src/lib/finance/post-print-expense.ts |
 | Phase 6 — Reports + variance analysis | DONE — 0a8d74b | /finance/reports |
 | Phase 6 — CSV export | DONE — 0a8d74b | /api/finance/exports/expenses |
-| Phase 6 — Finance ↔ Fundraising reconciliation | CLAIMED 2026-04-11 | GAP-005 |
+| Phase 6 — Finance ↔ Fundraising reconciliation | DONE — 0188808 | GAP-005; /api/finance/reconciliation |
 | Phase 6 — Audit trail UI | DONE — 0a8d74b | /finance/audit |
 | Phase 7 — AI assist | CLAIMED 2026-04-11 | |
 | Phase 8 — Hardening + permissions | PENDING | |
@@ -135,7 +135,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 3 — Calendar sync stub (connect + trigger) | DONE — b5170f0 | /api/campaign-calendar/sync — stub only, no real OAuth |
 | Calendar demo seed (Ward 20, 37 items, 12 appearances) | DONE — 9981bc4 | npm run db:seed:calendar |
 | **REQUIRED: npx prisma db push** | DONE — George confirmed | Run against Railway to activate all calendar models in prod |
-| Phase 4 — Cross-system wiring (events, comms, print, field) | CLAIMED 2026-04-11 | GAP-006, GAP-007, GAP-008 |
+| Phase 4 — Cross-system wiring (events, comms, print, field) | DONE — 0188808 | GAP-006, GAP-007, GAP-008 |
 | Phase 5 — Reminders + notifications cron | PENDING | |
 | Phase 6 — Google/Outlook real OAuth sync | PENDING | GAP-024 |
 
@@ -148,8 +148,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Duplicate detection API | DONE — d0a9c81 | /api/crm/duplicates |
 | Duplicate Review UI | DONE — 730833e | /contacts/duplicates |
 | Household CRM APIs | DONE — 730833e | /api/crm/households (CRUD + members) |
-| guardCampaignRoute migration (145 routes) | CLAIMED 2026-04-11 | GAP-010 — replace requirePermission |
-| sanitizeUserText on remaining fields | CLAIMED 2026-04-11 | GAP-015 — event/social/print/volunteer/budget notes |
+| guardCampaignRoute migration (145 routes) | DONE — 0188808 | GAP-010 — 91 routes migrated in batch |
+| sanitizeUserText on remaining fields | DONE — 0188808 | GAP-015 — event/social/print/volunteer/budget notes |
 | Contact → funnel advance on donation | PENDING | GAP — lastContactedAt + funnelStage not updated |
 | ActivityLog on donation create | PENDING | Missing audit trail |
 
@@ -165,7 +165,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print → Finance auto-post on order | DONE — 730833e | post-print-expense.ts |
 | Print Design Engine Phase 2 | DONE | Canvas editor, template thumbnails, asset upload — see commit |
 | **Print Enterprise Rebuild** | DONE — 0a8d74b | 15 responsive templates (vw/vh/clamp), print dashboard API, design-client refresh |
-| Print order → CalendarItem wiring | PENDING | GAP-008 |
+| Print order → CalendarItem wiring | DONE — 0188808 | GAP-008 |
 
 ---
 
@@ -178,8 +178,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Dashboard — all 8 data fields wired | DONE | |
 | GOTV — shared metrics truth layer | DONE | |
 | Election Night — membership guards | DONE | |
-| **145 legacy requirePermission → guardCampaignRoute** | CLAIMED 2026-04-11 | GAP-010. Canvassing, analytics, finance, volunteers, comms, events, tasks, signs |
-| sanitizeUserText on event/social/print/volunteer/budget notes | CLAIMED 2026-04-11 | GAP-015 |
+| **145 legacy requirePermission → guardCampaignRoute** | DONE — 0188808 | GAP-010. Canvassing, analytics, finance, volunteers, comms, events, tasks, signs |
+| sanitizeUserText on event/social/print/volunteer/budget notes | DONE — 0188808 | GAP-015 |
 | Adoni: per-tool rate limit | PENDING | |
 | Migration baseline before first real customer | PENDING — CRITICAL | GAP-003 — run `npx prisma migrate dev --name initial_baseline` |
 
