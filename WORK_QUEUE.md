@@ -115,10 +115,10 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 4 — Procurement (vendors, purchase requests, purchase orders) | DONE | |
 | Phase 5 — Reimbursements + approval queue | DONE | |
 | Print → Finance expense bridge | DONE — 730833e | src/lib/finance/post-print-expense.ts |
-| Phase 6 — Reports + variance analysis | CLAIMED 2026-04-10 | /finance/reports |
-| Phase 6 — CSV export | CLAIMED 2026-04-10 | /api/finance/exports/expenses |
+| Phase 6 — Reports + variance analysis | DONE — 0a8d74b | /finance/reports |
+| Phase 6 — CSV export | DONE — 0a8d74b | /api/finance/exports/expenses |
 | Phase 6 — Finance ↔ Fundraising reconciliation | PENDING | GAP-005 |
-| Phase 6 — Audit trail UI | CLAIMED 2026-04-10 | /finance/audit |
+| Phase 6 — Audit trail UI | DONE — 0a8d74b | /finance/audit |
 | Phase 7 — AI assist | PENDING | |
 | Phase 8 — Hardening + permissions | PENDING | |
 
@@ -162,7 +162,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Print Inventory (API + UI) | DONE | /api/print/inventory, /print/inventory |
 | Print → Finance auto-post on order | DONE — 730833e | post-print-expense.ts |
 | Print Design Engine Phase 2 | DONE | Canvas editor, template thumbnails, asset upload — see commit |
-| **Print Enterprise Rebuild** | CLAIMED 2026-04-10 | 15 responsive templates, Command Centre, Design→Job bridge. DO NOT TOUCH /print/** or prisma/seeds/print-templates.ts |
+| **Print Enterprise Rebuild** | DONE — 0a8d74b | 15 responsive templates (vw/vh/clamp), print dashboard API, design-client refresh |
 | Print order → CalendarItem wiring | PENDING | GAP-008 |
 
 ---
@@ -190,10 +190,10 @@ These cannot be done by AI sessions:
 | Action | Priority | Why |
 |---|---|---|
 | `npx prisma db push` against Railway | **CRITICAL** | Calendar models + SavedSegment + 4 new models are in schema but not in production DB |
-| Watch Vercel green on commit `730833e` | High | Latest push deploying now |
+| Watch Vercel green on commit `0a8d74b` | High | Finance Phase 6 + Print rebuild deploying |
 | Confirm Stripe keys in Railway env vars | Medium | Phase 4 fundraising needs STRIPE_SECRET_KEY |
 
 ---
 
-*Last updated: 2026-04-10 by Claude Sonnet 4.6*
+*Last updated: 2026-04-10 (session close) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
