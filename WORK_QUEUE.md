@@ -148,8 +148,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Duplicate detection API | DONE — d0a9c81 | /api/crm/duplicates |
 | Duplicate Review UI | DONE — 730833e | /contacts/duplicates |
 | Household CRM APIs | DONE — 730833e | /api/crm/households (CRUD + members) |
-| guardCampaignRoute migration (145 routes) | PENDING | GAP-010 — replace requirePermission |
-| sanitizeUserText on remaining fields | PENDING | GAP-015 — event/social/print/volunteer/budget notes |
+| guardCampaignRoute migration (145 routes) | CLAIMED 2026-04-11 | GAP-010 — replace requirePermission |
+| sanitizeUserText on remaining fields | CLAIMED 2026-04-11 | GAP-015 — event/social/print/volunteer/budget notes |
 | Contact → funnel advance on donation | PENDING | GAP — lastContactedAt + funnelStage not updated |
 | ActivityLog on donation create | PENDING | Missing audit trail |
 
@@ -178,8 +178,8 @@ No session may start a task already marked CLAIMED or DONE.
 | Dashboard — all 8 data fields wired | DONE | |
 | GOTV — shared metrics truth layer | DONE | |
 | Election Night — membership guards | DONE | |
-| **145 legacy requirePermission → guardCampaignRoute** | PENDING — HIGH | GAP-010. Canvassing, analytics, finance, volunteers, comms, events, tasks, signs |
-| sanitizeUserText on event/social/print/volunteer/budget notes | PENDING | GAP-015 |
+| **145 legacy requirePermission → guardCampaignRoute** | CLAIMED 2026-04-11 | GAP-010. Canvassing, analytics, finance, volunteers, comms, events, tasks, signs |
+| sanitizeUserText on event/social/print/volunteer/budget notes | CLAIMED 2026-04-11 | GAP-015 |
 | Adoni: per-tool rate limit | PENDING | |
 | Migration baseline before first real customer | PENDING — CRITICAL | GAP-003 — run `npx prisma migrate dev --name initial_baseline` |
 
