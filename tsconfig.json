@@ -12,6 +12,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "tsBuildInfoFile": ".next/cache/tsbuildinfo.json",
     "baseUrl": ".",
     "ignoreDeprecations": "5.0",
     "plugins": [

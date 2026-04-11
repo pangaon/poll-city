@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import prisma from "@/lib/db/prisma";
 
 // ─── Inline injection detection (Edge-compatible — no Node imports) ─────────
 
@@ -63,6 +62,7 @@ const PUBLIC_PATHS = [
   "/api/volunteer/onboard",
   "/api/calendar",
   "/api/help",
+  "/api/domain-lookup",
 ];
 
 function isPublicPath(path: string) {
@@ -91,15 +91,18 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (process.env.NEXT_PUBLIC_ROOT_DOMAIN && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
-    const campaign = await prisma.campaign.findUnique({
-      where: { customDomain: hostname },
-      select: { slug: true },
-    });
-
-    if (campaign) {
-      const url = new URL(`/candidates/${campaign.slug}`, req.url);
-      return NextResponse.redirect(url);
+  if (process.env.NEXT_PUBLIC_ROOT_DOMAIN && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN && !path.startsWith("/api/domain-lookup")) {
+    try {
+      const lookupUrl = new URL("/api/domain-lookup", req.nextUrl.origin);
+      lookupUrl.searchParams.set("hostname", hostname);
+      const res = await fetch(lookupUrl.toString());
+      if (res.ok) {
+        const { slug } = await res.json() as { slug: string };
+        const url = new URL(`/candidates/${slug}`, req.url);
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // domain lookup failed — continue normally
     }
   }
 
