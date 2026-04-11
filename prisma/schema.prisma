@@ -702,6 +702,10 @@ model User {
   savedSegmentsAuthored       SavedSegment[]           @relation("SavedSegmentAuthor")
   scheduledMessagesAuthored   ScheduledMessage[]       @relation("ScheduledMessageAuthor")
 
+  // Client onboarding invites
+  clientInviteTokens  ClientInviteToken[] @relation("ClientInviteRecipient")
+  sentClientInvites   ClientInviteToken[] @relation("ClientInviteCreator")
+
   @@map("users")
 }
 
@@ -912,6 +916,8 @@ model Campaign {
   savedSegments             SavedSegment[]
   scheduledMessages         ScheduledMessage[]
 
+  clientInviteTokens  ClientInviteToken[]
+
   @@unique([customDomain])
   @@index([slug])
   @@index([isPublic, isActive])
@@ -936,6 +942,34 @@ model Membership {
   @@unique([userId, campaignId])
   @@index([campaignId])
   @@map("memberships")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLIENT INVITE TOKENS
+// Used when George provisions a new client campaign from /ops
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ClientInviteToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  campaignId String
+  userId     String    // the invited user
+  invitedBy  String    // George's userId
+  email      String
+  isNewUser  Boolean   @default(true)  // false = existing account, true = needs password setup
+  status     String    @default("pending") // pending | accepted | expired | revoked
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation("ClientInviteRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  inviter  User     @relation("ClientInviteCreator", fields: [invitedBy], references: [id])
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([token])
+  @@map("client_invite_tokens")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

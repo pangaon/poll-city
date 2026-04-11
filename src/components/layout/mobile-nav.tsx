@@ -108,6 +108,14 @@ const MORE_GROUPS = [
       { href: "/ops/videos",   label: "Videos & Docs" },
       { href: "/ops/verify",   label: "Verify Features" },
       { href: "/ops/security", label: "Security Monitor" },
+    ],
+  },
+  {
+    title: "Operator Centre",
+    superAdminOnly: true,
+    items: [
+      { href: "/ops",          label: "Platform Overview" },
+      { href: "/ops/clients",  label: "Client Manager" },
       { href: "/ops/campaigns",label: "All Campaigns" },
     ],
   },
@@ -266,7 +274,11 @@ export default function MobileNav() {
               {/* Groups */}
               <div className="p-3 space-y-5">
                 {MORE_GROUPS
-                  .filter((g) => !("adminOnly" in g) || isAdmin)
+                  .filter((g) => {
+                    if ("superAdminOnly" in g && (g as { superAdminOnly?: boolean }).superAdminOnly) return role === "SUPER_ADMIN";
+                    if ("adminOnly" in g && (g as { adminOnly?: boolean }).adminOnly) return isAdmin;
+                    return true;
+                  })
                   .map((group) => (
                     <section key={group.title}>
                       <p className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400">

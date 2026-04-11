@@ -9,8 +9,94 @@ Every major user action. Every downstream effect. Honest status.
 - ✗ NOT CONNECTED — should exist, does not
 - — NOT BUILT — feature not yet built
 
-*Last updated: 2026-04-09 (session 2) by Claude Sonnet 4.6 — E-day chain, poll management, security hardening*
+*Last updated: 2026-04-11 (session 5) by Claude Sonnet 4.6 — client provisioning, self-service signup, invite flow, unified ops client manager*
 *Read CLAUDE.md → THE BUILD CYCLE before touching anything in this file.*
+
+---
+
+## CLIENT ONBOARDING — SELF-SERVICE SIGNUP (/signup)
+
+### New candidate creates their own account
+| Effect | Status | Notes |
+|--------|--------|-------|
+| User record created (role: ADMIN) | ✓ CONNECTED | POST /api/auth/register — bcrypt hash, validatePassword policy enforced |
+| Duplicate email check | ✓ CONNECTED | 409 returned with "sign in instead" message |
+| Rate limited | ✓ CONNECTED | rateLimit("auth") — same bucket as login/reset |
+| ActivityLog: user.register | ✓ CONNECTED | registrationMethod: "self-service" |
+| Auto sign-in after registration | ✓ CONNECTED | signIn("credentials") called client-side immediately after success |
+| Redirect to /campaigns/new | ✓ CONNECTED | client pushed to campaign creation wizard |
+| Campaign creation wizard | ✓ CONNECTED | existing /campaigns/new flow (province→municipality→ward, official matching) |
+| Post-creation 3-step setup (fields, issues, colors) | ✓ CONNECTED | existing /campaigns/new post-creation wizard |
+| SetupWizardGate fires on dashboard | ✓ CONNECTED | onboardingComplete = false on new campaigns |
+
+---
+
+## CLIENT ONBOARDING — GEORGE PROVISIONS A CLIENT (/ops/clients)
+
+### George provisions a new client campaign
+| Effect | Status | Notes |
+|--------|--------|-------|
+| User created (new) or found (existing) | ✓ CONNECTED | POST /api/ops/provision — finds by email, creates placeholder account if new |
+| Campaign created with unique slug | ✓ CONNECTED | slugify + collision suffix loop |
+| Membership created (role: ADMIN) | ✓ CONNECTED | checked for duplicate before insert |
+| activeCampaignId set for new users | ✓ CONNECTED | set at provision time so wizard gate fires on first login |
+| ClientInviteToken created (7-day expiry) | ✓ CONNECTED | stored in client_invite_tokens table |
+| Invite email sent via Resend | ✓ CONNECTED | branded HTML email with "Activate My Account" CTA |
+| Resend not configured | ✓ CONNECTED | provision still succeeds — inviteUrl returned for manual sharing |
+| Email send failure | ✓ CONNECTED | provision still succeeds — inviteUrl returned for manual sharing |
+| ActivityLog: client.provisioned | ✓ CONNECTED | records adminEmail, campaignName, isNewUser, emailSent |
+| New client row appears in /ops/clients | ✓ CONNECTED | loadClients() fires after successful provision |
+| Existing user added to new campaign | ✓ CONNECTED | finds by email, adds membership, sends invite |
+| SUPER_ADMIN only | ✓ CONNECTED | role check at start of route |
+
+### George resends invite
+| Effect | Status | Notes |
+|--------|--------|-------|
+| All pending tokens for user+campaign revoked | ✓ CONNECTED | updateMany status → "revoked" |
+| New token issued (7-day expiry) | ✓ CONNECTED | |
+| New invite email sent | ✓ CONNECTED | "Reminder" subject line |
+| User already activated (lastLoginAt set) | ✓ CONNECTED | 409 returned — "they can sign in directly" |
+| ActivityLog: client.invite_resent | ✓ CONNECTED | |
+
+---
+
+## CLIENT ONBOARDING — INVITE ACCEPTANCE (/accept-invite)
+
+### Candidate clicks invite link
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Token validation: not found | ✓ CONNECTED | 404 "invalid" |
+| Token validation: revoked | ✓ CONNECTED | 410 "revoked" |
+| Token validation: already consumed | ✓ CONNECTED | 409 "used" — directs to /login |
+| Token validation: expired | ✓ CONNECTED | 410 "expired" — token marked expired in DB |
+| Token validation: existing user (has real account) | ✓ CONNECTED | GET returns hasRealAccount=true — page shows "sign in" CTA instead of password form |
+| Password set (new user) | ✓ CONNECTED | POST /api/auth/accept-invite — validatePassword policy enforced |
+| Password hash updated (bcrypt cost 12) | ✓ CONNECTED | |
+| emailVerified = true | ✓ CONNECTED | set on accept |
+| activeCampaignId = campaign.id | ✓ CONNECTED | set atomically with token consumption |
+| lastLoginAt = now() | ✓ CONNECTED | marks account as activated — used by ops to determine invite status |
+| ClientInviteToken: status = "accepted", consumedAt = now() | ✓ CONNECTED | atomic $transaction with user update |
+| ActivityLog: client.invite_accepted | ✓ CONNECTED | |
+| Auto sign-in after accept | ✓ CONNECTED | signIn("credentials") called client-side immediately |
+| Redirect to /dashboard | ✓ CONNECTED | SetupWizardGate fires on arrival |
+| Multiple tokens for same campaign (resend) | ✓ CONNECTED | only first un-expired token works; older ones revoked at resend time |
+| Rate limited | ✓ CONNECTED | rateLimit("auth") on both GET and POST |
+
+---
+
+## OPERATOR CENTRE (/ops/clients)
+
+### George monitors all clients
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Client health indicators (green/amber/red) | ✓ CONNECTED | /api/platform/clients — no activity 7d=amber, 14d=red, election within 30d + <100 contacts = red |
+| Onboarding progress score (0–100%) | ✓ CONNECTED | 14-field count: candidateName, title, jurisdiction, dates, address, phone, email, socials, email voice |
+| Features adopted (contacts/polls/donations/volunteers/signs/events) | ✓ CONNECTED | _count selects per campaign |
+| Invite status (none/pending/accepted) | ✓ CONNECTED | pending = active ClientInviteToken; accepted = admin has lastLoginAt |
+| Attention Queue | ✓ CONNECTED | surfaces: red health, stale onboarding, election soon + low contacts, expiring invite |
+| Enter campaign (session switch) | ✓ CONNECTED | POST /api/campaigns/switch → full page reload to /dashboard |
+| Resend invite from client row | ✓ CONNECTED | POST /api/ops/provision/[campaignId]/resend-invite |
+| SUPER_ADMIN gated | ✓ CONNECTED | server component + /api/platform/clients both check role |
 
 ---
 

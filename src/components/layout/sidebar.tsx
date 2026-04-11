@@ -10,7 +10,7 @@ import {
   Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
   HelpCircle, BarChart3, FileText, Mail, MessageSquare,
   Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2, ClipboardList, TrendingUp,
-  FolderKanban, Route, MapPinned, Mic2, PersonStanding,
+  FolderKanban, Route, MapPinned, Mic2, PersonStanding, Crown, Plus,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -181,13 +181,12 @@ export default function Sidebar() {
 
     if (isSuperAdmin) {
       settingsItems.push(
-        { href: "/ops/campaigns", icon: LayoutDashboard, label: "All Campaigns" },
         { href: "/ops/content-review", icon: FileText, label: "Content Review" },
         { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" }
       );
     }
 
-    return [
+    const sections: NavSection[] = [
       HEADQUARTERS_SECTION,
       FIELD_OPS_SECTION,
       FINANCE_SECTION,
@@ -198,6 +197,22 @@ export default function Sidebar() {
         items: settingsItems,
       },
     ];
+
+    if (isSuperAdmin) {
+      sections.unshift({
+        id: "operator",
+        label: "Operator Centre",
+        icon: Crown,
+        items: [
+          { href: "/ops", icon: Crown, label: "Platform Overview" },
+          { href: "/ops/clients", icon: Plus, label: "Client Manager" },
+          { href: "/ops/campaigns", icon: LayoutDashboard, label: "All Campaigns" },
+          { href: "/ops/security", icon: Shield, label: "Security Monitor" },
+        ],
+      });
+    }
+
+    return sections;
   }, [isAdmin, isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
 
   function openAdoni() {

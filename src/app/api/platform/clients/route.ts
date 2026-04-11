@@ -23,21 +23,42 @@ export async function GET(req: NextRequest) {
       name: true,
       slug: true,
       candidateName: true,
+      candidateTitle: true,
+      candidateEmail: true,
+      candidatePhone: true,
       electionType: true,
       electionDate: true,
+      jurisdiction: true,
       isActive: true,
       onboardingComplete: true,
       createdAt: true,
+      // Setup wizard fields — used for progress scoring
+      officeAddress: true,
+      fromEmailName: true,
+      replyToEmail: true,
+      advanceVoteStart: true,
+      websiteUrl: true,
+      twitterHandle: true,
+      instagramHandle: true,
+      facebookUrl: true,
       memberships: {
         select: {
           role: true,
           user: {
             select: {
+              id: true,
               email: true,
               lastLoginAt: true,
             },
           },
         },
+      },
+      // Pending invite tokens
+      clientInviteTokens: {
+        where: { status: "pending" },
+        select: { id: true, email: true, expiresAt: true, createdAt: true },
+        take: 1,
+        orderBy: { createdAt: "desc" },
       },
       _count: {
         select: {
@@ -121,6 +142,25 @@ export async function GET(req: NextRequest) {
       c.electionDate.getTime() - now > 0 &&
       c.electionDate.getTime() - now < ms90d;
 
+    // Onboarding progress score (0–100): count non-null setup wizard fields
+    const SETUP_FIELDS = [
+      c.candidateName, c.candidateTitle, c.jurisdiction, c.electionDate,
+      c.advanceVoteStart, c.officeAddress, c.candidatePhone, c.candidateEmail,
+      c.websiteUrl, c.twitterHandle, c.instagramHandle, c.facebookUrl,
+      c.fromEmailName, c.replyToEmail,
+    ];
+    const filledFields = SETUP_FIELDS.filter((v) => v !== null && v !== undefined && v !== "").length;
+    const onboardingProgress = Math.round((filledFields / SETUP_FIELDS.length) * 100);
+
+    // Pending invite
+    const pendingInvite = c.clientInviteTokens[0] ?? null;
+    const inviteStatus: "none" | "pending" | "accepted" =
+      pendingInvite
+        ? "pending"
+        : adminEmail
+          ? "accepted"  // has an admin who logged in = invite was accepted
+          : "none";
+
     return {
       id: c.id,
       name: c.name,
@@ -137,9 +177,12 @@ export async function GET(req: NextRequest) {
       contactCount,
       adminEmail,
       onboardingComplete: c.onboardingComplete,
+      onboardingProgress,
       healthIndicator,
       featuresUsed,
       electionSoon,
+      inviteStatus,
+      pendingInviteExpiresAt: pendingInvite ? pendingInvite.expiresAt.toISOString() : null,
     };
   });
 
