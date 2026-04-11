@@ -491,12 +491,12 @@ function NewPollInner() {
   const [campaignId, setCampaignId] = useState<string>("");
 
   // Pre-fill from AI suggestion query params
-  const aiQuestion = searchParams.get("question") ?? "";
-  const aiDescription = searchParams.get("description") ?? "";
-  const aiType = searchParams.get("type") ?? "binary";
-  const aiTags = searchParams.get("tags") ?? "";
-  const aiOptionsRaw = searchParams.get("options") ?? "";
-  const isAIPrefill = searchParams.get("ai") === "1";
+  const aiQuestion = searchParams?.get("question") ?? "";
+  const aiDescription = searchParams?.get("description") ?? "";
+  const aiType = searchParams?.get("type") ?? "binary";
+  const aiTags = searchParams?.get("tags") ?? "";
+  const aiOptionsRaw = searchParams?.get("options") ?? "";
+  const isAIPrefill = searchParams?.get("ai") === "1";
 
   const [form, setForm] = useState<FormState>({
     question: isAIPrefill ? aiQuestion : "",

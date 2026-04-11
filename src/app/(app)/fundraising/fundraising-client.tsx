@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, Clock, Ban, Repeat, HandshakeIcon,
   BarChart3, ShieldAlert, FileText, CreditCard, Banknote, Wallet,
   ArrowUpRight, Eye, MoreHorizontal, Target, CalendarDays,
+  Settings, Save, PieChart, LineChart, Table2,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, CardHeader, EmptyState,
@@ -92,7 +93,35 @@ interface Refund {
   approvedBy: { id: string; name: string | null } | null;
 }
 
-type Tab = "overview" | "donations" | "donors" | "initiatives" | "recurring" | "pledges" | "receipts" | "refunds" | "compliance";
+type Tab = "overview" | "donations" | "donors" | "initiatives" | "recurring" | "pledges" | "receipts" | "refunds" | "compliance" | "reports" | "settings";
+
+interface ComplianceConfig {
+  annualLimitPerDonor: number;
+  anonymousLimit: number;
+  allowCorporate: boolean;
+  allowUnion: boolean;
+  blockMode: "review" | "block";
+  warningThreshold: number;
+  notes: string | null;
+  updatedBy: { id: string; name: string | null } | null;
+  updatedAt: string | null;
+}
+
+interface ReportSummary {
+  period: { from: string; to: string };
+  totalRaised: number; totalNet: number; totalFees: number; totalRefunded: number;
+  totalDonations: number; avgGift: number; uniqueDonors: number;
+}
+
+interface ReportData {
+  summary: ReportSummary;
+  timeSeries: { period: string; amount: number; net: number; count: number }[];
+  byMethod: { method: string; amount: number; count: number }[];
+  bySource: { sourceId: string | null; name: string; amount: number; count: number }[];
+  byInitiative: { initiativeId: string | null; name: string; amount: number; count: number }[];
+  byCompliance: { status: string; amount: number; count: number }[];
+  topDonors: { contactId: string | null; name: string; amount: number; count: number }[];
+}
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 
@@ -182,6 +211,23 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
   const [refundsPage, setRefundsPage] = useState(1);
   const [refundsTotal, setRefundsTotal] = useState(0);
 
+  // ── Compliance Config ──
+  const [complianceConfig, setComplianceConfig] = useState<ComplianceConfig | null>(null);
+  const [complianceConfigLoading, setComplianceConfigLoading] = useState(false);
+  const [complianceConfigSaving, setComplianceConfigSaving] = useState(false);
+  const [configForm, setConfigForm] = useState<Omit<ComplianceConfig, "updatedBy" | "updatedAt">>({
+    annualLimitPerDonor: 1200, anonymousLimit: 25, allowCorporate: false,
+    allowUnion: false, blockMode: "review", warningThreshold: 0.9, notes: null,
+  });
+
+  // ── Reports ──
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState("year");
+  const [reportGroupBy, setReportGroupBy] = useState("month");
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+
   // ── Modals ──
   const [showAddDonation, setShowAddDonation] = useState(false);
   const [showAddInitiative, setShowAddInitiative] = useState(false);
@@ -198,6 +244,57 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
       setStatsLoading(false);
     }
   }, [campaignId]);
+
+  const fetchComplianceConfig = useCallback(async () => {
+    setComplianceConfigLoading(true);
+    try {
+      const r = await fetch(`/api/fundraising/compliance-config?campaignId=${campaignId}`);
+      if (r.ok) {
+        const cfg: ComplianceConfig = (await r.json()).data;
+        setComplianceConfig(cfg);
+        setConfigForm({
+          annualLimitPerDonor: cfg.annualLimitPerDonor,
+          anonymousLimit: cfg.anonymousLimit,
+          allowCorporate: cfg.allowCorporate,
+          allowUnion: cfg.allowUnion,
+          blockMode: cfg.blockMode,
+          warningThreshold: cfg.warningThreshold,
+          notes: cfg.notes,
+        });
+      }
+    } finally { setComplianceConfigLoading(false); }
+  }, [campaignId]);
+
+  const saveComplianceConfig = async () => {
+    setComplianceConfigSaving(true);
+    try {
+      const r = await fetch("/api/fundraising/compliance-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, ...configForm }),
+      });
+      if (r.ok) { setComplianceConfig((await r.json()).data); toast.success("Compliance limits saved"); }
+      else { const e = await r.json(); toast.error(e.error ?? "Failed to save"); }
+    } finally { setComplianceConfigSaving(false); }
+  };
+
+  const fetchReport = useCallback(async () => {
+    setReportLoading(true);
+    try {
+      const p = new URLSearchParams({ campaignId, period: reportPeriod, groupBy: reportGroupBy });
+      if (reportPeriod === "custom" && reportFrom) p.set("from", reportFrom);
+      if (reportPeriod === "custom" && reportTo) p.set("to", reportTo);
+      const r = await fetch(`/api/fundraising/reports?${p}`);
+      if (r.ok) setReportData((await r.json()).data);
+    } finally { setReportLoading(false); }
+  }, [campaignId, reportPeriod, reportGroupBy, reportFrom, reportTo]);
+
+  const downloadCsv = () => {
+    const p = new URLSearchParams({ campaignId, period: reportPeriod, groupBy: reportGroupBy, format: "csv" });
+    if (reportPeriod === "custom" && reportFrom) p.set("from", reportFrom);
+    if (reportPeriod === "custom" && reportTo) p.set("to", reportTo);
+    window.open(`/api/fundraising/reports?${p}`, "_blank");
+  };
 
   const fetchDonations = useCallback(async () => {
     setDonationsLoading(true);
@@ -281,6 +378,8 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
     if (tab === "pledges") fetchPledges();
     if (tab === "receipts") fetchReceipts();
     if (tab === "refunds") fetchRefunds();
+    if (tab === "settings") fetchComplianceConfig();
+    if (tab === "reports") fetchReport();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-fetch donations when filters change
@@ -418,6 +517,8 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
     { id: "receipts", label: "Receipts", badge: stats?.queues.pendingReceipts || undefined },
     { id: "refunds", label: "Refunds", badge: stats?.queues.pendingRefunds || undefined },
     { id: "compliance", label: "Compliance", badge: stats?.queues.pendingCompliance || undefined },
+    { id: "reports", label: "Reports" },
+    { id: "settings", label: "Limits" },
   ];
 
   /* ─── render ─────────────────────────────────────────────────────────── */
@@ -1095,6 +1196,178 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                       </Card>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ─── REPORTS ──────────────────────────────────────────── */}
+            {tab === "reports" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div>
+                        <Label className="text-xs text-gray-500 mb-1 block">Period</Label>
+                        <select className="border rounded-lg px-3 py-2 text-sm" value={reportPeriod} onChange={(e) => setReportPeriod(e.target.value)}>
+                          <option value="month">This Month</option>
+                          <option value="year">This Year</option>
+                          <option value="all">All Time</option>
+                          <option value="custom">Custom Range</option>
+                        </select>
+                      </div>
+                      {reportPeriod === "custom" && (<>
+                        <div><Label className="text-xs text-gray-500 mb-1 block">From</Label><Input type="date" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} className="text-sm" /></div>
+                        <div><Label className="text-xs text-gray-500 mb-1 block">To</Label><Input type="date" value={reportTo} onChange={(e) => setReportTo(e.target.value)} className="text-sm" /></div>
+                      </>)}
+                      <div>
+                        <Label className="text-xs text-gray-500 mb-1 block">Group By</Label>
+                        <select className="border rounded-lg px-3 py-2 text-sm" value={reportGroupBy} onChange={(e) => setReportGroupBy(e.target.value)}>
+                          <option value="day">Day</option>
+                          <option value="week">Week</option>
+                          <option value="month">Month</option>
+                        </select>
+                      </div>
+                      <Button onClick={fetchReport} disabled={reportLoading} className="text-white" style={{ backgroundColor: NAVY }}>{reportLoading ? "Loading..." : "Run Report"}</Button>
+                      <Button variant="outline" onClick={downloadCsv} className="flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {reportLoading && <div className="space-y-3">{[...Array(3)].map((_, i) => <Shimmer key={i} className="h-32" />)}</div>}
+
+                {!reportLoading && reportData && (<>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {([
+                      { label: "Total Raised",    value: fmt(reportData.summary.totalRaised),    color: GREEN },
+                      { label: "Net Revenue",      value: fmt(reportData.summary.totalNet),        color: GREEN },
+                      { label: "Total Donations",  value: String(reportData.summary.totalDonations), color: NAVY },
+                      { label: "Avg Gift",         value: fmt(reportData.summary.avgGift),         color: AMBER },
+                      { label: "Unique Donors",    value: String(reportData.summary.uniqueDonors), color: "#a78bfa" },
+                      { label: "Fees",             value: fmt(reportData.summary.totalFees),       color: "#6b7280" },
+                      { label: "Refunded",         value: fmt(reportData.summary.totalRefunded),   color: RED },
+                    ] as const).map((k) => (
+                      <Card key={k.label}><CardContent className="pt-4"><p className="text-xs text-gray-500 mb-1">{k.label}</p><p className="text-xl font-bold" style={{ color: k.color }}>{k.value}</p></CardContent></Card>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader><div className="flex items-center gap-2"><LineChart className="w-4 h-4 text-gray-400" /><span className="font-semibold text-sm">Revenue Over Time</span></div></CardHeader>
+                      <CardContent>
+                        <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2 text-xs font-medium text-gray-500">Period</th><th className="text-right py-2 text-xs font-medium text-gray-500">Raised</th><th className="text-right py-2 text-xs font-medium text-gray-500">Gifts</th></tr></thead>
+                          <tbody>{reportData.timeSeries.map((r) => (<tr key={r.period} className="border-b last:border-0"><td className="py-2 font-mono text-xs">{r.period}</td><td className="py-2 text-right font-medium" style={{ color: GREEN }}>{fmt(r.amount)}</td><td className="py-2 text-right text-gray-500">{r.count}</td></tr>))}
+                          {reportData.timeSeries.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-gray-400 text-xs">No donations in this period</td></tr>}</tbody>
+                        </table>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader><div className="flex items-center gap-2"><PieChart className="w-4 h-4 text-gray-400" /><span className="font-semibold text-sm">By Payment Method</span></div></CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">{reportData.byMethod.map((r) => {
+                          const pct = reportData.summary.totalRaised > 0 ? (r.amount / reportData.summary.totalRaised) * 100 : 0;
+                          return (<div key={r.method}><div className="flex justify-between text-xs mb-1"><span className="capitalize">{r.method.replace(/_/g, " ")}</span><span className="font-medium">{fmt(r.amount)} ({r.count})</span></div><div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: GREEN }} /></div></div>);
+                        })}{reportData.byMethod.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">No data</p>}</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader><div className="flex items-center gap-2"><Table2 className="w-4 h-4 text-gray-400" /><span className="font-semibold text-sm">By Source</span></div></CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">{reportData.bySource.map((r) => (<div key={r.sourceId ?? "none"} className="flex justify-between text-sm"><span className="text-gray-700">{r.name}</span><span className="font-medium" style={{ color: GREEN }}>{fmt(r.amount)} <span className="text-gray-400 text-xs">({r.count})</span></span></div>))}
+                        {reportData.bySource.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">No source data</p>}</div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader><div className="flex items-center gap-2"><Users className="w-4 h-4 text-gray-400" /><span className="font-semibold text-sm">Top Donors</span></div></CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">{reportData.topDonors.map((r, i) => (<div key={r.contactId ?? i} className="flex items-center gap-3"><span className="text-xs text-gray-400 w-5 text-right">{i + 1}.</span><span className="flex-1 text-sm text-gray-700 truncate">{r.name}</span><span className="font-semibold text-sm" style={{ color: GREEN }}>{fmt(r.amount)}</span></div>))}
+                        {reportData.topDonors.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">No donor data</p>}</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>)}
+
+                {!reportLoading && !reportData && (
+                  <Card><CardContent className="py-16"><EmptyState title="Run a report" description="Select a period and click Run Report to view fundraising analytics." /></CardContent></Card>
+                )}
+              </div>
+            )}
+
+            {/* ─── SETTINGS (Compliance Limits) ─────────────────────── */}
+            {tab === "settings" && (
+              <div className="space-y-6 max-w-2xl">
+                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Settings className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-blue-900 text-sm">Per-Campaign Donation Limits</p>
+                    <p className="text-xs text-blue-700 mt-0.5">These limits are enforced by the compliance engine on every donation. Ontario municipal defaults are pre-set.</p>
+                  </div>
+                </div>
+                {complianceConfigLoading ? (
+                  <div className="space-y-4">{[...Array(5)].map((_, i) => <Shimmer key={i} className="h-12" />)}</div>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6 space-y-5">
+                      <div>
+                        <Label>Annual Limit Per Donor (CAD)</Label>
+                        <p className="text-xs text-gray-500 mb-2">Maximum total per donor per calendar year. Ontario municipal default: $1,200.</p>
+                        <Input type="number" min="0" step="1" value={configForm.annualLimitPerDonor}
+                          onChange={(e) => setConfigForm((f) => ({ ...f, annualLimitPerDonor: parseFloat(e.target.value) || 0 }))} />
+                      </div>
+                      <div>
+                        <Label>Anonymous Donation Cap (CAD)</Label>
+                        <p className="text-xs text-gray-500 mb-2">Hard cap on anonymous contributions — always blocked above this. Default: $25.</p>
+                        <Input type="number" min="0" step="1" value={configForm.anonymousLimit}
+                          onChange={(e) => setConfigForm((f) => ({ ...f, anonymousLimit: parseFloat(e.target.value) || 0 }))} />
+                      </div>
+                      <div>
+                        <Label>Warning Threshold</Label>
+                        <p className="text-xs text-gray-500 mb-2">Flag donors who have reached this fraction of their annual limit.</p>
+                        <div className="flex items-center gap-3">
+                          <input type="range" min="0" max="1" step="0.05" value={configForm.warningThreshold}
+                            onChange={(e) => setConfigForm((f) => ({ ...f, warningThreshold: parseFloat(e.target.value) }))} className="flex-1" />
+                          <span className="text-sm font-medium w-12 text-right">{Math.round(configForm.warningThreshold * 100)}%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Over-Limit Behaviour</Label>
+                        <div className="flex gap-3 mt-2">
+                          {(["review", "block"] as const).map((mode) => (
+                            <button key={mode} onClick={() => setConfigForm((f) => ({ ...f, blockMode: mode }))}
+                              className={`flex-1 py-2.5 px-4 rounded-lg border text-sm font-medium transition-colors ${configForm.blockMode === mode ? (mode === "review" ? "border-amber-400 bg-amber-50 text-amber-800" : "border-red-400 bg-red-50 text-red-800") : "border-gray-200 text-gray-600"}`}>
+                              {mode === "review" ? "Flag for Review" : "Hard Block"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-6">
+                        {(["allowCorporate", "allowUnion"] as const).map((field) => (
+                          <label key={field} className="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" checked={configForm[field]} onChange={(e) => setConfigForm((f) => ({ ...f, [field]: e.target.checked }))} className="w-4 h-4 rounded" />
+                            <div>
+                              <p className="text-sm font-medium">{field === "allowCorporate" ? "Allow Corporate Donors" : "Allow Union Donors"}</p>
+                              <p className="text-xs text-gray-500">Bypass keyword flagging</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      <div>
+                        <Label>Internal Notes</Label>
+                        <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={3}
+                          value={configForm.notes ?? ""} onChange={(e) => setConfigForm((f) => ({ ...f, notes: e.target.value || null }))}
+                          placeholder="e.g. Limits set per Ontario Municipal Elections Act s.88.8" />
+                      </div>
+                      {complianceConfig?.updatedBy && (
+                        <p className="text-xs text-gray-400">Last saved by {complianceConfig.updatedBy.name ?? "unknown"} · {complianceConfig.updatedAt ? new Date(complianceConfig.updatedAt).toLocaleString() : "—"}</p>
+                      )}
+                      <Button onClick={saveComplianceConfig} disabled={complianceConfigSaving}
+                        className="w-full text-white flex items-center justify-center gap-2" style={{ backgroundColor: GREEN }}>
+                        <Save className="w-4 h-4" />{complianceConfigSaving ? "Saving..." : "Save Compliance Limits"}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}

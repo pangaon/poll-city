@@ -15,7 +15,7 @@ const PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "
 
 export default function NewPrintJobClient({ campaignId }: Props) {
   const searchParams = useSearchParams();
-  const preselected = searchParams.get("product") || "";
+  const preselected = searchParams?.get("product") || "";
   const [step, setStep] = useState(1);
   const [posting, setPosting] = useState(false);
   const [createdJobId, setCreatedJobId] = useState<string | null>(null);

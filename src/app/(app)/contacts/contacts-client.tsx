@@ -121,6 +121,8 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
   const [followUp, setFollowUp] = useState(false);
   const [volunteerOnly, setVolunteerOnly] = useState(false);
   const [signOnly, setSignOnly] = useState(false);
+  const [emailBouncedOnly, setEmailBouncedOnly] = useState(false);
+  const [smsOptOutOnly, setSmsOptOutOnly] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [wards, setWards] = useState<string[]>([]);
 
@@ -352,6 +354,8 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       if (followUp) params.set("followUpNeeded", "true");
       if (volunteerOnly) params.set("volunteerInterest", "true");
       if (signOnly) params.set("signRequested", "true");
+      if (emailBouncedOnly) params.set("emailBounced", "true");
+      if (smsOptOutOnly) params.set("smsOptOut", "true");
       if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
       if (wards.length > 0) params.set("wards", wards.join(","));
       const res = await fetch(`/api/contacts?${params}`);
@@ -368,11 +372,11 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
       toast.error(message);
     }
     finally { setLoading(false); }
-  }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards, sorts]);
+  }, [campaignId, page, debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, emailBouncedOnly, smsOptOutOnly, selectedTags, wards, sorts]);
 
   useEffect(() => { loadContacts(); }, [loadContacts]);
 
-  useEffect(() => { setPage(1); }, [debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, selectedTags, wards]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, supportLevels, followUp, volunteerOnly, signOnly, emailBouncedOnly, smsOptOutOnly, selectedTags, wards]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasActiveFilters = Boolean(
@@ -382,7 +386,9 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
     wards.length ||
     followUp ||
     volunteerOnly ||
-    signOnly
+    signOnly ||
+    emailBouncedOnly ||
+    smsOptOutOnly
   );
 
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
@@ -880,7 +886,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             className="w-32"
           />
           <Button variant={showFilters ? "default" : "outline"} size="sm" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="w-3.5 h-3.5" />More Filters{(followUp || volunteerOnly || signOnly || wards.length > 0) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
+            <Filter className="w-3.5 h-3.5" />More Filters{(followUp || volunteerOnly || signOnly || emailBouncedOnly || smsOptOutOnly || wards.length > 0) && <span className="ml-1 w-1.5 h-1.5 bg-white rounded-full inline-block" />}
           </Button>
           <div className="relative">
             <Button variant="outline" size="sm" onClick={() => setShowColumnManager((v) => !v)}>
@@ -1054,6 +1060,8 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
             <Checkbox label="Follow-up needed" checked={followUp} onChange={(e) => setFollowUp(e.target.checked)} />
             <Checkbox label="Volunteer interest" checked={volunteerOnly} onChange={(e) => setVolunteerOnly(e.target.checked)} />
             <Checkbox label="Sign requested" checked={signOnly} onChange={(e) => setSignOnly(e.target.checked)} />
+            <Checkbox label="Email bounced" checked={emailBouncedOnly} onChange={(e) => setEmailBouncedOnly(e.target.checked)} />
+            <Checkbox label="SMS opt-out" checked={smsOptOutOnly} onChange={(e) => setSmsOptOutOnly(e.target.checked)} />
             <MultiSelect
               value={wards}
               onChange={setWards}

@@ -43,7 +43,7 @@ const CRM_FIELDS = [
 export default function FormEditPage() {
   const params = useParams();
   const router = useRouter();
-  const formId = params.id as string;
+  const formId = (params?.id ?? "") as string;
   const [form, setForm] = useState<any>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [selectedField, setSelectedField] = useState<string | null>(null);

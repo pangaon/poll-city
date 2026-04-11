@@ -24,7 +24,7 @@ export default function FinanceNav({ campaignId: _campaignId }: { campaignId: st
         {NAV.map((item) => {
           const { href, label, icon: Icon } = item;
           const exact = "exact" in item ? item.exact : false;
-          const active = exact ? pathname === href : pathname.startsWith(href);
+          const active = exact ? pathname === href : (pathname ?? "").startsWith(href);
           return (
             <Link
               key={href}
