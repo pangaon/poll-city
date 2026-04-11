@@ -93,7 +93,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Saved Segments API | DONE — 730833e | /api/comms/segments + count endpoint |
 | Saved Segment model (SavedSegment) | DONE — 730833e | In schema.prisma |
 | Phase 1 — Message Templates | DONE — 57b4177 | MessageTemplate model + API + UI |
-| Phase 2 — Segment builder UI + Audiences tab | PENDING | Component: segment-builder.tsx |
+| Phase 2 — Segment builder UI + Audiences tab | DONE — 730833e | AudiencesTab in communications-client.tsx — full segment builder inline |
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | PENDING | GAP-017 |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
