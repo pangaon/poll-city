@@ -9,7 +9,15 @@ export default async function SettingsPage() {
   const { campaignId, role } = await resolveActiveCampaign();
   const session = await getServerSession(authOptions);
   const [campaign, user] = await Promise.all([
-    prisma.campaign.findUnique({ where: { id: campaignId } }),
+    prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: {
+        id: true, name: true, slug: true,
+        candidateName: true, candidateTitle: true, candidateBio: true,
+        candidateEmail: true, candidatePhone: true,
+        primaryColor: true, electionType: true, jurisdiction: true, electionDate: true,
+      },
+    }),
     prisma.user.findUnique({ where: { id: session!.user.id }, select: { id: true, name: true, email: true, phone: true, avatarUrl: true } }),
   ]);
   return <SettingsClient campaign={campaign!} user={user!} userRole={role} />;

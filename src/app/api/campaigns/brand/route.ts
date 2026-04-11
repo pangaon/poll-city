@@ -46,6 +46,7 @@ export async function PATCH(req: NextRequest) {
   colorField("primaryColor");
   colorField("secondaryColor");
   colorField("accentColor");
+  strField("candidateName", 100);
   strField("logoUrl", 500);
   strField("fontPrimary", 30);
   strField("tagline", 80);
@@ -64,6 +65,7 @@ export async function PATCH(req: NextRequest) {
     where: { id: campaignId },
     data: patch,
     select: {
+      candidateName: true,
       primaryColor: true,
       secondaryColor: true,
       accentColor: true,

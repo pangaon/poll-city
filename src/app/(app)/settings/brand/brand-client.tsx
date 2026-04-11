@@ -79,6 +79,7 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           campaignId,
+          candidateName: brand.candidateName ?? "",
           primaryColor: brand.primaryColor,
           secondaryColor: brand.secondaryColor,
           accentColor: brand.accentColor,
@@ -229,6 +230,7 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
           {/* Identity */}
           <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 space-y-3">
             <h2 className="font-bold text-slate-900">Identity & contact</h2>
+            <TextField label="Candidate name" value={brand.candidateName ?? ""} onChange={(v) => update("candidateName", v)} placeholder="Jane Smith" />
             <TextField label="Tagline / slogan" value={brand.tagline ?? ""} onChange={(v) => update("tagline", v)} placeholder="A fresh voice for our community" maxLength={80} />
             <TextField label="Website" value={brand.websiteUrl ?? ""} onChange={(v) => update("websiteUrl", v)} placeholder="https://mycampaign.ca" inputMode="url" />
             <TextField label="Twitter / X handle" value={brand.twitter ?? ""} onChange={(v) => update("twitter", v)} placeholder="@handle" />

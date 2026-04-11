@@ -11,10 +11,11 @@ import { toast } from "sonner";
 
 interface Props {
   campaign: {
-    id: string; name: string; slug: string; candidateName: string | null;
-    candidateEmail: string | null; candidatePhone: string | null;
-    primaryColor: string; electionType: string; jurisdiction: string | null;
-    electionDate: Date | null;
+    id: string; name: string; slug: string;
+    candidateName: string | null; candidateTitle: string | null;
+    candidateBio: string | null; candidateEmail: string | null;
+    candidatePhone: string | null; primaryColor: string;
+    electionType: string; jurisdiction: string | null; electionDate: Date | null;
   };
   user: { id: string; name: string | null; email: string; phone: string | null; avatarUrl: string | null };
   userRole: string;
@@ -70,6 +71,22 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
   const [savingProfile, setSavingProfile] = useState(false);
   const isAiEnabled = (process.env.NEXT_PUBLIC_AI_ENABLED ?? "false") === "true";
 
+  const [campaignProfile, setCampaignProfile] = useState({
+    name: campaign.name,
+    candidateName: campaign.candidateName ?? "",
+    candidateTitle: campaign.candidateTitle ?? "",
+    candidateBio: campaign.candidateBio ?? "",
+    candidateEmail: campaign.candidateEmail ?? "",
+    candidatePhone: campaign.candidatePhone ?? "",
+    electionType: campaign.electionType,
+    jurisdiction: campaign.jurisdiction ?? "",
+    electionDate: campaign.electionDate
+      ? new Date(campaign.electionDate).toISOString().slice(0, 10)
+      : "",
+  });
+  const [savingCampaign, setSavingCampaign] = useState(false);
+  const canEditCampaign = ["ADMIN", "SUPER_ADMIN"].includes(userRole);
+
   async function saveProfile() {
     setSavingProfile(true);
     try {
@@ -82,6 +99,24 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
       else toast.error("Failed to update profile");
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function saveCampaignProfile() {
+    setSavingCampaign(true);
+    try {
+      const res = await fetch("/api/campaigns/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id, ...campaignProfile }),
+      });
+      if (res.ok) toast.success("Campaign profile updated");
+      else {
+        const data = await res.json();
+        toast.error(data.error ?? "Failed to update campaign profile");
+      }
+    } finally {
+      setSavingCampaign(false);
     }
   }
 
@@ -132,31 +167,109 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
         </CardContent>
       </Card>
 
-      {/* Campaign Info */}
+      {/* Campaign Profile */}
       <Card>
-        <CardHeader><h3 className="font-semibold text-gray-900">Campaign</h3></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {([
-              ["Campaign Name", campaign.name],
-              ["Slug", campaign.slug],
-              ["Election Type", campaign.electionType],
-              ["Jurisdiction", campaign.jurisdiction ?? "\u2014"],
-              ["Candidate", campaign.candidateName ?? "\u2014"],
-              ["Candidate Email", campaign.candidateEmail ?? "\u2014"],
-              ["Candidate Phone", campaign.candidatePhone ?? "\u2014"],
-              ["Election Date", campaign.electionDate ? new Date(campaign.electionDate).toLocaleDateString() : "\u2014"],
-            ] as const).map(([label, value]) => (
-              <div key={label}>
-                <p className="text-xs text-gray-500 font-medium">{label}</p>
-                <p className="text-gray-900 truncate">{value}</p>
-              </div>
-            ))}
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Campaign Profile</h3>
+            <span className="text-xs text-gray-400">Slug: {campaign.slug}</span>
           </div>
-          {["ADMIN", "SUPER_ADMIN"].includes(userRole) && (
-            <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">
-              Campaign settings editing available for admins via API or database panel.
-            </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {canEditCampaign ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="Campaign Name">
+                  <Input
+                    value={campaignProfile.name}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, name: e.target.value })}
+                    placeholder="Campaign name"
+                  />
+                </FormField>
+                <FormField label="Candidate Name">
+                  <Input
+                    value={campaignProfile.candidateName}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateName: e.target.value })}
+                    placeholder="Jane Smith"
+                  />
+                </FormField>
+                <FormField label="Candidate Title">
+                  <Input
+                    value={campaignProfile.candidateTitle}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateTitle: e.target.value })}
+                    placeholder="Councillor, Ward 3"
+                  />
+                </FormField>
+                <FormField label="Candidate Email">
+                  <Input
+                    value={campaignProfile.candidateEmail}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateEmail: e.target.value })}
+                    placeholder="jane@campaign.ca"
+                    type="email"
+                  />
+                </FormField>
+                <FormField label="Candidate Phone">
+                  <Input
+                    value={campaignProfile.candidatePhone}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, candidatePhone: e.target.value })}
+                    placeholder="416-555-0100"
+                    type="tel"
+                  />
+                </FormField>
+                <FormField label="Election Type">
+                  <Input
+                    value={campaignProfile.electionType}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, electionType: e.target.value })}
+                    placeholder="municipal"
+                  />
+                </FormField>
+                <FormField label="Jurisdiction">
+                  <Input
+                    value={campaignProfile.jurisdiction}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, jurisdiction: e.target.value })}
+                    placeholder="Ward 3, Toronto"
+                  />
+                </FormField>
+                <FormField label="Election Date">
+                  <Input
+                    value={campaignProfile.electionDate}
+                    onChange={(e) => setCampaignProfile({ ...campaignProfile, electionDate: e.target.value })}
+                    type="date"
+                  />
+                </FormField>
+              </div>
+              <FormField label="Candidate Bio">
+                <textarea
+                  value={campaignProfile.candidateBio}
+                  onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateBio: e.target.value })}
+                  placeholder="A few sentences about the candidate..."
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">{campaignProfile.candidateBio.length}/1000</p>
+              </FormField>
+              <Button onClick={saveCampaignProfile} loading={savingCampaign}>
+                Save Campaign Profile
+              </Button>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {([
+                ["Campaign Name", campaign.name],
+                ["Candidate", campaign.candidateName ?? "\u2014"],
+                ["Candidate Email", campaign.candidateEmail ?? "\u2014"],
+                ["Candidate Phone", campaign.candidatePhone ?? "\u2014"],
+                ["Election Type", campaign.electionType],
+                ["Jurisdiction", campaign.jurisdiction ?? "\u2014"],
+                ["Election Date", campaign.electionDate ? new Date(campaign.electionDate).toLocaleDateString() : "\u2014"],
+              ] as const).map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs text-gray-500 font-medium">{label}</p>
+                  <p className="text-gray-900 truncate">{value}</p>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
