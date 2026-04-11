@@ -7,7 +7,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 interface WardProgress {
   ward: string;
@@ -26,25 +27,13 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) {
-    return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
-  }
-
-  // Verify membership
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) {
-    return NextResponse.json({ error: "Not a member of this campaign" }, { status: 403 });
-  }
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "canvassing:read");
+  if (forbidden) return forbidden;
 
   // Get all turfs for the campaign
   const turfs = await prisma.turf.findMany({
-    where: { campaignId },
+    where: { campaignId: campaignId! },
     select: {
       ward: true,
       totalStops: true,
@@ -60,7 +49,7 @@ export async function GET(req: NextRequest) {
   // Get contact counts per ward
   const contactsByWard = await prisma.contact.groupBy({
     by: ["ward"],
-    where: { campaignId, isDeceased: false, doNotContact: false, ward: { not: null } },
+    where: { campaignId: campaignId!, isDeceased: false, doNotContact: false, ward: { not: null } },
     _count: true,
   });
 
@@ -70,7 +59,7 @@ export async function GET(req: NextRequest) {
     if (!wc.ward) continue;
     const count = await prisma.interaction.count({
       where: {
-        contact: { campaignId, ward: wc.ward },
+        contact: { campaignId: campaignId!, ward: wc.ward },
         type: "door_knock" as never,
       },
     });
@@ -82,11 +71,12 @@ export async function GET(req: NextRequest) {
 
   for (const wc of contactsByWard) {
     if (!wc.ward) continue;
+    const contactCount = wc._count as number;
     const doors = interactionsByWard.find((i) => i.ward === wc.ward)?.count ?? 0;
-    const pct = wc._count > 0 ? Math.round((doors / wc._count) * 100) : 0;
+    const pct = contactCount > 0 ? Math.round((doors / contactCount) * 100) : 0;
     wardMap.set(wc.ward, {
       ward: wc.ward,
-      totalContacts: wc._count,
+      totalContacts: contactCount,
       doorsKnocked: doors,
       completionPct: Math.min(100, pct),
       turfCount: 0,

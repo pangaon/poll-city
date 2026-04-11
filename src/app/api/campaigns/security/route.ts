@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
@@ -8,18 +9,12 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "security:manage");
-  if (permError) return permError;
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "security:manage");
+  if (forbidden) return forbidden;
 
   const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
+    where: { id: campaignId! },
     select: { require2FA: true, allowedIpRanges: true, sessionTimeoutHours: true },
   });
   return NextResponse.json({ policy: campaign });
@@ -29,9 +24,6 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "security:manage");
-  if (permError2) return permError2;
-
   let body: {
     campaignId?: string;
     require2FA?: boolean;
@@ -43,14 +35,13 @@ export async function PATCH(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { campaignId } = body;
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  const allowed = membership && ["SUPER_ADMIN", "ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role);
-  if (!allowed) return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  const { campaignId: patchCampaignId } = body;
+  const { resolved: resolved2, forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, patchCampaignId, "security:manage");
+  if (forbidden2) return forbidden2;
+  if (!["admin", "campaign-manager", "super-admin"].includes(resolved2.roleSlug)) {
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  }
+  const campaignId = patchCampaignId!;
 
   const patch: Record<string, unknown> = {};
   if (typeof body.require2FA === "boolean") patch.require2FA = body.require2FA;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
 
@@ -8,9 +9,6 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "notifications:write");
-  if (permError) return permError;
-
   let body: { campaignId?: string; contactId?: string; event?: string; message?: string };
   try {
     body = await req.json();
@@ -18,18 +16,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  const campaignId = body.campaignId?.trim();
+  const campaignId = (body.campaignId ?? "").trim();
   const event = body.event?.trim();
   const message = body.message?.trim() ?? "";
 
-  if (!campaignId || !event) {
+  if (!event) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "notifications:write");
+  if (forbidden) return forbidden;
 
   if (body.contactId) {
     const contact = await prisma.contact.findUnique({

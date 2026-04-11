@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { createFormSchema } from "@/lib/validators/forms";
 import { getTemplate } from "@/lib/forms/templates";
 import { audit } from "@/lib/audit";
@@ -16,9 +17,9 @@ function slugify(name: string): string {
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:read");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:read");
+  if (forbidden) return forbidden;
 
   const forms = await prisma.form.findMany({
     where: { campaignId },
@@ -32,9 +33,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "settings:write");
+  if (forbidden2) return forbidden2;
 
   try {
     const body = await req.json();

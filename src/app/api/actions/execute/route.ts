@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { executeAction, type ActionKey } from "@/lib/operations/action-engine";
 import { internalError } from "@/lib/api/errors";
 
@@ -29,13 +29,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
   }
 
-  const permError = requirePermission(session!.user.role as string, requiredPermission);
-  if (permError) return permError;
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, body.campaignId, requiredPermission);
+  if (forbidden) return forbidden;
 
   try {
     const result = await executeAction(

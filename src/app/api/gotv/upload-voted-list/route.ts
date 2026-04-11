@@ -12,7 +12,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { calculateWinThreshold } from "@/lib/operations/metrics-truth";
 import { bulkAdvanceFunnel } from "@/lib/operations/funnel-engine";
 import { FunnelStage } from "@prisma/client";
@@ -20,8 +21,6 @@ import { FunnelStage } from "@prisma/client";
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:write");
-  if (permError) return permError;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -31,10 +30,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file and campaignId required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "gotv:write");
+  if (forbidden) return forbidden;
 
   // Parse CSV
   const text = await file.text();

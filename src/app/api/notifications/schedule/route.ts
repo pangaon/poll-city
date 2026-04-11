@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
@@ -7,21 +8,13 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "notifications:write");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) {
-    return NextResponse.json({ error: "campaignId is required" }, { status: 400, headers: NO_STORE_HEADERS });
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "notifications:write");
+  if (forbidden) return forbidden;
 
   const data = await prisma.notificationLog.findMany({
-    where: { campaignId, status: "scheduled" },
+    where: { campaignId: campaignId!, status: "scheduled" },
     orderBy: { scheduledFor: "asc" },
     take: 100,
   });
@@ -32,8 +25,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "notifications:write");
-  if (permError2) return permError2;
 
   let body: {
     campaignId?: string;
@@ -49,14 +40,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  if (!body.campaignId || !body.title || !body.body || !body.scheduledFor) {
+  if (!body.title || !body.body || !body.scheduledFor) {
     return NextResponse.json({ error: "campaignId, title, body and scheduledFor are required" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: body.campaignId } },
-  });
-  if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
+  const { resolved: resolved2, forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, body.campaignId, "notifications:write");
+  if (forbidden2) return forbidden2;
+  if (!["admin", "campaign-manager"].includes(resolved2.roleSlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
@@ -71,7 +61,7 @@ export async function POST(req: NextRequest) {
 
   const log = await prisma.notificationLog.create({
     data: {
-      campaignId: body.campaignId,
+      campaignId: body.campaignId!,
       userId: session!.user.id,
       title: body.title,
       body: body.body,
@@ -87,8 +77,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError3 = requirePermission(session!.user.role as string, "notifications:write");
-  if (permError3) return permError3;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {
@@ -98,10 +86,9 @@ export async function DELETE(req: NextRequest) {
   const existing = await prisma.notificationLog.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404, headers: NO_STORE_HEADERS });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: existing.campaignId } },
-  });
-  if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
+  const { resolved: resolved3, forbidden: forbidden3 } = await guardCampaignRoute(session!.user.id, existing.campaignId, "notifications:write");
+  if (forbidden3) return forbidden3;
+  if (!["admin", "campaign-manager"].includes(resolved3.roleSlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 

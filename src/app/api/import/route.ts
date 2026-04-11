@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { parseAnyFile, parseExcelFile, detectFileType } from "@/lib/import/file-parser";
 import { mapColumns } from "@/lib/import/column-mapper";
@@ -16,9 +17,6 @@ const VALID_SUPPORT_LEVELS = Object.values(SupportLevel);
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import:write");
-  if (permError) return permError;
-
   // File size guard: reject requests over 10MB before parsing
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > 10_000_000) {
@@ -36,12 +34,10 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const campaignId = formData.get("campaignId") as string | null;
 
-    if (!file || !campaignId) return NextResponse.json({ error: "file and campaignId required" }, { status: 400 });
+    if (!file) return NextResponse.json({ error: "file and campaignId required" }, { status: 400 });
 
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+    if (forbidden) return forbidden;
 
     const fileType = detectFileType(file.name);
     const buffer = await file.arrayBuffer();
@@ -84,10 +80,8 @@ export async function POST(req: NextRequest) {
 
     const { campaignId, voterRows, phoneRows, config } = body;
 
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+    if (forbidden2) return forbidden2;
 
     // Match voter list against phone list
     const matchResults = await matchLists(voterRows, phoneRows, config ?? DEFAULT_CONFIG);
@@ -141,10 +135,8 @@ export async function POST(req: NextRequest) {
 
     const { campaignId, rows, importSource } = body;
 
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { forbidden: forbidden3 } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+    if (forbidden3) return forbidden3;
 
     const results = { imported: 0, updated: 0, skipped: 0, errors: [] as string[] };
 

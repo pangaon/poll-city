@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,6 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:read");
-  if (permError) return permError;
-
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (!q || q.length < 2) {
     return NextResponse.json({ results: [] });

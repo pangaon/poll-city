@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 type Ctx = { params: { id: string } };
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:write");
+  if (forbidden) return forbidden;
 
   const original = await prisma.form.findFirst({
     where: { id: params.id, campaignId },

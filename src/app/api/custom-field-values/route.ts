@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { setContactCustomFields, getContactCustomFields } from "@/lib/db/custom-fields";
 import { z } from "zod";
 
@@ -17,19 +18,14 @@ const updateSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:read");
-  if (permError) return permError;
-
   const contactId = req.nextUrl.searchParams.get("contactId");
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!contactId || !campaignId) return NextResponse.json({ error: "contactId and campaignId required" }, { status: 400 });
+  if (!contactId) return NextResponse.json({ error: "contactId and campaignId required" }, { status: 400 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "contacts:read");
+  if (forbidden) return forbidden;
 
-  const fields = await getContactCustomFields(contactId, campaignId);
+  const fields = await getContactCustomFields(contactId, campaignId!);
   return NextResponse.json({ data: fields });
 }
 
@@ -41,9 +37,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "contacts:write");
-  if (permError2) return permError2;
-
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
@@ -52,10 +45,8 @@ export async function POST(req: NextRequest) {
 
   const { contactId, campaignId, fields } = parsed.data;
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "contacts:write");
+  if (forbidden2) return forbidden2;
 
   // Verify contact belongs to campaign
   const contact = await prisma.contact.findFirst({ where: { id: contactId, campaignId, deletedAt: null } });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { configureWebPush, sendPushBatch } from "@/lib/notifications/push";
 
@@ -8,9 +9,6 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "notifications:write");
-  if (permError) return permError;
-
   let body: {
     campaignId: string;
     title: string;
@@ -29,15 +27,13 @@ export async function POST(req: NextRequest) {
 
   const { campaignId, title, body: messageBody, filters } = body;
 
-  if (!campaignId || !title || !messageBody) {
+  if (!title || !messageBody) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  // Verify user has admin/manager access to this campaign
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership || !["ADMIN", "CAMPAIGN_MANAGER"].includes(membership.role)) {
+  const { resolved, forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "notifications:write");
+  if (forbidden) return forbidden;
+  if (!["admin", "campaign-manager"].includes(resolved.roleSlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
   }
 

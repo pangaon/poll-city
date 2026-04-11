@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/db/prisma";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
-
-  const campaignId = req.headers.get("x-campaign-id");
-  if (!campaignId) {
-    return NextResponse.json({ error: "No campaign selected" }, { status: 400 });
-  }
+  const campaignIdRaw = req.headers.get("x-campaign-id");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignIdRaw, "settings:write");
+  if (forbidden) return forbidden;
+  const campaignId = campaignIdRaw!;
 
   try {
     const formData = await req.formData();
@@ -68,12 +66,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Print files must be under 25MB" }, { status: 400 });
       }
     }
-
-    // Verify campaign membership
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Upload to Vercel Blob
     const folder = uploadType === "print" ? "print-files" : "campaign-logos";

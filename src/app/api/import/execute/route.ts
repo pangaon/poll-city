@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import {
   isLikelyDuplicate,
   parseAndMapImportFile,
@@ -15,9 +16,6 @@ const MAX_FILE_SIZE = MAX_UPLOAD_BYTES;
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import:write");
-  if (permError) return permError;
-
   const limited = await enforceLimit(req, "import", session!.user.id);
   if (limited) return limited;
 
@@ -37,14 +35,12 @@ export async function POST(req: NextRequest) {
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
 
-  if (!file || !campaignId || !mappingsRaw) {
+  if (!file || !mappingsRaw) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+  if (forbidden) return forbidden;
 
   let mappings: MappingConfig;
   try {
@@ -57,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const importLog = await prisma.importLog.create({
     data: {
-      campaignId,
+      campaignId: campaignId!,
       userId: session!.user.id,
       filename: prepared.filename,
       fileType: prepared.fileType,
@@ -70,7 +66,7 @@ export async function POST(req: NextRequest) {
   });
 
   const existingContacts = await prisma.contact.findMany({
-    where: { campaignId },
+    where: { campaignId: campaignId! },
     select: {
       id: true,
       firstName: true,
@@ -106,7 +102,7 @@ export async function POST(req: NextRequest) {
       } else {
         const created = await prisma.contact.create({
           data: {
-            campaignId,
+            campaignId: campaignId!,
             ...writeData,
             importSource: "smart_import",
           },
@@ -145,11 +141,11 @@ export async function POST(req: NextRequest) {
 
   await prisma.activityLog.create({
     data: {
-      campaignId,
+      campaignId: campaignId!,
       userId: session!.user.id,
       action: "smart_import_execute",
       entityType: "campaign",
-      entityId: campaignId,
+      entityId: campaignId!,
       details: {
         importLogId: importLog.id,
         importedCount,

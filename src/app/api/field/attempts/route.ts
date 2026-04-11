@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
     // 6. Create FollowUpAction for outcomes that require it
     const followUpType = OUTCOME_TO_FOLLOWUP[body.outcome!];
     if (followUpType) {
-      await tx.followUpAction.create({
+      const followUp = await tx.followUpAction.create({
         data: {
           campaignId: body.campaignId!,
           fieldAttemptId: attempt.id,
@@ -212,6 +212,38 @@ export async function POST(req: NextRequest) {
           priority: body.outcome === "sign_requested" ? "high" : "normal",
         },
       });
+
+      // 6a. Auto-create Sign record when canvasser logs sign_requested
+      if (body.outcome === "sign_requested" && body.contactId) {
+        const contact = await tx.contact.findUnique({
+          where: { id: body.contactId, deletedAt: null },
+          select: { address1: true, city: true, postalCode: true },
+        });
+        if (contact?.address1) {
+          const sign = await tx.sign.create({
+            data: {
+              campaignId: body.campaignId!,
+              contactId: body.contactId,
+              address1: contact.address1,
+              city: contact.city ?? null,
+              postalCode: contact.postalCode ?? null,
+              status: "requested",
+              ...(body.latitude ? { lat: body.latitude } : {}),
+              ...(body.longitude ? { lng: body.longitude } : {}),
+            },
+          });
+          // Link the follow-up to the newly created sign
+          await tx.followUpAction.update({
+            where: { id: followUp.id },
+            data: { signId: sign.id },
+          });
+          // Mark contact as sign requested
+          await tx.contact.update({
+            where: { id: body.contactId },
+            data: { signRequested: true },
+          });
+        }
+      }
     }
 
     // 7. Log to ActivityLog if contact-linked

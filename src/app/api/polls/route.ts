@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
 import { parsePagination, paginate } from "@/lib/utils";
 import { z } from "zod";
 import { audit } from "@/lib/audit";

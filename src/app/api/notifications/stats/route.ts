@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
@@ -7,21 +8,12 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "analytics:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) {
-    return NextResponse.json({ error: "campaignId is required" }, { status: 400, headers: NO_STORE_HEADERS });
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: NO_STORE_HEADERS });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "analytics:read");
+  if (forbidden) return forbidden;
 
   const logs = await prisma.notificationLog.findMany({
-    where: { campaignId, status: "sent" },
+    where: { campaignId: campaignId!, status: "sent" },
     select: {
       totalSubscribers: true,
       deliveredCount: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { detectFileType, parseAnyFile, parseExcelFile } from "@/lib/import/file-parser";
 import { mapColumns } from "@/lib/import/column-mapper";
 
@@ -9,9 +10,6 @@ const MAX_FILE_SIZE = 10_000_000;
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import:write");
-  if (permError) return permError;
-
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_FILE_SIZE) {
     return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 413 });
@@ -27,14 +25,12 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   const campaignId = formData.get("campaignId") as string | null;
 
-  if (!file || !campaignId) {
+  if (!file) {
     return NextResponse.json({ error: "file and campaignId are required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+  if (forbidden) return forbidden;
 
   const fileType = detectFileType(file.name);
   const buffer = await file.arrayBuffer();

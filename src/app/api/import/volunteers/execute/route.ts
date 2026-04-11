@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { detectFileType, parseAnyFile, parseExcelFile } from "@/lib/import/file-parser";
 
 const MAX_FILE_SIZE = 10_000_000;
@@ -29,9 +30,6 @@ function mapRow(row: Record<string, string>, mappings: MappingConfig): Record<st
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "volunteers:write");
-  if (permError) return permError;
-
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_FILE_SIZE) {
     return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 413 });
@@ -44,14 +42,13 @@ export async function POST(req: NextRequest) {
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
 
-  if (!file || !campaignId || !mappingsRaw) {
+  if (!file || !mappingsRaw) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "volunteers:write");
+  if (forbidden) return forbidden;
+  const cid = campaignId!; // narrowed: guardCampaignRoute returns forbidden if null
 
   const mappings = JSON.parse(mappingsRaw) as MappingConfig;
   const fileType = detectFileType(file.name);
@@ -63,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   const importLog = await prisma.importLog.create({
     data: {
-      campaignId,
+      campaignId: cid,
       userId: session!.user.id,
       filename: file.name,
       fileType,
@@ -94,15 +91,15 @@ export async function POST(req: NextRequest) {
       let contact = null;
 
       if (email) {
-        contact = await prisma.contact.findFirst({ where: { campaignId, email } });
+        contact = await prisma.contact.findFirst({ where: { campaignId: cid, email } });
       }
       if (!contact && phone) {
-        contact = await prisma.contact.findFirst({ where: { campaignId, phone } });
+        contact = await prisma.contact.findFirst({ where: { campaignId: cid, phone } });
       }
       if (!contact && (firstName || lastName)) {
         contact = await prisma.contact.findFirst({
           where: {
-            campaignId,
+            campaignId: cid,
             firstName: firstName || undefined,
             lastName: lastName || undefined,
           },
@@ -112,7 +109,7 @@ export async function POST(req: NextRequest) {
       if (!contact) {
         contact = await prisma.contact.create({
           data: {
-            campaignId,
+            campaignId: cid,
             firstName: firstName || "Unknown",
             lastName: lastName || "Volunteer",
             email: email || null,
@@ -146,7 +143,7 @@ export async function POST(req: NextRequest) {
         await prisma.volunteerProfile.update({
           where: { id: existingProfile.id },
           data: {
-            campaignId,
+            campaignId: cid,
             availability: normalize(mapped.volunteerAvailability) || null,
             skills,
             maxHoursPerWeek: normalize(mapped.maxHoursPerWeek) ? Number(mapped.maxHoursPerWeek) : null,
@@ -159,7 +156,7 @@ export async function POST(req: NextRequest) {
       } else {
         await prisma.volunteerProfile.create({
           data: {
-            campaignId,
+            campaignId: cid,
             contactId: contact.id,
             availability: normalize(mapped.volunteerAvailability) || null,
             skills,

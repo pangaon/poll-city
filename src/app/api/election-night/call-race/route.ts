@@ -8,16 +8,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
-
   const { campaignId, result, finalVoteCount, opponentVoteCount, notes } = await req.json();
-  if (!campaignId || !result) {
+  if (!result) {
     return NextResponse.json({ error: "campaignId and result (won/lost) required" }, { status: 400 });
   }
 
@@ -25,10 +23,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "result must be 'won' or 'lost'" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:write");
+  if (forbidden) return forbidden;
 
   // Store the result in campaign customization
   await prisma.campaign.update({

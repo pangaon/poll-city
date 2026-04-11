@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(
   req: NextRequest,
@@ -8,16 +9,11 @@ export async function GET(
 ) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "signs:read");
-  if (permError) return permError;
-
   const job = await prisma.printJob.findUnique({ where: { id: params.id } });
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: job.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, job.campaignId, "signs:read");
+  if (forbidden) return forbidden;
 
   const bids = await prisma.printBid.findMany({
     where: { jobId: params.id },
@@ -33,10 +29,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   // Print shops submit bids — no campaign auth needed, but require session
-  const { session, error } = await apiAuth(req);
+  const { error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "signs:write");
-  if (permError) return permError;
 
   const job = await prisma.printJob.findUnique({ where: { id: params.id } });
   if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 });

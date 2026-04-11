@@ -648,9 +648,10 @@ model User {
 
   // Fundraising Suite
   donationsApproved          Donation[]               @relation("ApprovedDonations")
-  fundraisingCampaignsCreated FundraisingCampaign[]  @relation("FundraisingCampaignCreatedBy")
-  fundraisingCampaignsUpdated FundraisingCampaign[]  @relation("FundraisingCampaignUpdatedBy")
-  refundsProcessed           Refund[]                 @relation("RefundProcessedBy")
+  fundraisingCampaignsCreated    FundraisingCampaign[]           @relation("FundraisingCampaignCreatedBy")
+  fundraisingCampaignsUpdated    FundraisingCampaign[]           @relation("FundraisingCampaignUpdatedBy")
+  complianceConfigsUpdated       FundraisingComplianceConfig[]   @relation("FundraisingComplianceConfigUpdatedBy")
+  refundsProcessed               Refund[]                        @relation("RefundProcessedBy")
   refundsApproved            Refund[]                 @relation("RefundApprovedBy")
   receiptsIssued             DonationReceipt[]        @relation("ReceiptSentBy")
   reconciliationsProcessed   PaymentReconciliation[]  @relation("ReconciliationReconciledBy")
@@ -852,16 +853,17 @@ model Campaign {
   notificationRoutes        Json?
 
   // Fundraising Suite
-  fundraisingCampaigns      FundraisingCampaign[]
-  donorProfiles             DonorProfile[]
-  donationSources           DonationSource[]
-  donationPages             DonationPage[]
-  recurrencePlans           RecurrencePlan[]
-  pledges                   Pledge[]
-  refunds                   Refund[]
-  donationReceipts          DonationReceipt[]
-  paymentReconciliations    PaymentReconciliation[]
-  donorAuditLogs            DonorAuditLog[]
+  fundraisingCampaigns        FundraisingCampaign[]
+  donorProfiles               DonorProfile[]
+  donationSources             DonationSource[]
+  donationPages               DonationPage[]
+  recurrencePlans             RecurrencePlan[]
+  pledges                     Pledge[]
+  refunds                     Refund[]
+  donationReceipts            DonationReceipt[]
+  paymentReconciliations      PaymentReconciliation[]
+  donorAuditLogs              DonorAuditLog[]
+  fundraisingComplianceConfig FundraisingComplianceConfig?
 
   // Finance
   campaignBudgets           CampaignBudget[]
@@ -1981,6 +1983,28 @@ model DonationSource {
 
   @@index([campaignId])
   @@map("donation_sources")
+}
+
+// ── FundraisingComplianceConfig — per-campaign donation limit settings ────────
+
+model FundraisingComplianceConfig {
+  id                  String   @id @default(cuid())
+  campaignId          String   @unique
+  annualLimitPerDonor Float    @default(1200)
+  anonymousLimit      Float    @default(25)
+  allowCorporate      Boolean  @default(false)
+  allowUnion          Boolean  @default(false)
+  blockMode           String   @default("review")
+  warningThreshold    Float    @default(0.9)
+  notes               String?
+  updatedByUserId     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation("FundraisingComplianceConfigUpdatedBy", fields: [updatedByUserId], references: [id])
+
+  @@map("fundraising_compliance_configs")
 }
 
 // ── DonationPage — hosted / embedded donation pages ──────────────────────────

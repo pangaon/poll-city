@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { TurfStatus } from "@prisma/client";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "canvassing:read");
-  if (permError) return permError;
-
   const turf = await prisma.turf.findUnique({
     where: { id: params.id },
     include: {
@@ -41,10 +39,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (!turf) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: turf.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, turf.campaignId, "canvassing:read");
+  if (forbidden) return forbidden;
 
   return NextResponse.json({ data: turf });
 }
@@ -52,16 +48,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "canvassing:manage");
-  if (permError2) return permError2;
-
   const turf = await prisma.turf.findUnique({ where: { id: params.id } });
   if (!turf) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: turf.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, turf.campaignId, "canvassing:manage");
+  if (forbidden2) return forbidden2;
 
   let body: {
     status?: TurfStatus;
@@ -133,16 +124,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError3 = requirePermission(session!.user.role as string, "canvassing:manage");
-  if (permError3) return permError3;
-
   const turf = await prisma.turf.findUnique({ where: { id: params.id } });
   if (!turf) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: turf.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden3 } = await guardCampaignRoute(session!.user.id, turf.campaignId, "canvassing:manage");
+  if (forbidden3) return forbidden3;
 
   await prisma.turf.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
 import type { Prisma, SupportLevel } from "@prisma/client";
@@ -17,8 +18,6 @@ export async function GET(req: NextRequest) {
     if (error) return error;
 
     anomaly.suspiciousExport(session!.user.id);
-    const permError = requirePermission(session!.user.role as string, "contacts:export");
-    if (permError) return permError;
 
     const sp = req.nextUrl.searchParams;
     const campaignId = sp.get("campaignId");
@@ -26,12 +25,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
     }
 
-    const membership = await prisma.membership.findUnique({
-      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-    });
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "contacts:export");
+    if (forbidden) return forbidden;
 
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },

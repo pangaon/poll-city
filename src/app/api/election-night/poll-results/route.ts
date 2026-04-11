@@ -6,54 +6,50 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { SupportLevel } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:read");
-  if (permError) return permError;
-
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "gotv:read");
+  if (forbidden) return forbidden;
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const cid = campaignId!;
 
   // Group contacts by municipal poll
   const pollData = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null } },
-    _count: { id: true },
+    where: { campaignId: cid, municipalPoll: { not: null } },
+    _count: { _all: true },
   });
 
   const votedByPoll = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null }, voted: true },
-    _count: { id: true },
+    where: { campaignId: cid, municipalPoll: { not: null }, voted: true },
+    _count: { _all: true },
   });
 
   const supportersByPoll = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
-    _count: { id: true },
+    where: { campaignId: cid, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] } },
+    _count: { _all: true },
   });
 
   const supportersVotedByPoll = await prisma.contact.groupBy({
     by: ["municipalPoll"],
-    where: { campaignId, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
-    _count: { id: true },
+    where: { campaignId: cid, municipalPoll: { not: null }, supportLevel: { in: [SupportLevel.strong_support, SupportLevel.leaning_support] }, voted: true },
+    _count: { _all: true },
   });
 
-  const votedMap = new Map(votedByPoll.map((v) => [v.municipalPoll, v._count.id]));
-  const suppMap = new Map(supportersByPoll.map((s) => [s.municipalPoll, s._count.id]));
-  const suppVotedMap = new Map(supportersVotedByPoll.map((s) => [s.municipalPoll, s._count.id]));
+  const votedMap = new Map(votedByPoll.map((v) => [v.municipalPoll, v._count._all]));
+  const suppMap = new Map(supportersByPoll.map((s) => [s.municipalPoll, s._count._all]));
+  const suppVotedMap = new Map(supportersVotedByPoll.map((s) => [s.municipalPoll, s._count._all]));
 
   const polls = pollData.map((p) => {
-    const total = p._count.id;
+    const total = p._count._all;
     const voted = votedMap.get(p.municipalPoll) ?? 0;
     const supporters = suppMap.get(p.municipalPoll) ?? 0;
     const supportersVoted = suppVotedMap.get(p.municipalPoll) ?? 0;

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 const createSchema = z.object({
   campaignId: z.string().min(1),
@@ -71,24 +72,18 @@ const BUILTIN_TEMPLATES = [
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import_export:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "import_export:read");
+  if (forbidden) return forbidden;
 
   const customTemplates = await prisma.campaignImportTemplate.findMany({
-    where: { campaignId },
+    where: { campaignId: campaignId! },
     orderBy: [{ createdAt: "desc" }],
   });
 
   const customFields = await prisma.campaignField.findMany({
-    where: { campaignId, isVisible: true },
+    where: { campaignId: campaignId!, isVisible: true },
     select: { key: true, label: true, fieldType: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
@@ -105,8 +100,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import_export:write");
-  if (permError) return permError;
 
   const raw = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(raw);
@@ -116,10 +109,8 @@ export async function POST(req: NextRequest) {
 
   const payload = parsed.data;
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: payload.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, payload.campaignId, "import_export:write");
+  if (forbidden2) return forbidden2;
 
   const created = await prisma.campaignImportTemplate.create({
     data: {

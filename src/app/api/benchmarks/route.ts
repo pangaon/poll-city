@@ -11,7 +11,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { SupportLevel } from "@prisma/client";
 
 /** Benchmarks by days-to-election phase */
@@ -55,11 +56,12 @@ const BENCHMARKS: Record<string, {
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "analytics:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "analytics:read");
+  if (forbidden) return forbidden;
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },

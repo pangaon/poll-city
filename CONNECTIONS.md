@@ -439,6 +439,51 @@ Every major user action. Every downstream effect. Honest status.
 
 ---
 
+## SIGN OPS — FIELD COMMAND (Chunk 10 — 2026-04-11)
+
+### Record Field Attempt with sign_requested outcome (POST /api/field/attempts)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| FieldAttempt record created (outcome=sign_requested) | ✓ CONNECTED | |
+| FollowUpAction(sign_ops, priority=high) created | ✓ CONNECTED | pre-existing |
+| Sign record auto-created from contact address | ✓ CONNECTED | wired 2026-04-11 — Chunk 10 |
+| FollowUpAction.signId linked to new Sign | ✓ CONNECTED | wired 2026-04-11 |
+| Contact.signRequested = true | ✓ CONNECTED | wired 2026-04-11 |
+| Sign lat/lng from canvasser GPS if provided | ✓ CONNECTED | wired 2026-04-11 |
+| Contact has no address → no Sign created (safe skip) | ✓ CONNECTED | guard on contact.address1 |
+
+### Update Sign Status — Field Crew (PATCH /api/field/signs/[signId])
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Sign.status updated (scheduled/installed/removed/declined) | ✓ CONNECTED | wired 2026-04-11 |
+| Sign.installedAt set on installed | ✓ CONNECTED | wired 2026-04-11 |
+| Sign.removedAt set on removed | ✓ CONNECTED | wired 2026-04-11 |
+| FollowUpAction(sign_ops) auto-completed on installed/removed | ✓ CONNECTED | wired 2026-04-11 |
+| FollowUpAction(sign_ops) set to in_progress on scheduled | ✓ CONNECTED | wired 2026-04-11 |
+| Contact.signPlaced = true on install | ✓ CONNECTED | wired 2026-04-11 — mirrors signs/route.ts |
+| Contact.supportLevel escalated on install | ✓ CONNECTED | wired 2026-04-11 — unknown/leaning/undecided → strong_support |
+| Contact.lastContactedAt updated on install | ✓ CONNECTED | wired 2026-04-11 |
+| AuditLog entry | ✓ CONNECTED | wired 2026-04-11 |
+
+### Sign Ops Field View (GET /api/field/signs)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Signs enriched with sign_ops follow-up + requesting canvasser | ✓ CONNECTED | wired 2026-04-11 |
+| Summary counts by status in response | ✓ CONNECTED | wired 2026-04-11 |
+| Queue mode (status=requested only) | ✓ CONNECTED | wired 2026-04-11 — ?queue=1 |
+| campaignId scoped + canvassing:read permission | ✓ CONNECTED | wired 2026-04-11 |
+
+### /field-ops/signs dedicated page
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Sign Queue tab (pending requests from canvassers) | ✓ BUILT | wired 2026-04-11 |
+| Sign Board tab (full status filter + bulk management) | ✓ BUILT | wired 2026-04-11 |
+| Inline Schedule / Installed / Remove / Decline actions | ✓ BUILT | wired 2026-04-11 |
+| Stats strip (Requested / Scheduled / Installed / Removed) | ✓ BUILT | wired 2026-04-11 |
+| Requestor attribution (canvasser name + time) | ✓ BUILT | wired 2026-04-11 |
+
+---
+
 ---
 
 ## PRINT INVENTORY + PRINT PACKS

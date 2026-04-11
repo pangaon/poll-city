@@ -10,7 +10,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { executeAction } from "@/lib/operations/action-engine";
 import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 
@@ -67,8 +68,6 @@ export async function POST(req: NextRequest) {
   const start = Date.now();
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:write");
-  if (permError) return permError;
 
   const body = await req.json().catch(() => null) as {
     campaignId?: string;
@@ -81,10 +80,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "campaignId required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "gotv:write");
+  if (forbidden) return forbidden;
 
   let contactId = body?.contactId?.trim();
   let matchedContact = null as null | {
@@ -150,8 +147,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:write");
-  if (permError) return permError;
 
   const { contactId } = await req.json();
   if (!contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
@@ -163,15 +158,8 @@ export async function DELETE(req: NextRequest) {
 
   if (!contact?.votedAt) return NextResponse.json({ error: "Not marked as voted" }, { status: 400 });
 
-  const membership = await prisma.membership.findUnique({
-    where: {
-      userId_campaignId: {
-        userId: session!.user.id,
-        campaignId: contact.campaignId,
-      },
-    },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, contact.campaignId, "gotv:write");
+  if (forbidden2) return forbidden2;
 
   const secondsSince = (Date.now() - contact.votedAt.getTime()) / 1000;
   if (secondsSince > 10) return NextResponse.json({ error: "Undo window expired (10 seconds)" }, { status: 400 });

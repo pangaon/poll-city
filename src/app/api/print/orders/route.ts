@@ -7,6 +7,7 @@ import {
   findPrintBudgetLine,
   postPrintExpense,
 } from "@/lib/finance/post-print-expense";
+import { postPrintOrderCalendarItem } from "@/lib/calendar/post-calendar-item";
 
 const printOrderSchema = z.object({
   campaignId: z.string().min(1, "campaignId is required"),
@@ -97,6 +98,15 @@ export async function POST(req: NextRequest) {
       // Non-fatal: order was created successfully, expense can be posted manually
     }
   }
+
+  // GAP-008: wire new print order into calendar (non-fatal)
+  postPrintOrderCalendarItem({
+    campaignId: parsed.data.campaignId,
+    printOrderId: order.id,
+    productType: parsed.data.productType,
+    quantity: parsed.data.quantity,
+    userId: session!.user.id,
+  }).catch((err) => console.error("[print/orders] calendar wiring failed", err));
 
   return NextResponse.json({ data: order }, { status: 201 });
 }

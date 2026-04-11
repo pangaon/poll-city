@@ -4,6 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { EventStatus, EventVisibility } from "@prisma/client";
 import { audit } from "@/lib/audit";
+import { postEventCalendarItem } from "@/lib/calendar/post-calendar-item";
 
 function parseDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -157,6 +158,28 @@ export async function POST(req: NextRequest) {
     entityType: 'Event',
     ip: req.headers.get('x-forwarded-for'),
   });
+
+  // GAP-006: wire new event into calendar (non-fatal)
+  postEventCalendarItem({
+    campaignId: body.campaignId,
+    eventId: created.id,
+    title: created.name,
+    description: created.description,
+    eventDate: created.eventDate,
+    timezone: created.timezone,
+    isVirtual: created.isVirtual,
+    virtualUrl: created.virtualUrl,
+    locationName: created.location,
+    addressLine1: body.address1 ?? null,
+    city: created.city,
+    province: created.province,
+    postalCode: created.postalCode,
+    latitude: created.lat,
+    longitude: created.lng,
+    capacity: created.capacity,
+    isDraft: created.status === EventStatus.draft,
+    userId: session!.user.id,
+  }).catch((err) => console.error("[events] calendar wiring failed", err));
 
   return NextResponse.json({ data: created }, { status: 201 });
 }

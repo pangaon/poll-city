@@ -4,6 +4,7 @@ import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 import { sanitizeUserText } from "@/lib/security/monitor";
 import { randomUUID } from "crypto";
+import { postScheduledMessageCalendarItem } from "@/lib/calendar/post-calendar-item";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +186,17 @@ export async function POST(req: NextRequest) {
       createdAt: true,
     },
   });
+
+  // GAP-007: wire scheduled message into calendar (non-fatal)
+  postScheduledMessageCalendarItem({
+    campaignId,
+    messageId: message.id,
+    channel,
+    subject: subject ?? null,
+    sendAt: sendDate,
+    timezone,
+    userId: session!.user.id,
+  }).catch((err) => console.error("[comms/scheduled] calendar wiring failed", err));
 
   return NextResponse.json({ message }, { status: 201 });
 }

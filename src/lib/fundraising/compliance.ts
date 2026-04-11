@@ -49,7 +49,32 @@ export async function evaluateCompliance(opts: {
   excludeDonationId?: string; // exclude self when re-evaluating
   config?: typeof DEFAULT_COMPLIANCE_CONFIG;
 }): Promise<ComplianceResult> {
-  const cfg = { ...DEFAULT_COMPLIANCE_CONFIG, ...opts.config };
+  // Load per-campaign config from DB when not passed inline
+  let dbConfig: Partial<typeof DEFAULT_COMPLIANCE_CONFIG> = {};
+  if (!opts.config) {
+    const row = await prisma.fundraisingComplianceConfig.findUnique({
+      where: { campaignId: opts.campaignId },
+      select: {
+        annualLimitPerDonor: true,
+        anonymousLimit: true,
+        allowCorporate: true,
+        allowUnion: true,
+        blockMode: true,
+        warningThreshold: true,
+      },
+    });
+    if (row) {
+      dbConfig = {
+        annualLimitPerDonor: row.annualLimitPerDonor,
+        anonymousLimit: row.anonymousLimit,
+        allowCorporate: row.allowCorporate,
+        allowUnion: row.allowUnion,
+        blockMode: row.blockMode as "review" | "block",
+        warningThreshold: row.warningThreshold,
+      };
+    }
+  }
+  const cfg = { ...DEFAULT_COMPLIANCE_CONFIG, ...(opts.config ?? dbConfig) };
 
   // R-002 — Anonymous cap (always hard block)
   if (opts.isAnonymous && opts.amount > cfg.anonymousLimit) {

@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { isBrandKitComplete, loadBrandKit, type BrandKit } from "@/lib/brand/brand-kit";
 
 export const dynamic = "force-dynamic";
 
-async function verifyAccess(userId: string, campaignId: string) {
-  const m = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId, campaignId } },
-  });
-  return m && ["SUPER_ADMIN", "ADMIN", "CAMPAIGN_MANAGER"].includes(m.role);
-}
-
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:read");
-  if (permError) return permError;
   const campaignId = req.nextUrl.searchParams.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:read");
+  if (forbidden) return forbidden;
 
-  const m = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!m) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const brand = await loadBrandKit(campaignId);
+  const brand = await loadBrandKit(campaignId!);
   return NextResponse.json({ brand, complete: isBrandKitComplete(brand) });
 }
 
@@ -34,20 +22,16 @@ const HEX = /^#[0-9A-Fa-f]{6}$/;
 export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "settings:write");
-  if (permError2) return permError2;
-
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const campaignId = typeof body.campaignId === "string" ? body.campaignId : "";
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-  if (!(await verifyAccess(session!.user.id, campaignId))) {
-    return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  }
+  const campaignId2 = typeof body.campaignId === "string" ? body.campaignId : null;
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId2, "settings:write");
+  if (forbidden2) return forbidden2;
+  const campaignId = campaignId2!;
 
   const patch: Record<string, unknown> = {};
   const strField = (key: string, max = 200) => {

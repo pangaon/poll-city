@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { audit } from "@/lib/audit";
 
 type Ctx = { params: { id: string } };
@@ -8,9 +9,9 @@ type Ctx = { params: { id: string } };
 export async function GET(req: NextRequest, { params }: Ctx) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:read");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:read");
+  if (forbidden) return forbidden;
 
   const form = await prisma.form.findFirst({
     where: { id: params.id, campaignId },
@@ -30,9 +31,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "settings:write");
+  if (forbidden2) return forbidden2;
 
   const existing = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
   if (!existing) {
@@ -102,9 +103,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
   const campaignId = session!.user.activeCampaignId as string;
+  const { forbidden: forbidden3 } = await guardCampaignRoute(session!.user.id, campaignId, "settings:write");
+  if (forbidden3) return forbidden3;
 
   const existing = await prisma.form.findFirst({ where: { id: params.id, campaignId } });
   if (!existing) {

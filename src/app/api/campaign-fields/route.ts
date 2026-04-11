@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
-import { FieldType, FieldCategory, Role } from "@prisma/client";
+import { FieldType, FieldCategory } from "@prisma/client";
 
-const MANAGER_ROLES: Role[] = [Role.ADMIN, Role.SUPER_ADMIN, Role.CAMPAIGN_MANAGER];
+const MANAGER_ROLE_SLUGS = ["admin", "campaign-manager", "super-admin"];
 
 const createFieldSchema = z.object({
   campaignId: z.string().cuid(),
@@ -34,16 +35,12 @@ const updateFieldSchema = z.object({
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:read");
-  if (permError) return permError;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "settings:read");
+  if (forbidden) return forbidden;
 
   const fields = await prisma.campaignField.findMany({
     where: { campaignId },
@@ -57,8 +54,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "settings:write");
-  if (permError2) return permError2;
 
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
@@ -66,12 +61,9 @@ export async function POST(req: NextRequest) {
   const parsed = createFieldSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
 
-  // Authorization: check MEMBERSHIP role, not global role
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: parsed.data.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!MANAGER_ROLES.includes(membership.role as Role)) {
+  const { resolved: resolved2, forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, parsed.data.campaignId, "settings:write");
+  if (forbidden2) return forbidden2;
+  if (!MANAGER_ROLE_SLUGS.includes(resolved2!.roleSlug)) {
     return NextResponse.json({ error: "Forbidden — requires Campaign Manager or above role in this campaign" }, { status: 403 });
   }
 
@@ -88,8 +80,6 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError3 = requirePermission(session!.user.role as string, "settings:write");
-  if (permError3) return permError3;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -103,12 +93,9 @@ export async function PATCH(req: NextRequest) {
   const field = await prisma.campaignField.findUnique({ where: { id }, select: { campaignId: true } });
   if (!field) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Authorization: membership role
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: field.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!MANAGER_ROLES.includes(membership.role as Role)) {
+  const { resolved: resolved3, forbidden: forbidden3 } = await guardCampaignRoute(session!.user.id, field.campaignId, "settings:write");
+  if (forbidden3) return forbidden3;
+  if (!MANAGER_ROLE_SLUGS.includes(resolved3!.roleSlug)) {
     return NextResponse.json({ error: "Forbidden — requires Campaign Manager or above role in this campaign" }, { status: 403 });
   }
 
@@ -120,8 +107,6 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError4 = requirePermission(session!.user.role as string, "settings:write");
-  if (permError4) return permError4;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -130,11 +115,9 @@ export async function DELETE(req: NextRequest) {
   if (!field) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Authorization: ADMIN or SUPER_ADMIN within this campaign only
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: field.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(membership.role)) {
+  const { resolved: resolved4, forbidden: forbidden4 } = await guardCampaignRoute(session!.user.id, field.campaignId, "settings:write");
+  if (forbidden4) return forbidden4;
+  if (!["admin", "super-admin"].includes(resolved4!.roleSlug)) {
     return NextResponse.json({ error: "Forbidden — field deletion requires Admin role in this campaign" }, { status: 403 });
   }
 

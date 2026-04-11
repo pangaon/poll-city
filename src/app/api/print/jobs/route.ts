@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { PrintJobStatus, PrintProductType } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "signs:read");
-  if (permError) return permError;
-
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
   const status = sp.get("status") as PrintJobStatus | null;
@@ -16,15 +14,11 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(sp.get("page") ?? "1"));
   const pageSize = 20;
 
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "signs:read");
+  if (forbidden) return forbidden;
 
   const where = {
-    campaignId,
+    campaignId: campaignId!,
     ...(status ? { status } : {}),
     ...(productType ? { productType } : {}),
   };
@@ -48,9 +42,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError2 = requirePermission(session!.user.role as string, "signs:write");
-  if (permError2) return permError2;
-
   let body: {
     campaignId: string;
     productType: PrintProductType;
@@ -75,19 +66,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { campaignId, productType, title, quantity } = body;
-  if (!campaignId || !productType || !title || !quantity) {
+  const { campaignId: postCampaignId, productType, title, quantity } = body;
+  if (!productType || !title || !quantity) {
     return NextResponse.json({ error: "campaignId, productType, title and quantity are required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, postCampaignId, "signs:write");
+  if (forbidden2) return forbidden2;
+  const campaignId2 = postCampaignId;
 
   const job = await prisma.printJob.create({
     data: {
-      campaignId,
+      campaignId: campaignId2,
       userId: session!.user.id,
       productType,
       title,

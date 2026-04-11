@@ -13,17 +13,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "contacts:read");
-  if (permError) return permError;
-
   const sp = req.nextUrl.searchParams;
   const campaignId = sp.get("campaignId");
-  if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "contacts:read");
+  if (forbidden) return forbidden;
 
   // Bounding box filter for viewport-based loading
   const south = Number(sp.get("south") || "-90");
@@ -34,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   const contacts = await prisma.contact.findMany({
     where: {
-      campaignId,
+      campaignId: campaignId!,
       deletedAt: null,
       household: {
         lat: { gte: south, lte: north },
@@ -60,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   // Also get sign intelligence from activity log
   const signIntel = await prisma.activityLog.findMany({
-    where: { campaignId, action: "sign_intelligence" },
+    where: { campaignId: campaignId!, action: "sign_intelligence" },
     select: { details: true },
     take: 1000,
   });

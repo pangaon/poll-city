@@ -1,28 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function verifyCampaign(userId: string, campaignId: string) {
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId, campaignId } },
-  });
-  return Boolean(membership);
-}
-
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:read");
-  if (permError) return permError;
   const campaignId = req.nextUrl.searchParams.get("campaignId");
   if (!campaignId) {
     return NextResponse.json({ error: "campaignId required" }, { status: 400 });
   }
-  if (!(await verifyCampaign(session!.user.id, campaignId))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "gotv:read");
+  if (forbidden) return forbidden;
 
   const templates = await prisma.votedListTemplate.findMany({
     where: { campaignId },
@@ -50,9 +41,8 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (!(await verifyCampaign(session!.user.id, campaignId))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, campaignId, "gotv:write");
+  if (forbidden2) return forbidden2;
 
   const template = await prisma.votedListTemplate.create({
     data: {

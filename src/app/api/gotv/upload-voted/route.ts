@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
 import { POST as uploadPost } from "../upload/route";
 
 /**
@@ -10,10 +10,8 @@ import { POST as uploadPost } from "../upload/route";
  * authentication gate — the canonical handler will re-check, which is harmless.
  */
 export async function POST(req: NextRequest) {
-  const { session, error } = await apiAuth(req);
+  const { error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:write");
-  if (permError) return permError;
 
   return uploadPost(req);
 }

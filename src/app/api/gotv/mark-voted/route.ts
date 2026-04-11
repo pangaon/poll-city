@@ -7,7 +7,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { executeAction } from "@/lib/operations/action-engine";
 import { getGotvSummaryMetrics } from "@/lib/operations/metrics-truth";
 
@@ -16,8 +17,6 @@ export async function POST(req: NextRequest) {
 
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "gotv:write");
-  if (permError) return permError;
 
   const { contactId } = await req.json();
   if (!contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
@@ -30,10 +29,8 @@ export async function POST(req: NextRequest) {
 
   if (!contact) return NextResponse.json({ error: "Contact not found" }, { status: 404 });
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId: contact.campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, contact.campaignId, "gotv:write");
+  if (forbidden) return forbidden;
 
   const result = await executeAction(
     "gotv.mark_voted",

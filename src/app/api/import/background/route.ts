@@ -4,7 +4,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parseAndMapImportFile, type MappingConfig } from "@/lib/import/import-pipeline";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
@@ -12,9 +13,6 @@ import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "import:write");
-  if (permError) return permError;
-
   const limited = await enforceLimit(req, "import", session!.user.id);
   if (limited) return limited;
 
@@ -34,14 +32,12 @@ export async function POST(req: NextRequest) {
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
 
-  if (!file || !campaignId || !mappingsRaw) {
+  if (!file || !mappingsRaw) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id, campaignId } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "import:write");
+  if (forbidden) return forbidden;
 
   let mappings: MappingConfig;
   try {
@@ -56,7 +52,7 @@ export async function POST(req: NextRequest) {
   // Create job in queued state with parsed data stored for background processing
   const importLog = await prisma.importLog.create({
     data: {
-      campaignId,
+      campaignId: campaignId!,
       userId: session!.user.id,
       filename: prepared.filename,
       fileType: prepared.fileType,
@@ -74,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.activityLog.create({
     data: {
-      campaignId,
+      campaignId: campaignId!,
       userId: session!.user.id,
       action: "import.queued",
       entityType: "ImportLog",

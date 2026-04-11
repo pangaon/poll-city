@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, requirePermission } from "@/lib/auth/helpers";
+import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 
 /** GET /api/campaigns/[id]/customization */
 export async function GET(
@@ -9,13 +10,8 @@ export async function GET(
 ) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:read");
-  if (permError) return permError;
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id as string, campaignId: params.id } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden } = await guardCampaignRoute(session!.user.id, params.id, "settings:read");
+  if (forbidden) return forbidden;
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: params.id },
@@ -42,13 +38,8 @@ export async function POST(
 ) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const permError = requirePermission(session!.user.role as string, "settings:write");
-  if (permError) return permError;
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_campaignId: { userId: session!.user.id as string, campaignId: params.id } },
-  });
-  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const { forbidden: forbidden2 } = await guardCampaignRoute(session!.user.id, params.id, "settings:write");
+  if (forbidden2) return forbidden2;
 
   try {
     await prisma.campaign.update({
