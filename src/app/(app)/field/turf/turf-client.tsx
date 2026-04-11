@@ -18,7 +18,7 @@ import type { TurfStatus, FieldProgramType } from "@prisma/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface TurfRow {
+export interface TurfRow {
   id: string;
   name: string;
   status: TurfStatus;

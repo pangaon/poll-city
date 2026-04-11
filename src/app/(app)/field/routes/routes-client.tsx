@@ -18,7 +18,7 @@ import type { RouteStatus, FieldProgramType } from "@prisma/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface RouteRow {
+export interface RouteRow {
   id: string;
   name: string;
   status: RouteStatus;
