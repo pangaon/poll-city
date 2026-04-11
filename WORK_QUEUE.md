@@ -73,7 +73,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 2 — Core donation APIs (donations, donors, receipts, refunds, recurring, pledges) | DONE — d0a9c81 | All CRUD + compliance evaluation |
 | Phase 3 — Fundraising Command Center UI | DONE — d0a9c81 | /fundraising tabbed UI, 9 tabs |
 | Compliance engine (evaluateCompliance, refreshDonorProfile) | DONE — d0a9c81 | src/lib/fundraising/compliance.ts |
-| Phase 4 — Stripe integration | PENDING | PaymentIntent, webhooks, Stripe Billing recurring |
+| Phase 4 — Stripe integration | CLAIMED 2026-04-11 | PaymentIntent, webhooks, Stripe Billing recurring |
 | Phase 5 — Full compliance wiring (configurable limits per campaign) | DONE — d71673f | /api/fundraising/compliance-config + Limits UI tab |
 | Phase 6 — Reports + CSV export + Adoni fundraising tools | DONE — d71673f | /api/fundraising/reports + Reports UI tab + CSV export |
 | Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | CLAIMED 2026-04-11 | |
