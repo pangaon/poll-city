@@ -66,12 +66,12 @@ Last updated: 2026-04-10
 - [ ] Component: src/components/comms/template-editor.tsx (token picker, rich text, SMS char counter)
 
 ## Phase 2 — Saved Segments
-- [ ] Prisma: `SavedSegment` model (filterDefinition JSONB, isDynamic, lastCount)
-- [ ] Prisma migrate: `npx prisma migrate dev --name comms_saved_segments --skip-seed`
-- [ ] API: GET/POST /api/comms/segments + count endpoint
-- [ ] API: PUT/DELETE /api/comms/segments/[segmentId]
+- [x] Prisma: `SavedSegment` model (filterDefinition JSONB, isDynamic, lastCount)
+- [x] Prisma migrate: `prisma db push` applied (formal migrate dev still pending — GAP-003)
+- [x] API: GET/POST /api/comms/segments + count endpoint
+- [x] API: PUT/DELETE /api/comms/segments/[segmentId]
 - [ ] Component: src/components/comms/segment-builder.tsx (replaces inline audience filters in Compose)
-- [ ] UI: Audiences tab — segment library with live counts
+- [x] UI: Audiences tab — segment library with live counts, delete, refresh count
 
 ## Phase 3 — Scheduled Messages + Idempotency
 - [ ] Prisma: `ScheduledMessage` model (channel, segmentId, sendAt, timezone, status, atomic lock)
