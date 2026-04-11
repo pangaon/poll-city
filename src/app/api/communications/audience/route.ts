@@ -16,6 +16,12 @@ const schema = z.object({
   excludeEmailBounced: z.boolean().default(true),
   excludeSmsOptOut: z.boolean().default(true),
   volunteerOnly: z.boolean().default(false),
+  // Donor filters
+  donorOnly: z.boolean().default(false),
+  donorTiers: z.array(z.string()).optional(),
+  donorStatuses: z.array(z.string()).optional(),
+  minLifetimeGiving: z.number().min(0).optional(),
+  maxLifetimeGiving: z.number().min(0).optional(),
 });
 
 // POST /api/communications/audience — counts + samples an audience segment.
@@ -35,12 +41,25 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { campaignId, channel, supportLevels, wards, tagIds, excludeDnc, excludeEmailBounced, excludeSmsOptOut, volunteerOnly } = parsed.data;
+  const { campaignId, channel, supportLevels, wards, tagIds, excludeDnc, excludeEmailBounced, excludeSmsOptOut, volunteerOnly, donorOnly, donorTiers, donorStatuses, minLifetimeGiving, maxLifetimeGiving } = parsed.data;
 
   const m = await prisma.membership.findUnique({
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!m) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Build donor profile sub-filter
+  const donorProfileFilter: Record<string, unknown> = {};
+  if (donorTiers?.length) donorProfileFilter.donorTier = { in: donorTiers };
+  if (donorStatuses?.length) donorProfileFilter.donorStatus = { in: donorStatuses };
+  if (minLifetimeGiving != null) donorProfileFilter.lifetimeGiving = { gte: minLifetimeGiving };
+  if (maxLifetimeGiving != null) {
+    donorProfileFilter.lifetimeGiving = {
+      ...(donorProfileFilter.lifetimeGiving as object ?? {}),
+      lte: maxLifetimeGiving,
+    };
+  }
+  const applyDonorFilter = donorOnly || Object.keys(donorProfileFilter).length > 0;
 
   const where = {
     campaignId,
@@ -57,6 +76,9 @@ export async function POST(req: NextRequest) {
     ...(wards && wards.length > 0 ? { ward: { in: wards } } : {}),
     ...(tagIds && tagIds.length > 0
       ? { tags: { some: { tagId: { in: tagIds } } } }
+      : {}),
+    ...(applyDonorFilter
+      ? { donorProfile: Object.keys(donorProfileFilter).length > 0 ? donorProfileFilter : { isNot: null } }
       : {}),
   };
 

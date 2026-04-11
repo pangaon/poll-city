@@ -38,9 +38,27 @@ export async function POST(
     hasEmail?: boolean;
     hasPhone?: boolean;
     excludeDnc?: boolean;
+    donorOnly?: boolean;
+    donorTiers?: string[];
+    donorStatuses?: string[];
+    minLifetimeGiving?: number;
+    maxLifetimeGiving?: number;
   } | null ?? {};
 
   const excludeDnc = fd.excludeDnc ?? true;
+
+  // Build donor profile sub-filter
+  const donorProfileFilter: Record<string, unknown> = {};
+  if (fd.donorTiers?.length) donorProfileFilter.donorTier = { in: fd.donorTiers };
+  if (fd.donorStatuses?.length) donorProfileFilter.donorStatus = { in: fd.donorStatuses };
+  if (fd.minLifetimeGiving != null) donorProfileFilter.lifetimeGiving = { gte: fd.minLifetimeGiving };
+  if (fd.maxLifetimeGiving != null) {
+    donorProfileFilter.lifetimeGiving = {
+      ...(donorProfileFilter.lifetimeGiving as object ?? {}),
+      lte: fd.maxLifetimeGiving,
+    };
+  }
+  const applyDonorFilter = fd.donorOnly || Object.keys(donorProfileFilter).length > 0;
 
   const where = {
     campaignId: segment.campaignId,
@@ -58,6 +76,9 @@ export async function POST(
     ...(fd.wards && fd.wards.length > 0 ? { ward: { in: fd.wards } } : {}),
     ...(fd.tagIds && fd.tagIds.length > 0
       ? { tags: { some: { tagId: { in: fd.tagIds } } } }
+      : {}),
+    ...(applyDonorFilter
+      ? { donorProfile: Object.keys(donorProfileFilter).length > 0 ? donorProfileFilter : { isNot: null } }
       : {}),
   };
 

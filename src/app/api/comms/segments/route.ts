@@ -17,6 +17,12 @@ const filterDefinitionSchema = z.object({
   hasEmail: z.boolean().optional(),
   hasPhone: z.boolean().optional(),
   excludeDnc: z.boolean().optional(),
+  // Donor filters — matches contacts who have a DonorProfile
+  donorOnly: z.boolean().optional(),
+  donorTiers: z.array(z.string()).optional(),
+  donorStatuses: z.array(z.string()).optional(),
+  minLifetimeGiving: z.number().min(0).optional(),
+  maxLifetimeGiving: z.number().min(0).optional(),
 });
 
 // ─── GET /api/comms/segments ──────────────────────────────────────────────────
