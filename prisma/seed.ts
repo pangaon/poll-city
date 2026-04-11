@@ -953,7 +953,7 @@ async function main() {
     prisma.event.findFirst({ where: { slug: "gotv-training-may-2026" } }),
   ]);
   if (evHousing && evKickoff && evMeetSam && evGotv) {
-    await prisma.eventRsvp.createMany({ data: [
+    await prisma.eventRsvp.createMany({ skipDuplicates: true, data: [
       // Housing Forum — 12 attendees (completed)
       { eventId: evHousing.id, name: "Jennifer Walsh",     email: "jennifer.walsh@email.com",     status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 10 * 60000), source: "canvass",   contactId: contacts[0].id },
       { eventId: evHousing.id, name: "Marcus Thompson",    email: "m.thompson@work.ca",            status: EventRsvpStatus.checked_in,   attended: true,  checkedInAt: new Date(evHousing.eventDate.getTime() + 15 * 60000), source: "website" },

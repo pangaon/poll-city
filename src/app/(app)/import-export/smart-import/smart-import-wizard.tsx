@@ -321,14 +321,6 @@ export default function SmartImportWizard({ campaignId }: Props) {
     setImporting(true);
     setImportProgress(0);
 
-    // Simulate progress for UX
-    const progressInterval = setInterval(() => {
-      setImportProgress(prev => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 15;
-      });
-    }, 400);
-
     try {
       const mappingConfig = Object.fromEntries(
         Object.entries(mappings).filter(([, m]) => m.targetField).map(([src, m]) => [src, m.targetField!])
@@ -340,31 +332,69 @@ export default function SmartImportWizard({ campaignId }: Props) {
       form.append("mappings", JSON.stringify(mappingConfig));
       form.append("mergeStrategy", mergeStrategy);
 
+      // Contacts → background queue so large voter files (5k–25k rows) never hit Vercel timeout
+      if (targetEntity === "contacts") {
+        const queueRes = await fetch("/api/import/background", { method: "POST", body: form });
+        const queueData = await queueRes.json();
+        if (!queueRes.ok) { toast.error(queueData.error ?? "Failed to queue import"); return; }
+
+        const jobId = queueData.jobId as string;
+
+        // Poll real progress every 2 s until job finishes
+        await new Promise<void>((resolve, reject) => {
+          const poll = setInterval(async () => {
+            try {
+              const pRes = await fetch(`/api/import/progress?id=${jobId}`);
+              const pData = await pRes.json();
+              if (!pRes.ok) { clearInterval(poll); reject(new Error(pData.error ?? "Progress check failed")); return; }
+              setImportProgress(pData.progressPct ?? 0);
+              if (["completed", "completed_with_errors", "failed"].includes(pData.status)) {
+                clearInterval(poll);
+                setImportProgress(100);
+                setImportResult({
+                  imported: pData.importedCount ?? 0,
+                  updated: pData.updatedCount ?? 0,
+                  skipped: pData.skippedCount ?? 0,
+                  errors: pData.errors ?? [],
+                });
+                resolve();
+              }
+            } catch (e) { clearInterval(poll); reject(e); }
+          }, 2000);
+        });
+
+        await new Promise(r => setTimeout(r, 600));
+        setStep("done");
+        return;
+      }
+
+      // Volunteers / documents — smaller lists, synchronous path is fine
       const endpointByEntity: Record<TargetEntity, string | null> = {
-        contacts: "/api/import/execute",
+        contacts: null, // handled above
         volunteers: "/api/import/volunteers/execute",
         documents: "/api/import/documents/execute",
         custom_fields: null,
       };
       const endpoint = endpointByEntity[targetEntity];
+      if (!endpoint) { toast.error("This import type is not enabled yet."); return; }
 
-      if (!endpoint) {
-        toast.error("Custom field imports are not enabled yet in this flow.");
-        return;
+      const progressInterval = setInterval(() => {
+        setImportProgress(prev => (prev >= 90 ? prev : prev + Math.random() * 15));
+      }, 400);
+      try {
+        const importRes = await fetch(endpoint, { method: "POST", body: form });
+        const importData = await importRes.json();
+        if (!importRes.ok) { toast.error(importData.error ?? "Import failed"); return; }
+        setImportProgress(100);
+        setImportResult(importData.data);
+        await new Promise(r => setTimeout(r, 600));
+        setStep("done");
+      } finally {
+        clearInterval(progressInterval);
       }
-
-      const importRes = await fetch(endpoint, { method: "POST", body: form });
-      const importData = await importRes.json();
-      if (!importRes.ok) { toast.error(importData.error ?? "Import failed"); return; }
-
-      setImportProgress(100);
-      setImportResult(importData.data);
-
-      // Brief pause at 100% before showing done screen
-      await new Promise(r => setTimeout(r, 600));
-      setStep("done");
+    } catch (e) {
+      toast.error((e as Error).message ?? "Import failed");
     } finally {
-      clearInterval(progressInterval);
       setImporting(false);
     }
   }
