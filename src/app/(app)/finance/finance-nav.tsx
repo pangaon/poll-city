@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Receipt, Building2, ShoppingCart, FileText, RotateCcw, CheckCircle2, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Receipt, Building2, ShoppingCart, FileText, RotateCcw, CheckCircle2, BarChart3, ScrollText } from "lucide-react";
 
 const NAV = [
   { href: "/finance", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/finance/reimbursements", label: "Reimburse", icon: RotateCcw },
   { href: "/finance/approvals", label: "Approvals", icon: CheckCircle2 },
   { href: "/finance/reports", label: "Reports", icon: FileText },
+  { href: "/finance/audit", label: "Audit", icon: ScrollText },
 ] as const;
 
 export default function FinanceNav({ campaignId: _campaignId }: { campaignId: string }) {

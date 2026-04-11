@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const [
     budgets,
-    expenseAgg,
+    allExpenses,
     pendingApprovals,
     missingReceipts,
     unpaidBills,
@@ -31,20 +31,28 @@ export async function GET(req: NextRequest) {
           where: { isActive: true },
           select: {
             id: true,
+            code: true,
             name: true,
             category: true,
             plannedAmount: true,
             committedAmount: true,
             actualAmount: true,
             warningThresholdPct: true,
+            sortOrder: true,
           },
+          orderBy: { sortOrder: "asc" },
         },
       },
     }),
-    prisma.financeExpense.aggregate({
-      where: { campaignId, deletedAt: null },
-      _sum: { amount: true, taxAmount: true },
-      _count: true,
+    // All approved/paid expenses for monthly burn chart
+    prisma.financeExpense.findMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        expenseStatus: { in: ["approved", "paid"] },
+      },
+      select: { expenseDate: true, amount: true },
+      orderBy: { expenseDate: "asc" },
     }),
     prisma.financeExpense.count({
       where: { campaignId, expenseStatus: { in: ["submitted", "needs_review"] }, deletedAt: null },
@@ -62,43 +70,91 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  // Build category summary from budget lines
+  // ── Per-line variance table ───────────────────────────────────────────────
+  const allLines = budgets.flatMap((b) => b.budgetLines);
+  const varianceLines = allLines
+    .filter((l) => Number(l.plannedAmount) > 0)
+    .map((line) => {
+      const planned = Number(line.plannedAmount);
+      const committed = Number(line.committedAmount);
+      const actual = Number(line.actualAmount);
+      const total = actual + committed;
+      const variance = planned - total;
+      const variancePct = planned > 0 ? total / planned : 0;
+      const status =
+        variancePct > 1.0 ? "over" :
+        variancePct >= line.warningThresholdPct ? "warning" :
+        "ok";
+      return {
+        id: line.id,
+        code: line.code ?? "",
+        name: line.name,
+        category: line.category,
+        planned,
+        committed,
+        actual,
+        variance,
+        variancePct,
+        status,
+      };
+    })
+    .sort((a, b) => b.variancePct - a.variancePct);
+
+  // ── Category summary ─────────────────────────────────────────────────────
   const categoryMap = new Map<string, { planned: number; committed: number; actual: number }>();
-  for (const budget of budgets) {
-    for (const line of budget.budgetLines) {
-      const cat = line.category;
-      const existing = categoryMap.get(cat) ?? { planned: 0, committed: 0, actual: 0 };
-      categoryMap.set(cat, {
-        planned: existing.planned + Number(line.plannedAmount),
-        committed: existing.committed + Number(line.committedAmount),
-        actual: existing.actual + Number(line.actualAmount),
-      });
-    }
+  for (const line of allLines) {
+    const cat = String(line.category);
+    const existing = categoryMap.get(cat) ?? { planned: 0, committed: 0, actual: 0 };
+    categoryMap.set(cat, {
+      planned: existing.planned + Number(line.plannedAmount),
+      committed: existing.committed + Number(line.committedAmount),
+      actual: existing.actual + Number(line.actualAmount),
+    });
+  }
+  const byCategory = Array.from(categoryMap.entries())
+    .filter(([, v]) => v.planned > 0)
+    .map(([category, v]) => ({
+      category,
+      planned: v.planned,
+      committed: v.committed,
+      actual: v.actual,
+      pct: v.planned > 0 ? ((v.actual + v.committed) / v.planned) * 100 : 0,
+    }))
+    .sort((a, b) => b.actual - a.actual);
+
+  // ── Monthly burn chart ────────────────────────────────────────────────────
+  const monthlyMap = new Map<string, number>();
+  for (const e of allExpenses) {
+    const key = e.expenseDate.toISOString().slice(0, 7); // YYYY-MM
+    monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + Number(e.amount));
+  }
+  // Fill months from budget start to today (even if $0 spend)
+  const budget = budgets[0];
+  const startMonth = budget?.startDate
+    ? budget.startDate.toISOString().slice(0, 7)
+    : new Date().toISOString().slice(0, 7);
+  const endMonth = new Date().toISOString().slice(0, 7);
+  const monthlyBurn: Array<{ month: string; amount: number; cumulative: number }> = [];
+  let cumulative = 0;
+  let cur = startMonth;
+  while (cur <= endMonth) {
+    const amount = monthlyMap.get(cur) ?? 0;
+    cumulative += amount;
+    monthlyBurn.push({ month: cur, amount, cumulative });
+    const [y, m] = cur.split("-").map(Number);
+    const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+    cur = next;
   }
 
+  // ── Top-level summary ────────────────────────────────────────────────────
   const totalPlanned = budgets.reduce((s, b) => s + Number(b.totalBudget), 0);
-  const totalActual = Number(expenseAgg._sum.amount ?? 0);
-  const totalCommitted = Array.from(categoryMap.values()).reduce((s, v) => s + v.committed, 0);
+  const totalActual = allLines.reduce((s, l) => s + Number(l.actualAmount), 0);
+  const totalCommitted = allLines.reduce((s, l) => s + Number(l.committedAmount), 0);
 
-  // At-risk categories: actual + committed > planned * warningThreshold
-  const atRiskLines = budgets
-    .flatMap((b) => b.budgetLines)
-    .filter((line) => {
-      const spent = Number(line.actualAmount) + Number(line.committedAmount);
-      return spent > Number(line.plannedAmount) * line.warningThresholdPct;
-    })
-    .map((line) => ({
-      id: line.id,
-      name: line.name,
-      category: line.category,
-      planned: Number(line.plannedAmount),
-      committed: Number(line.committedAmount),
-      actual: Number(line.actualAmount),
-      utilizationPct: Number(line.plannedAmount) > 0
-        ? (Number(line.actualAmount) + Number(line.committedAmount)) / Number(line.plannedAmount)
-        : 0,
-    }))
-    .sort((a, b) => b.utilizationPct - a.utilizationPct);
+  // At-risk lines (>= warning threshold)
+  const atRiskLines = varianceLines
+    .filter((l) => l.status !== "ok")
+    .slice(0, 8);
 
   return NextResponse.json({
     data: {
@@ -108,16 +164,22 @@ export async function GET(req: NextRequest) {
         status: b.status,
         totalBudget: Number(b.totalBudget),
         currency: b.currency,
+        startDate: b.startDate,
+        endDate: b.endDate,
       })),
       summary: {
         totalPlanned,
         totalCommitted,
         totalActual,
-        remaining: totalPlanned - totalActual,
-        utilizationPct: totalPlanned > 0 ? totalActual / totalPlanned : 0,
+        remaining: totalPlanned - totalActual - totalCommitted,
+        burnPct: totalPlanned > 0 ? totalActual / totalPlanned : 0,
+        commitPct: totalPlanned > 0 ? totalCommitted / totalPlanned : 0,
+        utilizationPct: totalPlanned > 0 ? (totalActual + totalCommitted) / totalPlanned : 0,
       },
-      categories: Object.fromEntries(categoryMap),
+      varianceLines,
+      byCategory,
       atRiskLines,
+      monthlyBurn,
       alerts: {
         pendingApprovals,
         missingReceipts,

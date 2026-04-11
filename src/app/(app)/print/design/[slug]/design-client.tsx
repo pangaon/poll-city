@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Download, Printer, Upload, Palette, User, Phone,
+  ArrowLeft, Download, Upload, Palette, User, Phone,
   Globe, Check, Image as ImageIcon, Loader2, ChevronDown, ChevronUp,
+  Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -105,7 +107,27 @@ const TABS: { id: TabId; label: string; Icon: React.ElementType }[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── Category → Prisma enum mapping ──────────────────────────────────────────
+
+const CATEGORY_TO_PRODUCT_TYPE: Record<string, string> = {
+  "lawn-sign": "lawn_sign",
+  "door-hanger": "door_hanger",
+  "flyer": "flyer",
+  "palm-card": "palm_card",
+  "postcard": "mailer_postcard",
+  "button": "button_pin",
+  "sticker": "bumper_sticker",
+  "banner": "banner",
+  "window-sign": "window_sign",
+  "yard-stake": "yard_stake",
+  "t-shirt": "t_shirt",
+  "tote-bag": "tote_bag",
+  "hat": "hat",
+};
+
 export default function DesignClient({ campaignId, campaignName, template }: Props) {
+  const router = useRouter();
+
   // Editor state
   const [candidateName, setCandidateName] = useState("");
   const [tagline, setTagline] = useState("");
@@ -119,6 +141,7 @@ export default function DesignClient({ campaignId, campaignName, template }: Pro
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [orderPanelOpen, setOrderPanelOpen] = useState(true);
 
   // Preview iframe
@@ -235,6 +258,51 @@ export default function DesignClient({ campaignId, campaignName, template }: Pro
       toast.error("Failed to save draft.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Post for Quotes ───────────────────────────────────────────────────────
+  async function handlePostForQuotes() {
+    setPosting(true);
+    try {
+      const productType = CATEGORY_TO_PRODUCT_TYPE[template.category] ?? "flyer";
+      const total = priceFor(template.category, quantity);
+      const res = await fetch("/api/print/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          productType,
+          title: `${template.name} — ${campaignName}`,
+          quantity,
+          budgetMax: total > 0 ? total : undefined,
+          specs: {
+            templateSlug: template.slug,
+            templateName: template.name,
+            candidateName,
+            tagline,
+            phone,
+            website,
+            primaryColor,
+            secondaryColor,
+            logoUrl,
+            width: template.width,
+            height: template.height,
+          },
+          status: "posted",
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(j.error ?? "Could not post job");
+      }
+      const { data: job } = await res.json() as { data: { id: string } };
+      toast.success("Job posted — shops can now submit quotes.");
+      router.push(`/print/jobs/${job.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to post job");
+    } finally {
+      setPosting(false);
     }
   }
 
@@ -609,11 +677,16 @@ export default function DesignClient({ campaignId, campaignName, template }: Pro
                     </div>
 
                     <button
-                      disabled
-                      title="Fulfilment integration coming soon"
-                      className="w-full h-11 rounded-lg bg-[#0A2342] text-white font-bold flex items-center justify-center gap-2 opacity-50 cursor-not-allowed text-sm"
+                      onClick={handlePostForQuotes}
+                      disabled={posting}
+                      className="w-full h-11 rounded-lg bg-[#0A2342] hover:bg-[#0d2d57] text-white font-bold flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <Printer className="w-4 h-4" /> Order printing (soon)
+                      {posting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Megaphone className="w-4 h-4" />
+                      )}
+                      {posting ? "Posting…" : "Post for Quotes →"}
                     </button>
                   </div>
                 </motion.div>
