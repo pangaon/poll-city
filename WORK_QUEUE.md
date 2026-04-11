@@ -117,9 +117,9 @@ No session may start a task already marked CLAIMED or DONE.
 | Print → Finance expense bridge | DONE — 730833e | src/lib/finance/post-print-expense.ts |
 | Phase 6 — Reports + variance analysis | DONE — 0a8d74b | /finance/reports |
 | Phase 6 — CSV export | DONE — 0a8d74b | /api/finance/exports/expenses |
-| Phase 6 — Finance ↔ Fundraising reconciliation | PENDING | GAP-005 |
+| Phase 6 — Finance ↔ Fundraising reconciliation | CLAIMED 2026-04-11 | GAP-005 |
 | Phase 6 — Audit trail UI | DONE — 0a8d74b | /finance/audit |
-| Phase 7 — AI assist | PENDING | |
+| Phase 7 — AI assist | CLAIMED 2026-04-11 | |
 | Phase 8 — Hardening + permissions | PENDING | |
 
 ---
