@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
+const AMBER = "#EF9F27";
 
 const spring = { type: "spring" as const, stiffness: 400, damping: 25 };
 
@@ -345,6 +346,9 @@ export default function ImportExportClient({ campaignId }: Props) {
       const XLSX = (await import("xlsx")).default;
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { raw: false });
+      if (wb.SheetNames.length > 1) {
+        toast(`Your file has ${wb.SheetNames.length} sheets. Importing the first sheet: "${wb.SheetNames[0]}".`, { duration: 6000 });
+      }
       const ws = wb.Sheets[wb.SheetNames[0]];
       const allData = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
       if (allData.length === 0) throw new Error("No data found in spreadsheet");
@@ -479,6 +483,9 @@ export default function ImportExportClient({ campaignId }: Props) {
   async function handleMainFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 40 * 1024 * 1024) {
+      toast(`Large file (${(file.size / 1024 / 1024).toFixed(0)} MB) — reading in browser, this may take a moment.`, { duration: 5000 });
+    }
     setSelectedFile(file);
     await analyzeFile(file, false);
   }
@@ -499,6 +506,9 @@ export default function ImportExportClient({ campaignId }: Props) {
     if (!isAcceptedImportFile(file.name)) {
       toast.error("Unsupported file type. Use .csv, .tsv, .txt, .xls, or .xlsx");
       return;
+    }
+    if (file.size > 40 * 1024 * 1024) {
+      toast(`Large file (${(file.size / 1024 / 1024).toFixed(0)} MB) — reading in browser, this may take a moment.`, { duration: 5000 });
     }
     setSelectedFile(file);
     await analyzeFile(file, false);
@@ -757,8 +767,7 @@ export default function ImportExportClient({ campaignId }: Props) {
     const n = analysisData.totalRows.toLocaleString();
     const previewCols = analysisData.previewRows?.[0] ? Object.keys(analysisData.previewRows[0]) : [];
 
-    const chips: string[] = [
-      stats && stats.withName > 0 ? `${stats.withName.toLocaleString()} with name` : "",
+    const infoChips: string[] = [
       stats && stats.withAddress > 0 ? `${stats.withAddress.toLocaleString()} with address` : "",
       stats && stats.withPollNumber > 0 ? `${stats.withPollNumber.toLocaleString()} with poll #` : "",
       stats && stats.withPhone > 0 ? `${stats.withPhone.toLocaleString()} with phone` : "",
@@ -769,82 +778,107 @@ export default function ImportExportClient({ campaignId }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border-2 p-5 space-y-4"
-        style={{ borderColor: `${GREEN}50`, backgroundColor: `${GREEN}06` }}
+        className="rounded-xl border-2 space-y-5 overflow-hidden"
+        style={{ borderColor: `${GREEN}50` }}
       >
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}20` }}>
-            <CheckCircle className="w-5 h-5" style={{ color: GREEN }} />
+        {/* Header band */}
+        <div className="px-5 pt-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}20` }}>
+              <CheckCircle className="w-5 h-5" style={{ color: GREEN }} />
+            </div>
+            <div>
+              <p className="font-semibold text-base" style={{ color: NAVY }}>
+                {analysisData.detectedFormatLabel ? `${analysisData.detectedFormatLabel} recognised` : "File ready to import"}
+              </p>
+              <p className="text-sm text-gray-500">
+                {analysisData.detectedFormatDescription ?? "All columns mapped. Review the preview below, then click Import."}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-base" style={{ color: NAVY }}>
-              {analysisData.detectedFormatLabel ? `${analysisData.detectedFormatLabel} detected` : "File ready to import"}
-            </p>
-            <p className="text-sm text-gray-500">
-              {analysisData.detectedFormatDescription ?? "All columns mapped automatically. Review the preview and click Import."}
-            </p>
+
+          {/* Count + chips */}
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold text-white" style={{ backgroundColor: NAVY }}>
+              {n} voters
+            </span>
+            {infoChips.map((chip) => (
+              <span key={chip} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700">
+                {chip}
+              </span>
+            ))}
+            {(analysisData.existingContactCount ?? 0) > 0 && (
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700">
+                {analysisData.existingContactCount!.toLocaleString()} already in campaign (will update)
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Stat chips */}
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: NAVY }}>
-            {n} voters
-          </span>
-          {chips.map((chip) => (
-            <span key={chip} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700">
-              {chip}
-            </span>
-          ))}
-          {(analysisData.existingContactCount ?? 0) > 0 && (
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700">
-              {analysisData.existingContactCount!.toLocaleString()} already in campaign
-            </span>
-          )}
-        </div>
+        {/* Contextual advisories */}
+        {stats && (stats.withPhone === 0 || stats.withPollNumber === 0) && (
+          <div className="px-5 space-y-2">
+            {stats.withPhone === 0 && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800 flex items-start gap-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-blue-400" />
+                <span>No phone numbers — normal for electoral lists. Add them later using <strong>Voter-to-Phone Matching</strong> below.</span>
+              </div>
+            )}
+            {stats.withPollNumber === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-start gap-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>No poll numbers detected. GOTV tracking works best with poll numbers. If your file has them under a different column name, use <button onClick={onShowAdvanced} className="underline font-medium">Edit column mapping</button> to assign it.</span>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Preview rows */}
+        {/* Preview rows table */}
         {analysisData.previewRows && analysisData.previewRows.length > 0 && previewCols.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  {previewCols.map((col) => (
-                    <th key={col} className="px-3 py-2 text-left text-gray-600 font-medium whitespace-nowrap">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {analysisData.previewRows.map((row, i) => (
-                  <tr key={i}>
+          <div className="px-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Preview (first 5 rows)</p>
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr>
                     {previewCols.map((col) => (
-                      <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap">{row[col] ?? ""}</td>
+                      <th key={col} className="px-3 py-2 text-left text-gray-600 font-medium whitespace-nowrap">{col}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {analysisData.previewRows.map((row, i) => (
+                    <tr key={i} className="hover:bg-gray-50/50">
+                      {previewCols.map((col) => (
+                        <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap">{row[col] ?? ""}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* Warnings */}
+        {/* Parse warnings from file */}
         {analysisData.warnings && analysisData.warnings.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
-            {analysisData.warnings.map((w) => <p key={w}>{w}</p>)}
+          <div className="px-5">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+              {analysisData.warnings.map((w) => <p key={w}>⚠ {w}</p>)}
+            </div>
           </div>
         )}
 
-        {/* Import button + advanced escape hatch */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <MButton onClick={onImport} loading={isImporting} size="lg" className="min-w-[200px]">
+        {/* Import CTA */}
+        <div className="px-5 pb-5 flex items-center gap-3 flex-wrap">
+          <MButton onClick={onImport} loading={isImporting} size="lg" className="min-w-[220px]">
             <Upload className="w-4 h-4" /> Import {n} voters
           </MButton>
           <button
             onClick={onShowAdvanced}
-            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors"
           >
-            Edit column mapping
+            Something looks wrong? Edit column mapping →
           </button>
         </div>
       </motion.div>
@@ -901,6 +935,181 @@ export default function ImportExportClient({ campaignId }: Props) {
             </tbody>
           </table>
         </div>
+      </div>
+    );
+  }
+
+  function MappingGuide({
+    title, analysisData, map, onMapChange,
+  }: {
+    title: string;
+    analysisData: AnalyzeResponse;
+    map: Record<string, string>;
+    onMapChange: (next: Record<string, string>) => void;
+  }) {
+    const [showMapped, setShowMapped] = useState(false);
+
+    const columns = analysisData.rawHeaders.map((header) => {
+      const suggestion = analysisData.suggestedMappings[header];
+      const currentTarget = map[header] ?? null;
+      const samples = analysisData.sampleRows
+        .slice(0, 5)
+        .map((r) => (r[header] ?? "").trim())
+        .filter(Boolean)
+        .slice(0, 3);
+      const confidence = suggestion?.confidence ?? 0;
+      const isAutoMapped = confidence >= 80 && !!currentTarget;
+      return { header, currentTarget, samples, confidence, isAutoMapped };
+    });
+
+    const needsReview = columns.filter((c) => !c.isAutoMapped);
+    const autoMapped = columns.filter((c) => c.isAutoMapped);
+    const hasNameField = new Set(Object.values(map)).has("firstName") || new Set(Object.values(map)).has("lastName");
+
+    return (
+      <div className="space-y-4">
+        {/* Guidance header */}
+        <div className="rounded-xl border p-4 space-y-1" style={{ borderColor: `${NAVY}20`, backgroundColor: `${NAVY}03` }}>
+          <p className="font-semibold text-sm" style={{ color: NAVY }}>{title}</p>
+          <p className="text-xs text-gray-500">
+            For each column in your file, tell us what it contains so we can store it correctly.
+            We auto-detected <strong>{autoMapped.length}</strong> of <strong>{columns.length}</strong> columns.
+            {needsReview.length > 0
+              ? ` ${needsReview.length} column${needsReview.length > 1 ? "s" : ""} need your review.`
+              : " Everything is mapped — review below if needed."}
+          </p>
+        </div>
+
+        {/* Needs review */}
+        {needsReview.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
+              Needs review ({needsReview.length})
+            </p>
+            <div className="space-y-2">
+              {needsReview.map(({ header, currentTarget, samples }) => (
+                <div key={header} className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{header}</p>
+                      {samples.length > 0 ? (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          e.g.{" "}
+                          {samples.map((s, i) => (
+                            <span key={i}>
+                              <span className="font-mono bg-gray-100 px-1 rounded">{s}</span>
+                              {i < samples.length - 1 && "  "}
+                            </span>
+                          ))}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-300 mt-0.5 italic">no sample values</p>
+                      )}
+                    </div>
+                    <div className="sm:w-56 flex-shrink-0">
+                      <Select
+                        value={currentTarget ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const next = { ...map };
+                          if (!value) delete next[header];
+                          else next[header] = value;
+                          onMapChange(next);
+                        }}
+                        className="text-xs min-h-[44px] w-full"
+                      >
+                        <option value="">— Skip this column —</option>
+                        {groups.map((group) => (
+                          <optgroup
+                            key={group.category}
+                            label={
+                              group.category === "name" ? "Name fields" :
+                              group.category === "address" ? "Address fields" :
+                              group.category === "contact" ? "Phone & Email" :
+                              group.category === "electoral" ? "Electoral geography" :
+                              group.category === "campaign" ? "Campaign data" : "Other"
+                            }
+                          >
+                            {group.fields.map((field) => (
+                              <option key={field.key} value={field.key}>{field.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Auto-detected — collapsible */}
+        {autoMapped.length > 0 && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setShowMapped((prev) => !prev)}
+              className="flex items-center gap-2 text-[11px] font-semibold text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+            >
+              <CheckCircle className="w-3.5 h-3.5" style={{ color: GREEN }} />
+              Auto-detected ({autoMapped.length}) {showMapped ? "▲ hide" : "▼ show"}
+            </button>
+            <AnimatePresence>
+              {showMapped && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden rounded-lg border border-gray-200"
+                >
+                  {autoMapped.map(({ header, currentTarget, confidence, samples }) => (
+                    <div key={header} className="flex items-center px-3 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50/50 gap-3">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-gray-800">{header}</span>
+                        {samples.length > 0 && (
+                          <span className="text-xs text-gray-400 ml-2">e.g. <span className="font-mono">{samples[0]}</span></span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-gray-400 text-xs">→</span>
+                        <span className="text-xs font-medium text-gray-900">
+                          {TARGET_FIELDS.find((f) => f.key === currentTarget)?.label ?? currentTarget}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: `${GREEN}15`, color: GREEN }}>
+                          {confidence}%
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...map };
+                            delete next[header];
+                            onMapChange(next);
+                          }}
+                          className="text-gray-300 hover:text-red-400 transition-colors text-xs"
+                          title="Remove this mapping"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Warning if no name field */}
+        {!hasNameField && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              Map at least <strong>First Name</strong> or <strong>Last Name</strong> before importing.
+              Contacts without names are impossible to find and manage.
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -1002,20 +1211,45 @@ export default function ImportExportClient({ campaignId }: Props) {
                   }}
                 >
                   {analyzing ? (
-                    <div className="space-y-2 w-full max-w-xs">
-                      <Shimmer className="h-3 w-full" />
-                      <Shimmer className="h-3 w-3/4" />
-                      <Shimmer className="h-3 w-1/2" />
+                    <div className="py-2 space-y-2 text-center">
+                      <div className="w-10 h-10 rounded-xl mx-auto flex items-center justify-center" style={{ backgroundColor: `${GREEN}15` }}>
+                        <Shimmer className="w-6 h-6 rounded-full" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-700">{selectedFile ? `Reading ${selectedFile.name}…` : "Reading file…"}</p>
+                      <p className="text-xs text-gray-400">Detecting format · mapping columns · checking for duplicates</p>
                     </div>
                   ) : (
                     <>
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${GREEN}15` }}>
-                        <Upload className="w-6 h-6" style={{ color: GREEN }} />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-gray-700">Drop your voter list here, or tap to browse</p>
-                        <p className="text-xs text-gray-400 mt-1">.csv, .tsv, .txt, .xls, .xlsx</p>
-                      </div>
+                      {selectedFile && analysis ? (
+                        <div className="flex items-center gap-3 w-full max-w-sm" onClick={(e) => e.preventDefault()}>
+                          <FileSpreadsheet className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate flex-1 text-left">{selectedFile.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setAnalysis(null);
+                              setParsedFile(null);
+                              setResult(null);
+                              setSelectedFile(null);
+                              setShowAdvancedMapping(false);
+                              if (fileRef.current) fileRef.current.value = "";
+                            }}
+                            className="text-xs text-gray-400 hover:text-red-500 flex-shrink-0 underline"
+                          >
+                            Change file
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${GREEN}15` }}>
+                            <Upload className="w-6 h-6" style={{ color: GREEN }} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-gray-700">Drop your voter list here, or tap to browse</p>
+                            <p className="text-xs text-gray-400 mt-1">.csv, .tsv, .txt, .xls, .xlsx · any size</p>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                   <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xls,.xlsx" className="hidden" onChange={handleMainFileSelect} />
@@ -1038,13 +1272,13 @@ export default function ImportExportClient({ campaignId }: Props) {
                       />
                     ) : (
                       <>
-                        {/* Manual / advanced mapping path */}
+                        {/* File info bar */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                           {[
                             { label: "File", value: analysis.filename },
                             { label: "Type", value: analysis.fileType.toUpperCase() },
                             { label: "Rows", value: analysis.totalRows.toLocaleString() },
-                            { label: "Mapped", value: `${mappingHealth.mapped}/${mappingHealth.total}` },
+                            { label: "Columns", value: `${analysis.rawHeaders.length} found` },
                           ].map(item => (
                             <div key={item.label} className="rounded-lg bg-gray-50 p-3">
                               <p className="text-gray-500 text-[11px]">{item.label}</p>
@@ -1059,7 +1293,7 @@ export default function ImportExportClient({ campaignId }: Props) {
                             <span style={{ color: NAVY }}>
                               Detected: <strong>{analysis.detectedFormatLabel}</strong> · {analysis.formatConfidence ?? 0}% confidence
                             </span>
-                            {showAdvancedMapping && (
+                            {showAdvancedMapping && (analysis.autoConfidence ?? 0) >= 85 && (
                               <button
                                 onClick={() => setShowAdvancedMapping(false)}
                                 className="ml-auto text-gray-400 hover:text-gray-600 underline underline-offset-2"
@@ -1070,16 +1304,21 @@ export default function ImportExportClient({ campaignId }: Props) {
                           </div>
                         )}
 
-                        <MappingTable title="Column Mapping" analysisData={analysis} map={mappings} onMapChange={setMappings} />
+                        <MappingGuide
+                          title="Column Mapping"
+                          analysisData={analysis}
+                          map={mappings}
+                          onMapChange={setMappings}
+                        />
 
-                        {!mappingHealth.hasNameField && (
-                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                            Include at least First Name or Last Name mapping before import.
-                          </div>
-                        )}
-
-                        <MButton onClick={doQuickImport} disabled={!selectedFile || !mappingHealth.hasNameField} loading={importing} className="w-full md:w-auto">
-                          <Upload className="w-4 h-4" /> Run Import
+                        <MButton
+                          onClick={doQuickImport}
+                          disabled={!parsedFile || !mappingHealth.hasNameField}
+                          loading={importing}
+                          className="w-full md:w-auto"
+                          size="lg"
+                        >
+                          <Upload className="w-4 h-4" /> Import {analysis.totalRows.toLocaleString()} voters
                         </MButton>
                       </>
                     )}
@@ -1142,21 +1381,88 @@ export default function ImportExportClient({ campaignId }: Props) {
 
                 {/* Import result */}
                 <AnimatePresence>
-                  {result && (
+                  {result && !importing && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className={cn("p-4 rounded-lg border", result.errors.length === 0 ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200")}
+                      className="rounded-xl border-2 overflow-hidden"
+                      style={result.errors.length === 0
+                        ? { borderColor: `${GREEN}50` }
+                        : { borderColor: `${AMBER}40` }
+                      }
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        {result.errors.length === 0 ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-amber-600" />}
-                        <p className="text-sm font-medium">{result.imported} imported · {result.updated} updated · {result.skipped} skipped</p>
-                      </div>
-                      {result.errors.length > 0 && (
-                        <div className="space-y-1">
-                          {result.errors.slice(0, 10).map((e) => <p key={e} className="text-xs text-amber-700">{e}</p>)}
+                      {/* Header band */}
+                      <div className="p-5 space-y-3" style={{ backgroundColor: result.errors.length === 0 ? `${GREEN}06` : `${AMBER}08` }}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: result.errors.length === 0 ? `${GREEN}20` : `${AMBER}20` }}>
+                            {result.errors.length === 0
+                              ? <CheckCircle className="w-5 h-5" style={{ color: GREEN }} />
+                              : <AlertCircle className="w-5 h-5" style={{ color: AMBER }} />
+                            }
+                          </div>
+                          <div>
+                            <p className="font-semibold text-base" style={{ color: NAVY }}>
+                              {result.errors.length === 0 ? "Import complete!" : "Import completed with warnings"}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <strong style={{ color: GREEN }}>{result.imported.toLocaleString()}</strong> voters added
+                              {result.updated > 0 && <> · <strong>{result.updated.toLocaleString()}</strong> existing records updated</>}
+                              {result.skipped > 0 && <> · <strong className="text-amber-600">{result.skipped.toLocaleString()}</strong> rows skipped</>}
+                            </p>
+                          </div>
                         </div>
-                      )}
+
+                        {/* Skipped explanation */}
+                        {result.skipped > 0 && (
+                          <div className="rounded-lg border border-amber-200 bg-white/70 p-3 text-xs text-amber-800 space-y-1">
+                            <p className="font-medium">Why were {result.skipped.toLocaleString()} rows skipped?</p>
+                            <p>Rows are skipped when they&apos;re missing both First Name and Last Name. Check your column mapping or verify the source file has name data.</p>
+                            {result.errors.slice(0, 3).map((e, i) => <p key={i} className="text-amber-700 font-mono">• {e}</p>)}
+                            {result.errors.length > 3 && <p className="text-amber-500">…and {result.errors.length - 3} more. Check Import History for the full log.</p>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Next steps */}
+                      <div className="p-5 bg-white border-t border-gray-100 space-y-3">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">What to do next</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {[
+                            { href: "/contacts", icon: <Users className="w-4 h-4" />, label: "View Contacts", desc: "See all imported voters" },
+                            { href: "/gotv", icon: <ClipboardList className="w-4 h-4" />, label: "Set up GOTV", desc: "Plan election day outreach" },
+                            { href: "/canvassing", icon: <MapPin className="w-4 h-4" />, label: "Start Canvassing", desc: "Build walk lists" },
+                          ].map(({ href, icon, label, desc }) => (
+                            <a
+                              key={href}
+                              href={href}
+                              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors"
+                            >
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}10`, color: GREEN }}>
+                                {icon}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold" style={{ color: NAVY }}>{label}</p>
+                                <p className="text-xs text-gray-400">{desc}</p>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResult(null);
+                            setAnalysis(null);
+                            setParsedFile(null);
+                            setSelectedFile(null);
+                            setShowAdvancedMapping(false);
+                            if (fileRef.current) fileRef.current.value = "";
+                          }}
+                          className="text-xs text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors"
+                        >
+                          Import another file
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1171,7 +1477,9 @@ export default function ImportExportClient({ campaignId }: Props) {
                 </h3>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600">Upload a second file (phone list) and run fuzzy matching with optional AI support.</p>
+                <p className="text-sm text-gray-600">
+                  Have a list of phone numbers from another source? Upload it here and we&apos;ll automatically match them to your voters — even if names are spelled slightly differently.
+                </p>
 
                 <motion.label
                   whileHover={{ scale: 1.01 }}
@@ -1213,15 +1521,21 @@ export default function ImportExportClient({ campaignId }: Props) {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Select value={matchMode} onChange={(e) => setMatchMode(e.target.value as "strict" | "balanced" | "aggressive")} className="min-h-[44px]">
-                    <option value="strict">Strict matching (lowest false positives)</option>
-                    <option value="balanced">Balanced matching (recommended)</option>
-                    <option value="aggressive">Aggressive matching (highest merge rate)</option>
-                  </Select>
-                  <Select value={useAiMatch ? "ai-on" : "ai-off"} onChange={(e) => setUseAiMatch(e.target.value === "ai-on")} className="min-h-[44px]">
-                    <option value="ai-on">AI assist for ambiguous matches: On</option>
-                    <option value="ai-off">AI assist for ambiguous matches: Off</option>
-                  </Select>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-500">Matching sensitivity</p>
+                    <Select value={matchMode} onChange={(e) => setMatchMode(e.target.value as "strict" | "balanced" | "aggressive")} className="min-h-[44px]">
+                      <option value="strict">Strict — only obvious matches (safest, fewest false matches)</option>
+                      <option value="balanced">Balanced — recommended for most voter lists</option>
+                      <option value="aggressive">Aggressive — catch more matches, accept some risk of wrong merges</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-500">AI assist</p>
+                    <Select value={useAiMatch ? "ai-on" : "ai-off"} onChange={(e) => setUseAiMatch(e.target.value === "ai-on")} className="min-h-[44px]">
+                      <option value="ai-on">On — AI resolves ambiguous name matches (e.g. &quot;Bob&quot; vs &quot;Robert&quot;)</option>
+                      <option value="ai-off">Off — rule-based matching only (faster, no AI cost)</option>
+                    </Select>
+                  </div>
                 </div>
 
                 <MButton onClick={runPhoneMatching} loading={matchingPhoneList} disabled={!selectedFile || !phoneFile || !analysis || !phoneAnalysis}>
