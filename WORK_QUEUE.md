@@ -242,6 +242,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | /settings/security — complete security settings | PENDING | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
 | /notifications — voter outreach full build | PENDING | 389 lines, basic display. Full push notification composer, opt-in management, delivery stats. |
+| /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
 | /eday — election day ops full build | PENDING | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
 | /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |
 | /briefing — daily briefing full build | PENDING | 223 lines, no visualizations. Morning briefing: key metrics, top tasks, AI summary, weather/news feed. |
