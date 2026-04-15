@@ -224,4 +224,4 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 | Task | Status | Notes |
 |---|---|---|
-| Demo public access + guided tour | CLAIMED 2026-04-15 | Open /demo/candidate+party+media to public (no token required), build DemoTour overlay, wire into candidate demo |
+| Demo public access + guided tour | DONE — 7494b12 | Open /demo/candidate+party+media to public (no token required), build DemoTour overlay, wire into candidate demo |
