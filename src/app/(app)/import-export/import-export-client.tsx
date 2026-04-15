@@ -36,6 +36,19 @@ interface MappingCandidate {
   confidence: number;
 }
 
+interface FieldStats {
+  totalRows: number;
+  withName: number;
+  withPhone: number;
+  withEmail: number;
+  withAddress: number;
+  withPollNumber: number;
+  withPostalCode: number;
+  phonePercent: number;
+  emailPercent: number;
+  addressPercent: number;
+}
+
 interface AnalyzeResponse {
   filename: string;
   fileType: string;
@@ -45,6 +58,16 @@ interface AnalyzeResponse {
   sampleRows: Record<string, string>[];
   suggestedMappings: Record<string, MappingCandidate>;
   warnings: string[];
+  // Intelligence fields
+  detectedFormat?: string;
+  detectedFormatLabel?: string | null;
+  detectedFormatDescription?: string | null;
+  formatConfidence?: number;
+  autoConfidence?: number;
+  hasNameField?: boolean;
+  fieldStats?: FieldStats;
+  previewRows?: Array<Record<string, string>>;
+  existingContactCount?: number;
 }
 
 interface DuplicatePreview {
@@ -213,6 +236,7 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [bulkExporting, setBulkExporting] = useState(false);
   const [dragMainActive, setDragMainActive] = useState(false);
   const [dragPhoneActive, setDragPhoneActive] = useState(false);
+  const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
 
   const [result, setResult] = useState<ImportResult | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicatePreview | null>(null);
@@ -307,7 +331,7 @@ export default function ImportExportClient({ campaignId }: Props) {
 
   async function analyzeFile(file: File, forPhoneList = false) {
     if (forPhoneList) setAnalyzingPhone(true);
-    else { setAnalyzing(true); setResult(null); setDuplicates(null); }
+    else { setAnalyzing(true); setResult(null); setDuplicates(null); setShowAdvancedMapping(false); }
 
     try {
       const formData = new FormData();
@@ -580,6 +604,112 @@ export default function ImportExportClient({ campaignId }: Props) {
 
   const anyExporting = Object.values(exportingByEndpoint).some(Boolean) || bulkExporting;
 
+  function SmartSummaryCard({
+    analysisData, onImport, importing: isImporting, onShowAdvanced,
+  }: {
+    analysisData: AnalyzeResponse;
+    onImport: () => void;
+    importing: boolean;
+    onShowAdvanced: () => void;
+  }) {
+    const stats = analysisData.fieldStats;
+    const n = analysisData.totalRows.toLocaleString();
+    const previewCols = analysisData.previewRows?.[0] ? Object.keys(analysisData.previewRows[0]) : [];
+
+    const chips: string[] = [
+      stats && stats.withName > 0 ? `${stats.withName.toLocaleString()} with name` : "",
+      stats && stats.withAddress > 0 ? `${stats.withAddress.toLocaleString()} with address` : "",
+      stats && stats.withPollNumber > 0 ? `${stats.withPollNumber.toLocaleString()} with poll #` : "",
+      stats && stats.withPhone > 0 ? `${stats.withPhone.toLocaleString()} with phone` : "",
+      stats && stats.withEmail > 0 ? `${stats.withEmail.toLocaleString()} with email` : "",
+    ].filter(Boolean);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-xl border-2 p-5 space-y-4"
+        style={{ borderColor: `${GREEN}50`, backgroundColor: `${GREEN}06` }}
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}20` }}>
+            <CheckCircle className="w-5 h-5" style={{ color: GREEN }} />
+          </div>
+          <div>
+            <p className="font-semibold text-base" style={{ color: NAVY }}>
+              {analysisData.detectedFormatLabel ? `${analysisData.detectedFormatLabel} detected` : "File ready to import"}
+            </p>
+            <p className="text-sm text-gray-500">
+              {analysisData.detectedFormatDescription ?? "All columns mapped automatically. Review the preview and click Import."}
+            </p>
+          </div>
+        </div>
+
+        {/* Stat chips */}
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: NAVY }}>
+            {n} voters
+          </span>
+          {chips.map((chip) => (
+            <span key={chip} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700">
+              {chip}
+            </span>
+          ))}
+          {(analysisData.existingContactCount ?? 0) > 0 && (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700">
+              {analysisData.existingContactCount!.toLocaleString()} already in campaign
+            </span>
+          )}
+        </div>
+
+        {/* Preview rows */}
+        {analysisData.previewRows && analysisData.previewRows.length > 0 && previewCols.length > 0 && (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  {previewCols.map((col) => (
+                    <th key={col} className="px-3 py-2 text-left text-gray-600 font-medium whitespace-nowrap">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {analysisData.previewRows.map((row, i) => (
+                  <tr key={i}>
+                    {previewCols.map((col) => (
+                      <td key={col} className="px-3 py-2 text-gray-700 whitespace-nowrap">{row[col] ?? ""}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Warnings */}
+        {analysisData.warnings && analysisData.warnings.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+            {analysisData.warnings.map((w) => <p key={w}>{w}</p>)}
+          </div>
+        )}
+
+        {/* Import button + advanced escape hatch */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <MButton onClick={onImport} loading={isImporting} size="lg" className="min-w-[200px]">
+            <Upload className="w-4 h-4" /> Import {n} voters
+          </MButton>
+          <button
+            onClick={onShowAdvanced}
+            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+          >
+            Edit column mapping
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
   function MappingTable({
     title, analysisData, map, onMapChange,
   }: {
@@ -757,31 +887,61 @@ export default function ImportExportClient({ campaignId }: Props) {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-3"
                   >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      {[
-                        { label: "File", value: analysis.filename },
-                        { label: "Type", value: analysis.fileType.toUpperCase() },
-                        { label: "Rows", value: analysis.totalRows.toLocaleString() },
-                        { label: "Mapped", value: `${mappingHealth.mapped}/${mappingHealth.total}` },
-                      ].map(item => (
-                        <div key={item.label} className="rounded-lg bg-gray-50 p-3">
-                          <p className="text-gray-500 text-[11px]">{item.label}</p>
-                          <p className="font-semibold truncate" style={{ color: NAVY }}>{item.value}</p>
+                    {/* Smart auto-detected path */}
+                    {(analysis.autoConfidence ?? 0) >= 85 && !showAdvancedMapping ? (
+                      <SmartSummaryCard
+                        analysisData={analysis}
+                        onImport={doQuickImport}
+                        importing={importing}
+                        onShowAdvanced={() => setShowAdvancedMapping(true)}
+                      />
+                    ) : (
+                      <>
+                        {/* Manual / advanced mapping path */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                          {[
+                            { label: "File", value: analysis.filename },
+                            { label: "Type", value: analysis.fileType.toUpperCase() },
+                            { label: "Rows", value: analysis.totalRows.toLocaleString() },
+                            { label: "Mapped", value: `${mappingHealth.mapped}/${mappingHealth.total}` },
+                          ].map(item => (
+                            <div key={item.label} className="rounded-lg bg-gray-50 p-3">
+                              <p className="text-gray-500 text-[11px]">{item.label}</p>
+                              <p className="font-semibold truncate" style={{ color: NAVY }}>{item.value}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
 
-                    <MappingTable title="Column Mapping" analysisData={analysis} map={mappings} onMapChange={setMappings} />
+                        {analysis.detectedFormatLabel && (
+                          <div className="rounded-lg border p-3 text-xs flex items-center gap-2" style={{ borderColor: `${GREEN}40`, backgroundColor: `${GREEN}08` }}>
+                            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: GREEN }} />
+                            <span style={{ color: NAVY }}>
+                              Detected: <strong>{analysis.detectedFormatLabel}</strong> · {analysis.formatConfidence ?? 0}% confidence
+                            </span>
+                            {showAdvancedMapping && (
+                              <button
+                                onClick={() => setShowAdvancedMapping(false)}
+                                className="ml-auto text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                              >
+                                ← Back to smart view
+                              </button>
+                            )}
+                          </div>
+                        )}
 
-                    {!mappingHealth.hasNameField && (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                        Include at least First Name or Last Name mapping before import.
-                      </div>
+                        <MappingTable title="Column Mapping" analysisData={analysis} map={mappings} onMapChange={setMappings} />
+
+                        {!mappingHealth.hasNameField && (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                            Include at least First Name or Last Name mapping before import.
+                          </div>
+                        )}
+
+                        <MButton onClick={doQuickImport} disabled={!selectedFile || !mappingHealth.hasNameField} loading={importing} className="w-full md:w-auto">
+                          <Upload className="w-4 h-4" /> Run Import
+                        </MButton>
+                      </>
                     )}
-
-                    <MButton onClick={doQuickImport} disabled={!selectedFile || !mappingHealth.hasNameField} loading={importing} className="w-full md:w-auto">
-                      <Upload className="w-4 h-4" /> Run Import
-                    </MButton>
                   </motion.div>
                 )}
 
