@@ -51,7 +51,7 @@ export function calculateWinThreshold(totalContacts: number): number {
 
 export async function getGotvSummaryMetrics(campaignId: string): Promise<GotvSummaryMetrics> {
   const contacts = await prisma.contact.findMany({
-    where: { campaignId, isDeceased: false },
+    where: { campaignId, deletedAt: null, isDeceased: false },
     select: {
       supportLevel: true,
       gotvStatus: true,
@@ -124,6 +124,7 @@ export async function getGotvPriorityList(
   const contacts = await prisma.contact.findMany({
     where: {
       campaignId,
+      deletedAt: null,
       isDeceased: false,
       doNotContact: false,
     },

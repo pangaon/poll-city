@@ -177,10 +177,11 @@ export async function POST(req: NextRequest) {
 
     if (matchedContact) {
       matchedCount++;
-      // Strike off — mark as voted in our DB
+      // Strike off — mark as voted in our DB. Must set contact.voted = true so gap
+      // recalculation in getGotvSummaryMetrics (which reads contact.voted, not gotvStatus) sees this.
       await prisma.contact.update({
         where: { id: matchedContact.id },
-        data: { gotvStatus: "voted" },
+        data: { gotvStatus: "voted", voted: true, votedAt: new Date() },
       });
       struckCount++;
     }
