@@ -183,6 +183,102 @@ async function handleEvent(type: string, data: Record<string, unknown>): Promise
       }
       break;
     }
+
+    case "email.inbound_message": {
+      // Inbound reply to a campaign email — wire into Unified Inbox.
+      // Resend fires this when a recipient replies to an email sent through an inbound endpoint.
+      // data.from = sender email, data.to = the campaign's inbound address, data.subject, data.text, data.html
+      const fromEmail = (
+        Array.isArray(data.from) ? (data.from[0] as string) : (data.from as string)
+      )?.toLowerCase();
+      const subject = (data.subject as string) ?? null;
+      const bodyText = (data.text as string) ?? (data.html as string) ?? "";
+      const bodyHtml = (data.html as string) ?? null;
+      const messageId = (data.message_id as string) ?? null;
+
+      if (!fromEmail) break;
+
+      // Find campaign by matching the inbound-to address against campaign replyToEmail.
+      // Fall back to newsletter subscriber lookup by sender email.
+      const toAddresses: string[] = Array.isArray(data.to)
+        ? (data.to as string[])
+        : [(data.to as string)];
+
+      // Try to find the campaign from the to-address matching replyToEmail.
+      const matchedCampaigns = await prisma.campaign.findMany({
+        where: {
+          replyToEmail: { in: toAddresses, mode: "insensitive" },
+          isActive: true,
+        },
+        select: { id: true, replyToEmail: true },
+      }).catch(() => [] as { id: string; replyToEmail: string | null }[]);
+
+      // If no direct match, fall back to newsletter subscriber lookup.
+      const campaignIds: string[] =
+        matchedCampaigns.length > 0
+          ? matchedCampaigns.map((c) => c.id)
+          : await getCampaignIdsForEmail(fromEmail).catch(() => [] as string[]);
+
+      for (const campaignId of campaignIds) {
+        // Find matching contact in this campaign for linking.
+        const contact = await prisma.contact.findFirst({
+          where: {
+            campaignId,
+            email: { equals: fromEmail, mode: "insensitive" },
+            deletedAt: null,
+          },
+          select: { id: true, firstName: true, lastName: true },
+        }).catch(() => null);
+
+        const thread = await prisma.inboxThread.upsert({
+          where: {
+            campaignId_channel_fromHandle: {
+              campaignId,
+              channel: "email",
+              fromHandle: fromEmail,
+            },
+          },
+          create: {
+            campaignId,
+            contactId: contact?.id ?? null,
+            channel: "email",
+            fromHandle: fromEmail,
+            fromName: contact
+              ? [contact.firstName, contact.lastName].filter(Boolean).join(" ") || null
+              : null,
+            subject,
+            lastMessageAt: new Date(),
+            unreadCount: 1,
+          },
+          update: {
+            subject: subject ?? undefined,
+            lastMessageAt: new Date(),
+            unreadCount: { increment: 1 },
+          },
+          select: { id: true },
+        }).catch((err: unknown) => {
+          console.error("[Resend webhook] email.inbound_message thread upsert failed:", err);
+          return null;
+        });
+
+        if (!thread) continue;
+
+        await prisma.inboxMessage.create({
+          data: {
+            threadId: thread.id,
+            direction: "inbound",
+            fromHandle: fromEmail,
+            toHandle: toAddresses[0] ?? "campaign",
+            body: bodyText.slice(0, 10_000),
+            bodyHtml: bodyHtml?.slice(0, 50_000) ?? null,
+            externalId: messageId,
+          },
+        }).catch((err: unknown) => {
+          console.error("[Resend webhook] email.inbound_message create failed:", err);
+        });
+      }
+      break;
+    }
   }
 
   // Always return 200 — never block webhook acknowledgment on contact-update failures.

@@ -702,6 +702,10 @@ model User {
   savedSegmentsAuthored       SavedSegment[]           @relation("SavedSegmentAuthor")
   scheduledMessagesAuthored   ScheduledMessage[]       @relation("ScheduledMessageAuthor")
 
+  // Unified Inbox
+  inboxThreadsAssigned        InboxThread[]            @relation("InboxThreadAssignee")
+  inboxMessagesSent           InboxMessage[]           @relation("InboxMessageSender")
+
   // Client onboarding invites
   clientInviteTokens  ClientInviteToken[] @relation("ClientInviteRecipient")
   sentClientInvites   ClientInviteToken[] @relation("ClientInviteCreator")
@@ -915,6 +919,8 @@ model Campaign {
   messageTemplates          MessageTemplate[]
   savedSegments             SavedSegment[]
   scheduledMessages         ScheduledMessage[]
+  emailTrackingEvents       EmailTrackingEvent[]
+  inboxThreads              InboxThread[]
 
   clientInviteTokens  ClientInviteToken[]
 
@@ -1259,9 +1265,14 @@ model Contact {
   fieldAttempts            FieldAttempt[]
   followUpActions          FollowUpAction[]
 
+  // Unified Inbox
+  inboxThreads             InboxThread[]
+
   @@index([campaignId])
   @@index([lastName, firstName])
   @@index([supportLevel])
+  emailTrackingEvents  EmailTrackingEvent[]
+
   @@index([postalCode])
   @@index([email])
   @@index([phone])
@@ -2335,17 +2346,117 @@ model NotificationLog {
   deliveredCount   Int       @default(0)
   failedCount      Int       @default(0)
   failedEndpoints  String[]  @default([])
+  // Email open / click counters (incremented by tracking pixel routes)
+  openedCount      Int       @default(0)
+  clickCount       Int       @default(0)
   // E-001 idempotency: unique per-send key prevents double-send on retried requests
   sendKey          String?   @unique
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  user     User?    @relation(fields: [userId], references: [id])
+  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user            User?                 @relation(fields: [userId], references: [id])
+  trackingEvents  EmailTrackingEvent[]
 
   @@index([campaignId, createdAt])
   @@index([campaignId, status])
   @@map("notification_logs")
+}
+
+// ── EmailTrackingEvent — open / click events for email blasts ──────────────
+
+enum EmailEventType {
+  open
+  click
+}
+
+model EmailTrackingEvent {
+  id                String         @id @default(cuid())
+  campaignId        String
+  notificationLogId String?
+  contactId         String?
+  eventType         EmailEventType
+  linkUrl           String?        // destination URL for click events
+  userAgentSnip     String?        // first 200 chars of User-Agent
+  ipHash            String?        // sha256 of client IP — privacy-safe
+  createdAt         DateTime       @default(now())
+
+  campaign         Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  notificationLog  NotificationLog? @relation(fields: [notificationLogId], references: [id])
+  contact          Contact?         @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId])
+  @@index([notificationLogId])
+  @@index([contactId])
+  @@map("email_tracking_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UNIFIED INBOX
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum InboxChannel {
+  email
+  sms
+}
+
+enum InboxStatus {
+  open
+  resolved
+  snoozed
+}
+
+enum InboxMessageDirection {
+  inbound
+  outbound
+}
+
+model InboxThread {
+  id            String       @id @default(cuid())
+  campaignId    String
+  contactId     String?      // null if no matching contact found
+  channel       InboxChannel
+  status        InboxStatus  @default(open)
+  subject       String?      // email subject; null for SMS
+  fromHandle    String       // email address or E.164 phone number
+  fromName      String?      // display name of the inbound sender
+  lastMessageAt DateTime     @default(now())
+  unreadCount   Int          @default(1)
+  assignedToId  String?
+  snoozedUntil  DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  campaign   Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact?       @relation(fields: [contactId], references: [id])
+  assignedTo User?          @relation("InboxThreadAssignee", fields: [assignedToId], references: [id])
+  messages   InboxMessage[]
+
+  // One thread per contact channel per campaign — prevents duplicates on repeated inbound messages
+  @@unique([campaignId, channel, fromHandle])
+  @@index([campaignId, status, lastMessageAt])
+  @@index([campaignId, channel])
+  @@map("inbox_threads")
+}
+
+model InboxMessage {
+  id           String                @id @default(cuid())
+  threadId     String
+  direction    InboxMessageDirection
+  fromHandle   String                // sender address or phone
+  toHandle     String                // recipient address or phone
+  body         String                // plain-text body (always populated)
+  bodyHtml     String?               // HTML body for email messages
+  externalId   String?               // Resend message-id or Twilio message SID
+  sentByUserId String?               // populated for outbound replies from staff
+  sentAt       DateTime              @default(now())
+  createdAt    DateTime              @default(now())
+
+  thread     InboxThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sentByUser User?       @relation("InboxMessageSender", fields: [sentByUserId], references: [id])
+
+  @@index([threadId, sentAt])
+  @@map("inbox_messages")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

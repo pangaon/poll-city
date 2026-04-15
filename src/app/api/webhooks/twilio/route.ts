@@ -97,8 +97,73 @@ export async function POST(req: NextRequest) {
   const isOptIn = OPT_IN_KEYWORDS.has(body);
 
   if (!isOptOut && !isOptIn) {
-    // Non-keyword inbound SMS — acknowledge silently.
-    // Unrecognized messages should not trigger any state change.
+    // Non-keyword inbound SMS — wire into the Unified Inbox as an inbound message.
+    const rawBody = (params.Body ?? "").trim();
+    const messageSid = params.MessageSid ?? null;
+
+    // Find all contacts matching this phone number across campaigns — one thread per campaign.
+    try {
+      const withPlus2 = from.startsWith("+") ? from : `+${from}`;
+      const withoutPlus2 = from.startsWith("+") ? from.slice(1) : from;
+
+      const contacts = await prisma.contact.findMany({
+        where: {
+          OR: [
+            { phone: withPlus2 },
+            { phone: withoutPlus2 },
+            { phone2: withPlus2 },
+            { phone2: withoutPlus2 },
+          ],
+          deletedAt: null,
+        },
+        select: { id: true, campaignId: true, firstName: true, lastName: true },
+      });
+
+      // Deduplicate by campaignId — one thread per campaign regardless of how many contacts share the number.
+      const seen = new Set<string>();
+      for (const contact of contacts) {
+        if (seen.has(contact.campaignId)) continue;
+        seen.add(contact.campaignId);
+
+        const thread = await prisma.inboxThread.upsert({
+          where: {
+            campaignId_channel_fromHandle: {
+              campaignId: contact.campaignId,
+              channel: "sms",
+              fromHandle: withPlus2,
+            },
+          },
+          create: {
+            campaignId: contact.campaignId,
+            contactId: contact.id,
+            channel: "sms",
+            fromHandle: withPlus2,
+            fromName: [contact.firstName, contact.lastName].filter(Boolean).join(" ") || null,
+            lastMessageAt: new Date(),
+            unreadCount: 1,
+          },
+          update: {
+            lastMessageAt: new Date(),
+            unreadCount: { increment: 1 },
+          },
+          select: { id: true },
+        });
+
+        await prisma.inboxMessage.create({
+          data: {
+            threadId: thread.id,
+            direction: "inbound",
+            fromHandle: withPlus2,
+            toHandle: process.env.TWILIO_PHONE_NUMBER ?? process.env.TWILIO_FROM ?? "campaign",
+            body: rawBody,
+            externalId: messageSid,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[webhooks/twilio] inbox thread upsert failed:", err);
+    }
+
     return twimlSilent();
   }
 
