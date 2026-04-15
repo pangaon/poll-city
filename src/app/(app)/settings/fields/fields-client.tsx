@@ -55,6 +55,7 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
   });
   const [saving, setSaving] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [confirmDeleteFieldId, setConfirmDeleteFieldId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -360,12 +361,28 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
                           >
                             {field.isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                           </button>
-                          <button
-                            onClick={() => deleteField(field.id)}
-                            className="w-8 h-8 min-w-[44px] min-h-[44px] rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {confirmDeleteFieldId === field.id ? (
+                            <span className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                              <span className="text-xs text-red-600 font-medium">Delete field?</span>
+                              <button
+                                onClick={() => { deleteField(field.id); setConfirmDeleteFieldId(null); }}
+                                className="text-xs font-semibold text-red-600 hover:text-red-800 px-1"
+                              >Yes</button>
+                              <button
+                                onClick={() => setConfirmDeleteFieldId(null)}
+                                className="text-xs text-gray-400 hover:text-gray-600 px-1"
+                              >Cancel</button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteFieldId(field.id)}
+                              title="Delete this custom field — this cannot be undone"
+                              className="inline-flex items-center gap-1 px-2 py-1 min-h-[36px] rounded-lg bg-red-50 text-red-500 hover:bg-red-100 text-xs font-medium transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>Delete</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

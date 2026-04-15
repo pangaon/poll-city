@@ -338,7 +338,12 @@ export default function LitDropsClient({ campaignId, campaignName, initialShifts
             <EmptyState
               icon={<Layers className="h-8 w-8" />}
               title="No lit drop programs"
-              description="Programs group multiple lit drop runs under one campaign objective."
+              description="Programs group multiple lit drop runs under one campaign objective. Create your first program when you schedule a lit drop run."
+              action={
+                <Button onClick={() => { setActiveTab("runs"); setShowDrawer(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />Schedule a Lit Drop Run
+                </Button>
+              }
             />
           ) : (
             <div className="space-y-2">
