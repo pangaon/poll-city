@@ -6,8 +6,18 @@ import {
 } from "@/components/ui";
 import {
   SlidersHorizontal, Palette, Users, Globe, Shield, Lock, ChevronRight,
+  CreditCard, Mail, MessageSquare, Sparkles, Database, Bell, CheckCircle2, XCircle, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface Integrations {
+  stripe: boolean;
+  resend: boolean;
+  twilio: boolean;
+  anthropic: boolean;
+  upstash: boolean;
+  vapid: boolean;
+}
 
 interface Props {
   campaign: {
@@ -19,6 +29,7 @@ interface Props {
   };
   user: { id: string; name: string | null; email: string; phone: string | null; avatarUrl: string | null };
   userRole: string;
+  integrations: Integrations;
 }
 
 const SETTINGS_SECTIONS = [
@@ -66,10 +77,9 @@ const SETTINGS_SECTIONS = [
   },
 ];
 
-export default function SettingsClient({ campaign, user, userRole }: Props) {
+export default function SettingsClient({ campaign, user, userRole, integrations }: Props) {
   const [profile, setProfile] = useState({ name: user.name ?? "", phone: user.phone ?? "" });
   const [savingProfile, setSavingProfile] = useState(false);
-  const isAiEnabled = (process.env.NEXT_PUBLIC_AI_ENABLED ?? "false") === "true";
 
   const [campaignProfile, setCampaignProfile] = useState({
     name: campaign.name,
@@ -274,16 +284,88 @@ export default function SettingsClient({ campaign, user, userRole }: Props) {
         </CardContent>
       </Card>
 
-      {/* System */}
+      {/* Integrations */}
       <Card>
-        <CardHeader><h3 className="font-semibold text-gray-900">System</h3></CardHeader>
-        <CardContent className="space-y-2 text-sm text-gray-600">
-          <div className="flex justify-between">
-            <span>AI Assist</span>
-            <Badge variant={isAiEnabled ? "success" : "default"}>{isAiEnabled ? "Live" : "Demo mode"}</Badge>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Integrations</h3>
+            <Link href="/ops" className="text-xs text-blue-600 hover:underline">Manage in Ops →</Link>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { key: "stripe" as const, label: "Stripe", description: "Donations + subscriptions", icon: CreditCard, setupNote: "Add STRIPE_SECRET_KEY to Railway" },
+              { key: "resend" as const, label: "Email (Resend)", description: "Email blasts + receipts", icon: Mail, setupNote: "Add RESEND_API_KEY to Railway" },
+              { key: "twilio" as const, label: "SMS (Twilio)", description: "SMS blasts + opt-outs", icon: MessageSquare, setupNote: "Add TWILIO_ACCOUNT_SID to Railway" },
+              { key: "anthropic" as const, label: "Adoni AI", description: "Campaign intelligence", icon: Sparkles, setupNote: "Add ANTHROPIC_API_KEY to Railway" },
+              { key: "upstash" as const, label: "Rate Limiting", description: "Redis-backed rate limits", icon: Database, setupNote: "Add UPSTASH_REDIS_REST_URL to Railway" },
+              { key: "vapid" as const, label: "Push Notifications", description: "Browser push alerts", icon: Bell, setupNote: "Run npx web-push generate-vapid-keys" },
+            ] as const).map(({ key, label, description, icon: Icon, setupNote }) => {
+              const isActive = integrations[key];
+              return (
+                <div
+                  key={key}
+                  className={`flex items-start gap-3 rounded-xl border p-3 ${isActive ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-gray-50"}`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-gray-900">{label}</p>
+                      {isActive
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        : <XCircle className="w-3.5 h-3.5 text-gray-300" />}
+                    </div>
+                    <p className="text-xs text-gray-500">{description}</p>
+                    {!isActive && (
+                      <p className="text-xs text-amber-700 mt-0.5">{setupNote}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            See <Link href="/george-todo" className="text-blue-600 underline">GEORGE_TODO.md</Link> for step-by-step setup instructions for each integration.
+          </p>
         </CardContent>
       </Card>
+
+      {/* Danger Zone — ADMIN only */}
+      {canEditCampaign && (
+        <Card className="border-red-200">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <h3 className="font-semibold text-red-800">Danger Zone</h3>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-medium text-red-900">Archive this campaign</p>
+              <p className="text-xs text-red-700 mt-1">
+                Archiving will hide this campaign from all team members. Your data is preserved and can be restored.
+                This action cannot be undone without contacting support.
+              </p>
+              <button
+                className="mt-3 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    `Archive "${campaign.name}"? This will hide the campaign from all team members. Contact support to restore.`
+                  );
+                  if (confirmed) {
+                    toast.error("Campaign archiving requires contacting support. Email support@poll.city with your campaign name.");
+                  }
+                }}
+              >
+                Archive Campaign
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
