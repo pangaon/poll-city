@@ -192,6 +192,146 @@ function buildPreviewRows(
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
+
+  const contentType = req.headers.get("content-type") ?? "";
+
+  // ── JSON path: pre-parsed body from browser ──────────────────────────────────
+  if (contentType.includes("application/json")) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      !("campaignId" in body) ||
+      !("rawHeaders" in body) ||
+      !("sampleRows" in body) ||
+      !("totalRows" in body) ||
+      !("filename" in body) ||
+      !("fileType" in body)
+    ) {
+      return NextResponse.json(
+        { error: "campaignId, filename, fileType, totalRows, rawHeaders and sampleRows are required" },
+        { status: 400 },
+      );
+    }
+
+    const jsonBody = body as {
+      campaignId: string;
+      filename: string;
+      fileType: string;
+      totalRows: number;
+      rawHeaders: string[];
+      sampleRows: Record<string, string>[];
+    };
+
+    const { forbidden } = await guardCampaignRoute(session!.user.id, jsonBody.campaignId, "import:write");
+    if (forbidden) return forbidden;
+
+    const parsed = {
+      rawHeaders: jsonBody.rawHeaders,
+      sampleRows: jsonBody.sampleRows,
+      rows: jsonBody.sampleRows, // only sample rows available for fieldStats
+      totalRows: jsonBody.totalRows,
+      skippedRows: 0,
+      detectedDelimiter: null as string | null,
+      hasHeaders: true,
+      warnings: [] as string[],
+    };
+
+    // Column mapping (AI-assisted)
+    const suggestedMappings = await mapColumns(parsed.rawHeaders, parsed.sampleRows);
+
+    // Format detection
+    const { format: detectedFormat, confidence: formatConfidence } = detectFormat(parsed.rawHeaders);
+
+    // Apply template overrides if known format detected
+    let finalMappings = suggestedMappings;
+    if (detectedFormat?.templateId) {
+      const TEMPLATE_OVERRIDES: Record<string, Record<string, string>> = {
+        "builtin-ontario-voter-file": {
+          "Block": "pollDistrict",
+          "Subdivision": "municipalDistrict",
+          "Street Num": "streetNumber",
+          "Street No.": "streetName",
+          "Unit": "unitApt",
+          "Last Name": "lastName",
+          "First Name": "firstName",
+          "Clan": "notes",
+          "Prov": "province",
+          "Postal Code": "postalCode",
+        },
+      };
+      const overrides = TEMPLATE_OVERRIDES[detectedFormat.templateId] ?? {};
+      const overriddenMappings: MappingResult = { ...suggestedMappings };
+      for (const [sourceCol, targetField] of Object.entries(overrides)) {
+        const actualHeader = parsed.rawHeaders.find(
+          (h) =>
+            h.toLowerCase().replace(/[\s\.]/g, "_") === sourceCol.toLowerCase().replace(/[\s\.]/g, "_") ||
+            h.toLowerCase() === sourceCol.toLowerCase()
+        );
+        if (actualHeader) {
+          overriddenMappings[actualHeader] = {
+            sourceColumn: actualHeader,
+            targetField,
+            confidence: 99,
+            method: "exact",
+            alternatives: [],
+          };
+        }
+      }
+      finalMappings = overriddenMappings;
+    }
+
+    const mappedTargets = new Set(
+      Object.values(finalMappings).map((m) => m.targetField).filter(Boolean)
+    );
+    const hasNameField = mappedTargets.has("firstName") || mappedTargets.has("lastName");
+    const autoConfidence = computeAutoConfidence(finalMappings, hasNameField);
+    const stats = computeFieldStats(parsed.rows, finalMappings);
+    const previewRows = buildPreviewRows(parsed.sampleRows, finalMappings);
+
+    let existingCount = 0;
+    if (jsonBody.campaignId && parsed.rows.length > 0) {
+      try {
+        existingCount = await prisma.contact.count({
+          where: { campaignId: jsonBody.campaignId, deletedAt: null },
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    return NextResponse.json({
+      data: {
+        filename: jsonBody.filename,
+        fileType: jsonBody.fileType,
+        totalRows: parsed.totalRows,
+        skippedRows: parsed.skippedRows,
+        detectedDelimiter: parsed.detectedDelimiter,
+        hasHeaders: parsed.hasHeaders,
+        rawHeaders: parsed.rawHeaders,
+        sampleRows: parsed.sampleRows,
+        suggestedMappings: finalMappings,
+        warnings: parsed.warnings,
+        detectedFormat: detectedFormat?.id ?? "unknown",
+        detectedFormatLabel: detectedFormat?.label ?? null,
+        detectedFormatDescription: detectedFormat?.description ?? null,
+        formatConfidence,
+        autoConfidence,
+        hasNameField,
+        fieldStats: stats,
+        previewRows,
+        existingContactCount: existingCount,
+      },
+    });
+  }
+
+  // ── FormData path: file upload (existing, unchanged) ─────────────────────────
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > MAX_FILE_SIZE) {
     return NextResponse.json({ error: "File too large. Maximum size is 10MB." }, { status: 413 });

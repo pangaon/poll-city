@@ -117,6 +117,15 @@ interface PhoneApplyResult {
   allowCreateFromUnmatched?: boolean;
 }
 
+interface ParsedFile {
+  filename: string;
+  fileType: string;
+  rawHeaders: string[];
+  sampleRows: Record<string, string>[];
+  allRows: Record<string, string>[];
+  totalRows: number;
+}
+
 interface ImportHistoryItem {
   id: string;
   filename: string;
@@ -236,6 +245,8 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [bulkExporting, setBulkExporting] = useState(false);
   const [dragMainActive, setDragMainActive] = useState(false);
   const [dragPhoneActive, setDragPhoneActive] = useState(false);
+  const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
 
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -329,40 +340,128 @@ export default function ImportExportClient({ campaignId }: Props) {
     return auto;
   }
 
+  async function parseFileInBrowser(file: File): Promise<ParsedFile> {
+    if (/\.(xls|xlsx)$/i.test(file.name)) {
+      const XLSX = (await import("xlsx")).default;
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { raw: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const allData = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+      if (allData.length === 0) throw new Error("No data found in spreadsheet");
+      const rawHeaders = Object.keys(allData[0]);
+      const allRows = allData.map((row) =>
+        Object.fromEntries(Object.entries(row).map(([k, v]) => [k, String(v ?? "")]))
+      ) as Record<string, string>[];
+      return {
+        filename: file.name,
+        fileType: "excel",
+        rawHeaders,
+        sampleRows: allRows.slice(0, 50),
+        allRows,
+        totalRows: allRows.length,
+      };
+    } else {
+      // CSV / TSV
+      const text = await file.text();
+      const lines = text.split(/\r?\n/);
+      const nonEmpty = lines.filter((l) => l.trim().length > 0);
+      if (nonEmpty.length < 2) throw new Error("File appears to be empty");
+      const firstLine = nonEmpty[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      const parseRow = (line: string): string[] => {
+        const result: string[] = [];
+        let field = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              field += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === delimiter && !inQuotes) {
+            result.push(field.trim());
+            field = "";
+          } else {
+            field += ch;
+          }
+        }
+        result.push(field.trim());
+        return result;
+      };
+      const rawHeaders = parseRow(firstLine);
+      const allRows = nonEmpty.slice(1).map((line) => {
+        const vals = parseRow(line);
+        const row: Record<string, string> = {};
+        rawHeaders.forEach((h, i) => {
+          row[h] = vals[i] ?? "";
+        });
+        return row;
+      });
+      return {
+        filename: file.name,
+        fileType: delimiter === "\t" ? "tsv" : "csv",
+        rawHeaders,
+        sampleRows: allRows.slice(0, 50),
+        allRows,
+        totalRows: allRows.length,
+      };
+    }
+  }
+
   async function analyzeFile(file: File, forPhoneList = false) {
     if (forPhoneList) setAnalyzingPhone(true);
     else { setAnalyzing(true); setResult(null); setDuplicates(null); setShowAdvancedMapping(false); }
 
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      formData.set("campaignId", campaignId);
-
-      const res = await fetch("/api/import/analyze", { method: "POST", body: formData });
-
-      // Safely parse — Vercel can return HTML on timeout/502; treat that as a server error
-      let payload: { data?: AnalyzeResponse; error?: string } = {};
+      // Parse in browser — no file size limit
+      let parsed: ParsedFile;
       try {
-        payload = await res.json();
-      } catch {
+        parsed = await parseFileInBrowser(file);
+      } catch (parseErr) {
         toast.error(
-          `Server error (${res.status}). If this persists, try saving the file as CSV and re-uploading.`,
+          `Could not read file: ${parseErr instanceof Error ? parseErr.message : "Unknown error"}. ` +
+          "Check the file isn't password-protected or corrupted.",
+          { duration: 8000 },
         );
         return;
       }
 
-      if (!res.ok || !payload?.data) {
-        const reason = payload?.error ?? `HTTP ${res.status}`;
-        // Provide voter-file-specific hint for common parse failures
-        const isVoterFile = /voter|electora|liste|poll|ward/i.test(file.name);
-        const hint = isVoterFile
-          ? " For Ontario electoral lists, save as CSV (comma-separated) from Excel before uploading."
-          : " Try saving as CSV and re-uploading, or check the file isn't password-protected.";
-        toast.error(`Unable to analyze file: ${reason}.${hint}`, { duration: 8000 });
+      if (!forPhoneList) setParsedFile(parsed);
+
+      // Send only headers + sample rows as JSON — tiny payload, no upload size limit
+      let payload: { data?: AnalyzeResponse; error?: string } = {};
+      try {
+        const res = await fetch("/api/import/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId,
+            filename: file.name,
+            fileType: parsed.fileType,
+            totalRows: parsed.totalRows,
+            rawHeaders: parsed.rawHeaders,
+            sampleRows: parsed.sampleRows,
+          }),
+        });
+        try {
+          payload = await res.json();
+        } catch {
+          toast.error(`Server error (${res.status}). Try again or contact support.`);
+          return;
+        }
+        if (!res.ok || !payload?.data) {
+          toast.error(payload?.error ?? `Analysis failed (HTTP ${res.status})`, { duration: 8000 });
+          return;
+        }
+      } catch {
+        toast.error("Network error during analysis. Check your connection and try again.");
         return;
       }
 
-      const analyzed: AnalyzeResponse = payload.data;
+      const analyzed: AnalyzeResponse = payload.data!;
       if (forPhoneList) {
         setPhoneAnalysis(analyzed);
         setPhoneMappings(buildMappingsFromAnalysis(analyzed));
@@ -370,10 +469,7 @@ export default function ImportExportClient({ campaignId }: Props) {
         setAnalysis(analyzed);
         setMappings(buildMappingsFromAnalysis(analyzed));
       }
-      toast.success(`Analyzed ${analyzed.totalRows} rows from ${file.name}`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      toast.error(`Unable to analyze file: ${msg}. Try saving as CSV and re-uploading.`, { duration: 8000 });
+      toast.success(`Analyzed ${analyzed.totalRows.toLocaleString()} rows from ${file.name}`);
     } finally {
       if (forPhoneList) setAnalyzingPhone(false);
       else setAnalyzing(false);
@@ -521,31 +617,76 @@ export default function ImportExportClient({ campaignId }: Props) {
   }
 
   async function doQuickImport() {
-    if (!selectedFile) { toast.error("Choose a file first"); return; }
-    if (!mappingHealth.hasNameField) { toast.error("Missing name mapping. Include at least First Name or Last Name."); return; }
+    if (!parsedFile) { toast.error("No file loaded"); return; }
+    if (!mappingHealth.hasNameField) { toast.error("Include at least First Name or Last Name in the column mapping."); return; }
 
     setImporting(true);
+    setImportProgress({ current: 0, total: parsedFile.totalRows });
+
+    const BATCH_SIZE = 500;
+    const batches: Record<string, string>[][] = [];
+    for (let i = 0; i < parsedFile.allRows.length; i += BATCH_SIZE) {
+      batches.push(parsedFile.allRows.slice(i, i + BATCH_SIZE));
+    }
+
+    let importLogId: string | undefined;
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    const allErrors: string[] = [];
+
     try {
-      const formData = new FormData();
-      formData.set("file", selectedFile);
-      formData.set("campaignId", campaignId);
-      formData.set("mappings", JSON.stringify(getMappingConfig(mappings)));
+      for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+        setImportProgress({ current: batchIdx * BATCH_SIZE, total: parsedFile.totalRows });
 
-      const res = await fetch("/api/import/execute", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok || !data?.data) { toast.error(data?.error ?? "Import failed"); return; }
+        let batchRes: Response;
+        try {
+          batchRes = await fetch("/api/import/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              campaignId,
+              mappings: getMappingConfig(mappings),
+              rows: batches[batchIdx],
+              batchMeta: {
+                batchIndex: batchIdx,
+                totalBatches: batches.length,
+                totalRows: parsedFile.totalRows,
+                filename: parsedFile.filename,
+                importLogId,
+              },
+            }),
+          });
+        } catch {
+          toast.error(`Network error on batch ${batchIdx + 1}. Import stopped at ${totalImported + totalUpdated} contacts.`);
+          break;
+        }
 
-      const importResult: ImportResult = {
-        imported: data.data.imported ?? 0,
-        updated: data.data.updated ?? 0,
-        skipped: data.data.skipped ?? 0,
-        errors: Array.isArray(data.data.errors) ? data.data.errors : [],
-      };
-      setResult(importResult);
+        let batchData: {
+          data?: { importLogId: string; imported: number; updated: number; skipped: number; errors: string[] };
+          error?: string;
+        } = {};
+        try { batchData = await batchRes.json(); } catch { /* ignore */ }
+
+        if (!batchRes.ok || !batchData?.data) {
+          toast.error(batchData?.error ?? `Batch ${batchIdx + 1} failed. Import stopped.`);
+          break;
+        }
+
+        if (batchIdx === 0) importLogId = batchData.data.importLogId;
+        totalImported += batchData.data.imported;
+        totalUpdated += batchData.data.updated;
+        totalSkipped += batchData.data.skipped;
+        if (batchData.data.errors?.length) allErrors.push(...batchData.data.errors);
+      }
+
+      setResult({ imported: totalImported, updated: totalUpdated, skipped: totalSkipped, errors: allErrors.slice(0, 20) });
       await loadImportHistory();
-      toast.success(`Import complete: ${importResult.imported} new, ${importResult.updated} updated`);
-    } catch { toast.error("Network error during import"); }
-    finally { setImporting(false); }
+      toast.success(`Import complete: ${totalImported.toLocaleString()} new · ${totalUpdated.toLocaleString()} updated · ${totalSkipped.toLocaleString()} skipped`);
+    } finally {
+      setImporting(false);
+      setImportProgress(null);
+    }
   }
 
   async function doExport(endpoint: string, label: string) {
@@ -942,6 +1083,36 @@ export default function ImportExportClient({ campaignId }: Props) {
                         </MButton>
                       </>
                     )}
+
+                    {/* Import progress bar */}
+                    <AnimatePresence>
+                      {importProgress && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="rounded-xl border p-4 space-y-3"
+                          style={{ borderColor: `${GREEN}40`, backgroundColor: `${GREEN}06` }}
+                        >
+                          <div className="flex justify-between text-sm font-medium" style={{ color: NAVY }}>
+                            <span>Importing voters...</span>
+                            <span>{importProgress.current.toLocaleString()} / {importProgress.total.toLocaleString()}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                            <motion.div
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: GREEN }}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(100, (importProgress.current / importProgress.total) * 100)}%` }}
+                              transition={{ duration: 0.3 }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {Math.round((importProgress.current / importProgress.total) * 100)}% — do not close this tab
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
