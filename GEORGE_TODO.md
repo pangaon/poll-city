@@ -124,9 +124,12 @@ Generate each with: `openssl rand -base64 32`
 - [ ] **23. Add `IP_HASH_SALT` to Railway** (`openssl rand -base64 32`)
 - [ ] **24. Add `POLL_ANONYMITY_SALT` to Railway** (`openssl rand -base64 32`)
 - [ ] **25. Add `GUEST_TOKEN_SECRET` to Railway** (`openssl rand -base64 32`)
-- [ ] **26. Add `CRON_SECRET` to Railway** (`openssl rand -base64 32`)
-  - Also add this same value to Vercel → Environment Variables → `CRON_SECRET`
-  - Vercel cron jobs use it to authenticate against the app
+- [ ] **26. Add `CRON_SECRET` to Vercel** (NOT Railway — your app runs on Vercel, not Railway)
+  1. Run in terminal: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  2. Copy the output
+  3. Go to Vercel → your project → Settings → Environment Variables
+  4. Add: `CRON_SECRET` = the value you copied
+  5. Save — Vercel will redeploy automatically
 - [ ] **27. Generate `DATABASE_ENCRYPTION_KEY`**: run `openssl rand -hex 32` in your terminal
   - This activates at-rest encryption for sensitive database fields
   - Without it the platform still works, but sensitive data is stored unencrypted
