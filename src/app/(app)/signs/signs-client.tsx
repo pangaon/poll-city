@@ -127,6 +127,7 @@ export default function SignsClient({ campaignId }: { campaignId: string }) {
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [showOpponentSpot, setShowOpponentSpot] = useState(false);
   const [editingSign, setEditingSign] = useState<SignRow | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   // Debounce
   useEffect(() => {
@@ -430,24 +431,71 @@ export default function SignsClient({ campaignId }: { campaignId: string }) {
                             {sign.contact ? `${sign.contact.firstName} ${sign.contact.lastName}`.trim() || "—" : "—"}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                              {/* ── Status-progression actions ── */}
                               {sign.status === "requested" && (
-                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "scheduled" })} className="text-blue-600">
-                                  <Truck className="w-3.5 h-3.5" />
+                                <MotionButton
+                                  size="sm" variant="ghost"
+                                  onClick={() => updateSign(sign.id, { status: "scheduled" })}
+                                  className="text-blue-600 hover:bg-blue-50 gap-1 text-xs font-medium"
+                                  title="Mark this sign as scheduled for crew delivery"
+                                >
+                                  <Truck className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span>Schedule</span>
                                 </MotionButton>
                               )}
                               {(sign.status === "requested" || sign.status === "scheduled") && (
-                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "installed" })} className="text-emerald-600">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                <MotionButton
+                                  size="sm" variant="ghost"
+                                  onClick={() => updateSign(sign.id, { status: "installed" })}
+                                  className="text-emerald-600 hover:bg-emerald-50 gap-1 text-xs font-medium"
+                                  title="Confirm this sign has been physically installed"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span>Installed</span>
                                 </MotionButton>
                               )}
-                              {sign.status === "installed" && (
-                                <MotionButton size="sm" variant="ghost" onClick={() => updateSign(sign.id, { status: "removed" })} className="text-gray-500">
-                                  <XCircle className="w-3.5 h-3.5" />
+
+                              {/* ── Remove: requires confirmation ── */}
+                              {sign.status === "installed" && confirmRemoveId === sign.id ? (
+                                <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                                  <span className="text-xs text-red-600 font-medium">Remove sign?</span>
+                                  <MotionButton
+                                    size="sm" variant="ghost"
+                                    onClick={() => { updateSign(sign.id, { status: "removed" }); setConfirmRemoveId(null); }}
+                                    className="text-red-600 hover:bg-red-100 gap-1 text-xs font-semibold px-2"
+                                  >
+                                    Yes
+                                  </MotionButton>
+                                  <MotionButton
+                                    size="sm" variant="ghost"
+                                    onClick={() => setConfirmRemoveId(null)}
+                                    className="text-gray-400 hover:text-gray-600 text-xs px-1"
+                                  >
+                                    Cancel
+                                  </MotionButton>
+                                </div>
+                              ) : sign.status === "installed" ? (
+                                <MotionButton
+                                  size="sm" variant="ghost"
+                                  onClick={() => setConfirmRemoveId(sign.id)}
+                                  className="text-gray-500 hover:bg-gray-100 gap-1 text-xs font-medium"
+                                  title="Mark this sign as removed from the property"
+                                >
+                                  <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span>Remove</span>
                                 </MotionButton>
-                              )}
-                              <MotionButton size="sm" variant="ghost" onClick={() => setEditingSign(sign)}>
-                                <Eye className="w-3.5 h-3.5" />
+                              ) : null}
+
+                              {/* ── View / edit details ── */}
+                              <MotionButton
+                                size="sm" variant="ghost"
+                                onClick={() => setEditingSign(sign)}
+                                className="text-gray-500 hover:bg-gray-100 gap-1 text-xs font-medium"
+                                title="View and edit all details for this sign"
+                              >
+                                <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span>View</span>
                               </MotionButton>
                             </div>
                           </td>
