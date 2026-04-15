@@ -480,7 +480,11 @@ function StrikeTab({ campaignId }: { campaignId: string }) {
 function UploadTab({ campaignId }: { campaignId: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<{ matched?: number; supporters?: number; against?: number; unknown?: number; totalVoters?: number; error?: string } | null>(null);
+  const [result, setResult] = useState<{
+    matched?: number; unmatched?: number; newGap?: number;
+    supportersVoted?: number; winThreshold?: number; totalRows?: number;
+    error?: string;
+  } | null>(null);
 
   async function submit() {
     if (!file) return;
@@ -490,7 +494,7 @@ function UploadTab({ campaignId }: { campaignId: string }) {
       const form = new FormData();
       form.append("file", file);
       form.append("campaignId", campaignId);
-      const res = await fetch("/api/gotv/upload-voted", { method: "POST", body: form });
+      const res = await fetch("/api/gotv/upload-voted-list", { method: "POST", body: form });
       const data = await res.json();
       setResult(res.ok ? data : { error: data.error ?? "Upload failed" });
     } catch {
@@ -505,12 +509,12 @@ function UploadTab({ campaignId }: { campaignId: string }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
         <h2 className="font-bold text-slate-900 mb-2">Upload voted list</h2>
         <p className="text-sm text-slate-600 mb-4">
-          Upload a CSV or XLSX from the poll clerk. We'll fuzzy-match names &amp; addresses to your contacts and mark them voted.
+          Upload a CSV from the poll clerk (columns: firstName, lastName, address). We&apos;ll match against your contacts and mark them voted.
         </p>
         <label className="block">
           <input
             type="file"
-            accept=".csv,.xlsx,.xls,.tsv"
+            accept=".csv,.tsv"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-slate-600 file:mr-3 file:h-11 file:px-4 file:rounded-lg file:border-0 file:bg-red-700 file:text-white file:font-semibold hover:file:bg-red-800 file:cursor-pointer"
           />
@@ -531,13 +535,15 @@ function UploadTab({ campaignId }: { campaignId: string }) {
 
       {result && !result.error && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-          <h3 className="font-bold text-emerald-900">Matched {result.matched?.toLocaleString() ?? 0} voters</h3>
+          <h3 className="font-bold text-emerald-900">Marked {result.matched?.toLocaleString() ?? 0} contacts voted</h3>
           <div className="grid grid-cols-3 gap-3 mt-3 text-center">
-            <div><p className="text-2xl font-extrabold text-emerald-700 tabular-nums">{result.supporters ?? 0}</p><p className="text-xs text-slate-600">Supporters</p></div>
-            <div><p className="text-2xl font-extrabold text-red-700 tabular-nums">{result.against ?? 0}</p><p className="text-xs text-slate-600">Against</p></div>
-            <div><p className="text-2xl font-extrabold text-slate-700 tabular-nums">{result.unknown ?? 0}</p><p className="text-xs text-slate-600">Unknown</p></div>
+            <div><p className="text-2xl font-extrabold text-emerald-700 tabular-nums">{result.matched ?? 0}</p><p className="text-xs text-slate-600">Matched</p></div>
+            <div><p className="text-2xl font-extrabold text-slate-500 tabular-nums">{result.unmatched ?? 0}</p><p className="text-xs text-slate-600">Unmatched</p></div>
+            <div><p className="text-2xl font-extrabold text-red-700 tabular-nums">{result.newGap ?? 0}</p><p className="text-xs text-slate-600">Gap remaining</p></div>
           </div>
-          <p className="text-xs text-slate-600 mt-3 text-center">{result.totalVoters?.toLocaleString() ?? 0} rows in the file</p>
+          <p className="text-xs text-slate-600 mt-3 text-center">
+            {result.supportersVoted?.toLocaleString() ?? 0} supporters voted · win threshold {result.winThreshold?.toLocaleString() ?? 0} · {result.totalRows?.toLocaleString() ?? 0} rows in file
+          </p>
         </div>
       )}
       {result?.error && (

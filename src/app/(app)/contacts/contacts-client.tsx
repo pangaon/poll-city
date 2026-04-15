@@ -621,7 +621,7 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
 
   const exportCSV = async () => {
     try {
-      const url = `/api/import-export?campaignId=${campaignId}&type=contacts`;
+      const url = `/api/export/contacts?campaignId=${campaignId}`;
       const res = await fetch(url);
       if (!res.ok) {
         const err = await res.json().catch(() => null);

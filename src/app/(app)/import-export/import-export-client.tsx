@@ -5,6 +5,7 @@ import {
   Upload, Download, FileText, AlertCircle, CheckCircle, History,
   Link2, FileSpreadsheet, Users, MapPin, Heart, HandHelping,
   MessageSquare, ClipboardList, Package, ArrowUpFromLine, ArrowDownToLine, RotateCcw,
+  DollarSign, Filter,
 } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, PageHeader, Select, Badge, EmptyState } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
@@ -125,6 +126,7 @@ const EXPORT_TYPES: Array<{ endpoint: string; label: string; description: string
   { endpoint: "/api/export/donations", label: "Donations", description: "Ontario-compliant donor report", icon: <Heart className="w-5 h-5" /> },
   { endpoint: "/api/export/volunteers", label: "Volunteers", description: "Volunteers with skills and availability", icon: <HandHelping className="w-5 h-5" /> },
   { endpoint: "/api/export/interactions", label: "Interaction Log", description: "Every door knock, call, email, note", icon: <MessageSquare className="w-5 h-5" /> },
+  { endpoint: "/api/export/budget", label: "Budget", description: "Full budget with actuals and variances", icon: <DollarSign className="w-5 h-5" /> },
 ];
 
 const categoryOrder = ["name", "address", "contact", "electoral", "campaign", "other"] as const;
@@ -273,10 +275,10 @@ export default function ImportExportClient({ campaignId }: Props) {
     if (!confirm(`Roll back all contacts from "${filename}"? They will be moved to the Recycle Bin.`)) return;
     setRollingBack((prev) => new Set(prev).add(importLogId));
     try {
-      const res = await fetch("/api/import-export/rollback", {
+      const res = await fetch("/api/import/rollback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importLogId, campaignId }),
+        body: JSON.stringify({ importLogId }),
       });
       const json = await res.json();
       if (res.ok) {
