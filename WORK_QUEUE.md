@@ -96,7 +96,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 1 — Message Templates | DONE — 57b4177 | MessageTemplate model + API + UI |
 | Phase 2 — Segment builder UI + Audiences tab | DONE — 730833e | AudiencesTab in communications-client.tsx — full segment builder inline |
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
-| Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | CLAIMED 2026-04-15 | GAP-017 — Resend webhook already done; building Twilio STOP handler |
+| Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | DONE — see below | GAP-017 — /api/webhooks/resend (bounce+complaint+open+click) + /api/webhooks/twilio (STOP/START) |
 | Phase 4b — Email open + click tracking (tracking pixel) | CLAIMED 2026-04-15 | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — embed pixel in every email blast |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
@@ -354,7 +354,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 | Task | Status | Notes |
 |---|---|---|
-| Phase 4 — Delivery tracking webhooks | CLAIMED 2026-04-15 | Resend bounce done; Twilio STOP in progress |
+| Phase 4 — Delivery tracking webhooks | DONE — see comms module | Resend bounce+complaint+open+click + Twilio STOP/START |
 | Phase 4b — Email open + click tracking pixel | CLAIMED 2026-04-15 | 1x1 GIF route, click redirect, NotificationLog fields |
 | Phase 5 — Unified inbox backend + UI rebuild | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
