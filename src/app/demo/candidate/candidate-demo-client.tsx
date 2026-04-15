@@ -6,6 +6,51 @@ import {
   MapPin, DollarSign, Users, Phone, Bot, AlertTriangle,
   ArrowRight, TrendingUp, Flag, Zap, Activity,
 } from "lucide-react";
+import { DemoTour, type TourStep } from "@/components/demo/demo-tour";
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: "welcome",
+    title: "Welcome to Your Campaign Command Centre",
+    body: "This is what Alex Chen's Ward 20 Toronto campaign looks like inside Poll City. Everything you need to run a municipal campaign — in one system, from day one.",
+  },
+  {
+    id: "stats",
+    title: "Live Campaign Metrics",
+    body: "4,179 contacts tracked, 847 confirmed strong supporters, 1,923 doors knocked. Every number updates in real time as your field team works.",
+    anchor: "stats",
+  },
+  {
+    id: "gotv",
+    title: "The GOTV Gap — Your Win Number",
+    body: "This is the most important number in your campaign. Alex needs 2,488 more supporters to reach the win threshold. Poll City tells you exactly who they are and how to reach them.",
+    anchor: "gotv",
+  },
+  {
+    id: "activity",
+    title: "Real-Time Activity Feed",
+    body: "Every door knock, donation, and volunteer signup streams in live. You always know what your team is doing — without asking.",
+    anchor: "activity",
+  },
+  {
+    id: "contacts",
+    title: "Voter CRM — Every Contact Tracked",
+    body: "Import your voter file and every contact is tagged by support level, last contact date, and assigned canvasser. No spreadsheets. No gaps.",
+    anchor: "contacts",
+  },
+  {
+    id: "adoni",
+    title: "Adoni — Your AI Campaign Operator",
+    body: "Adoni analyses your contact list and tells you exactly what to do next. He found 193 strong supporters not contacted in 30 days and recommended a targeted phone bank. That's your edge.",
+    anchor: "adoni",
+  },
+  {
+    id: "alerts",
+    title: "Campaign Alerts — Nothing Slips",
+    body: "Critical gaps surface automatically. Overdue follow-ups, pending sign installations, supporter clusters not yet contacted. Adoni flags them before they cost you votes.",
+    anchor: "alerts",
+  },
+];
 
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
@@ -75,7 +120,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
       </header>
 
       {/* Stat cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+      <div data-tour-id="stats" className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { label: "Total Contacts", value: stats.totalContacts.toLocaleString(), color: "#60a5fa" },
@@ -99,7 +144,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
         <div className="lg:col-span-3 space-y-5">
 
           {/* GOTV Gap widget */}
-          <div className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
+          <div data-tour-id="gotv" className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">GOTV Gap</p>
@@ -141,7 +186,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
           </div>
 
           {/* Recent Activity */}
-          <div className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
+          <div data-tour-id="activity" className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-4 h-4" style={{ color: GREEN }} />
               <p className="text-sm font-bold text-white">Recent Activity</p>
@@ -167,7 +212,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
           </div>
 
           {/* Contact table */}
-          <div className="rounded-xl border border-white/10 overflow-hidden" style={{ background: "#112240" }}>
+          <div data-tour-id="contacts" className="rounded-xl border border-white/10 overflow-hidden" style={{ background: "#112240" }}>
             <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
               <Users className="w-4 h-4" style={{ color: GREEN }} />
               <p className="text-sm font-bold text-white">Contacts</p>
@@ -218,7 +263,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
         <div className="lg:col-span-2 space-y-5">
 
           {/* Campaign Alerts */}
-          <div className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
+          <div data-tour-id="alerts" className="rounded-xl p-5 border border-white/10" style={{ background: "#112240" }}>
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <p className="text-sm font-bold text-white">Campaign Alerts</p>
@@ -241,7 +286,7 @@ export default function CandidateDemoClient({ prospectName }: Props) {
           </div>
 
           {/* Adoni insight bubble */}
-          <div className="rounded-xl p-5 border" style={{ background: "#0d2e1f", borderColor: `${GREEN}40` }}>
+          <div data-tour-id="adoni" className="rounded-xl p-5 border" style={{ background: "#0d2e1f", borderColor: `${GREEN}40` }}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center"
                 style={{ background: GREEN }}>
@@ -334,6 +379,9 @@ export default function CandidateDemoClient({ prospectName }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Guided tour overlay */}
+      <DemoTour steps={TOUR_STEPS} storageKey="pollcity_candidate_demo_tour" />
 
     </div>
   );

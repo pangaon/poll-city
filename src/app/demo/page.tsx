@@ -5,42 +5,39 @@ import { useState } from "react";
 import {
   ArrowRight, Play, Users, MapPin, BarChart3, DollarSign,
   Mail, Phone, Target, Bot, Shield, Globe, Calendar,
-  Zap, CheckCircle2, Eye, Copy, Check, ExternalLink,
+  Zap, CheckCircle2, Eye, ExternalLink,
   BookOpen, Printer, Settings, MessageSquare, Vote, Lock,
 } from "lucide-react";
 
 /* ─── Demo Roles ─────────────────────────────────────────────────────────── */
 
-const DEMO_ROLES = [
+const DEMO_SHOWCASES = [
   {
-    id: "admin",
-    role: "Campaign Admin",
-    label: "Full Access",
-    desc: "See everything — dashboard, CRM, canvassing, communications, GOTV, finance, settings.",
-    email: "admin@pollcity.dev",
-    password: "password123",
-    color: "#2563EB",
-    landingPage: "/dashboard",
+    id: 'candidate',
+    label: 'Municipal Candidate',
+    sublabel: 'Ward 20 — Toronto',
+    desc: 'Live campaign dashboard. CRM, GOTV gap, canvassing, Adoni AI. Guided tour included.',
+    color: '#2563EB',
+    href: '/demo/candidate',
+    cta: 'Explore Candidate Demo',
   },
   {
-    id: "manager",
-    role: "Campaign Manager",
-    label: "Operations",
-    desc: "Manage contacts, run canvassing operations, send communications, track volunteers.",
-    email: "manager@pollcity.dev",
-    password: "password123",
-    color: "#059669",
-    landingPage: "/dashboard",
+    id: 'party',
+    label: 'Provincial Party',
+    sublabel: 'Ontario — 124 ridings',
+    desc: 'Province-wide command centre. Riding breakdown, donation tracking, province-wide metrics.',
+    color: '#059669',
+    href: '/demo/party',
+    cta: 'Explore Party Demo',
   },
   {
-    id: "volunteer",
-    role: "Volunteer / Canvasser",
-    label: "Field View",
-    desc: "See the mobile canvassing experience — walk lists, door-knock scripts, GPS tracking.",
-    email: "volunteer@pollcity.dev",
-    password: "password123",
-    color: "#D97706",
-    landingPage: "/canvass",
+    id: 'media',
+    label: 'Election Night',
+    sublabel: 'Live results mode',
+    desc: 'Live results ticker, mayoral race leaderboard, approval ratings, flash polls.',
+    color: '#dc2626',
+    href: '/demo/media',
+    cta: 'Explore Election Night',
   },
 ];
 
@@ -62,15 +59,6 @@ const EXPLORE_AREAS = [
 /* ─── Page ──────────────────────────────────────────────────────────────── */
 
 export default function DemoPage() {
-  const [selectedRole, setSelectedRole] = useState(DEMO_ROLES[0]);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-
-  function copyToClipboard(text: string, field: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  }
-
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
@@ -165,111 +153,64 @@ export default function DemoPage() {
         </div>
       </section>
 
-      {/* Login Section */}
+      {/* Explore Demos Section */}
       <section className="py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            {/* Left: Role Selector + Explore Areas */}
-            <div className="lg:col-span-3 space-y-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-4">Choose Your Role</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {DEMO_ROLES.map((role) => (
-                    <button
-                      key={role.id}
-                      onClick={() => setSelectedRole(role)}
-                      className={`text-left rounded-xl border-2 p-4 transition-all ${
-                        selectedRole.id === role.id
-                          ? "border-blue-500 shadow-md bg-blue-50/50"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: role.color }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{role.label}</span>
-                      </div>
-                      <h3 className="font-bold text-sm text-slate-900">{role.role}</h3>
-                      <p className="text-[11px] text-slate-500 mt-1">{role.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">No Login Required</p>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Choose Your Demo</h2>
+            <p className="mt-2 text-sm text-slate-500 max-w-xl mx-auto">
+              Fully pre-loaded with realistic data. Guided tour walks you through every feature.
+            </p>
+          </div>
 
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Explore Areas</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {EXPLORE_AREAS.map((area) => {
-                    const Icon = area.icon;
-                    return (
-                      <Link key={area.label} href={area.href} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center shrink-0 transition-colors">
-                          <Icon className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-900">{area.label}</p>
-                          <p className="text-[10px] text-slate-500">{area.desc}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Login Card */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="rounded-xl border-2 border-blue-500 bg-gradient-to-b from-blue-50/80 to-white p-6 shadow-lg sticky top-20">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedRole.color }} />
-                  <h3 className="font-bold text-slate-900">{selectedRole.role}</h3>
-                </div>
-                <p className="text-xs text-slate-500 mb-5">Log in as {selectedRole.label.toLowerCase()} to explore the platform.</p>
-
-                <div className="space-y-3 mb-5">
-                  <div className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</p>
-                      <p className="text-sm font-mono font-semibold text-slate-900">{selectedRole.email}</p>
-                    </div>
-                    <button onClick={() => copyToClipboard(selectedRole.email, `${selectedRole.id}-email`)}
-                      className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-                      {copiedField === `${selectedRole.id}-email` ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+            {DEMO_SHOWCASES.map((d) => (
+              <Link
+                key={d.id}
+                href={d.href}
+                className="group flex flex-col rounded-2xl border-2 border-slate-200 hover:border-blue-400 bg-white p-6 transition-all hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{d.sublabel}</span>
+                    <h3 className="text-lg font-black text-slate-900 mt-0.5">{d.label}</h3>
                   </div>
-                  <div className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Password</p>
-                      <p className="text-sm font-mono font-semibold text-slate-900">{selectedRole.password}</p>
+                  <div className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ backgroundColor: d.color }} />
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed flex-1">{d.desc}</p>
+                <div
+                  className="mt-5 flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-bold text-white transition-opacity group-hover:opacity-90"
+                  style={{ backgroundColor: d.color }}
+                >
+                  {d.cta} <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 text-center">Also explore inside the platform</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {EXPLORE_AREAS.map((area) => {
+                const Icon = area.icon;
+                return (
+                  <Link key={area.label} href={area.href} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center shrink-0 transition-colors">
+                      <Icon className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
                     </div>
-                    <button onClick={() => copyToClipboard(selectedRole.password, `${selectedRole.id}-pass`)}
-                      className="h-7 w-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-                      {copiedField === `${selectedRole.id}-pass` ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <Link href="/login" className="flex items-center justify-center gap-2 w-full h-12 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
-                  <Play className="w-4 h-4" />
-                  Log In to Demo
-                </Link>
-
-                <div className="mt-4 flex items-start gap-2 text-[11px] text-slate-500">
-                  <Shield className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <p>Demo data resets periodically. Pre-loaded with contacts, turfs, donations, and a live campaign website.</p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-5 text-center">
-                <h3 className="font-bold text-slate-900 mb-1">Want Your Own Campaign?</h3>
-                <p className="text-xs text-slate-500 mb-3">14-day free trial. Campaign website included.</p>
-                <Link href="/login" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm hover:bg-slate-800 transition-colors">
-                  Start Your Campaign <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">{area.label}</p>
+                      <p className="text-[10px] text-slate-500">{area.desc}</p>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
       </section>
+
       {/* Personalised Demo Links */}
       <section className="py-14 bg-slate-50 border-t border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
