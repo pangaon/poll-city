@@ -237,7 +237,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 | Task | Status | Notes |
 |---|---|---|
-| /billing — complete Stripe payment integration | CLAIMED 2026-04-15 | 186 lines, subscription display only. Wire Stripe checkout + plan upgrade + invoice history. |
+| /billing — complete Stripe payment integration | DONE — 13965bc | Invoice history, portal button, past-due banner, cancel-at-period-end warning, success/cancel URL toasts, animated plan selector. |
 | /settings — full settings page | PENDING | 289 lines, too thin. Add all sections: profile, campaign details, integrations, notifications, danger zone. |
 | /settings/security — complete security settings | PENDING | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
