@@ -225,3 +225,145 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | Task | Status | Notes |
 |---|---|---|
 | Demo public access + guided tour | DONE — 7494b12 | Open /demo/candidate+party+media to public (no token required), build DemoTour overlay, wire into candidate demo |
+| /pcapp — Figma prototype viewer page | DONE — c394f70 | Full-screen iframe, reads NEXT_PUBLIC_FIGMA_APP_URL. George: paste URL into pcapp-client.tsx or set env var in Vercel. |
+| Fundraising — public donation pages | PENDING | /api/fundraising/pages not built — needed for live campaigns |
+| Marketing site — full build | PENDING | (marketing)/page.tsx exists but needs full content pass |
+
+---
+
+## MODULE: SPRINT 1 — HIGH PRIORITY (customer-facing gaps, build these first)
+
+*These block the platform from being shown to serious prospects or used in a real campaign.*
+
+| Task | Status | Notes |
+|---|---|---|
+| /billing — complete Stripe payment integration | PENDING | 186 lines, subscription display only. Wire Stripe checkout + plan upgrade + invoice history. |
+| /settings — full settings page | PENDING | 289 lines, too thin. Add all sections: profile, campaign details, integrations, notifications, danger zone. |
+| /settings/security — complete security settings | PENDING | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
+| /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
+| /notifications — voter outreach full build | PENDING | 389 lines, basic display. Full push notification composer, opt-in management, delivery stats. |
+| /eday — election day ops full build | PENDING | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
+| /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |
+| /briefing — daily briefing full build | PENDING | 223 lines, no visualizations. Morning briefing: key metrics, top tasks, AI summary, weather/news feed. |
+| /ai-assist — full Adoni in-app page | PENDING | 133 lines. Full conversation UI, suggested prompts, history, context-aware page assist. |
+
+---
+
+## MODULE: SPRINT 2 — FINANCE UI HARDENING
+
+*APIs mostly done. UI needs to match. All 9 sub-routes need finishing.*
+
+| Task | Status | Notes |
+|---|---|---|
+| /finance — overview complete | PENDING | 238 lines. Add live spend-vs-budget chart, compliance status, recent transactions, quick-add expense. |
+| /finance/budget — variance analysis + approval | PENDING | 427 lines. Add variance columns, over-budget alerts, line-item approval workflow. |
+| /finance/expenses — full form + receipt upload | PENDING | 349 lines. Add receipt image upload, category enforcement, policy validation, bulk import. |
+| /finance/purchase-requests — full approval chain | PENDING | 251 lines. Add multi-level approval, auto-reject on budget overrun, email notifications. |
+| /finance/vendors — full vendor profiles | PENDING | 187 lines. Add contract tracking, payment history, preferred vendor tags, W-9 status. |
+| /finance/reimbursements — full workflow | PENDING | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
+| /finance/approvals — queue + bulk actions | PENDING | 179 lines. Add bulk approve/reject, delegation, escalation rules, audit trail. |
+| /finance/reports — full report suite | PENDING | 468 lines. Add all report types: P&L, compliance, per-category breakdown, CSV/PDF export. |
+| /finance/audit — full audit trail + filters | PENDING | 237 lines. Add date range, user filter, export, anomaly flags. |
+| Finance Phase 8 — hardening + permissions | PENDING | Role-based access: Finance role can only see finance. Staff cannot see salaries. |
+
+---
+
+## MODULE: SPRINT 3 — FIELD SUB-MODULES
+
+*Core field ops is done. Sub-pages need real depth.*
+
+| Task | Status | Notes |
+|---|---|---|
+| /field/programs — full management | PENDING | 458 lines. Add program analytics, canvasser assignment, completion rate, door-knock heat map. |
+| /field/programs/[programId] — full detail | PENDING | 381 lines. Add turf map, team roster, daily run stats, completion timeline. |
+| /field/routes/[routeId] — full route detail | PENDING | 458 lines. Add interactive map, stop-by-stop list, canvasser GPS trail, outcomes summary. |
+| /field/teams — full team management | PENDING | 421 lines. Add performance stats per team, shift scheduling, contact assignment, leaderboard. |
+| /field/follow-ups — full workflow | PENDING | 273 lines. Add assignment to canvasser, bulk re-assign, outcome tracking, Adoni suggested scripts. |
+| /field/mobile — full mobile dashboard | PENDING | 256 lines. Add offline sync status, GPS accuracy, battery-friendly mode, paper fallback trigger. |
+| /field/audit — full audit + filters | PENDING | 215 lines. Add action type filter, date range, export, canvasser comparison. |
+| /field/lit-drops — full operations | PENDING | 537 lines. Add route map, material tracking, completion photos, inventory deduction. |
+| /field/materials — full inventory controls | PENDING | 296 lines. Add reorder alerts, per-team allocation, print-to-field link, barcode scan. |
+
+---
+
+## MODULE: SPRINT 4 — PRINT, FORMS, OPS POLISH
+
+| Task | Status | Notes |
+|---|---|---|
+| /print/jobs — full job management | PENDING | 216 lines. Add status pipeline, vendor assignment, delivery tracking, cost tracking. |
+| /print/jobs/[id] — full job detail | PENDING | 258 lines. Add proof approval flow, revision history, delivery status, invoice. |
+| /print/jobs/new — full job creation | PENDING | 299 lines. Add product selector, quantity estimator, template picker, budget check. |
+| /print/templates — full customization | PENDING | 311 lines. Add template editor link, category filter, preview, usage stats. |
+| /print/packs — full pack management | PENDING | 549 lines. Add pack builder, bulk order, field distribution tracking. |
+| /print/shops — full shop listing | PENDING | 169 lines. Add distance filter, capacity, turnaround time, ratings, contact. |
+| /print/shops/register — full registration | PENDING | 341 lines. Add multi-step form, document upload, approval workflow. |
+| /print/products/[product] — full product page | PENDING | 65 lines (near-stub). Full product spec, sizing guide, template options, order flow. |
+| /forms — full form management | PENDING | 234 lines. Add form analytics, status toggle, duplicate, embed code, response export. |
+| /forms/[id]/edit — full form builder | PENDING | 328 lines. Add conditional logic, field types, validation rules, multi-page. |
+| /forms/[id]/results — full results analytics | PENDING | 104 lines. Add charts, filters, individual response view, CSV export. |
+| /ops/security — full security monitoring | PENDING | 322 lines. Add live event stream, anomaly alerts, blocked IPs, rate limit dashboard. |
+| /ops/verify — full feature verification | PENDING | 410 lines. Add per-feature test runner, screenshot capture, pass/fail log. |
+| /ops/videos — full video management | PENDING | 129 lines. Add upload, tag by feature, embed in help articles, view count. |
+| /ops/campaigns — full campaigns ops | PENDING | 255 lines. Add health score per campaign, last active, tier, contact info, quick actions. |
+| /ops/content-review — full review workflow | PENDING | 233 lines. Add review queue, approve/reject/edit, AI safety score, publish trigger. |
+| /ops/demo-tokens — full token management | PENDING | 387 lines. Add token generator, expiry, role assignment, usage analytics. |
+
+---
+
+## MODULE: SPRINT 5 — VOLUNTEERS, CONTACTS, INTEL POLISH
+
+| Task | Status | Notes |
+|---|---|---|
+| /volunteers/shifts — full shift scheduling | PENDING | 507 lines. Add calendar view, conflict detection, bulk assign, SMS confirmation. |
+| /volunteers/groups — full group management | PENDING | 355 lines. Add group messaging, bulk task assignment, export, group health score. |
+| /volunteers/expenses — full expense workflow | PENDING | 381 lines. Add receipt upload, policy check, approval, direct deposit. |
+| /contacts/duplicates — full merge workflow | PENDING | 351 lines. Add field-by-field merge picker, merge history, auto-merge rules. |
+| /intelligence — full opponent intel | PENDING | 314 lines. Add statement tracker, vote record, approval chart, Adoni analysis. |
+| /resources/ai-creator — full AI creator | PENDING | 194 lines. Add all content types, tone selector, campaign context injection, history. |
+| /communications/inbox — unified inbox full build | PENDING | 251 lines. Full two-way thread view, reply, tag, assign, snooze. |
+| /settings/fields — full custom fields | PENDING | 488 lines. Add field reordering, conditional display, data type validation, import map. |
+| /settings/recycle-bin — full soft delete management | PENDING | 295 lines. Add restore, permanent delete, filter by type, bulk actions. |
+
+---
+
+## MODULE: STUB ROUTES — KILL OR BUILD DECISION
+
+*These are near-empty pages. Each needs a decision: build properly or remove the route and redirect.*
+
+| Task | Status | Notes |
+|---|---|---|
+| /canvassing/walk — resolve duplicate | PENDING | 5 lines. Same purpose as /field-ops/walk. Pick one, redirect the other, or build separate mobile-first canvassing walk view. |
+| /field-ops/walk — resolve duplicate | PENDING | 8 lines. If keeping this, build proper mobile walk shell. Otherwise redirect to /canvassing/walk. |
+| /field-ops/scripts — kill or redirect | PENDING | 8 lines. Redirect to /canvassing/scripts or build field-specific script viewer. |
+| /field-ops/print — kill or redirect | PENDING | 22 lines. Redirect to /print or build field-context print sheet. |
+| /field-ops/map — build or kill | PENDING | 24 lines. Full Leaflet map of all field activity, or remove route. |
+| /capture — build quick-capture | PENDING | 25 lines. Fast contact/interaction capture (one-tap from mobile). Useful for events. |
+| /dashboard/widget — build or kill | PENDING | 16 lines. Embeddable widget preview, or remove. |
+| /import-export/smart-import — wire up | PENDING | 20 lines. Should render the smart import flow (already built in /import-export). Redirect or embed. |
+| /lookup — build voter lookup | PENDING | 16 lines. Fast single-voter search: name/address/phone → pull contact record. |
+| /call-list — build or kill | PENDING | 8 lines. Phone banking list view. Build if phone banking is in scope, kill otherwise. |
+| /supporters/super — build or kill | PENDING | 74 lines. Super supporter management. Build VIP supporter tier, or merge into /contacts. |
+| /widgets/[widgetId] — build or kill | PENDING | 21 lines. Public embeddable widget. Build if embeds are needed for campaign websites. |
+| /coalitions — full build | PENDING | 56 lines. Coalition partner tracking, endorsement management, shared voter data requests. |
+
+---
+
+## MODULE: COMMUNICATIONS — REMAINING PHASES
+
+*Already in queue above — restated here for sprint planning clarity.*
+
+| Task | Status | Notes |
+|---|---|---|
+| Phase 4 — Delivery tracking webhooks | PENDING | Resend bounce, Twilio STOP handling |
+| Phase 4b — Email open + click tracking pixel | PENDING | 1x1 GIF route, click redirect, NotificationLog fields |
+| Phase 5 — Unified inbox backend + UI rebuild | PENDING | InboxThread, InboxMessage models |
+| Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
+| Phase 7 — Automation Engine | PENDING | Triggers, steps, enrollment cron |
+| Phase 8 — Social publishing (real API calls) | PENDING | Facebook/X/LinkedIn |
+| Phase 9 — Consent management (CASL) | PENDING | |
+| Phase 10 — Fatigue guard | PENDING | |
+
+---
+
+*Last updated: 2026-04-15 — Full platform route audit complete (115 routes). 46 FULL BUILD, 54 PARTIAL, 15 STUB. All gaps now tracked above. Sprints 1-5 + stub decisions added. — Claude Sonnet 4.6*
+*This file is the truth. Code and git are the proof. This file is the map.*
