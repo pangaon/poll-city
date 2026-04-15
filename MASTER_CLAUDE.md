@@ -1,5 +1,5 @@
 # MASTER_CLAUDE.md — Poll City: Complete Project Handoff Document
-**Last Updated:** April 15, 2026 | **Version:** 2.0
+**Last Updated:** April 15, 2026 | **Version:** 2.1 (corrected for actual Next.js codebase)
 
 ---
 
@@ -26,24 +26,28 @@ Use the content in the sections below (each clearly labeled ## FILE: filename.md
 
 FIGMA.md is the master context. Read it before touching any code.
 
-### Step 3 — Key rules
+### Step 3 — Key rules (corrected for actual Next.js codebase)
 
-1. Package manager: pnpm only — never npm or yarn
-2. Routing: react-router v7 Data mode — NOT react-router-dom
-3. Animation: import motion from 'motion/react' — NOT framer-motion
-4. Images: use ImageWithFallback for new images, figma:asset/ for Figma rasters
-5. Fonts: import ONLY in /src/styles/fonts.css
-6. Protected: NEVER edit /src/app/components/figma/ImageWithFallback.tsx or /pnpm-lock.yaml
-7. Canadian context: Toronto, April 2026, LIB/CON/NDP/BQ/GRN, Riding 42 / Parkdale–High Park
+1. Package manager: npm — NOT pnpm or yarn
+2. Routing: Next.js App Router (filesystem-based) — NOT react-router. No routes.tsx.
+3. Animation: import { motion } from 'framer-motion' — NOT 'motion/react'
+4. Images: use Next.js <Image> from 'next/image'. No figma:asset/ scheme.
+5. Fonts: via next/font or global CSS — no /src/styles/fonts.css in this codebase
+6. Protected: NEVER edit src/components/adoni/adoni-chat.tsx or CLAUDE.md
+7. Canadian context: Toronto, April 2026 (federal) + October 2026 (Ontario municipal), LIB/CON/NDP/BQ/GRN, Riding 42 / Parkdale–High Park (federal), Ward 20 / Scarborough Southwest (municipal)
 8. No Tailwind font overrides unless user asks
-9. No tailwind.config.js — Tailwind v4 uses CSS variables in theme.css
+9. tailwind.config.js IS required — this codebase uses Tailwind v3.4.1, not v4
 10. Check package.json before installing any package
 
 ### Step 4 — Current build state
 
-COMPLETE — do not rebuild:
-- /app/candidate → Candidate.tsx (5-tab hub for Maria T. Chen)
-- /app/officials → ElectedOfficials.tsx (coalition intelligence directory)
+This is a full production Next.js 14 codebase with 100+ routes, Prisma/PostgreSQL,
+next-auth, Stripe, Twilio, Resend. All major modules are built.
+
+NOT a Figma Make prototype. The Figma Make prototype (Vite + react-router) is a
+separate project. Do not apply Figma Make conventions here.
+
+See FIGMA.md §5 for full page completion status.
 
 ---
 
@@ -71,121 +75,116 @@ Design reference: "Stripe + Linear + NationBuilder + Meta Ads Manager combined."
 
 | Tool | Version | Notes |
 |---|---|---|
-| Vite | 6 | Build tool |
+| Next.js | 14.2.5 | Framework — App Router, NOT Vite |
 | React | 18 | UI framework |
-| TypeScript | latest | Type safety |
-| Tailwind CSS | v4 | No tailwind.config.js |
-| react-router | v7 | Data mode — NOT react-router-dom |
-| pnpm | latest | NOT npm or yarn |
-| motion | latest | From 'motion/react' — NOT framer-motion |
-| recharts | 2 | Charts only |
-| lucide-react | 0.487 | Icons only |
-| react-hook-form | 7.55.0 | Must be this exact version |
-| shadcn/ui | — | In /src/app/components/ui/ |
-| sonner | — | import { toast } from 'sonner' |
-| react-dnd | 16 | + react-dnd-html5-backend |
-| date-fns | 3 | Date utilities |
+| TypeScript | 5 | Strict mode |
+| Tailwind CSS | 3.4.1 | Uses tailwind.config.js — NOT v4 |
+| Prisma | 5.15.0 | ORM — PostgreSQL on Railway |
+| next-auth | 4.24.7 | Authentication |
+| npm | — | Package manager — NOT pnpm or yarn |
+| framer-motion | 12.38.0 | From 'framer-motion' — NOT 'motion/react' |
+| recharts | 3.8.1 | Charts only |
+| lucide-react | 0.395.0 | Icons only |
+| react-hook-form | 7.52.0 | Must be this exact version |
+| sonner | 1.5.0 | import { toast } from 'sonner' |
+| @dnd-kit/core | 6.3.1 | Drag & drop — NOT react-dnd |
+| date-fns | 3.6.0 | Date utilities |
+| zod | 3.23.8 | Validation |
+| leaflet + react-leaflet | 1.9.4 / 4.2.1 | Maps (dynamic import, ssr: false) |
 
 ## 3. Project File Structure
 
 /
 ├── src/
 │   ├── app/
-│   │   ├── App.tsx                      ← Root entry, mounts RouterProvider
-│   │   ├── routes.tsx                   ← All routes defined here
-│   │   ├── components/
-│   │   │   ├── AppSwitcher.tsx
-│   │   │   ├── FieldOpsMap.tsx
-│   │   │   ├── InstallationInterface.tsx
-│   │   │   ├── NewSignRequestModal.tsx
-│   │   │   ├── figma/ImageWithFallback.tsx  ← PROTECTED
-│   │   │   └── ui/                      ← All shadcn/ui components
-│   │   └── pages/
-│   │       ├── App/
-│   │       │   ├── AppLayout.tsx        ← Sidebar + shell
-│   │       │   ├── Dashboard.tsx
-│   │       │   ├── Candidate.tsx        ← COMPLETE
-│   │       │   ├── ElectedOfficials.tsx ← COMPLETE
-│   │       │   ├── Canvassing.tsx
-│   │       │   ├── Contacts.tsx
-│   │       │   ├── FieldOps.tsx
-│   │       │   ├── WalkList.tsx
-│   │       │   ├── LitDrops.tsx
-│   │       │   ├── Signs.tsx
-│   │       │   ├── Polling.tsx
-│   │       │   ├── Communications.tsx
-│   │       │   ├── Calendar.tsx
-│   │       │   ├── Tasks.tsx
-│   │       │   ├── Volunteers.tsx
-│   │       │   ├── Donations.tsx
-│   │       │   ├── Print.tsx
-│   │       │   ├── Media.tsx
-│   │       │   ├── Reports.tsx
-│   │       │   ├── Settings.tsx
-│   │       │   └── Admin.tsx
-│   │       ├── Marketing/Home.tsx
-│   │       └── Social/
-│   │           ├── SocialLayout.tsx
-│   │           ├── SocialFeed.tsx
-│   │           ├── SocialTrending.tsx
-│   │           ├── SocialCreate.tsx
-│   │           ├── SocialNotifications.tsx
-│   │           ├── SocialProfile.tsx
-│   │           ├── SocialCommand.tsx
-│   │           └── sc-data.ts
-│   ├── imports/
-│   │   ├── Poll_City_Logo.png
-│   │   ├── Poll_city_logo.jpg
-│   │   ├── image.png through image-6.png
-│   │   ├── IMG_3247.png
-│   │   └── pasted_text/
-│   │       ├── poll-city-design-spec.md
-│   │       ├── poll-city-command-center.md
-│   │       └── poll-city-field-ops.md
+│   │   ├── layout.tsx                   ← Root layout (Next.js)
+│   │   ├── (app)/                       ← Authenticated campaign app (30+ modules)
+│   │   │   ├── layout.tsx               ← App shell
+│   │   │   ├── dashboard/page.tsx
+│   │   │   ├── contacts/page.tsx
+│   │   │   ├── canvassing/page.tsx
+│   │   │   ├── field-ops/page.tsx
+│   │   │   ├── field/                   ← Field sub-modules
+│   │   │   ├── finance/                 ← Finance Command suite
+│   │   │   ├── communications/
+│   │   │   ├── signs/page.tsx
+│   │   │   ├── polls/
+│   │   │   ├── ops/                     ← SUPER_ADMIN console
+│   │   │   └── [30+ other modules]
+│   │   ├── (marketing)/                 ← Public marketing site
+│   │   ├── (print)/                     ← Print layout (no sidebar)
+│   │   ├── social/                      ← Poll City Social app
+│   │   └── api/                         ← API routes
+│   ├── components/
+│   │   ├── layout/                      ← sidebar.tsx ← PROTECTED (Adoni listener)
+│   │   ├── adoni/                       ← adoni-chat.tsx ← PROTECTED
+│   │   ├── canvassing/
+│   │   ├── gotv/
+│   │   ├── polls/
+│   │   ├── maps/
+│   │   ├── dashboard/
+│   │   └── ui/                          ← Custom UI primitives
+│   ├── lib/
+│   │   ├── auth/helpers.ts              ← apiAuth(), authOptions
+│   │   ├── db/prisma.ts                 ← Prisma client
+│   │   └── api/errors.ts               ← Error helpers
 │   └── styles/
-│       ├── theme.css     ← CSS tokens
-│       ├── fonts.css     ← Font @import ONLY here
-│       ├── index.css
-│       ├── custom.css
-│       └── tailwind.css
+├── prisma/
+│   ├── schema.prisma                    ← Source of truth for data models
+│   └── seeds/
 ├── MASTER_CLAUDE.md
 ├── FIGMA.md
-├── CLAUDE.md
+├── CLAUDE.md                            ← PROTECTED — agent standing orders
+├── ROUTES.md
+├── COMPONENTS.md
+├── DEPENDENCIES.md
+├── SPECIFICATIONS.md
+├── QUICK_START.md
+├── DOCUMENTATION_INDEX.md
 ├── package.json
-├── vite.config.ts
-└── pnpm-workspace.yaml
+├── next.config.js
+└── tailwind.config.js                   ← Required for Tailwind v3
 
 ## 4. Routing Map
 
-All routes in /src/app/routes.tsx only.
+All routes use **Next.js App Router** (filesystem-based). No routes.tsx.
+See ROUTES.md for the full 100+ route map. Key routes:
 
-/                     → Marketing Home
-/app                  → Dashboard
-/app/contacts         → Contacts / Voter Database
-/app/canvassing       → Canvassing
-/app/field-ops        → Field Ops (13 tabs)
-/app/walk-list        → Walk Lists
-/app/lit-drops        → Literature Drops
-/app/polling          → Polling Engine
-/app/communications   → Communications
-/app/calendar         → Campaign Calendar
-/app/tasks            → Tasks
-/app/volunteers       → Volunteers
-/app/donations        → Donations
-/app/signs            → Signs Management
-/app/print            → Print & Logistics
-/app/media            → Media / Content
-/app/reports          → Reports & Analytics
-/app/settings         → Settings
-/app/admin            → Admin / Ops Console
-/app/candidate        → Candidate Hub ← COMPLETE
-/app/officials        → Elected Officials ← COMPLETE
-/social               → Social Feed
-/social/trending      → Trending Issues
-/social/create        → Create Poll
-/social/command       → Social Command
-/social/notifications → Notifications
-/social/profile       → Profile
+/                        → Marketing Home
+/dashboard               → Dashboard
+/contacts                → Contacts / Voter Database
+/contacts/[id]           → Contact detail
+/canvassing              → Canvassing
+/field-ops               → Field Ops (tab hub)
+/field/programs          → Programs
+/field/turf              → Turf
+/field/routes            → Routes
+/field/runs              → Runs
+/field/lit-drops         → Lit Drops
+/polls                   → Polling Engine
+/communications          → Communications
+/communications/email    → Email
+/communications/sms      → SMS
+/communications/social   → Social media manager
+/calendar                → Campaign Calendar
+/calendar/candidate      → Candidate Schedule
+/tasks                   → Tasks
+/volunteers              → Volunteers
+/donations               → Donations
+/fundraising             → Fundraising
+/finance                 → Finance Command Centre
+/signs                   → Signs Management
+/print                   → Print & Design
+/analytics               → Analytics + choropleth map
+/reports                 → Reports
+/settings                → Settings
+/ops                     → Operator Console (SUPER_ADMIN only)
+/gotv                    → GOTV War Room
+/election-night          → Election Night Dashboard
+/social                  → Poll City Social feed
+/social/polls            → Browse polls
+/social/officials        → Elected officials (public)
+/social/profile          → User profile
 
 ## 5. Page Completion Status
 
@@ -450,67 +449,86 @@ Always update routes.tsx AND AppLayout.tsx sidebar when adding routes.
 
 ## FILE: CLAUDE.md
 
-# Poll City - Development Guide
+# IMPORTANT — Do NOT overwrite CLAUDE.md when populating files
+
+CLAUDE.md is the Poll City agent standing orders file (537 lines, tracked by git).
+It contains the full operating system for every AI session: build cycle, security rules,
+architecture rules, Adoni laws, anti-hallucination rules, and reporting format.
+
+When re-populating doc files from MASTER_CLAUDE.md, **skip CLAUDE.md**.
+The codebase wins — and the codebase's CLAUDE.md is authoritative.
+
+The short dev guide below is for reference only. Do not use it to overwrite CLAUDE.md.
+
+---
+
+# Poll City - Development Reference (supplement to CLAUDE.md)
 
 ## Overview
 
-Enterprise SaaS campaign ecosystem + Poll City Social public polling app.
-Built with Vite, React, TypeScript, pnpm.
-Dark-first "2030 design language" — glassmorphic panels, neon edge lighting, recharts, animated radar maps.
+Enterprise SaaS campaign platform + Poll City Social public polling app.
+Built with Next.js 14, React 18, TypeScript 5, Prisma 5, PostgreSQL.
 
-CRITICAL: Canada-based, April 2026 federal election. Riding 42 / Parkdale–High Park.
+CRITICAL: Canada-based. April 2026 federal election + October 2026 Ontario municipal.
+Riding 42 / Parkdale–High Park (federal). Ward 20 / Scarborough Southwest (municipal).
 Parties: LIB/CON/NDP/BQ/GRN. Toronto addresses, 416/647. NEVER use US political references.
 
-## Tech Stack
+## Tech Stack (actual)
 
 | Tool | Details |
 |---|---|
-| React 18 + TypeScript | Core |
-| Vite 6 | Build tool |
-| pnpm | Package manager — NOT npm/yarn |
-| Tailwind CSS v4 | No tailwind.config.js |
-| react-router v7 | Data mode — NOT react-router-dom |
-| recharts | Charts |
-| lucide-react | Icons |
-| motion | import from 'motion/react' |
-| react-hook-form | MUST use version 7.55.0 |
+| Next.js 14.2.5 | Framework — App Router |
+| React 18 + TypeScript 5 | Core |
+| npm | Package manager — NOT pnpm/yarn |
+| Tailwind CSS v3.4.1 | Uses tailwind.config.js |
+| Prisma 5.15.0 | ORM — PostgreSQL on Railway |
+| next-auth 4.24.7 | Authentication |
+| framer-motion 12 | Animation — import from 'framer-motion' |
+| recharts 3.8.1 | Charts |
+| lucide-react 0.395.0 | Icons |
+| react-hook-form 7.52.0 | MUST use this exact version |
+| @dnd-kit/core 6.3.1 | Drag & drop |
+| zod 3.23.8 | Validation |
 
 ## Design System
 
-Theme: /src/styles/theme.css
-Fonts: /src/styles/fonts.css (ONLY here)
-Custom: /src/styles/custom.css
+Colours: Navy #0A2342, Green #1D9E75, Amber #EF9F27, Red #E24B4A
+Party: LIB #dc2626 | CON #2563eb | NDP #ea580c | BQ #06b6d4 | GRN #16a34a
+Social app: bg-slate-950 base, glassmorphic bg-white/5 backdrop-blur-xl
 
-Colors:
-- Campaign Platform: Navy #0A2342, Green #1D9E75, Amber #EF9F27, Red #E24B4A
-- Social App: Deep dark #0a0a0f, glassmorphic bg-white/5
-- LIB: #dc2626 | CON: #2563eb | NDP: #ea580c | BQ: #06b6d4 | GRN: #16a34a
+Cards: bg-white rounded-xl border border-gray-200
+Hover: hover:border-[#0A2342] hover:shadow-sm
+Styling: cn() from @/lib/utils (clsx + tailwind-merge)
 
-Patterns:
-- Glassmorphism: bg-white/5 backdrop-blur-xl border border-white/10
-- Neon: shadow-[0_0_20px_rgba(59,130,246,0.3)] border-blue-500/30
-- Cards: bg-white rounded-xl border border-gray-200
-- Hover: hover:border-[#0A2342] hover:shadow-sm
+## Import Patterns (Next.js)
 
-## Import Patterns
-
-// Raster images — figma:asset scheme (NO path prefix!)
-import img from "figma:asset/abc123.png";
-
-// New images
-import { ImageWithFallback } from './components/figma/ImageWithFallback';
+// Images — Next.js Image (no figma:asset in this codebase)
+import Image from 'next/image';
 
 // Icons
 import { Search, User } from 'lucide-react';
 
-// Motion (NOT framer-motion)
-import { motion } from 'motion/react';
+// Animation
+import { motion } from 'framer-motion';
 
 // Charts
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 // Toast
 import { toast } from 'sonner';
+
+// Auth (server component)
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/auth-options";
+
+// Auth (API route)
+import { apiAuth } from "@/lib/auth/helpers";
+
+// Database
+import { prisma } from "@/lib/db/prisma";
+
+// Styling
+import { cn } from "@/lib/utils";
 
 ## Mock Data Pattern
 
@@ -525,41 +543,28 @@ const mockVoters = [
   }
 ];
 
-## Chart Pattern
-
-<ResponsiveContainer width="100%" height={300}>
-  <LineChart data={data}>
-    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-    <XAxis dataKey="date" stroke="#666" />
-    <YAxis stroke="#666" />
-    <Tooltip contentStyle={{ backgroundColor: '#1a1a24', border: '1px solid #333' }} />
-    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} />
-  </LineChart>
-</ResponsiveContainer>
-
 ## Rules
 
 DO:
-- Edit existing files rather than creating new ones
+- npm run build exits 0 before every push
+- Read files before editing
+- Scope every DB query by campaignId
+- Filter deletedAt: null on Contact/Task/Sign/Donation/VolunteerProfile
+- Use apiAuth(req) for API routes
+- Use getServerSession(authOptions) for server components
 - Use Canadian 2026 context everywhere
-- Import fonts ONLY in /src/styles/fonts.css
-- Use pnpm
-- Check package.json before installing
-- Use ImageWithFallback for new images
 - Use lucide-react for icons
 - Use recharts for charts
-- Use motion from 'motion/react'
+- Use framer-motion for animation
 
 DON'T:
-- Create HTML files
+- Push without a green build
+- Use pnpm or yarn (use npm)
 - Use US political references
-- Use npm or yarn
-- Override font-size/weight with Tailwind unless asked
-- Create tailwind.config.js
-- Use react-resizable (use re-resizable)
-- Use konva (use HTML canvas)
-- Use placeholders in code
-- Create .js or .jsx files
+- Create tailwind.config.js (it already exists — leave it)
+- Use any TypeScript (use unknown + narrowing)
+- Skip Zod validation at API boundaries
+- Hard-delete Contact/Task/Sign/Donation/VolunteerProfile records
 
 ---
 
@@ -606,9 +611,9 @@ DON'T:
 
 ## Adding New Routes
 
-1. Create /src/app/pages/App/NewPage.tsx
-2. Add route in /src/app/routes.tsx
-3. Add to sidebar in /src/app/pages/App/AppLayout.tsx
+1. Create /src/app/(app)/new-feature/page.tsx (server component — handles auth)
+2. Create /src/app/(app)/new-feature/new-feature-client.tsx (client component — handles UI)
+3. Add to sidebar in /src/components/layout/sidebar.tsx
 
 ## Page Layout Pattern
 
@@ -680,34 +685,41 @@ Neon card:
 
 # Poll City - Dependencies
 
-## Package Manager: pnpm ONLY
+## Package Manager: npm
 
-pnpm add package-name
-pnpm add package-name@version
-cat package.json
+npm install package-name
+npm install package-name@version
+# Check package.json first — it may already be installed
 
-## Core Packages
+## Core Packages (actual from package.json)
 
 | Package | Version | Purpose |
 |---|---|---|
-| react | 18.3.1 | Core |
-| react-dom | 18.3.1 | DOM |
-| react-router | 7.13.0 | Routing |
-| vite | 6.3.5 | Build |
-| tailwindcss | 4.1.12 | Styling |
-| lucide-react | 0.487.0 | Icons |
-| recharts | 2.15.2 | Charts |
-| motion | 12.23.24 | Animation |
-| react-hook-form | 7.55.0 | Forms — must be this version |
-| date-fns | 3.6.0 | Dates |
-| react-dnd | 16.0.1 | Drag & drop |
-| react-dnd-html5-backend | 16.0.1 | DnD backend |
-| react-slick | 0.31.0 | Carousels |
-| react-responsive-masonry | 2.7.1 | Masonry |
-| canvas-confetti | 1.9.4 | Confetti |
-| @mui/material | 7.3.5 | Material UI |
-| @emotion/react | 11.14.0 | MUI peer dep |
-| @emotion/styled | 11.14.1 | MUI peer dep |
+| next | 14.2.5 | Framework |
+| react | ^18 | Core |
+| react-dom | ^18 | DOM |
+| @prisma/client | ^5.15.0 | ORM |
+| next-auth | ^4.24.7 | Auth |
+| tailwindcss | ^3.4.1 | Styling |
+| lucide-react | ^0.395.0 | Icons |
+| recharts | ^3.8.1 | Charts |
+| framer-motion | ^12.38.0 | Animation |
+| react-hook-form | ^7.52.0 | Forms — must be this version |
+| @hookform/resolvers | ^3.6.0 | RHF resolvers |
+| zod | ^3.23.8 | Validation |
+| date-fns | ^3.6.0 | Dates |
+| @dnd-kit/core | ^6.3.1 | Drag & drop |
+| @dnd-kit/sortable | ^10.0.0 | Sortable lists |
+| sonner | ^1.5.0 | Toasts |
+| leaflet | ^1.9.4 | Maps |
+| react-leaflet | ^4.2.1 | React maps |
+| @turf/turf | ^7.3.4 | GIS |
+| stripe | ^22.0.0 | Payments |
+| twilio | ^5.13.1 | SMS |
+| resend | ^6.10.0 | Email |
+| canvas-confetti | ^1.9.4 | Confetti |
+| papaparse | ^5.4.1 | CSV |
+| xlsx | ^0.18.5 | Excel |
 
 ## Package Selection
 
@@ -715,19 +727,19 @@ cat package.json
 |---|---|
 | Icons | lucide-react |
 | Charts | recharts |
-| Animation | motion (from 'motion/react') |
-| Forms | react-hook-form@7.55.0 |
+| Animation | framer-motion |
+| Forms | react-hook-form@^7.52.0 |
+| Validation | zod |
 | Dates | date-fns |
 | Toasts | sonner |
-| Drag & Drop | react-dnd + react-dnd-html5-backend |
-| Carousels | react-slick |
-| Masonry | react-responsive-masonry |
+| Drag & Drop | @dnd-kit/core + @dnd-kit/sortable |
+| Maps | leaflet + react-leaflet |
 
 ## DO NOT USE
-- react-resizable → use re-resizable
-- konva → use HTML canvas
-- framer-motion → use motion from 'motion/react'
-- react-router-dom → use react-router
+- pnpm or yarn → use npm
+- framer-motion imported as 'motion/react' → use `import { motion } from 'framer-motion'`
+- react-router or react-router-dom → not needed, Next.js App Router handles routing
+- react-dnd → use @dnd-kit/core
 - Any icon lib other than lucide-react
 - Any chart lib other than recharts
 
@@ -922,27 +934,34 @@ cat package.json
 
 ## 🔄 UPDATE PATH
 
-How to keep docs in sync as you build in Figma Make:
+How to keep docs in sync as you build:
 
-STEP 1: After a Figma Make session, go to the chat and say:
-"Update the docs — I just built [feature name]"
+STEP 1: After completing a feature, update this file:
+"Update MASTER_CLAUDE.md — I just built [feature name]"
 
-STEP 2: I update MASTER_CLAUDE.md in Figma Make
+STEP 2: Claude updates the relevant ## FILE: section(s) here
 
-STEP 3: You copy the updated file over the old one in VS Code (Ctrl+A → Ctrl+V → Ctrl+S)
-
-STEP 4: Tell Claude in VS Code:
+STEP 3: Tell Claude in VS Code:
 "Re-read MASTER_CLAUDE.md and re-populate all the individual doc files"
 
 ONE FILE. ONE PASTE. DONE.
 
+IMPORTANT: This codebase is Next.js 14, NOT a Figma Make prototype.
+When updating ## FILE: sections, always use:
+- npm (not pnpm)
+- framer-motion (not motion/react)
+- Next.js App Router (not react-router)
+- tailwind.config.js (Tailwind v3, not v4)
+- See FIGMA.md §18 for the full corrections table
+
 Update when you:
 - Complete a new page or feature
-- Add routes
-- Install packages
-- Create new components
-- Change sidebar navigation
-- Modify design system
+- Add routes (update the routing map in ## FILE: FIGMA.md and ## FILE: ROUTES.md)
+- Install packages (update ## FILE: DEPENDENCIES.md)
+- Create new components (update ## FILE: COMPONENTS.md)
+- Change sidebar navigation (update sidebar section in ## FILE: FIGMA.md)
+- Modify design system (update design system in ## FILE: FIGMA.md)
+- Change the active build queue (update ## FILE: QUICK_START.md)
 
 ---
 
