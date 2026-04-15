@@ -41,7 +41,7 @@ export const CANDIDATE_ROLES: string[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Election types
+// Election types — both flat list and card options for the setup wizard
 // ---------------------------------------------------------------------------
 
 export const ELECTION_TYPES: string[] = [
@@ -49,8 +49,25 @@ export const ELECTION_TYPES: string[] = [
   "Provincial",
   "Federal",
   "By-election",
+  "Nomination",
+  "Leadership",
   "School Board",
-  "Regional",
+];
+
+export interface ElectionTypeOption {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export const ELECTION_TYPE_OPTIONS: ElectionTypeOption[] = [
+  { value: "Municipal",    label: "Municipal",    description: "Mayor, councillor, regional chair" },
+  { value: "Provincial",   label: "Provincial",   description: "MPP, MLA, MNA, MHA" },
+  { value: "Federal",      label: "Federal",      description: "Member of Parliament" },
+  { value: "School Board", label: "School Board", description: "Public or Catholic trustee" },
+  { value: "By-election",  label: "By-election",  description: "Filling a vacated seat" },
+  { value: "Nomination",   label: "Nomination",   description: "Party nomination race" },
+  { value: "Leadership",   label: "Leadership",   description: "Party leadership contest" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -592,5 +609,47 @@ export function detectElectionType(role: string): ElectionType | null {
     r.includes("regional")
   )
     return "Municipal";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Known scheduled elections — drives smart date auto-fill in setup wizard
+// Ontario Municipal: fourth Monday of October 2026 = October 26, 2026
+// ---------------------------------------------------------------------------
+
+export interface KnownElection {
+  electionDate: string;   // yyyy-mm-dd
+  advanceStart: string;
+  advanceEnd: string;
+  label: string;
+}
+
+export const ONTARIO_MUNICIPAL_2026: KnownElection = {
+  electionDate: "2026-10-26",
+  advanceStart: "2026-10-16",
+  advanceEnd:   "2026-10-24",
+  label: "Ontario Municipal — October 26, 2026",
+};
+
+// Simple Ontario keyword check — covers city/town/ward/region names
+const ONTARIO_SIGNALS = [
+  "ontario", "toronto", "ottawa", "mississauga", "brampton", "hamilton",
+  "london", "markham", "vaughan", "kitchener", "windsor", "burlington",
+  "oakville", "richmond hill", "oshawa", "barrie", "guelph", "cambridge",
+  "kingston", "thunder bay", "sudbury", "peterborough", "north bay",
+  "sault", "brantford", "catharines", "niagara", "waterloo", "timmins",
+  "sarnia", "belleville", "woodstock", "cornwall", "ajax", "aurora",
+  "caledon", "collingwood", "halton", "innisfil", "midland", "milton",
+  "newmarket", "orangeville", "pickering", "whitby", "ward",
+];
+
+export function detectKnownElection(
+  electionType: string,
+  jurisdiction: string
+): KnownElection | null {
+  if (electionType !== "Municipal") return null;
+  if (!jurisdiction.trim()) return null;
+  const j = jurisdiction.toLowerCase();
+  if (ONTARIO_SIGNALS.some((s) => j.includes(s))) return ONTARIO_MUNICIPAL_2026;
   return null;
 }

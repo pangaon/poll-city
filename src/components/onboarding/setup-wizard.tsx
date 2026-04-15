@@ -10,13 +10,15 @@ import {
   CalendarDays,
   MapPin,
   Share2,
-  Mail,
+  Sparkles,
 } from "lucide-react";
 import {
   CANDIDATE_ROLES,
   CANADIAN_JURISDICTIONS,
-  ELECTION_TYPES,
+  ELECTION_TYPE_OPTIONS,
   detectElectionType,
+  detectKnownElection,
+  type KnownElection,
 } from "@/lib/canada/electoral-data";
 
 // ---------------------------------------------------------------------------
@@ -24,25 +26,20 @@ import {
 // ---------------------------------------------------------------------------
 
 interface WizardData {
-  // Step 1 — candidate
   candidateName: string;
   candidateTitle: string;
   jurisdiction: string;
   electionType: string;
-  // Step 2 — dates
   electionDate: string;
   advanceVoteStart: string;
   advanceVoteEnd: string;
-  // Step 3 — HQ
   officeAddress: string;
   candidatePhone: string;
   candidateEmail: string;
-  // Step 4 — socials
   websiteUrl: string;
   twitterHandle: string;
   instagramHandle: string;
   facebookUrl: string;
-  // Step 5 — email voice
   fromEmailName: string;
   replyToEmail: string;
 }
@@ -50,7 +47,6 @@ interface WizardData {
 interface SetupWizardProps {
   campaignId: string;
   firstName: string;
-  /** Pre-seeded values from existing campaign record */
   initial: Partial<WizardData>;
   onComplete: () => void;
   /** Called when user chooses "Remind me later" on step 1 — no save, just dismiss */
@@ -62,10 +58,8 @@ interface SetupWizardProps {
 // ---------------------------------------------------------------------------
 
 const SPRING = { type: "spring", stiffness: 300, damping: 30 } as const;
-
-const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
-
+const TOTAL_STEPS = 4;
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -84,11 +78,13 @@ function Input({
   onChange,
   placeholder,
   type = "text",
+  min,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  min?: string;
 }) {
   return (
     <input
@@ -96,6 +92,7 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
+      min={min}
       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 transition-colors"
     />
   );
@@ -125,7 +122,6 @@ function AutocompleteInput({
     return suggestions.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
   }, [value, suggestions]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
@@ -222,7 +218,7 @@ function StepIcon({
 }
 
 // ---------------------------------------------------------------------------
-// Step content components
+// Step 1 — Who are you + what are you running for?
 // ---------------------------------------------------------------------------
 
 function Step1({
@@ -236,9 +232,12 @@ function Step1({
 }) {
   function handleRoleChange(v: string) {
     onChange("candidateTitle", v);
-    // Cross-detect election type from the role
     const detected = detectElectionType(v);
     if (detected) onChange("electionType", detected);
+  }
+
+  function handleElectionTypeCard(value: string) {
+    onChange("electionType", value);
   }
 
   return (
@@ -254,6 +253,7 @@ function Step1({
           </p>
         </div>
       </div>
+
       <div>
         <Label>Candidate name *</Label>
         <Input
@@ -262,6 +262,38 @@ function Step1({
           placeholder="Full name as it appears on the ballot"
         />
       </div>
+
+      <div>
+        <Label>What type of election?</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {ELECTION_TYPE_OPTIONS.map((opt) => {
+            const selected = data.electionType === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleElectionTypeCard(opt.value)}
+                className="text-left px-3 py-2.5 rounded-lg border transition-all"
+                style={{
+                  borderColor: selected ? GREEN : "#334155",
+                  backgroundColor: selected ? `${GREEN}18` : "transparent",
+                }}
+              >
+                <p
+                  className="text-sm font-semibold leading-tight"
+                  style={{ color: selected ? GREEN : "#e2e8f0" }}
+                >
+                  {opt.label}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                  {opt.description}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
         <Label>Running for</Label>
         <AutocompleteInput
@@ -271,75 +303,136 @@ function Step1({
           suggestions={CANDIDATE_ROLES}
         />
       </div>
+
       <div>
-        <Label>Riding / municipality</Label>
+        <Label>
+          {data.electionType === "Provincial" || data.electionType === "Federal"
+            ? "Riding"
+            : data.electionType === "Nomination" || data.electionType === "Leadership"
+            ? "Party / organization"
+            : "Riding / municipality"}
+        </Label>
         <AutocompleteInput
           value={data.jurisdiction}
           onChange={(v) => onChange("jurisdiction", v)}
-          placeholder="e.g. City of Ottawa, Riding of Carleton"
-          suggestions={CANADIAN_JURISDICTIONS}
-        />
-      </div>
-      <div>
-        <Label>Election type</Label>
-        <AutocompleteInput
-          value={data.electionType}
-          onChange={(v) => onChange("electionType", v)}
-          placeholder="Municipal, Provincial, Federal…"
-          suggestions={ELECTION_TYPES}
+          placeholder={
+            data.electionType === "Nomination" || data.electionType === "Leadership"
+              ? "e.g. Ontario Liberal Party"
+              : "e.g. City of Ottawa, Riding of Carleton"
+          }
+          suggestions={
+            data.electionType === "Nomination" || data.electionType === "Leadership"
+              ? []
+              : CANADIAN_JURISDICTIONS
+          }
         />
       </div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Step 2 — Election timeline (smart auto-fill from step 1)
+// ---------------------------------------------------------------------------
+
 function Step2({
   data,
   onChange,
+  smartFill,
 }: {
   data: WizardData;
   onChange: (k: keyof WizardData, v: string) => void;
+  smartFill: KnownElection | null;
 }) {
+  // Auto-fill on first render if dates are empty and we have a known election
+  useEffect(() => {
+    if (smartFill && !data.electionDate) {
+      onChange("electionDate", smartFill.electionDate);
+      onChange("advanceVoteStart", smartFill.advanceStart);
+      onChange("advanceVoteEnd", smartFill.advanceEnd);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isNominationOrLeadership =
+    data.electionType === "Nomination" || data.electionType === "Leadership";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-2">
         <StepIcon icon={CalendarDays} color={GREEN} />
         <div>
           <h2 className="text-white font-bold text-xl leading-tight">
-            Election dates
+            {isNominationOrLeadership ? "Contest dates" : "Election dates"}
           </h2>
           <p className="text-slate-400 text-sm">
-            These drive your canvassing priorities and advance vote strategy.
+            {isNominationOrLeadership
+              ? "When is the nomination vote or leadership vote?"
+              : "These drive your canvassing priorities and advance vote strategy."}
           </p>
         </div>
       </div>
+
+      {/* Smart fill banner */}
+      {smartFill && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={SPRING}
+          className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border"
+          style={{ borderColor: `${GREEN}40`, backgroundColor: `${GREEN}12` }}
+        >
+          <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: GREEN }} />
+          <div>
+            <p className="text-xs font-semibold" style={{ color: GREEN }}>
+              We know your election date
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {smartFill.label} — dates pre-filled. Edit below if different.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       <div>
-        <Label>Election day *</Label>
+        <Label>{isNominationOrLeadership ? "Vote date *" : "Election day *"}</Label>
         <Input
           type="date"
           value={data.electionDate}
           onChange={(v) => onChange("electionDate", v)}
+          min="2025-01-01"
         />
       </div>
-      <div>
-        <Label>Advance voting — first day</Label>
-        <Input
-          type="date"
-          value={data.advanceVoteStart}
-          onChange={(v) => onChange("advanceVoteStart", v)}
-        />
-      </div>
-      <div>
-        <Label>Advance voting — last day</Label>
-        <Input
-          type="date"
-          value={data.advanceVoteEnd}
-          onChange={(v) => onChange("advanceVoteEnd", v)}
-        />
-      </div>
+
+      {!isNominationOrLeadership && (
+        <>
+          <div>
+            <Label>Advance voting — first day</Label>
+            <Input
+              type="date"
+              value={data.advanceVoteStart}
+              onChange={(v) => onChange("advanceVoteStart", v)}
+              min="2025-01-01"
+            />
+          </div>
+          <div>
+            <Label>Advance voting — last day</Label>
+            <Input
+              type="date"
+              value={data.advanceVoteEnd}
+              onChange={(v) => onChange("advanceVoteEnd", v)}
+              min="2025-01-01"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Step 3 — Campaign HQ
+// ---------------------------------------------------------------------------
 
 function Step3({
   data,
@@ -391,6 +484,10 @@ function Step3({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Step 4 — Reach your supporters (social + email voice, merged)
+// ---------------------------------------------------------------------------
+
 function Step4({
   data,
   onChange,
@@ -404,91 +501,75 @@ function Step4({
         <StepIcon icon={Share2} color={GREEN} />
         <div>
           <h2 className="text-white font-bold text-xl leading-tight">
-            Your online presence
+            Reach your supporters
           </h2>
           <p className="text-slate-400 text-sm">
-            Adoni uses these when drafting posts and reaching your supporters.
+            Your online presence and how emails appear to supporters.
           </p>
         </div>
       </div>
-      <div>
-        <Label>Website</Label>
-        <Input
-          value={data.websiteUrl}
-          onChange={(v) => onChange("websiteUrl", v)}
-          placeholder="https://johncampbell.ca"
-        />
-      </div>
-      <div>
-        <Label>X / Twitter handle</Label>
-        <Input
-          value={data.twitterHandle}
-          onChange={(v) => onChange("twitterHandle", v)}
-          placeholder="@johnforward5"
-        />
-      </div>
-      <div>
-        <Label>Instagram handle</Label>
-        <Input
-          value={data.instagramHandle}
-          onChange={(v) => onChange("instagramHandle", v)}
-          placeholder="@johnforward5"
-        />
-      </div>
-      <div>
-        <Label>Facebook URL</Label>
-        <Input
-          value={data.facebookUrl}
-          onChange={(v) => onChange("facebookUrl", v)}
-          placeholder="https://facebook.com/johncampbell"
-        />
-      </div>
-    </div>
-  );
-}
 
-function Step5({
-  data,
-  onChange,
-}: {
-  data: WizardData;
-  onChange: (k: keyof WizardData, v: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 mb-2">
-        <StepIcon icon={Mail} color={GREEN} />
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h2 className="text-white font-bold text-xl leading-tight">
-            Your email voice
-          </h2>
-          <p className="text-slate-400 text-sm">
-            Supporters see this name and address on every email you send.
-          </p>
+          <Label>Website</Label>
+          <Input
+            value={data.websiteUrl}
+            onChange={(v) => onChange("websiteUrl", v)}
+            placeholder="https://johncampbell.ca"
+          />
+        </div>
+        <div>
+          <Label>X / Twitter</Label>
+          <Input
+            value={data.twitterHandle}
+            onChange={(v) => onChange("twitterHandle", v)}
+            placeholder="@johnforward5"
+          />
+        </div>
+        <div>
+          <Label>Instagram</Label>
+          <Input
+            value={data.instagramHandle}
+            onChange={(v) => onChange("instagramHandle", v)}
+            placeholder="@johnforward5"
+          />
+        </div>
+        <div>
+          <Label>Facebook URL</Label>
+          <Input
+            value={data.facebookUrl}
+            onChange={(v) => onChange("facebookUrl", v)}
+            placeholder="facebook.com/johncampbell"
+          />
         </div>
       </div>
-      <div>
-        <Label>From name</Label>
-        <Input
-          value={data.fromEmailName}
-          onChange={(v) => onChange("fromEmailName", v)}
-          placeholder='e.g. "John Smith for Ward 5"'
-        />
-        <p className="text-slate-500 text-xs mt-1">
-          Shows as the sender in your supporters&apos; inboxes.
+
+      <div className="pt-1 border-t border-slate-800">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+          Email from your campaign
         </p>
-      </div>
-      <div>
-        <Label>Reply-to email</Label>
-        <Input
-          type="email"
-          value={data.replyToEmail}
-          onChange={(v) => onChange("replyToEmail", v)}
-          placeholder="john@johncampbell.ca"
-        />
-        <p className="text-slate-500 text-xs mt-1">
-          Where replies land. Can be the same as your campaign email.
-        </p>
+        <div className="space-y-3">
+          <div>
+            <Label>Sender name</Label>
+            <Input
+              value={data.fromEmailName}
+              onChange={(v) => onChange("fromEmailName", v)}
+              placeholder='e.g. "John Smith for Ward 5"'
+            />
+            <p className="text-slate-500 text-xs mt-1">
+              Shows as the sender in your supporters&apos; inboxes.
+            </p>
+          </div>
+          <div>
+            <Label>Reply-to email</Label>
+            <Input
+              type="email"
+              value={data.replyToEmail}
+              onChange={(v) => onChange("replyToEmail", v)}
+              placeholder="john@johncampbell.ca"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -520,8 +601,6 @@ function ProgressDots({ total, current }: { total: number; current: number }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-const TOTAL_STEPS = 5;
-
 function toDateInput(val: string | null | undefined): string {
   if (!val) return "";
   try {
@@ -542,42 +621,48 @@ export default function SetupWizard({
   const [saving, setSaving] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [data, setData] = useState<WizardData>({
-    candidateName: initial.candidateName ?? "",
-    candidateTitle: initial.candidateTitle ?? "",
-    jurisdiction: initial.jurisdiction ?? "",
-    electionType: initial.electionType
+    candidateName:    initial.candidateName ?? "",
+    candidateTitle:   initial.candidateTitle ?? "",
+    jurisdiction:     initial.jurisdiction ?? "",
+    electionType:     initial.electionType
       ? initial.electionType.charAt(0).toUpperCase() + initial.electionType.slice(1)
       : "Municipal",
-    electionDate: toDateInput(initial.electionDate),
+    electionDate:     toDateInput(initial.electionDate),
     advanceVoteStart: toDateInput(initial.advanceVoteStart),
-    advanceVoteEnd: toDateInput(initial.advanceVoteEnd),
-    officeAddress: initial.officeAddress ?? "",
-    candidatePhone: initial.candidatePhone ?? "",
-    candidateEmail: initial.candidateEmail ?? "",
-    websiteUrl: initial.websiteUrl ?? "",
-    twitterHandle: initial.twitterHandle ?? "",
-    instagramHandle: initial.instagramHandle ?? "",
-    facebookUrl: initial.facebookUrl ?? "",
-    fromEmailName: initial.fromEmailName ?? "",
-    replyToEmail: initial.replyToEmail ?? "",
+    advanceVoteEnd:   toDateInput(initial.advanceVoteEnd),
+    officeAddress:    initial.officeAddress ?? "",
+    candidatePhone:   initial.candidatePhone ?? "",
+    candidateEmail:   initial.candidateEmail ?? "",
+    websiteUrl:       initial.websiteUrl ?? "",
+    twitterHandle:    initial.twitterHandle ?? "",
+    instagramHandle:  initial.instagramHandle ?? "",
+    facebookUrl:      initial.facebookUrl ?? "",
+    fromEmailName:    initial.fromEmailName ?? "",
+    replyToEmail:     initial.replyToEmail ?? "",
   });
 
   const setField = useCallback((k: keyof WizardData, v: string) => {
     setData((prev) => ({ ...prev, [k]: v }));
   }, []);
 
+  // Compute smart fill whenever election type or jurisdiction changes
+  const smartFill = useMemo(
+    () => detectKnownElection(data.electionType, data.jurisdiction),
+    [data.electionType, data.jurisdiction]
+  );
+
   async function saveStep(isLast: boolean) {
     setSaving(true);
     try {
-      // Convert date strings to ISO datetime strings for the API
-      const toISO = (d: string) => d ? new Date(d).toISOString() : null;
-      // Normalize display election type → Prisma enum value (lowercase)
+      const toISO = (d: string) => (d ? new Date(d).toISOString() : null);
       const ELECTION_TYPE_MAP: Record<string, string> = {
         municipal: "municipal",
         provincial: "provincial",
         federal: "federal",
         "by-election": "by_election",
         "school board": "other",
+        nomination: "other",
+        leadership: "other",
         regional: "other",
       };
       const rawType = (data.electionType || "").toLowerCase().trim();
@@ -589,22 +674,22 @@ export default function SetupWizard({
           "x-campaign-id": campaignId,
         },
         body: JSON.stringify({
-          candidateName: data.candidateName || undefined,
-          candidateTitle: data.candidateTitle || null,
-          jurisdiction: data.jurisdiction || null,
-          electionType: normalizedType || undefined,
-          electionDate: toISO(data.electionDate),
+          candidateName:    data.candidateName || undefined,
+          candidateTitle:   data.candidateTitle || null,
+          jurisdiction:     data.jurisdiction || null,
+          electionType:     normalizedType || undefined,
+          electionDate:     toISO(data.electionDate),
           advanceVoteStart: toISO(data.advanceVoteStart),
-          advanceVoteEnd: toISO(data.advanceVoteEnd),
-          officeAddress: data.officeAddress || null,
-          candidatePhone: data.candidatePhone || null,
-          candidateEmail: data.candidateEmail || null,
-          websiteUrl: data.websiteUrl || null,
-          twitterHandle: data.twitterHandle || null,
-          instagramHandle: data.instagramHandle || null,
-          facebookUrl: data.facebookUrl || null,
-          fromEmailName: data.fromEmailName || null,
-          replyToEmail: data.replyToEmail || null,
+          advanceVoteEnd:   toISO(data.advanceVoteEnd),
+          officeAddress:    data.officeAddress || null,
+          candidatePhone:   data.candidatePhone || null,
+          candidateEmail:   data.candidateEmail || null,
+          websiteUrl:       data.websiteUrl || null,
+          twitterHandle:    data.twitterHandle || null,
+          instagramHandle:  data.instagramHandle || null,
+          facebookUrl:      data.facebookUrl || null,
+          fromEmailName:    data.fromEmailName || null,
+          replyToEmail:     data.replyToEmail || null,
           complete: isLast,
         }),
       });
@@ -650,20 +735,16 @@ export default function SetupWizard({
         transition={SPRING}
         className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
       >
-        {/* Header bar */}
+        {/* Header */}
         <div className="px-6 pt-5 pb-1">
           <div className="flex items-center justify-between mb-4">
-            <div
-              className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: GREEN }}
-            >
+            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: GREEN }}>
               Campaign Setup
             </div>
             <div className="text-xs text-slate-500">
               {step} of {TOTAL_STEPS}
             </div>
           </div>
-          {/* Progress bar */}
           <div className="h-1 w-full rounded-full bg-slate-800 mb-5">
             <motion.div
               className="h-full rounded-full"
@@ -676,7 +757,7 @@ export default function SetupWizard({
         </div>
 
         {/* Step content */}
-        <div className="px-6 pb-2 min-h-[340px]">
+        <div className="px-6 pb-2 min-h-[360px]">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={step}
@@ -686,13 +767,10 @@ export default function SetupWizard({
               exit={{ opacity: 0, x: direction * -30 }}
               transition={SPRING}
             >
-              {step === 1 && (
-                <Step1 data={data} onChange={setField} firstName={firstName} />
-              )}
-              {step === 2 && <Step2 data={data} onChange={setField} />}
+              {step === 1 && <Step1 data={data} onChange={setField} firstName={firstName} />}
+              {step === 2 && <Step2 data={data} onChange={setField} smartFill={smartFill} />}
               {step === 3 && <Step3 data={data} onChange={setField} />}
               {step === 4 && <Step4 data={data} onChange={setField} />}
-              {step === 5 && <Step5 data={data} onChange={setField} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -735,7 +813,7 @@ export default function SetupWizard({
             </button>
           </div>
 
-          {/* Dismiss link — "Remind me later" on step 1, "Skip" on subsequent steps */}
+          {/* Dismiss link */}
           <div className="mt-3 text-center">
             {step === 1 ? (
               <button
