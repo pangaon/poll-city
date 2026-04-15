@@ -230,7 +230,7 @@ Every major user action. Every downstream effect. Honest status.
 |--------|--------|-------|
 | Donation record created/updated | ✓ CONNECTED | |
 | ActivityLog entry | ✓ CONNECTED | |
-| Receipt email sent | ✓ CONNECTED | wired 2026-04-08 — Ontario MEA compliant, via Resend |
+| Receipt email sent | ✓ CONNECTED | wired 2026-04-15 — sendDonationReceiptEmail() in fundraising webhook (payment_intent.succeeded + invoice.payment_succeeded) + receipts POST (manual) + resend route |
 | contact.supportLevel updated | ✓ CONNECTED | wired 2026-04-09 — upgrade to leaning_support if unknown/undecided |
 | Funnel advances to "donor" | ✓ CONNECTED | already wired in quick-capture (advanceFunnel) |
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — set when receipt email sent |

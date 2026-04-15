@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { audit } from "@/lib/audit";
+import { sendReceiptEmail } from "@/lib/fundraising/receipt-email";
 
 export async function POST(
   req: NextRequest,
@@ -22,7 +23,6 @@ export async function POST(
   const { forbidden } = await guardCampaignRoute(session!.user.id, receipt.campaignId);
   if (forbidden) return forbidden;
 
-  // TODO: integrate email send (Resend) — stub for now
   const updated = await prisma.donationReceipt.update({
     where: { id: receiptId },
     data: {
@@ -32,6 +32,11 @@ export async function POST(
       sentByUserId: session!.user.id,
     },
   });
+
+  // Re-send the receipt email — fire-and-forget, never fail the request
+  sendReceiptEmail(receiptId).catch((e: unknown) =>
+    console.error("[receipts/resend] email dispatch failed:", e),
+  );
 
   await audit(prisma, "receipt.resend", {
     campaignId: receipt.campaignId,

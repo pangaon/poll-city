@@ -21,6 +21,7 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
 import { refreshDonorProfile } from "@/lib/fundraising/compliance";
+import { sendDonationReceiptEmail } from "@/lib/fundraising/send-donation-receipt";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
@@ -79,6 +80,11 @@ export async function POST(req: NextRequest) {
         if (donation.contactId) {
           await refreshDonorProfile(donation.campaignId, donation.contactId);
         }
+
+        // Generate receipt + send email — fire-and-forget
+        sendDonationReceiptEmail(donation.id, donation.campaignId).catch((e: unknown) =>
+          console.error("[fundraising/webhook] receipt email failed:", e),
+        );
         break;
       }
 
@@ -144,7 +150,7 @@ export async function POST(req: NextRequest) {
 
         const amountPaid = invoice.amount_paid / 100;  // Stripe amounts are in cents
 
-        await prisma.donation.create({
+        const newDonation = await prisma.donation.create({
           data: {
             campaignId:       plan.campaignId,
             contactId:        plan.contactId,
@@ -164,6 +170,7 @@ export async function POST(req: NextRequest) {
             collectedAt:      new Date(),
             complianceStatus: "pending",
           },
+          select: { id: true },
         });
 
         // Reset failure count and record last charge timestamp.
@@ -178,6 +185,11 @@ export async function POST(req: NextRequest) {
         if (plan.contactId) {
           await refreshDonorProfile(plan.campaignId, plan.contactId);
         }
+
+        // Generate receipt + send email for this billing cycle — fire-and-forget
+        sendDonationReceiptEmail(newDonation.id, plan.campaignId).catch((e: unknown) =>
+          console.error("[fundraising/webhook] recurring receipt email failed:", e),
+        );
         break;
       }
 
