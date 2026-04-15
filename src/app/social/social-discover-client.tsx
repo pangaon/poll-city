@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, ChevronRight, BarChart2, Users, Search, Award, FileSignature,
@@ -7,6 +8,7 @@ import {
   Flame, Heart, PenLine,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /* ── types ─────────────────────────────────────────────────────── */
@@ -28,6 +30,14 @@ interface Petition {
 
 interface LeaderboardEntry {
   rank: number; name: string; credits: number; badges: number;
+}
+
+interface VoterPassport {
+  credits: number;
+  badges: string[];
+  pollsParticipated: number;
+  petitionsSigned: number;
+  electionsParticipated: number;
 }
 
 interface MatchCandidate {
@@ -62,18 +72,20 @@ function Shimmer({ className }: { className?: string }) {
 
 /* ── main component ────────────────────────────────────────────── */
 export default function SocialDiscover() {
+  const { data: session } = useSession();
   const [postalCode, setPostalCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [officials, setOfficials] = useState<Official[]>([]);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Voter Passport mock state
-  const [passport] = useState({
-    pollsParticipated: 12,
-    petitionsSigned: 5,
-    electionsVoted: 3,
-    badges: ["Early Voter", "Petition Champion", "First Poll"],
+  // Voter Passport — real data, falls back to zeros for guests
+  const [passport, setPassport] = useState<VoterPassport>({
+    credits: 0,
+    badges: [],
+    pollsParticipated: 0,
+    petitionsSigned: 0,
+    electionsParticipated: 0,
   });
 
   // Candidate finder
@@ -82,27 +94,57 @@ export default function SocialDiscover() {
   const [matchResults, setMatchResults] = useState<MatchCandidate[]>([]);
   const [matchLoading, setMatchLoading] = useState(false);
 
-  // Petitions
-  const [petitions, setPetitions] = useState<Petition[]>([
-    { id: "p1", title: "Protect Greenwood Park from Commercial Development", signatures: 1847, goal: 2500, signed: false },
-    { id: "p2", title: "Extend TTC Service Hours on Weekends", signatures: 3291, goal: 5000, signed: false },
-    { id: "p3", title: "Mandate Bike Lanes on All New Arterial Roads", signatures: 912, goal: 1500, signed: false },
-    { id: "p4", title: "Increase Funding for Community Mental Health Clinics", signatures: 4102, goal: 5000, signed: false },
-  ]);
+  // Petitions — real data from DB
+  const [petitions, setPetitions] = useState<Petition[]>([]);
+  const [petitionsLoading, setPetitionsLoading] = useState(true);
+  const [signingId, setSigningId] = useState<string | null>(null);
 
-  // Leaderboard
-  const [leaderboard] = useState<LeaderboardEntry[]>([
-    { rank: 1, name: "Sarah M.", credits: 2450, badges: 12 },
-    { rank: 2, name: "James K.", credits: 2180, badges: 10 },
-    { rank: 3, name: "Priya R.", credits: 1990, badges: 9 },
-    { rank: 4, name: "David L.", credits: 1875, badges: 8 },
-    { rank: 5, name: "Emily C.", credits: 1720, badges: 7 },
-  ]);
+  // Leaderboard — real data from DB
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
+  // Load polls on mount
   useEffect(() => {
     fetch("/api/polls?featured=true")
       .then(r => r.json())
       .then(d => setPolls(d.data?.slice(0, 3) ?? []));
+  }, []);
+
+  // Load passport if authenticated
+  useEffect(() => {
+    if (!session?.user) return;
+    fetch("/api/social/passport")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.data) setPassport(d.data); })
+      .catch(() => {/* non-fatal */});
+  }, [session]);
+
+  // Load petitions
+  useEffect(() => {
+    fetch("/api/social/petitions?limit=4")
+      .then(r => r.json())
+      .then(d => {
+        setPetitions(
+          (d.data ?? []).map((p: { id: string; title: string; signatures: number; signatureGoal: number; signed: boolean }) => ({
+            id: p.id,
+            title: p.title,
+            signatures: p.signatures,
+            goal: p.signatureGoal,
+            signed: p.signed,
+          }))
+        );
+      })
+      .catch(() => {/* non-fatal */})
+      .finally(() => setPetitionsLoading(false));
+  }, []);
+
+  // Load leaderboard
+  useEffect(() => {
+    fetch("/api/social/leaderboard?limit=5")
+      .then(r => r.json())
+      .then(d => setLeaderboard(d.data ?? []))
+      .catch(() => {/* non-fatal */})
+      .finally(() => setLeaderboardLoading(false));
   }, []);
 
   async function lookup() {
@@ -127,7 +169,7 @@ export default function SocialDiscover() {
     } else {
       setMatchLoading(true);
       setMatchStep(4);
-      // Simulate matching
+      // Candidate matching algorithm is a future feature — placeholder results for now
       setTimeout(() => {
         setMatchResults([
           { id: "c1", name: "Olivia Chow", party: "Independent", district: "Toronto Centre", matchPct: 92 },
@@ -139,10 +181,41 @@ export default function SocialDiscover() {
     }
   }
 
-  function signPetition(id: string) {
-    setPetitions(prev => prev.map(p =>
-      p.id === id ? { ...p, signatures: p.signatures + 1, signed: true } : p
-    ));
+  async function signPetition(id: string) {
+    if (!session?.user) {
+      toast.error("Sign in to sign petitions");
+      return;
+    }
+    setSigningId(id);
+    try {
+      const res = await fetch(`/api/social/petitions/${id}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: session.user.name ?? "Supporter" }),
+      });
+      if (res.status === 409) {
+        // Already signed — update local state to reflect that
+        setPetitions(prev => prev.map(p => p.id === id ? { ...p, signed: true } : p));
+        return;
+      }
+      if (!res.ok) {
+        toast.error("Could not sign petition. Try again.");
+        return;
+      }
+      setPetitions(prev => prev.map(p =>
+        p.id === id ? { ...p, signatures: p.signatures + 1, signed: true } : p
+      ));
+      setPassport(prev => ({
+        ...prev,
+        credits: prev.credits + 15,
+        petitionsSigned: prev.petitionsSigned + 1,
+      }));
+      toast.success("Petition signed!");
+    } catch {
+      toast.error("Network error. Try again.");
+    } finally {
+      setSigningId(null);
+    }
   }
 
   function resetMatch() {
@@ -195,28 +268,44 @@ export default function SocialDiscover() {
             <h2 className="font-bold text-gray-900">Voter Passport</h2>
           </div>
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              {[
-                { label: "Polls", value: passport.pollsParticipated, icon: BarChart2 },
-                { label: "Petitions", value: passport.petitionsSigned, icon: FileSignature },
-                { label: "Elections", value: passport.electionsVoted, icon: Vote },
-                { label: "Badges", value: passport.badges.length, icon: Star },
-              ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="text-center">
-                  <Icon className="w-5 h-5 mx-auto mb-1 text-gray-400" />
-                  <p className="text-2xl font-bold" style={{ color: NAVY }}>{value}</p>
-                  <p className="text-xs text-gray-500">{label}</p>
+            {!session?.user ? (
+              <div className="text-center py-4">
+                <Award className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                <p className="text-sm text-gray-500 mb-3">Sign in to track your civic activity and earn credits.</p>
+                <Link href="/social/onboarding" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white min-h-[44px]" style={{ background: GREEN }}>
+                  Get Started <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                  {[
+                    { label: "Polls", value: passport.pollsParticipated, icon: BarChart2 },
+                    { label: "Petitions", value: passport.petitionsSigned, icon: FileSignature },
+                    { label: "Elections", value: passport.electionsParticipated, icon: Vote },
+                    { label: "Credits", value: passport.credits, icon: Star },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="text-center">
+                      <Icon className="w-5 h-5 mx-auto mb-1 text-gray-400" />
+                      <p className="text-2xl font-bold" style={{ color: NAVY }}>{value}</p>
+                      <p className="text-xs text-gray-500">{label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {passport.badges.map(badge => (
-                <span key={badge} className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: "#E8F5F0", color: GREEN }}>
-                  <Sparkles className="w-3 h-3" />
-                  {badge}
-                </span>
-              ))}
-            </div>
+                {passport.badges.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {passport.badges.map(badge => (
+                      <span key={badge} className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: "#E8F5F0", color: GREEN }}>
+                        <Sparkles className="w-3 h-3" />
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 text-center">Vote on polls and sign petitions to earn badges.</p>
+                )}
+              </>
+            )}
           </div>
         </motion.section>
 
@@ -350,44 +439,57 @@ export default function SocialDiscover() {
             <PenLine className="w-5 h-5" style={{ color: AMBER }} />
             <h2 className="font-bold text-gray-900">Active Petitions</h2>
           </div>
-          <div className="space-y-3">
-            {petitions.map((p) => (
-              <motion.div
-                key={p.id}
-                layout
-                className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm"
-              >
-                <p className="text-sm font-semibold text-gray-900 leading-snug mb-3">{p.title}</p>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ background: GREEN }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min((p.signatures / p.goal) * 100, 100)}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    <strong className="text-gray-700">{p.signatures.toLocaleString()}</strong> / {p.goal.toLocaleString()} signatures
-                  </span>
-                  {p.signed ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg" style={{ color: GREEN, background: "#E8F5F0" }}>
-                      <CheckCircle className="w-3.5 h-3.5" /> Signed
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => signPetition(p.id)}
-                      className="text-xs font-semibold text-white px-4 py-1.5 rounded-lg min-h-[44px] hover:opacity-90 transition-opacity"
+          {petitionsLoading ? (
+            <div className="space-y-3">
+              <Shimmer className="h-24 w-full" />
+              <Shimmer className="h-24 w-full" />
+            </div>
+          ) : petitions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+              <PenLine className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+              <p className="text-sm text-gray-400">No active petitions right now.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {petitions.map((p) => (
+                <motion.div
+                  key={p.id}
+                  layout
+                  className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm"
+                >
+                  <p className="text-sm font-semibold text-gray-900 leading-snug mb-3">{p.title}</p>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                    <motion.div
+                      className="h-full rounded-full"
                       style={{ background: GREEN }}
-                    >
-                      Sign
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((p.signatures / p.goal) * 100, 100)}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      <strong className="text-gray-700">{p.signatures.toLocaleString()}</strong> / {p.goal.toLocaleString()} signatures
+                    </span>
+                    {p.signed ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg" style={{ color: GREEN, background: "#E8F5F0" }}>
+                        <CheckCircle className="w-3.5 h-3.5" /> Signed
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => signPetition(p.id)}
+                        disabled={signingId === p.id}
+                        className="text-xs font-semibold text-white px-4 py-1.5 rounded-lg min-h-[44px] hover:opacity-90 transition-opacity disabled:opacity-50"
+                        style={{ background: GREEN }}
+                      >
+                        {signingId === p.id ? "Signing…" : "Sign"}
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.section>
 
         {/* ── Active Polls ────────────────────────────────────── */}
@@ -414,38 +516,53 @@ export default function SocialDiscover() {
             <Trophy className="w-5 h-5" style={{ color: AMBER }} />
             <h2 className="font-bold text-gray-900">Civic Credits Leaderboard</h2>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            {leaderboard.map((entry, i) => (
-              <motion.div
-                key={entry.rank}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ ...spring, delay: i * 0.05 }}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3",
-                  i < leaderboard.length - 1 && "border-b border-gray-100"
-                )}
-              >
-                <span className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                  entry.rank === 1 ? "bg-yellow-100 text-yellow-700" :
-                  entry.rank === 2 ? "bg-gray-100 text-gray-600" :
-                  entry.rank === 3 ? "bg-orange-100 text-orange-600" :
-                  "bg-gray-50 text-gray-400"
-                )}>
-                  {entry.rank}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{entry.name}</p>
-                  <p className="text-xs text-gray-500">{entry.badges} badges</p>
+          {leaderboardLoading ? (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-gray-100")}>
+                  <Shimmer className="h-8 w-full" />
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold" style={{ color: NAVY }}>{entry.credits.toLocaleString()}</p>
-                  <p className="text-xs text-gray-400">credits</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
+              <Trophy className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+              <p className="text-sm text-gray-400">No leaders yet. Vote on a poll to get on the board!</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              {leaderboard.map((entry, i) => (
+                <motion.div
+                  key={entry.rank}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...spring, delay: i * 0.05 }}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3",
+                    i < leaderboard.length - 1 && "border-b border-gray-100"
+                  )}
+                >
+                  <span className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                    entry.rank === 1 ? "bg-yellow-100 text-yellow-700" :
+                    entry.rank === 2 ? "bg-gray-100 text-gray-600" :
+                    entry.rank === 3 ? "bg-orange-100 text-orange-600" :
+                    "bg-gray-50 text-gray-400"
+                  )}>
+                    {entry.rank}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{entry.name}</p>
+                    <p className="text-xs text-gray-500">{entry.badges} badge{entry.badges !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold" style={{ color: NAVY }}>{entry.credits.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">credits</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.section>
       </div>
     </div>

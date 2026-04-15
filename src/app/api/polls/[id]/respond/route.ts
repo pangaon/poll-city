@@ -13,6 +13,40 @@ const BINARY_VALUES = new Set(["yes", "no"]);
 const SWIPE_VALUES = new Set(["left", "right", "up", "skip"]);
 const SLIDER_MIN = 0;
 const SLIDER_MAX = 100;
+const CREDITS_FOR_POLL_VOTE = 10;
+
+// ── Civic credit award ────────────────────────────────────────────────────────
+// Called after every successful vote for authenticated users.
+// Fire-and-forget: failure here does NOT fail the vote response.
+async function awardPollCredits(userId: string, pollId: string): Promise<void> {
+  try {
+    await prisma.$transaction([
+      prisma.voterPassport.upsert({
+        where:  { userId },
+        create: {
+          userId,
+          credits:          CREDITS_FOR_POLL_VOTE,
+          pollsParticipated: 1,
+          badges:           [],
+        },
+        update: {
+          credits:          { increment: CREDITS_FOR_POLL_VOTE },
+          pollsParticipated: { increment: 1 },
+        },
+      }),
+      prisma.civicCredit.create({
+        data: {
+          userId,
+          action:      "poll_voted",
+          credits:     CREDITS_FOR_POLL_VOTE,
+          description: `Voted on poll: ${pollId}`,
+        },
+      }),
+    ]);
+  } catch {
+    // Non-fatal — vote already recorded, credits will be missing but that's recoverable
+  }
+}
 
 
 // ── P2002 handler ─────────────────────────────────────────────────────────────
@@ -219,6 +253,7 @@ export async function POST(
     });
     if (swipeDupError) return swipeDupError;
 
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: validSwipes.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -278,6 +313,7 @@ export async function POST(
     });
     if (rankedDupError) return rankedDupError;
 
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: validRanked.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -304,6 +340,7 @@ export async function POST(
     });
     if (binaryDupError) return binaryDupError;
 
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -333,6 +370,7 @@ export async function POST(
     });
     if (mcDupError) return mcDupError;
 
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -369,6 +407,7 @@ export async function POST(
     });
     if (sliderDupError) return sliderDupError;
 
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -392,6 +431,7 @@ export async function POST(
       ]);
     });
     if (err) return err;
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -428,6 +468,7 @@ export async function POST(
       ]);
     });
     if (err) return err;
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: cleaned.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
@@ -468,6 +509,7 @@ export async function POST(
       ]);
     });
     if (err) return err;
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
     return NextResponse.json({ data: { recorded: validRatings.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
