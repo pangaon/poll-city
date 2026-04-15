@@ -164,15 +164,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Demo Credentials</p>
-            <div className="space-y-1 text-xs text-gray-600">
-              <div className="flex justify-between"><span className="font-medium">Admin:</span><span>admin@pollcity.dev / password123</span></div>
-              <div className="flex justify-between"><span className="font-medium">Manager:</span><span>manager@pollcity.dev / password123</span></div>
-              <div className="flex justify-between"><span className="font-medium">Volunteer:</span><span>volunteer@pollcity.dev / password123</span></div>
-            </div>
-          </div>
         </div>
 
         {/* Legal links */}
