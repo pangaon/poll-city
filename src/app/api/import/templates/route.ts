@@ -67,6 +67,29 @@ const BUILTIN_TEMPLATES = [
     options: { validateUrls: true },
     isDefault: true,
   },
+  {
+    // Ontario municipal electoral list format — standard Elections Ontario voter file
+    // Columns: Block, Subdivision, Street Num, Street No., Street No. (unit), Unit,
+    //          Last Name, First Name, Clan, Prov, Postal Code, K School, Bag, Residency, Occupancy
+    id: "builtin-ontario-voter-file",
+    name: "Ontario Electoral List (Elections Ontario format)",
+    targetEntity: "contacts",
+    mappings: {
+      Block: "pollDistrict",
+      Subdivision: "municipalDistrict",
+      "Street Num": "streetNumber",
+      "Street No.": "streetName",       // first Street No. column = full civic address
+      Unit: "unitApt",
+      "Last Name": "lastName",
+      "First Name": "firstName",
+      Clan: "notes",                    // neighbourhood/community identifier
+      Prov: "province",
+      "Postal Code": "postalCode",
+      // K School, Bag, Residency, Occupancy are electoral admin fields — not imported
+    },
+    options: { duplicateStrategy: "fuzzy", skipUnmapped: true },
+    isDefault: true,
+  },
 ] as const;
 
 export async function GET(req: NextRequest) {

@@ -315,9 +315,26 @@ export default function ImportExportClient({ campaignId }: Props) {
       formData.set("campaignId", campaignId);
 
       const res = await fetch("/api/import/analyze", { method: "POST", body: formData });
-      const payload = await res.json();
+
+      // Safely parse — Vercel can return HTML on timeout/502; treat that as a server error
+      let payload: { data?: AnalyzeResponse; error?: string } = {};
+      try {
+        payload = await res.json();
+      } catch {
+        toast.error(
+          `Server error (${res.status}). If this persists, try saving the file as CSV and re-uploading.`,
+        );
+        return;
+      }
+
       if (!res.ok || !payload?.data) {
-        toast.error(payload?.error ?? "Unable to analyze this file");
+        const reason = payload?.error ?? `HTTP ${res.status}`;
+        // Provide voter-file-specific hint for common parse failures
+        const isVoterFile = /voter|electora|liste|poll|ward/i.test(file.name);
+        const hint = isVoterFile
+          ? " For Ontario electoral lists, save as CSV (comma-separated) from Excel before uploading."
+          : " Try saving as CSV and re-uploading, or check the file isn't password-protected.";
+        toast.error(`Unable to analyze file: ${reason}.${hint}`, { duration: 8000 });
         return;
       }
 
@@ -330,8 +347,9 @@ export default function ImportExportClient({ campaignId }: Props) {
         setMappings(buildMappingsFromAnalysis(analyzed));
       }
       toast.success(`Analyzed ${analyzed.totalRows} rows from ${file.name}`);
-    } catch {
-      toast.error("Unable to analyze file. Please try again.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toast.error(`Unable to analyze file: ${msg}. Try saving as CSV and re-uploading.`, { duration: 8000 });
     } finally {
       if (forPhoneList) setAnalyzingPhone(false);
       else setAnalyzing(false);

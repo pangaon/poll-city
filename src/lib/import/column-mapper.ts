@@ -59,15 +59,15 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: "federalPoll", label: "Federal Poll #", category: "electoral", examples: ["fed_poll", "federal_poll", "poll_no", "poll_number", "poll_num", "pno"] },
   { key: "provincialDistrict", label: "Provincial District", category: "electoral", examples: ["prov_district", "provincial_district", "prov_riding", "prov_ed"] },
   { key: "provincialPoll", label: "Provincial Poll #", category: "electoral", examples: ["prov_poll", "provincial_poll"] },
-  { key: "municipalDistrict", label: "Municipal District", category: "electoral", examples: ["mun_district", "municipal_district", "local_district"] },
+  { key: "municipalDistrict", label: "Municipal District", category: "electoral", examples: ["mun_district", "municipal_district", "local_district", "subdivision", "sub_div", "subdiv"] },
   { key: "municipalPoll", label: "Municipal Poll #", category: "electoral", examples: ["mun_poll", "municipal_poll", "local_poll"] },
   { key: "votingLocation", label: "Voting Location", category: "electoral", examples: ["voting_location", "poll_location", "polling_station", "station"] },
   { key: "censusDivision", label: "Census Division", category: "electoral", examples: ["census_division", "census_div", "cd"] },
-  { key: "pollDistrict", label: "Poll District", category: "electoral", examples: ["poll_district", "poll_div", "pd", "poll_subdivision"] },
+  { key: "pollDistrict", label: "Poll District", category: "electoral", examples: ["poll_district", "poll_div", "pd", "poll_subdivision", "block", "blk", "poll_block"] },
 
   // Campaign data
   { key: "supportLevel", label: "Support Level", category: "campaign", examples: ["support", "support_level", "status", "voter_status", "support_status"] },
-  { key: "notes", label: "Notes", category: "campaign", examples: ["notes", "note", "comments", "comment", "remarks", "memo"] },
+  { key: "notes", label: "Notes", category: "campaign", examples: ["notes", "note", "comments", "comment", "remarks", "memo", "clan"] },
   { key: "source", label: "Source", category: "campaign", examples: ["source", "data_source", "list_source", "origin"] },
   { key: "externalId", label: "External ID", category: "campaign", examples: ["id", "voter_id", "external_id", "record_id", "uid", "unique_id", "elector_id"] },
   { key: "preferredLanguage", label: "Language", category: "campaign", examples: ["language", "lang", "preferred_language", "langue"] },
