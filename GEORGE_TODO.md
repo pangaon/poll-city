@@ -105,6 +105,12 @@ Email (Resend) powers: donation receipt emails, event reminders, volunteer invit
 - [ ] **19. Add `TWILIO_ACCOUNT_SID` to Railway**
 - [ ] **20. Add `TWILIO_AUTH_TOKEN` to Railway**
 - [ ] **21. Add `TWILIO_PHONE_NUMBER` to Railway**
+- [ ] **21b. Wire Twilio inbound webhook** (needed for STOP/START to work):
+  1. Go to [console.twilio.com](https://console.twilio.com) → Phone Numbers → Manage → your number
+  2. Under "Messaging" → "A message comes in" → set to **Webhook**
+  3. URL: `https://app.poll.city/api/webhooks/twilio`
+  4. Method: **HTTP POST**
+  5. Save. Now when anyone replies STOP to your campaign SMS, they're automatically unsubscribed (CASL compliant).
 
 ---
 
