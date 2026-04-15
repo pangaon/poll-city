@@ -217,3 +217,11 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 *Last updated: 2026-04-11 (GEORGE_TODO.md consolidated — 52 items, all manual actions unified from docs/GEORGE-ACTION-LIST.md) by Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
+
+---
+
+## MODULE: DEMO + MARKETING
+
+| Task | Status | Notes |
+|---|---|---|
+| Demo public access + guided tour | CLAIMED 2026-04-15 | Open /demo/candidate+party+media to public (no token required), build DemoTour overlay, wire into candidate demo |
