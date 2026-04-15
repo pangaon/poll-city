@@ -91,13 +91,14 @@ const PLANS = [
 function CheckoutResultHandler() {
   const params = useSearchParams();
   useEffect(() => {
-    if (params?.get("success") === "true") {
+    if (!params) return;
+    if (params.get("success") === "true") {
       toast.success("You're subscribed! Welcome to Poll City.", {
         description: "Your subscription is now active.",
         duration: 6000,
       });
     }
-    if (params?.get("canceled") === "true") {
+    if (params.get("canceled") === "true") {
       toast.info("Checkout cancelled — no charge was made.");
     }
   }, [params]);
@@ -117,10 +118,10 @@ function planLabel(plan: string) {
   return plan === "free_trial" ? "Free Trial" : plan.charAt(0).toUpperCase() + plan.slice(1);
 }
 
-function statusColor(status: string): "default" | "warning" | "danger" | "secondary" {
+function statusColor(status: string): "default" | "warning" | "danger" | "info" {
   if (status === "active") return "default";
   if (status === "past_due") return "danger";
-  if (status === "canceled") return "secondary";
+  if (status === "canceled") return "info";
   return "warning";
 }
 
@@ -471,7 +472,7 @@ export default function BillingClient({ subscription, userEmail, userCreatedAt }
                                     ? "default"
                                     : inv.status === "open"
                                     ? "warning"
-                                    : "secondary"
+                                    : "info"
                                 }
                               >
                                 {inv.status ?? "unknown"}
