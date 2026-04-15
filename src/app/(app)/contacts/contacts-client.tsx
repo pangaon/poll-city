@@ -1017,10 +1017,11 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
                           </button>
                           <button
                             onClick={() => deletePreset(p.id)}
-                            aria-label="Delete preset"
-                            className="p-2 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                            title="Delete this saved filter"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       ))}

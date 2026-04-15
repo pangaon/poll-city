@@ -1245,11 +1245,13 @@ function CampaignsTab({ campaignId, channelFilter }: { campaignId: string; chann
             <p className="text-xs text-green-600 tabular-nums text-right font-medium">{h.deliveredCount}</p>
             <p className="text-xs text-slate-500 tabular-nums">{formatDate(h.sentAt)}</p>
             <div className="flex items-center justify-end gap-1">
-              <button className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Duplicate">
-                <Copy className="w-3.5 h-3.5" />
+              <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Duplicate this campaign to use as a template">
+                <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Duplicate</span>
               </button>
-              <button className="h-7 w-7 rounded-md flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Archive">
-                <Archive className="w-3.5 h-3.5" />
+              <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Archive this campaign">
+                <Archive className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Archive</span>
               </button>
             </div>
           </div>
@@ -2404,12 +2406,13 @@ function AudiencesTab({
                     <button
                       onClick={() => deleteSegment(seg.id)}
                       disabled={deletingId === seg.id}
-                      title="Delete segment"
-                      className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
+                      title="Delete this audience segment"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
                     >
                       {deletingId === seg.id
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Trash2 className="w-3.5 h-3.5" />}
+                        : <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>

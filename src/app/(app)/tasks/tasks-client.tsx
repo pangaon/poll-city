@@ -580,10 +580,11 @@ function TaskDetailPanel({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center justify-center rounded-lg px-3 py-2 border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
-              aria-label="Delete task"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 border border-gray-200 text-sm font-medium text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+              title="Delete this task"
             >
               <Trash2 className="w-4 h-4" />
+              <span>Delete</span>
             </button>
           </>
         ) : (

@@ -366,12 +366,13 @@ export default function DemoTokensClient({ tokens: initialTokens }: Props) {
                         type="button"
                         onClick={() => handleDelete(t.id)}
                         disabled={deleting === t.id}
-                        title="Delete token"
-                        className="h-7 w-7 rounded flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50"
+                        title="Revoke this demo token — it will no longer grant access"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50"
                       >
                         {deleting === t.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <Trash2 className="w-3.5 h-3.5" />}
+                          : <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />}
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>

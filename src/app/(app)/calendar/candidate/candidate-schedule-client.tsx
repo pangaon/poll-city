@@ -699,7 +699,18 @@ export default function CandidateScheduleClient({ campaignId }: { campaignId: st
   if (!campaignId) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <EmptyState title="No campaign active" description="Activate a campaign to view the candidate schedule." />
+        <EmptyState
+          title="No campaign active"
+          description="Activate a campaign to view the candidate schedule. Go to Campaign Settings to set up your campaign."
+          action={
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#0A2342] hover:bg-[#0d2e57] transition-colors"
+            >
+              Go to Campaign Settings
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -799,7 +810,16 @@ export default function CandidateScheduleClient({ campaignId }: { campaignId: st
         ) : items.length === 0 ? (
           <EmptyState
             title="No events"
-            description="No candidate-facing events in this time range."
+            description={filter === "upcoming" ? "No upcoming candidate events. Switch to 'All' to see past events, or sync your calendar to import existing events." : "No events in this time range. Sync your calendar or add events directly."}
+            action={
+              <button
+                onClick={() => setShowSync(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#0A2342] hover:bg-[#0d2e57] transition-colors"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Sync Calendar
+              </button>
+            }
           />
         ) : (
           <div className="space-y-3">

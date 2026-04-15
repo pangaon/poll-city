@@ -394,6 +394,7 @@ function ItemsTab({
 }) {
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const nextIds = items.map((item) => item.id);
@@ -504,30 +505,51 @@ function ItemsTab({
                         href={item.receiptUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex text-blue-600 hover:text-blue-800"
-                        aria-label="View receipt"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                        title="Open attached receipt"
                       >
-                        <Paperclip className="w-4 h-4" />
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <span>Receipt</span>
                       </a>
                     ) : (
                       <span className="text-gray-300">—</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => onEdit(item)}
-                      aria-label="Edit"
-                      className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-900 mr-1"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(item.id)}
-                      aria-label="Delete"
-                      className="p-1 rounded hover:bg-red-100 text-gray-500 hover:text-red-600"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {confirmDeleteId === item.id ? (
+                      <span className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                        <span className="text-xs text-red-600 font-medium">Delete?</span>
+                        <button
+                          onClick={() => { onDelete(item.id); setConfirmDeleteId(null); }}
+                          className="text-xs font-semibold text-red-600 hover:text-red-800 px-1"
+                          title="Confirm delete"
+                        >Yes</button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-xs text-gray-400 hover:text-gray-600 px-1"
+                          title="Cancel"
+                        >Cancel</button>
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onEdit(item)}
+                          title="Edit this budget item"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-gray-100 text-gray-500 hover:text-gray-900 mr-1 transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(item.id)}
+                          title="Delete this budget item"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>Delete</span>
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -553,6 +575,7 @@ function RulesTab({
   onDelete: (id: string) => void;
   onApplyTemplate: (id: string) => void;
 }) {
+  const [confirmDeleteRuleId, setConfirmDeleteRuleId] = useState<string | null>(null);
   return (
     <div className="space-y-6">
       {/* Rules section */}
@@ -608,13 +631,28 @@ function RulesTab({
                       {Math.round(r.warnAtPercent * 100)}%
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <button
-                        onClick={() => onDelete(r.id)}
-                        aria-label="Delete rule"
-                        className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteRuleId === r.id ? (
+                        <span className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                          <span className="text-xs text-red-600 font-medium">Delete?</span>
+                          <button
+                            onClick={() => { onDelete(r.id); setConfirmDeleteRuleId(null); }}
+                            className="text-xs font-semibold text-red-600 hover:text-red-800 px-1"
+                          >Yes</button>
+                          <button
+                            onClick={() => setConfirmDeleteRuleId(null)}
+                            className="text-xs text-gray-400 hover:text-gray-600 px-1"
+                          >Cancel</button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteRuleId(r.id)}
+                          title="Delete this budget rule"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

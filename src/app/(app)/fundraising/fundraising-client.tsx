@@ -628,7 +628,19 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                       {statsLoading ? (
                         <div className="space-y-2">{[...Array(4)].map((_, i) => <Shimmer key={i} className="h-8" />)}</div>
                       ) : !stats?.byStatus.length ? (
-                        <EmptyState title="No donations yet" description="Record your first donation to get started." />
+                        <EmptyState
+                          title="No donations yet"
+                          description="Record your first donation to get started."
+                          action={
+                            <button
+                              onClick={() => setShowAddDonation(true)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                              style={{ backgroundColor: GREEN }}
+                            >
+                              <Plus className="w-4 h-4" /> Record Donation
+                            </button>
+                          }
+                        />
                       ) : (
                         <div className="space-y-2">
                           {stats.byStatus.map((s) => (
@@ -784,7 +796,19 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           ))
                         ) : donations.length === 0 ? (
                           <tr><td colSpan={8} className="px-4 py-12 text-center">
-                            <EmptyState title="No donations" description="Record your first donation using the button above." />
+                            <EmptyState
+                              title="No donations"
+                              description="Record your first donation using the button above, or use the filters to broaden your search."
+                              action={
+                                <button
+                                  onClick={() => setShowAddDonation(true)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                                  style={{ backgroundColor: GREEN }}
+                                >
+                                  <Plus className="w-4 h-4" /> Record Donation
+                                </button>
+                              }
+                            />
                           </td></tr>
                         ) : donations.map((d) => (
                           <motion.tr key={d.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -932,7 +956,23 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                 {initiativesLoading ? (
                   <div className="grid md:grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <Shimmer key={i} className="h-32" />)}</div>
                 ) : initiatives.length === 0 ? (
-                  <Card><CardContent className="py-12"><EmptyState title="No initiatives" description="Create a fundraising initiative to track donations toward a specific goal." /></CardContent></Card>
+                  <Card>
+                    <CardContent className="py-12">
+                      <EmptyState
+                        title="No initiatives"
+                        description="Create a fundraising initiative to track donations toward a specific goal."
+                        action={
+                          <button
+                            onClick={() => setShowAddInitiative(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                            style={{ backgroundColor: NAVY }}
+                          >
+                            <Plus className="w-4 h-4" /> New Initiative
+                          </button>
+                        }
+                      />
+                    </CardContent>
+                  </Card>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-4">
                     {initiatives.map((init) => {
