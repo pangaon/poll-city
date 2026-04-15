@@ -98,7 +98,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | DONE — see below | GAP-017 — /api/webhooks/resend (bounce+complaint+open+click) + /api/webhooks/twilio (STOP/START) |
 | Phase 4b — Email open + click tracking (tracking pixel) | CLAIMED 2026-04-15 | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — embed pixel in every email blast |
-| Phase 5 — Unified Inbox (backend + rebuild UI) | PENDING | InboxThread, InboxMessage models |
+| Phase 5 — Unified Inbox (backend + rebuild UI) | CLAIMED 2026-04-15 | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
 | Phase 7 — Automation Engine (triggers, steps, enrollment cron) | PENDING | |
 | Phase 8 — Social Publishing (real API calls to Facebook/X/LinkedIn) | PENDING | |
