@@ -53,6 +53,8 @@ interface SetupWizardProps {
   /** Pre-seeded values from existing campaign record */
   initial: Partial<WizardData>;
   onComplete: () => void;
+  /** Called when user chooses "Remind me later" on step 1 — no save, just dismiss */
+  onSnooze?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +536,7 @@ export default function SetupWizard({
   firstName,
   initial,
   onComplete,
+  onSnooze,
 }: SetupWizardProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -732,9 +735,17 @@ export default function SetupWizard({
             </button>
           </div>
 
-          {/* Skip link — but we strongly discourage skipping step 1 */}
-          {step > 1 && (
-            <div className="mt-3 text-center">
+          {/* Dismiss link — "Remind me later" on step 1, "Skip" on subsequent steps */}
+          <div className="mt-3 text-center">
+            {step === 1 ? (
+              <button
+                type="button"
+                onClick={() => onSnooze?.()}
+                className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors underline underline-offset-2"
+              >
+                Remind me later — I don&apos;t have all this info yet
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => {
@@ -745,8 +756,8 @@ export default function SetupWizard({
               >
                 Skip for now — I&apos;ll finish this later
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </motion.div>
     </div>
