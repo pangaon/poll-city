@@ -4,7 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { parseAndMapImportFile, toContactWriteData, type MappingConfig } from "@/lib/import/import-pipeline";
 
-const MAX_FILE_SIZE = 10_000_000;
+const MAX_FILE_SIZE = 50_000_000;
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);

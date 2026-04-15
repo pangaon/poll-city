@@ -5,7 +5,7 @@ import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { detectFileType, parseAnyFile, parseExcelFile } from "@/lib/import/file-parser";
 import { mapColumns, type MappingResult } from "@/lib/import/column-mapper";
 
-const MAX_FILE_SIZE = 10_000_000;
+const MAX_FILE_SIZE = 50_000_000; // 50MB — Ontario ward lists in XLSX can be 20–30MB
 
 // ─── Known format fingerprints ────────────────────────────────────────────────
 // Match against normalised header strings (lowercase, spaces→underscore)
