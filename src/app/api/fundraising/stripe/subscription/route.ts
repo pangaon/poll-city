@@ -17,15 +17,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
-
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-  : null;
+import { stripe } from "@/lib/stripe/connect";
+import { DONATION_FEE_RATE } from "@/lib/stripe/platform-fees";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -81,6 +79,19 @@ export async function POST(req: NextRequest) {
   const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId);
   if (forbidden) return forbidden;
 
+  // Resolve the campaign's Stripe Connect account
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { stripeConnectedAccountId: true, stripeOnboarded: true },
+  });
+
+  if (!campaign?.stripeConnectedAccountId || !campaign.stripeOnboarded) {
+    return NextResponse.json(
+      { error: "This campaign has not completed Stripe onboarding. Visit Fundraising → Settings to connect." },
+      { status: 503, headers: NO_STORE },
+    );
+  }
+
   // Verify the RecurrencePlan belongs to this campaign.
   const plan = await prisma.recurrencePlan.findFirst({
     where: { id: recurrencePlanId, campaignId },
@@ -97,10 +108,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Create or retrieve Stripe Customer by email.
-  const existingCustomers = await stripe.customers.list({ email: donorEmail, limit: 1 });
+  const existingCustomers = await stripe!.customers.list({ email: donorEmail, limit: 1 });
   const customer = existingCustomers.data.length > 0
     ? existingCustomers.data[0]
-    : await stripe.customers.create({
+    : await stripe!.customers.create({
         email: donorEmail,
         name:  donorName,
         metadata: { campaignId, recurrencePlanId },
@@ -111,12 +122,12 @@ export async function POST(req: NextRequest) {
 
   // Stripe subscription price_data requires an existing Product ID.
   // Create an ephemeral product + price pair, then subscribe to the price.
-  const product = await stripe.products.create({
+  const product = await stripe!.products.create({
     name:     `Campaign recurring donation — ${campaignId}`,
     metadata: { campaignId, recurrencePlanId },
   });
 
-  const price = await stripe.prices.create({
+  const price = await stripe!.prices.create({
     currency:       currency.toLowerCase(),
     unit_amount:    amountCents,
     recurring:      { interval, interval_count },
@@ -124,12 +135,17 @@ export async function POST(req: NextRequest) {
     metadata:       { campaignId, recurrencePlanId },
   });
 
-  // Create the Stripe Subscription using the Price ID.
-  const subscription = await stripe.subscriptions.create({
+  // Create the Stripe Subscription — money flows to campaign's Connect account.
+  // application_fee_percent: Poll City retains 1.5% of each recurring charge.
+  const subscription = await stripe!.subscriptions.create({
     customer:           customer.id,
-    payment_behavior:   "default_incomplete",   // returns a pending sub with a PaymentIntent
+    payment_behavior:   "default_incomplete",
     payment_settings:   { save_default_payment_method: "on_subscription" },
     expand:             ["latest_invoice.payment_intent"],
+    application_fee_percent: DONATION_FEE_RATE * 100, // 1.5
+    transfer_data: {
+      destination: campaign.stripeConnectedAccountId!,
+    },
     metadata: { campaignId, recurrencePlanId, type: "campaign_recurring_donation" },
     items: [{ price: price.id }],
   });

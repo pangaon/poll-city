@@ -783,6 +783,9 @@ model Campaign {
   tvRotate               Boolean      @default(true)
   tvRotateSec            Int          @default(30)
   tvModes                String[]
+  // Stripe Connect — campaign's own Stripe account for receiving donations
+  stripeConnectedAccountId String?    // Stripe Express account ID (acct_xxx)
+  stripeOnboarded          Boolean    @default(false) // true once Stripe onboarding complete
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 

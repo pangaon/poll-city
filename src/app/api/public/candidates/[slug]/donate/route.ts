@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
+import { stripe } from "@/lib/stripe/connect";
+import { donationFeeAmount, MIN_FEE_THRESHOLD_CENTS } from "@/lib/stripe/platform-fees";
 
 const donationSchema = z.object({
   amount: z.number().positive().max(25000),
@@ -32,17 +34,25 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   const campaign = await prisma.campaign.findUnique({
     where: { slug: params.slug },
-    select: { id: true, name: true, candidateName: true },
+    select: { id: true, name: true, candidateName: true, stripeConnectedAccountId: true, stripeOnboarded: true },
   });
   if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
+  if (!stripe) {
     return NextResponse.json({ error: "Online donations are not configured. Contact the campaign directly." }, { status: 503 });
   }
 
+  if (!campaign.stripeConnectedAccountId || !campaign.stripeOnboarded) {
+    return NextResponse.json(
+      { error: "This campaign is not yet accepting online donations. Please contact the campaign directly." },
+      { status: 503 },
+    );
+  }
+
   try {
-    const stripe = require("stripe")(stripeKey);
+    const amountCents = Math.round(amount * 100);
+    const appFee = amountCents >= MIN_FEE_THRESHOLD_CENTS ? donationFeeAmount(amountCents) : 0;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca";
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -56,11 +66,17 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
               name: `Donation to ${campaign.candidateName ?? campaign.name}`,
               description: `Political contribution — ${campaign.name}`,
             },
-            unit_amount: Math.round(amount * 100), // cents
+            unit_amount: amountCents,
           },
           quantity: 1,
         },
       ],
+      payment_intent_data: {
+        application_fee_amount: appFee,
+        transfer_data: {
+          destination: campaign.stripeConnectedAccountId,
+        },
+      },
       metadata: {
         campaignId: campaign.id,
         donorName,
@@ -69,8 +85,8 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
         donorPostalCode: donorPostalCode ?? "",
         type: "public_donation",
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca"}/candidates/${params.slug}?donated=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca"}/candidates/${params.slug}?donated=cancelled`,
+      success_url: `${appUrl}/candidates/${params.slug}?donated=true`,
+      cancel_url: `${appUrl}/candidates/${params.slug}?donated=cancelled`,
     });
 
     // Create or update contact in CRM

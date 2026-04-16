@@ -16,14 +16,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { z } from "zod";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
-
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-  : null;
+import { stripe } from "@/lib/stripe/connect";
+import { donationFeeAmount, MIN_FEE_THRESHOLD_CENTS } from "@/lib/stripe/platform-fees";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -65,6 +62,8 @@ export async function POST(
       id: true,
       name: true,
       isActive: true,
+      stripeConnectedAccountId: true,
+      stripeOnboarded: true,
       memberships: {
         where: { role: { in: ["ADMIN", "CAMPAIGN_MANAGER"] } },
         orderBy: { joinedAt: "asc" },
@@ -82,6 +81,14 @@ export async function POST(
   if (!campaignAdminId) {
     return NextResponse.json(
       { error: "Campaign is not accepting donations at this time." },
+      { status: 503, headers: NO_STORE },
+    );
+  }
+
+  // Campaign must have completed Stripe Connect onboarding
+  if (!campaign.stripeConnectedAccountId || !campaign.stripeOnboarded) {
+    return NextResponse.json(
+      { error: "This campaign has not yet set up online donation processing. Please contact the campaign directly." },
       { status: 503, headers: NO_STORE },
     );
   }
@@ -135,6 +142,10 @@ export async function POST(
   });
 
   const amountCents = Math.round(amount * 100);
+  const appFee = amountCents >= MIN_FEE_THRESHOLD_CENTS
+    ? donationFeeAmount(amountCents)
+    : 0;
+  const netAmount = amount - appFee / 100;
 
   // Create the Donation record before the PaymentIntent so the webhook can find it
   const donation = await prisma.donation.create({
@@ -143,7 +154,7 @@ export async function POST(
       contactId,
       recordedById: campaignAdminId,
       amount,
-      netAmount: amount,
+      netAmount,
       currency: currency.toUpperCase(),
       donationType: "one_time",
       status: "processing",
@@ -156,12 +167,17 @@ export async function POST(
     select: { id: true },
   });
 
-  // Create Stripe PaymentIntent and attach donationId in metadata
-  const intent = await stripe.paymentIntents.create({
+  // Create Stripe PaymentIntent — money flows to campaign's Connect account,
+  // Poll City retains application_fee_amount (1.5%).
+  const intent = await stripe!.paymentIntents.create({
     amount: amountCents,
     currency: currency.toLowerCase(),
     description: `Donation to ${campaign.name}`,
     receipt_email: email,
+    application_fee_amount: appFee,
+    transfer_data: {
+      destination: campaign.stripeConnectedAccountId!,
+    },
     metadata: {
       campaignId: campaign.id,
       donationId: donation.id,

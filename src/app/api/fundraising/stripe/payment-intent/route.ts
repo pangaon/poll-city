@@ -9,15 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { z } from "zod";
-
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-  : null;
+import { stripe } from "@/lib/stripe/connect";
+import { donationFeeAmount, MIN_FEE_THRESHOLD_CENTS } from "@/lib/stripe/platform-fees";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -69,12 +66,30 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const amountCents = Math.round(amount * 100);
+  // Resolve the campaign's Stripe Connect account
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { stripeConnectedAccountId: true, stripeOnboarded: true },
+  });
 
-  const intent = await stripe.paymentIntents.create({
+  if (!campaign?.stripeConnectedAccountId || !campaign.stripeOnboarded) {
+    return NextResponse.json(
+      { error: "This campaign has not completed Stripe onboarding. Visit Fundraising → Settings to connect." },
+      { status: 503, headers: NO_STORE },
+    );
+  }
+
+  const amountCents = Math.round(amount * 100);
+  const appFee = amountCents >= MIN_FEE_THRESHOLD_CENTS ? donationFeeAmount(amountCents) : 0;
+
+  const intent = await stripe!.paymentIntents.create({
     amount:      amountCents,
     currency:    currency.toLowerCase(),
     description: description ?? `Campaign donation — ${campaignId}`,
+    application_fee_amount: appFee,
+    transfer_data: {
+      destination: campaign.stripeConnectedAccountId,
+    },
     metadata: {
       campaignId,
       ...(donationId ? { donationId } : {}),
