@@ -16,6 +16,10 @@ import {
 import { toast } from "sonner";
 import { formatDateTime, fullName } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid,
+} from "recharts";
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
 const NAVY = "#0A2342";
@@ -93,7 +97,7 @@ interface Refund {
   approvedBy: { id: string; name: string | null } | null;
 }
 
-type Tab = "overview" | "donations" | "donors" | "initiatives" | "recurring" | "pledges" | "receipts" | "refunds" | "compliance" | "reports" | "settings";
+type Tab = "overview" | "campaigns" | "donors" | "donations" | "receipts" | "recurring" | "pledges" | "compliance" | "reports";
 
 interface ComplianceConfig {
   annualLimitPerDonor: number;
@@ -373,12 +377,11 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
   useEffect(() => {
     if (tab === "donations" || tab === "compliance") fetchDonations();
     if (tab === "donors") fetchDonors();
-    if (tab === "initiatives") fetchInitiatives();
+    if (tab === "campaigns") fetchInitiatives();
     if (tab === "recurring") fetchPlans();
     if (tab === "pledges") fetchPledges();
     if (tab === "receipts") fetchReceipts();
-    if (tab === "refunds") fetchRefunds();
-    if (tab === "settings") fetchComplianceConfig();
+    if (tab === "compliance") fetchComplianceConfig();
     if (tab === "reports") fetchReport();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -508,17 +511,15 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
   /* ─── tab nav ────────────────────────────────────────────────────────── */
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [
-    { id: "overview", label: "Overview" },
-    { id: "donations", label: "Donations" },
-    { id: "donors", label: "Donors" },
-    { id: "initiatives", label: "Initiatives" },
-    { id: "recurring", label: "Recurring", badge: stats?.recurring.activePlans || undefined },
-    { id: "pledges", label: "Pledges" },
-    { id: "receipts", label: "Receipts", badge: stats?.queues.pendingReceipts || undefined },
-    { id: "refunds", label: "Refunds", badge: stats?.queues.pendingRefunds || undefined },
-    { id: "compliance", label: "Compliance", badge: stats?.queues.pendingCompliance || undefined },
-    { id: "reports", label: "Reports" },
-    { id: "settings", label: "Limits" },
+    { id: "overview",    label: "Overview" },
+    { id: "campaigns",   label: "Campaigns" },
+    { id: "donors",      label: "Donors" },
+    { id: "donations",   label: "Donations" },
+    { id: "receipts",    label: "Receipts",    badge: stats?.queues.pendingReceipts || undefined },
+    { id: "recurring",   label: "Recurring",   badge: stats?.recurring.activePlans || undefined },
+    { id: "pledges",     label: "Pledges" },
+    { id: "compliance",  label: "Compliance",  badge: stats?.queues.pendingCompliance || undefined },
+    { id: "reports",     label: "Reports" },
   ];
 
   /* ─── render ─────────────────────────────────────────────────────────── */
@@ -606,7 +607,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                       </button>
                     )}
                     {(stats?.queues.pendingRefunds ?? 0) > 0 && (
-                      <button onClick={() => setTab("refunds")} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-800 hover:bg-red-100 transition-colors">
+                      <button onClick={() => setTab("donations")} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-medium text-red-800 hover:bg-red-100 transition-colors">
                         <RefreshCw className="w-4 h-4 text-red-500" />
                         {stats!.queues.pendingRefunds} refund{stats!.queues.pendingRefunds !== 1 ? "s" : ""} pending
                       </button>
@@ -661,24 +662,32 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
 
                   {/* Top sources */}
                   <Card>
-                    <CardHeader><h3 className="font-semibold text-gray-800">Top Sources (Last 30 Days)</h3></CardHeader>
+                    <CardHeader><h3 className="font-semibold text-gray-800">Giving by Source — Last 30 Days</h3></CardHeader>
                     <CardContent>
                       {statsLoading ? (
-                        <div className="space-y-2">{[...Array(4)].map((_, i) => <Shimmer key={i} className="h-8" />)}</div>
+                        <Shimmer className="h-40" />
                       ) : !stats?.topSources.length ? (
                         <EmptyState title="No source data" description="Create donation sources to track attribution." />
                       ) : (
-                        <div className="space-y-2">
-                          {stats.topSources.map((s) => (
-                            <div key={s.sourceId} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-700">{s.name}</span>
-                                <span className="text-xs text-gray-400">{s.count} gifts</span>
+                        <>
+                          <ResponsiveContainer width="100%" height={160}>
+                            <BarChart data={stats.topSources} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+                              <Tooltip formatter={(value) => [fmt(typeof value === "number" ? value : 0), "Raised"]} contentStyle={{ fontSize: 12, border: "1px solid #e5e7eb", borderRadius: 8 }} />
+                              <Bar dataKey="amount" fill={GREEN} radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                          <div className="space-y-1.5 mt-3">
+                            {stats.topSources.map((s) => (
+                              <div key={s.sourceId} className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">{s.name} <span className="text-xs text-gray-400">({s.count} gifts)</span></span>
+                                <span className="font-semibold" style={{ color: GREEN }}>{fmt(s.amount)}</span>
                               </div>
-                              <span className="font-semibold" style={{ color: GREEN }}>{fmt(s.amount)}</span>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </CardContent>
                   </Card>
@@ -689,7 +698,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                   <Card>
                     <CardHeader className="flex items-center justify-between">
                       <h3 className="font-semibold text-gray-800">Active Fundraising Initiatives</h3>
-                      <button onClick={() => setTab("initiatives")} className="text-sm font-medium" style={{ color: GREEN }}>View all</button>
+                      <button onClick={() => setTab("campaigns")} className="text-sm font-medium" style={{ color: GREEN }}>View all</button>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
@@ -942,15 +951,15 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
               </div>
             )}
 
-            {/* ─── INITIATIVES ──────────────────────────────────────── */}
-            {tab === "initiatives" && (
+            {/* ─── CAMPAIGNS ────────────────────────────────────────── */}
+            {tab === "campaigns" && (
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                     onClick={() => setShowAddInitiative(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
                     style={{ backgroundColor: NAVY }}>
-                    <Plus className="w-4 h-4" /> New Initiative
+                    <Plus className="w-4 h-4" /> New Campaign
                   </motion.button>
                 </div>
                 {initiativesLoading ? (
@@ -959,15 +968,15 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                   <Card>
                     <CardContent className="py-12">
                       <EmptyState
-                        title="No initiatives"
-                        description="Create a fundraising initiative to track donations toward a specific goal."
+                        title="No campaigns yet"
+                        description="Create a fundraising campaign to track donations toward a specific goal."
                         action={
                           <button
                             onClick={() => setShowAddInitiative(true)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
                             style={{ backgroundColor: NAVY }}
                           >
-                            <Plus className="w-4 h-4" /> New Initiative
+                            <Plus className="w-4 h-4" /> New Campaign
                           </button>
                         }
                       />
@@ -1142,54 +1151,6 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
               </Card>
             )}
 
-            {/* ─── REFUNDS ──────────────────────────────────────────── */}
-            {tab === "refunds" && (
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-xs text-gray-500 uppercase">
-                        <th className="text-left px-4 py-3 font-medium">Donor</th>
-                        <th className="text-right px-4 py-3 font-medium">Original</th>
-                        <th className="text-right px-4 py-3 font-medium">Refund</th>
-                        <th className="text-left px-4 py-3 font-medium">Reason</th>
-                        <th className="text-left px-4 py-3 font-medium">Status</th>
-                        <th className="text-left px-4 py-3 font-medium">Date</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {refundsLoading ? (
-                        [...Array(6)].map((_, i) => <tr key={i} className="border-b">{[...Array(7)].map((_, j) => <td key={j} className="px-4 py-3"><Shimmer className="h-4" /></td>)}</tr>)
-                      ) : refunds.length === 0 ? (
-                        <tr><td colSpan={7} className="px-4 py-12 text-center"><EmptyState title="No refunds" description="Refund requests will appear here once initiated." /></td></tr>
-                      ) : refunds.map((r) => (
-                        <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b hover:bg-gray-50">
-                          <td className="px-4 py-3">{r.donation.contact ? `${r.donation.contact.firstName} ${r.donation.contact.lastName}` : "—"}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">{fmt(r.donation.amount)}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-red-600">{fmt(r.refundAmount)}</td>
-                          <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{r.refundReason}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant={r.status === "processed" ? "success" : ["rejected", "failed"].includes(r.status) ? "danger" : "warning"}>{r.status}</Badge>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(r.refundDate).toLocaleDateString()}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex gap-2">
-                              {r.status === "pending" && <>
-                                <button className="text-xs font-medium" style={{ color: GREEN }} onClick={() => handleRefundAction(r.id, "approve")}>Approve</button>
-                                <button className="text-xs font-medium text-red-600" onClick={() => handleRefundAction(r.id, "reject")}>Reject</button>
-                              </>}
-                              {r.status === "approved" && <button className="text-xs font-medium" style={{ color: AMBER }} onClick={() => handleRefundAction(r.id, "process")}>Process</button>}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )}
-
             {/* ─── COMPLIANCE ───────────────────────────────────────── */}
             {tab === "compliance" && (
               <div className="space-y-4">
@@ -1237,6 +1198,62 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                     ))}
                   </div>
                 )}
+
+                {/* ── Compliance Limits Config ── */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 mt-2">Donation Limits & Rules</h3>
+                  {complianceConfigLoading ? (
+                    <div className="space-y-3">{[...Array(4)].map((_, i) => <Shimmer key={i} className="h-10" />)}</div>
+                  ) : (
+                    <Card>
+                      <CardContent className="pt-5 space-y-5">
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Annual limit per donor (CAD)</Label>
+                            <p className="text-xs text-gray-500 mb-1.5">Ontario municipal default: $1,200</p>
+                            <Input type="number" min="0" step="1" value={configForm.annualLimitPerDonor}
+                              onChange={(e) => setConfigForm((f) => ({ ...f, annualLimitPerDonor: parseFloat(e.target.value) || 0 }))} />
+                          </div>
+                          <div>
+                            <Label>Anonymous donation cap (CAD)</Label>
+                            <p className="text-xs text-gray-500 mb-1.5">Hard cap — always blocked above this</p>
+                            <Input type="number" min="0" step="1" value={configForm.anonymousLimit}
+                              onChange={(e) => setConfigForm((f) => ({ ...f, anonymousLimit: parseFloat(e.target.value) || 0 }))} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Warning threshold — {Math.round(configForm.warningThreshold * 100)}% of annual limit</Label>
+                          <input type="range" min="0" max="1" step="0.05" value={configForm.warningThreshold}
+                            onChange={(e) => setConfigForm((f) => ({ ...f, warningThreshold: parseFloat(e.target.value) }))}
+                            className="w-full mt-2" />
+                        </div>
+                        <div>
+                          <Label className="mb-2 block">Over-limit behaviour</Label>
+                          <div className="flex gap-3">
+                            {(["review", "block"] as const).map((mode) => (
+                              <button key={mode} onClick={() => setConfigForm((f) => ({ ...f, blockMode: mode }))}
+                                className={`flex-1 py-2.5 px-4 rounded-lg border text-sm font-medium transition-colors ${configForm.blockMode === mode ? (mode === "review" ? "border-amber-400 bg-amber-50 text-amber-800" : "border-red-400 bg-red-50 text-red-800") : "border-gray-200 text-gray-600"}`}>
+                                {mode === "review" ? "Flag for Review" : "Hard Block"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-6">
+                          {(["allowCorporate", "allowUnion"] as const).map((field) => (
+                            <label key={field} className="flex items-center gap-3 cursor-pointer">
+                              <input type="checkbox" checked={configForm[field]} onChange={(e) => setConfigForm((f) => ({ ...f, [field]: e.target.checked }))} className="w-4 h-4 rounded" />
+                              <span className="text-sm font-medium text-gray-700">{field === "allowCorporate" ? "Allow corporate donors" : "Allow union donors"}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <Button onClick={saveComplianceConfig} disabled={complianceConfigSaving}
+                          className="text-white flex items-center gap-2" style={{ backgroundColor: GREEN }}>
+                          <Save className="w-4 h-4" />{complianceConfigSaving ? "Saving..." : "Save Limits"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1294,10 +1311,25 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                     <Card>
                       <CardHeader><div className="flex items-center gap-2"><LineChart className="w-4 h-4 text-gray-400" /><span className="font-semibold text-sm">Revenue Over Time</span></div></CardHeader>
                       <CardContent>
-                        <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2 text-xs font-medium text-gray-500">Period</th><th className="text-right py-2 text-xs font-medium text-gray-500">Raised</th><th className="text-right py-2 text-xs font-medium text-gray-500">Gifts</th></tr></thead>
-                          <tbody>{reportData.timeSeries.map((r) => (<tr key={r.period} className="border-b last:border-0"><td className="py-2 font-mono text-xs">{r.period}</td><td className="py-2 text-right font-medium" style={{ color: GREEN }}>{fmt(r.amount)}</td><td className="py-2 text-right text-gray-500">{r.count}</td></tr>))}
-                          {reportData.timeSeries.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-gray-400 text-xs">No donations in this period</td></tr>}</tbody>
-                        </table>
+                        {reportData.timeSeries.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-6 text-center">No donations in this period</p>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={200}>
+                            <AreaChart data={reportData.timeSeries} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={GREEN} stopOpacity={0.18} />
+                                  <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                              <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+                              <Tooltip formatter={(value) => [fmt(typeof value === "number" ? value : 0), "Raised"]} contentStyle={{ fontSize: 12, border: "1px solid #e5e7eb", borderRadius: 8 }} />
+                              <Area type="monotone" dataKey="amount" stroke={GREEN} strokeWidth={2} fill="url(#revGrad)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -1331,83 +1363,6 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
 
                 {!reportLoading && !reportData && (
                   <Card><CardContent className="py-16"><EmptyState title="Run a report" description="Select a period and click Run Report to view fundraising analytics." /></CardContent></Card>
-                )}
-              </div>
-            )}
-
-            {/* ─── SETTINGS (Compliance Limits) ─────────────────────── */}
-            {tab === "settings" && (
-              <div className="space-y-6 max-w-2xl">
-                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <Settings className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  <div>
-                    <p className="font-semibold text-blue-900 text-sm">Per-Campaign Donation Limits</p>
-                    <p className="text-xs text-blue-700 mt-0.5">These limits are enforced by the compliance engine on every donation. Ontario municipal defaults are pre-set.</p>
-                  </div>
-                </div>
-                {complianceConfigLoading ? (
-                  <div className="space-y-4">{[...Array(5)].map((_, i) => <Shimmer key={i} className="h-12" />)}</div>
-                ) : (
-                  <Card>
-                    <CardContent className="pt-6 space-y-5">
-                      <div>
-                        <Label>Annual Limit Per Donor (CAD)</Label>
-                        <p className="text-xs text-gray-500 mb-2">Maximum total per donor per calendar year. Ontario municipal default: $1,200.</p>
-                        <Input type="number" min="0" step="1" value={configForm.annualLimitPerDonor}
-                          onChange={(e) => setConfigForm((f) => ({ ...f, annualLimitPerDonor: parseFloat(e.target.value) || 0 }))} />
-                      </div>
-                      <div>
-                        <Label>Anonymous Donation Cap (CAD)</Label>
-                        <p className="text-xs text-gray-500 mb-2">Hard cap on anonymous contributions — always blocked above this. Default: $25.</p>
-                        <Input type="number" min="0" step="1" value={configForm.anonymousLimit}
-                          onChange={(e) => setConfigForm((f) => ({ ...f, anonymousLimit: parseFloat(e.target.value) || 0 }))} />
-                      </div>
-                      <div>
-                        <Label>Warning Threshold</Label>
-                        <p className="text-xs text-gray-500 mb-2">Flag donors who have reached this fraction of their annual limit.</p>
-                        <div className="flex items-center gap-3">
-                          <input type="range" min="0" max="1" step="0.05" value={configForm.warningThreshold}
-                            onChange={(e) => setConfigForm((f) => ({ ...f, warningThreshold: parseFloat(e.target.value) }))} className="flex-1" />
-                          <span className="text-sm font-medium w-12 text-right">{Math.round(configForm.warningThreshold * 100)}%</span>
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Over-Limit Behaviour</Label>
-                        <div className="flex gap-3 mt-2">
-                          {(["review", "block"] as const).map((mode) => (
-                            <button key={mode} onClick={() => setConfigForm((f) => ({ ...f, blockMode: mode }))}
-                              className={`flex-1 py-2.5 px-4 rounded-lg border text-sm font-medium transition-colors ${configForm.blockMode === mode ? (mode === "review" ? "border-amber-400 bg-amber-50 text-amber-800" : "border-red-400 bg-red-50 text-red-800") : "border-gray-200 text-gray-600"}`}>
-                              {mode === "review" ? "Flag for Review" : "Hard Block"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex gap-6">
-                        {(["allowCorporate", "allowUnion"] as const).map((field) => (
-                          <label key={field} className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={configForm[field]} onChange={(e) => setConfigForm((f) => ({ ...f, [field]: e.target.checked }))} className="w-4 h-4 rounded" />
-                            <div>
-                              <p className="text-sm font-medium">{field === "allowCorporate" ? "Allow Corporate Donors" : "Allow Union Donors"}</p>
-                              <p className="text-xs text-gray-500">Bypass keyword flagging</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                      <div>
-                        <Label>Internal Notes</Label>
-                        <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={3}
-                          value={configForm.notes ?? ""} onChange={(e) => setConfigForm((f) => ({ ...f, notes: e.target.value || null }))}
-                          placeholder="e.g. Limits set per Ontario Municipal Elections Act s.88.8" />
-                      </div>
-                      {complianceConfig?.updatedBy && (
-                        <p className="text-xs text-gray-400">Last saved by {complianceConfig.updatedBy.name ?? "unknown"} · {complianceConfig.updatedAt ? new Date(complianceConfig.updatedAt).toLocaleString() : "—"}</p>
-                      )}
-                      <Button onClick={saveComplianceConfig} disabled={complianceConfigSaving}
-                        className="w-full text-white flex items-center justify-center gap-2" style={{ backgroundColor: GREEN }}>
-                        <Save className="w-4 h-4" />{complianceConfigSaving ? "Saving..." : "Save Compliance Limits"}
-                      </Button>
-                    </CardContent>
-                  </Card>
                 )}
               </div>
             )}
