@@ -1,6 +1,8 @@
 /**
  * Walk List screen — ordered doors for a turf.
  *
+ * Dark-theme redesign matching the Figma "Field Command + War Room v3" design.
+ *
  * Accepts params: { turfId, turfName, campaignId }
  *
  * Data:  GET /api/canvassing/walk?turfId=X&campaignId=Y
@@ -8,8 +10,7 @@
  *
  * Features:
  * - Progress header: X / Y doors visited
- * - 56px touch targets
- * - Support level colour badge
+ * - Support level colour left-border stripe
  * - Green checkmark for visited doors
  * - Offline indicator banner
  * - Pull-to-refresh
@@ -30,30 +31,40 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ChevronLeft, MapPin, Check, Zap } from "lucide-react-native";
 import { fetchWalkList, vcardUrl, type WalkStop } from "../../lib/api";
 import { getQueueStats } from "../../lib/sync";
 import { OfflineIndicator } from "../../components/offline-indicator";
 
 // ---------------------------------------------------------------------------
-// Constants
+// Design tokens
 // ---------------------------------------------------------------------------
 
-const NAVY = "#0A2342";
-const GREEN = "#1D9E75";
-const AMBER = "#EF9F27";
-const RED = "#E24B4A";
+const C = {
+  bg: '#050A1F',
+  card: '#0F1440',
+  blue: '#2979FF',
+  cyan: '#00E5FF',
+  red: '#FF3B30',
+  green: '#00C853',
+  amber: '#FFD600',
+  textPrimary: '#F5F7FF',
+  textSecondary: '#AAB2FF',
+  textMuted: '#6B72A0',
+  border: 'rgba(41, 121, 255, 0.2)',
+};
 
 function cacheKey(turfId: string) {
   return `@poll_city_walk_turf_${turfId}`;
 }
 
 const SUPPORT_COLORS: Record<string, string> = {
-  strong_support: GREEN,
-  leaning_support: "#6BBF8A",
-  undecided: AMBER,
-  leaning_opposition: "#E8764B",
-  strong_opposition: RED,
-  unknown: "#94a3b8",
+  strong_support: C.green,
+  leaning_support: '#4CAF50',
+  undecided: C.amber,
+  leaning_opposition: '#FF9F0A',
+  strong_opposition: C.red,
+  unknown: C.textMuted,
 };
 
 const SUPPORT_LABELS: Record<string, string> = {
@@ -78,6 +89,7 @@ export default function WalkListScreen() {
   }>();
 
   const turfId = params.turfId ?? "";
+  const turfName = params.turfName ?? "Turf";
   const campaignId = params.campaignId ?? "";
 
   const [stops, setStops] = useState<WalkStop[]>([]);
@@ -163,7 +175,7 @@ export default function WalkListScreen() {
     loadStops();
   }, [loadStops]);
 
-  // Open native maps app with the contact's address
+  // Open native maps
   const openMaps = useCallback((stop: WalkStop) => {
     const addr = [stop.contact.address1, stop.contact.city].filter(Boolean).join(", ");
     if (!addr) return;
@@ -173,7 +185,6 @@ export default function WalkListScreen() {
         ? `maps://?q=${encoded}`
         : `geo:0,0?q=${encoded}`;
     Linking.openURL(url).catch(() => {
-      // Fall back to Google Maps web if native app not available
       Linking.openURL(`https://maps.google.com/?q=${encoded}`);
     });
   }, []);
@@ -218,73 +229,74 @@ export default function WalkListScreen() {
       return (
         <Pressable
           style={({ pressed }) => [
-            styles.contactRow,
-            visited && styles.contactRowVisited,
-            pressed && styles.contactRowPressed,
+            styles.doorCard,
+            pressed && styles.doorCardPressed,
           ]}
           onPress={() => openDoor(item)}
           accessibilityRole="button"
           accessibilityLabel={`Door ${index + 1}: ${item.contact.firstName} ${item.contact.lastName}`}
         >
-          {/* Sequence badge */}
-          <View style={[styles.sequenceBadge, visited && styles.sequenceBadgeVisited]}>
-            <Text style={[styles.sequenceText, visited && styles.sequenceTextVisited]}>
-              {visited ? "\u2713" : item.order}
-            </Text>
+          {/* Support colour stripe */}
+          <View style={[styles.doorStripe, { backgroundColor: supportColor, opacity: visited ? 0.4 : 1 }]} />
+
+          {/* Door number badge */}
+          <View style={[styles.doorBadge, visited && styles.doorBadgeVisited]}>
+            {visited ? (
+              <Check size={16} color={C.green} strokeWidth={3} />
+            ) : (
+              <Text style={styles.doorBadgeText}>{item.order}</Text>
+            )}
           </View>
 
           {/* Contact info */}
-          <View style={styles.contactInfo}>
-            <Text style={styles.contactName} numberOfLines={1}>
+          <View style={styles.doorInfo}>
+            <Text
+              style={[styles.doorName, visited && styles.doorNameVisited]}
+              numberOfLines={1}
+            >
               {item.contact.firstName} {item.contact.lastName}
             </Text>
-            <Text style={styles.contactAddress} numberOfLines={1}>
+            <Text style={styles.doorAddress} numberOfLines={1}>
               {item.contact.address1 ?? "No address"}
               {item.contact.city ? `, ${item.contact.city}` : ""}
             </Text>
+            {item.contact.phone ? (
+              <Text style={styles.doorPhone} numberOfLines={1}>
+                {item.contact.phone}
+              </Text>
+            ) : null}
           </View>
 
-          {/* Support badge */}
-          <View style={[styles.supportBadge, { backgroundColor: supportColor }]}>
-            <Text style={styles.supportBadgeText}>{supportLabel}</Text>
+          {/* Right side: support badge + map */}
+          <View style={styles.doorRight}>
+            <View style={[styles.supportBadge, { borderColor: `${supportColor}50`, backgroundColor: `${supportColor}18` }]}>
+              <Text style={[styles.supportBadgeText, { color: supportColor }]}>
+                {supportLabel}
+              </Text>
+            </View>
+
+            {item.contact.address1 && (
+              <Pressable
+                style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
+                onPress={(e) => { e.stopPropagation?.(); openMaps(item); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open map for ${item.contact.firstName}`}
+                hitSlop={8}
+              >
+                <MapPin size={14} color={C.textMuted} />
+              </Pressable>
+            )}
           </View>
-
-          {/* Maps deep link */}
-          {item.contact.address1 && (
-            <Pressable
-              style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
-              onPress={(e) => { e.stopPropagation?.(); openMaps(item); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Open map for ${item.contact.firstName} ${item.contact.lastName}`}
-              hitSlop={8}
-            >
-              <Text style={styles.mapIcon}>📍</Text>
-            </Pressable>
-          )}
-
-          {/* Save to Contacts (vCard) */}
-          <Pressable
-            style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              Linking.openURL(vcardUrl(item.contactId)).catch(() => {});
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Save ${item.contact.firstName} ${item.contact.lastName} to contacts`}
-            hitSlop={8}
-          >
-            <Text style={styles.mapIcon}>👤</Text>
-          </Pressable>
         </Pressable>
       );
     },
-    [visitedIds, openDoor],
+    [visitedIds, openDoor, openMaps],
   );
 
   if (loading) {
     return (
       <SafeAreaView style={styles.centered} edges={["bottom"]}>
-        <ActivityIndicator size="large" color={NAVY} />
+        <ActivityIndicator size="large" color={C.cyan} />
         <Text style={styles.loadingText}>Loading walk list...</Text>
       </SafeAreaView>
     );
@@ -294,30 +306,40 @@ export default function WalkListScreen() {
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <OfflineIndicator />
 
-      {/* Progress header */}
-      <View style={styles.progressHeader}>
-        <View style={styles.progressStats}>
-          <Text style={styles.progressNumber}>
-            {doorsVisited}
-            <Text style={styles.progressSlash}> / {totalDoors}</Text>
+      {/* Dark header with back button, turf name, and progress */}
+      <View style={styles.header}>
+        <Pressable
+          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={8}
+        >
+          <ChevronLeft size={22} color={C.cyan} />
+        </Pressable>
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle} numberOfLines={1}>{turfName}</Text>
+          <Text style={styles.headerSubtitle}>
+            {doorsVisited} of {totalDoors} doors
           </Text>
-          <Text style={styles.progressLabel}>doors visited ({progressPct}%)</Text>
         </View>
 
-        {syncPending > 0 && (
-          <View style={styles.syncBadge}>
-            <Text style={styles.syncBadgeText}>{syncPending} pending sync</Text>
-          </View>
-        )}
-
-        <Pressable
-          style={styles.endShiftButton}
-          onPress={() => router.push("/(app)/shift-summary")}
-          accessibilityRole="button"
-          accessibilityLabel="End shift"
-        >
-          <Text style={styles.endShiftText}>End Shift</Text>
-        </Pressable>
+        <View style={styles.headerRight}>
+          {syncPending > 0 && (
+            <View style={styles.syncBadge}>
+              <Text style={styles.syncBadgeText}>{syncPending}</Text>
+            </View>
+          )}
+          <Pressable
+            style={styles.endShiftButton}
+            onPress={() => router.push("/(app)/shift-summary")}
+            accessibilityRole="button"
+            accessibilityLabel="End shift"
+          >
+            <Text style={styles.endShiftText}>END</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Progress bar */}
@@ -328,9 +350,12 @@ export default function WalkListScreen() {
             { width: `${progressPct}%` as unknown as number },
           ]}
         />
+        <View style={styles.progressPctLabel}>
+          <Text style={styles.progressPctText}>{progressPct}%</Text>
+        </View>
       </View>
 
-      {/* Error banner */}
+      {/* Error / offline banner */}
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>{error}</Text>
@@ -347,7 +372,7 @@ export default function WalkListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadStops(true)}
-            tintColor={NAVY}
+            tintColor={C.cyan}
           />
         }
         ListEmptyComponent={
@@ -359,6 +384,25 @@ export default function WalkListScreen() {
           </View>
         }
       />
+
+      {/* Quick Capture FAB */}
+      {stops.length > 0 && (
+        <View style={styles.fabContainer} pointerEvents="box-none">
+          <Pressable
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+            onPress={() => {
+              // Find first unvisited stop and open it
+              const nextStop = stops.find(s => !visitedIds.has(s.contactId) && !s.visited && !s.contact.doNotContact);
+              if (nextStop) openDoor(nextStop);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Quick capture — next door"
+          >
+            <Zap size={16} color={C.bg} />
+            <Text style={styles.fabText}>NEXT DOOR</Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -368,112 +412,303 @@ export default function WalkListScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8fafc" },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc" },
-  loadingText: { marginTop: 12, color: "#64748b", fontSize: 15 },
+  safe: { flex: 1, backgroundColor: C.bg },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+  loadingText: {
+    marginTop: 12,
+    color: C.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
 
-  progressHeader: {
+  // Header
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-  },
-  progressStats: { flex: 1 },
-  progressNumber: { fontSize: 28, fontWeight: "800", color: NAVY },
-  progressSlash: { fontSize: 18, fontWeight: "500", color: "#94a3b8" },
-  progressLabel: { fontSize: 13, color: "#64748b", marginTop: 2 },
-  syncBadge: {
-    backgroundColor: "#fef3c7",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 10,
-  },
-  syncBadgeText: { fontSize: 12, fontWeight: "600", color: "#92400e" },
-  endShiftButton: {
-    backgroundColor: RED,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minHeight: 56,
-    justifyContent: "center",
-  },
-  endShiftText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
-
-  progressBarTrack: { height: 4, backgroundColor: "#e2e8f0" },
-  progressBarFill: { height: 4, backgroundColor: GREEN },
-
-  errorBanner: { backgroundColor: "#fef3c7", paddingHorizontal: 16, paddingVertical: 8 },
-  errorText: { color: "#92400e", fontSize: 13, textAlign: "center" },
-
-  listContent: { paddingVertical: 8 },
-  contactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    marginHorizontal: 12,
-    marginVertical: 3,
-    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 14,
-    minHeight: 64,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingVertical: 12,
+    backgroundColor: C.card,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
-  contactRowVisited: { opacity: 0.6, backgroundColor: "#f1f5f9" },
-  contactRowPressed: { backgroundColor: "#eff6ff" },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 229, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonPressed: {
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+  },
+  headerCenter: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.textPrimary,
+    letterSpacing: 0.3,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: C.textMuted,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  syncBadge: {
+    backgroundColor: 'rgba(255, 214, 0, 0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 214, 0, 0.3)',
+  },
+  syncBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.amber,
+  },
+  endShiftButton: {
+    backgroundColor: 'rgba(255, 59, 48, 0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 36,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+  },
+  endShiftText: {
+    color: C.red,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
 
-  sequenceBadge: {
+  // Progress bar
+  progressBarTrack: {
+    height: 4,
+    backgroundColor: 'rgba(41, 121, 255, 0.15)',
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: C.cyan,
+    ...Platform.select({
+      ios: {
+        shadowColor: C.cyan,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  progressPctLabel: {
+    position: 'absolute',
+    right: 8,
+    top: -12,
+  },
+  progressPctText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.cyan,
+    letterSpacing: 0.5,
+  },
+
+  errorBanner: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 59, 48, 0.2)',
+  },
+  errorText: {
+    color: C.red,
+    fontSize: 12,
+    textAlign: "center",
+    fontWeight: '600',
+  },
+
+  listContent: { paddingVertical: 10, paddingBottom: 100 },
+
+  // Door card
+  doorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.card,
+    marginHorizontal: 12,
+    marginVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+    overflow: 'hidden',
+    minHeight: 72,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  doorCardPressed: {
+    backgroundColor: 'rgba(41, 121, 255, 0.12)',
+  },
+  doorStripe: {
+    width: 3,
+    alignSelf: 'stretch',
+  },
+  doorBadge: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: "#E8EDF4",
+    borderRadius: 10,
+    backgroundColor: 'rgba(41, 121, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: C.border,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginHorizontal: 10,
+    flexShrink: 0,
   },
-  sequenceBadgeVisited: { backgroundColor: "#dcfce7" },
-  sequenceText: { fontSize: 14, fontWeight: "700", color: NAVY },
-  sequenceTextVisited: { color: GREEN, fontSize: 18 },
-
-  contactInfo: { flex: 1, marginRight: 8 },
-  contactName: { fontSize: 16, fontWeight: "600", color: "#0f172a" },
-  contactAddress: { fontSize: 13, color: "#64748b", marginTop: 2 },
-
+  doorBadgeVisited: {
+    backgroundColor: 'rgba(0, 200, 83, 0.1)',
+    borderColor: 'rgba(0, 200, 83, 0.3)',
+  },
+  doorBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.textSecondary,
+  },
+  doorInfo: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingRight: 8,
+  },
+  doorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: C.textPrimary,
+    letterSpacing: 0.2,
+  },
+  doorNameVisited: {
+    color: C.textMuted,
+  },
+  doorAddress: {
+    fontSize: 12,
+    color: C.textMuted,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  doorPhone: {
+    fontSize: 11,
+    color: C.textMuted,
+    marginTop: 1,
+  },
+  doorRight: {
+    alignItems: 'center',
+    gap: 6,
+    paddingRight: 12,
+    paddingVertical: 10,
+  },
   supportBadge: {
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    minWidth: 56,
+    borderWidth: 1,
+    minWidth: 60,
     alignItems: "center",
   },
-  supportBadgeText: { color: "#ffffff", fontSize: 11, fontWeight: "700" },
-
+  supportBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   mapButton: {
-    marginLeft: 8,
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
-    backgroundColor: "#eff6ff",
+    backgroundColor: 'rgba(107, 114, 160, 0.1)',
+    borderWidth: 1,
+    borderColor: C.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  mapButtonPressed: { backgroundColor: "#dbeafe" },
-  mapIcon: { fontSize: 18 },
+  mapButtonPressed: {
+    backgroundColor: 'rgba(107, 114, 160, 0.2)',
+  },
 
-  emptyState: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#334155" },
+  emptyState: {
+    alignItems: "center",
+    paddingTop: 80,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   emptySubtitle: {
-    fontSize: 14,
-    color: "#64748b",
+    fontSize: 13,
+    color: C.textMuted,
     textAlign: "center",
-    marginTop: 8,
     lineHeight: 20,
+  },
+
+  // FAB
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+  },
+  fab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: C.blue,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    minHeight: 50,
+    ...Platform.select({
+      ios: {
+        shadowColor: C.blue,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.6,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  fabPressed: {
+    backgroundColor: '#1565C0',
+  },
+  fabText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: C.bg,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 });
