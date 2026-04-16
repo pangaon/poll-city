@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  Upload, Download, FileText, AlertCircle, CheckCircle, History,
-  Link2, FileSpreadsheet, Users, MapPin, Heart, HandHelping,
-  MessageSquare, ClipboardList, Package, ArrowUpFromLine, ArrowDownToLine, RotateCcw,
-  DollarSign, Filter,
+  Upload, FileText, AlertCircle, CheckCircle, History,
+  Link2, FileSpreadsheet, Users, MapPin,
+  ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw,
 } from "lucide-react";
-import { Button, Card, CardHeader, CardContent, PageHeader, Select, Badge, EmptyState } from "@/components/ui";
+import { Card, CardHeader, CardContent, Select, Badge, EmptyState } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import ExportPanel from "./export-panel";
 
 /* ── Constants ──────────────────────────────────────────────────────── */
 
@@ -138,29 +138,12 @@ interface ImportHistoryItem {
   rollbackDeadline?: string | null;
 }
 
-interface ExportHistoryItem {
-  type: string;
-  filename: string;
-  rows: number;
-  downloadedAt: string;
-}
-
 const CSV_HEADERS = [
   "firstName", "lastName", "email", "phone", "address1", "address2",
   "city", "province", "postalCode", "ward", "riding", "supportLevel",
   "issues", "signRequested", "volunteerInterest", "doNotContact", "notes",
 ];
 
-const EXPORT_TYPES: Array<{ endpoint: string; label: string; description: string; icon: React.ReactNode }> = [
-  { endpoint: "/api/export/contacts", label: "All Contacts", description: "Every contact with full details and tags", icon: <Users className="w-5 h-5" /> },
-  { endpoint: "/api/export/gotv", label: "GOTV Priority List", description: "Supporters for election day outreach", icon: <ClipboardList className="w-5 h-5" /> },
-  { endpoint: "/api/export/walklist", label: "Walk List", description: "Canvassing order by street and house number", icon: <MapPin className="w-5 h-5" /> },
-  { endpoint: "/api/export/signs", label: "Signs", description: "All sign requests and installs", icon: <Package className="w-5 h-5" /> },
-  { endpoint: "/api/export/donations", label: "Donations", description: "Ontario-compliant donor report", icon: <Heart className="w-5 h-5" /> },
-  { endpoint: "/api/export/volunteers", label: "Volunteers", description: "Volunteers with skills and availability", icon: <HandHelping className="w-5 h-5" /> },
-  { endpoint: "/api/export/interactions", label: "Interaction Log", description: "Every door knock, call, email, note", icon: <MessageSquare className="w-5 h-5" /> },
-  { endpoint: "/api/export/budget", label: "Budget", description: "Full budget with actuals and variances", icon: <DollarSign className="w-5 h-5" /> },
-];
 
 const categoryOrder = ["name", "address", "contact", "electoral", "campaign", "other"] as const;
 
@@ -243,7 +226,6 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [matchingPhoneList, setMatchingPhoneList] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [bulkExporting, setBulkExporting] = useState(false);
   const [dragMainActive, setDragMainActive] = useState(false);
   const [dragPhoneActive, setDragPhoneActive] = useState(false);
   const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
@@ -255,8 +237,6 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [phoneMatch, setPhoneMatch] = useState<PhoneMatchPreview | null>(null);
   const [history, setHistory] = useState<ImportHistoryItem[]>([]);
   const [rollingBack, setRollingBack] = useState<Set<string>>(new Set());
-  const [exportHistory, setExportHistory] = useState<ExportHistoryItem[]>([]);
-  const [exportingByEndpoint, setExportingByEndpoint] = useState<Record<string, boolean>>({});
   const [useAiMatch, setUseAiMatch] = useState(true);
   const [matchMode, setMatchMode] = useState<"strict" | "balanced" | "aggressive">("balanced");
   const [applyConfidenceThreshold, setApplyConfidenceThreshold] = useState(80);
