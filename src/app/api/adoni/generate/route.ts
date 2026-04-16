@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const limited = await enforceLimit(req, "adoni", session!.user.id);
   if (limited) return limited;
 
-  let body: { kind?: string; brief?: string; campaignId?: string };
+  let body: { kind?: string; brief?: string; campaignId?: string; tone?: string };
   try {
     body = await req.json();
   } catch {
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
   const kind = body.kind as GenKind;
   const rawBrief = (body.brief ?? "").toString().trim();
   const campaignId = body.campaignId;
+  const tone = (body.tone ?? "").toString().trim();
 
   if (!PROMPTS[kind]) {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
@@ -63,6 +64,13 @@ export async function POST(req: NextRequest) {
   if (brief === null) {
     return NextResponse.json({ error: "Invalid prompt content" }, { status: 422 });
   }
+
+  const TONE_MAP: Record<string, string> = {
+    formal: "Use a formal, professional tone appropriate for official communications.",
+    conversational: "Use a warm, conversational tone that feels approachable and genuine.",
+    urgent: "Use an urgent, action-oriented tone that conveys time-sensitivity.",
+    inspirational: "Use an inspirational, motivational tone that energizes the reader.",
+  };
 
   // Build campaign context
   let ctxLine = "";
@@ -89,6 +97,12 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n");
     }
+  }
+
+  if (tone && TONE_MAP[tone]) {
+    ctxLine = ctxLine
+      ? `${ctxLine}\nTone: ${TONE_MAP[tone]}`
+      : `Tone: ${TONE_MAP[tone]}`;
   }
 
   const prompt = PROMPTS[kind](brief, ctxLine ? `Campaign context:\n${ctxLine}` : "");
