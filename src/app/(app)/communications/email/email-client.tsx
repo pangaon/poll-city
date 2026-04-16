@@ -15,6 +15,8 @@ interface Props {
 
 interface AudienceResult {
   count: number;
+  totalInSegment: number;
+  skipped: number;
   sample: Array<{ id: string; firstName: string | null; lastName: string | null; email: string | null }>;
 }
 
@@ -452,6 +454,16 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                       With email &middot; excluding Do Not Contact
                     </p>
                   </div>
+
+                  {/* Skip warning — shown when some contacts in the segment have no email */}
+                  {!audienceLoading && audience && audience.skipped > 0 && (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 mb-4 flex items-start gap-2">
+                      <svg className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 4.25v3.5a.75.75 0 0 1-1.5 0v-3.5a.75.75 0 0 1 1.5 0zM8 12a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+                      <p className="text-[11px] text-amber-800 leading-snug">
+                        <span className="font-semibold">{audience.skipped.toLocaleString()} contact{audience.skipped !== 1 ? "s" : ""}</span> in this segment {audience.skipped !== 1 ? "have" : "has"} no email address and will be skipped.
+                      </p>
+                    </div>
+                  )}
 
                   {/* sample contacts */}
                   {audience && audience.sample && audience.sample.length > 0 && (

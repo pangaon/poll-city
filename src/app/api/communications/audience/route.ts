@@ -82,8 +82,30 @@ export async function POST(req: NextRequest) {
       : {}),
   };
 
-  const [count, sample] = await Promise.all([
+  // Re-build without the channel filter to count how many contacts will be skipped
+  const baseWhere = {
+    campaignId,
+    deletedAt: null,
+    isDeceased: false,
+    ...(excludeDnc ? { doNotContact: false } : {}),
+    ...(channel === "email" && excludeEmailBounced ? { emailBounced: false } : {}),
+    ...(channel === "sms" && excludeSmsOptOut ? { smsOptOut: false } : {}),
+    ...(volunteerOnly ? { volunteerInterest: true } : {}),
+    ...(supportLevels && supportLevels.length > 0
+      ? { supportLevel: { in: supportLevels as never[] } }
+      : {}),
+    ...(wards && wards.length > 0 ? { ward: { in: wards } } : {}),
+    ...(tagIds && tagIds.length > 0
+      ? { tags: { some: { tagId: { in: tagIds } } } }
+      : {}),
+    ...(applyDonorFilter
+      ? { donorProfile: Object.keys(donorProfileFilter).length > 0 ? donorProfileFilter : { isNot: null } }
+      : {}),
+  };
+
+  const [count, totalInSegment, sample] = await Promise.all([
     prisma.contact.count({ where }),
+    prisma.contact.count({ where: baseWhere }),
     prisma.contact.findMany({
       where,
       take: 5,
@@ -92,5 +114,6 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  return NextResponse.json({ count, sample, channel });
+  const skipped = Math.max(0, totalInSegment - count);
+  return NextResponse.json({ count, totalInSegment, skipped, sample, channel });
 }
