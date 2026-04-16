@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sun, TrendingUp, TrendingDown, AlertTriangle, Calendar, CheckCircle, Users, ArrowRight, Target, DollarSign, MapPin, ChevronRight } from "lucide-react";
+import { Sun, TrendingUp, TrendingDown, AlertTriangle, Calendar, CheckCircle, Users, ArrowRight, Target, DollarSign, MapPin, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 
 interface BriefingData {
   campaign: { name: string; candidateName: string | null; daysToElection: number | null; phase: string };
@@ -34,6 +34,8 @@ export default function BriefingPage() {
   const [data, setData] = useState<BriefingData | null>(null);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adoniSummary, setAdoniSummary] = useState<string | null>(null);
+  const [adoniLoading, setAdoniLoading] = useState(false);
 
   useEffect(() => {
     const campaignId = document.cookie.match(/activeCampaignId=([^;]+)/)?.[1] ?? "";
@@ -43,6 +45,39 @@ export default function BriefingPage() {
     ]).then(([briefing, healthScore]) => {
       setData(briefing);
       setHealth(healthScore);
+
+      // After main data loads, lazy-fetch Adoni summary
+      if (briefing && campaignId) {
+        setAdoniLoading(true);
+        const snapshot = {
+          campaignName: briefing.campaign.name,
+          candidateName: briefing.campaign.candidateName,
+          daysToElection: briefing.campaign.daysToElection,
+          phase: briefing.campaign.phase,
+          doorsKnockedYesterday: briefing.yesterday.doorsKnocked,
+          newSupportersYesterday: briefing.yesterday.newSupporters,
+          donationsYesterday: briefing.yesterday.donations,
+          donationAmountYesterday: briefing.yesterday.donationAmount,
+          doorsThisWeek: briefing.trends.doorsThisWeek,
+          doorsWoWChange: briefing.trends.doorsWoWChange,
+          supportRate: briefing.trends.supportRate,
+          totalContacts: briefing.totals.contacts,
+          totalSupporters: briefing.totals.supporters,
+          volunteers: briefing.volunteers,
+          overdueTasks: briefing.overdueTasks,
+          redFlags: briefing.redFlags,
+          priorities: briefing.priorities,
+        };
+        fetch("/api/briefing/adoni-summary", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ campaignId, snapshot }),
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .then((d) => { if (d?.summary) setAdoniSummary(d.summary); })
+          .catch(() => {/* non-fatal */})
+          .finally(() => setAdoniLoading(false));
+      }
     }).finally(() => setLoading(false));
   }, []);
 
@@ -82,6 +117,26 @@ export default function BriefingPage() {
         <h1 className="text-3xl font-bold text-gray-900 mt-1">{timeGreeting()}, {d.campaign.candidateName?.split(" ")[0] ?? "there"}.</h1>
         <p className="text-gray-500 mt-1">Here is where your campaign stands this morning.</p>
       </div>
+
+      {/* Adoni Summary */}
+      {(adoniLoading || adoniSummary) && (
+        <div className="rounded-2xl border border-[#0A2342]/20 bg-gradient-to-br from-[#0A2342] to-[#0d2d56] p-5 text-white shadow-md">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1D9E75] to-[#0A2342] flex items-center justify-center shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-white/90">Adoni&apos;s Morning Read</span>
+          </div>
+          {adoniLoading ? (
+            <div className="flex items-center gap-2 text-white/60 text-sm">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Adoni is reading your numbers…</span>
+            </div>
+          ) : (
+            <p className="text-sm text-white/90 leading-relaxed">{adoniSummary}</p>
+          )}
+        </div>
+      )}
 
       {/* Health Score + Red Flags */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
