@@ -345,12 +345,67 @@ Two steps: wire up the prototype viewer, then get the design specs into this rep
 
 ---
 
-## ✅ COMPLETED
+---
 
-- #1 `npx prisma db push` — 2026-04-11 — "database already in sync"
+## 🟠 iOS TESTFLIGHT — Submit canvasser app to Apple
+
+The mobile app is built and the dark-theme redesign is done. To submit:
+
+- [ ] **60. Fill in `mobile/eas.json`** — open the file and replace the three placeholders:
+  - `YOUR_APPLE_ID` → your Apple ID email (e.g. `george@poll.city`)
+  - `YOUR_APP_STORE_CONNECT_APP_ID` → the numeric App ID from App Store Connect (see step 61)
+  - `YOUR_TEAM_ID` → your 10-character Apple Developer Team ID (found at developer.apple.com → Account → top right)
+
+- [ ] **61. Create the app record in App Store Connect**:
+  1. Go to [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
+  2. Click `+` → New App → iOS
+  3. Name: `Poll City Canvasser`
+  4. Bundle ID: `ca.pollcity.canvasser`
+  5. Note the App ID from the URL — that's `YOUR_APP_STORE_CONNECT_APP_ID`
+
+- [ ] **62. Submit TestFlight build** (after steps 60–61 are done):
+  ```
+  cd mobile
+  npm install
+  eas build --platform ios --profile preview
+  ```
+  Then when the build finishes:
+  ```
+  eas submit --platform ios
+  ```
+  Apple TestFlight review takes 1–2 business days.
+
+- [ ] **63. Add demo reviewer credentials** to App Store Connect review notes before submission:
+  - Create a test canvasser account at `www.poll.city/signup`
+  - Add those credentials in App Store Connect → your app → App Review Information → Demo Account
 
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-15*
+## 🟠 VOTER FILE — Activate map-based turf drawing
+
+Map-based turf drawing is built but needs real geocoded contacts to work.
+
+- [ ] **64. Upload a real voter file** at `www.poll.city/import-export`
+  - The tool has AI column mapping — it will auto-detect ward, poll number, address fields
+  - Contacts need `ward` + `municipalPoll` for dropdown turf mode
+  - Contacts need household lat/lng for map polygon turf mode
+  - If your voter file has addresses but no coordinates, run the geocoding cron: it runs hourly automatically once contacts are imported
+
+- [ ] **65. Run baseline migration** (critical before first real customer):
+  ```
+  npx prisma migrate dev --name initial_baseline
+  ```
+  Run this in your poll-city project folder. One time only.
+
+---
+
+## ✅ COMPLETED
+
+- #1 `npx prisma db push` — 2026-04-11 — "database already in sync"
+- #58 SKIP — Figma spec files don't exist, AI builds from MASTER_CLAUDE.md
+
+---
+
+*This file is maintained by AI sessions. Last updated: 2026-04-16*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
