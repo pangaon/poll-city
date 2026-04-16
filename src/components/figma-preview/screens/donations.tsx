@@ -52,7 +52,7 @@ export function Donations() {
                 </defs>
                 <XAxis dataKey="name" stroke="#6B72A0" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#6B72A0" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip contentStyle={{ backgroundColor: "#0F1440", borderColor: "#2979FF", borderRadius: "8px" }} itemStyle={{ color: "#00E5FF", fontWeight: "bold" }} formatter={(value: number) => [`$${value.toLocaleString()}`, "Raised"]} />
+                <Tooltip contentStyle={{ backgroundColor: "#0F1440", borderColor: "#2979FF", borderRadius: "8px" }} itemStyle={{ color: "#00E5FF", fontWeight: "bold" }} formatter={((value: number) => [`$${value.toLocaleString()}`, "Raised"]) as never} />
                 <Area type="monotone" dataKey="amt" stroke="#00E5FF" strokeWidth={3} fillOpacity={1} fill="url(#colorAmt)" style={{ filter: "drop-shadow(0 0 10px rgba(0,229,255,0.6))" }} />
               </AreaChart>
             </ResponsiveContainer>
