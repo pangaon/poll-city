@@ -128,6 +128,11 @@ The Unified Inbox (built Session 3, April 15) shows inbound SMS automatically vi
 
 ## 🟡 AI (ADONI) — Adoni won't respond without this
 
+Without this key, the following degrade to static fallback text (they still work, just no AI):
+- `/briefing` — Adoni morning summary card
+- `/resources/ai-creator` — all 7 content types
+- `/ai-assist` — full Adoni chat
+
 - [ ] **22. Add `ANTHROPIC_API_KEY` to Railway**
   - Get from [console.anthropic.com](https://console.anthropic.com) → API Keys
   - Value: `sk-ant-...`
