@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { loadBrandKit } from "@/lib/brand/brand-kit";
 import { audit } from "@/lib/audit";
+import { encodeTrackingToken } from "@/lib/email/tracking-token";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -107,12 +108,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No recipients match that audience" }, { status: 400 });
   }
 
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://poll.city";
+
+  // Create the NotificationLog row BEFORE sending so we have the ID for tracking tokens.
+  const log = await prisma.notificationLog.create({
+    data: {
+      campaignId,
+      userId: session!.user.id,
+      title: subject,
+      body: subject,
+      status: "sent",
+      sentAt: new Date(),
+      totalSubscribers: recipients.length,
+      deliveredCount: 0,
+      failedCount: 0,
+      audience: { supportLevels, wards, tagIds, excludeDnc, testOnly },
+      ...(sendKey ? { sendKey } : {}),
+    },
+    select: { id: true },
+  });
+
   const caslFooter = `
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0 16px">
     <div style="font-family:system-ui,sans-serif;font-size:11px;color:#64748b;line-height:1.5">
       <p style="margin:0 0 6px"><strong>${brand.campaignName}</strong>${brand.websiteUrl ? ` · <a href="${brand.websiteUrl}" style="color:#64748b">${brand.websiteUrl}</a>` : ""}</p>
       <p style="margin:0 0 6px">You're receiving this because you or someone in your household was contacted by this campaign.</p>
-      <p style="margin:0"><a href="${process.env.NEXTAUTH_URL ?? "https://poll.city"}/unsubscribe?c={{contactId}}" style="color:#64748b">Unsubscribe</a> · Sent via Poll City campaign tools · Complies with Canada's Anti-Spam Legislation (CASL)</p>
+      <p style="margin:0"><a href="${baseUrl}/unsubscribe?c={{contactId}}" style="color:#64748b">Unsubscribe</a> · Sent via Poll City campaign tools · Complies with Canada's Anti-Spam Legislation (CASL)</p>
     </div>
   `;
 
@@ -121,14 +142,24 @@ export async function POST(req: NextRequest) {
 
   for (const r of recipients) {
     if (!r.email) continue;
+
+    const openToken = encodeTrackingToken({ t: "o", c: campaignId, b: log.id, co: r.id });
+    const openPixel = `<img src="${baseUrl}/api/track/open/${openToken}" width="1" height="1" style="display:none;border:0" alt="" />`;
+
     const personalized = bodyHtml
       .replace(/\{\{firstName\}\}/g, r.firstName ?? "there")
       .replace(/\{\{lastName\}\}/g, r.lastName ?? "")
       .replace(/\{\{ward\}\}/g, r.ward ?? "")
       .replace(/\{\{candidateName\}\}/g, brand.candidateName ?? brand.campaignName)
-      .replace(/\{\{campaignName\}\}/g, brand.campaignName);
+      .replace(/\{\{campaignName\}\}/g, brand.campaignName)
+      // Wrap absolute links with click-tracking redirect
+      .replace(/href="(https?:\/\/[^"]+)"/g, (_match, url: string) => {
+        const clickToken = encodeTrackingToken({ t: "k", c: campaignId, b: log.id, co: r.id, u: url });
+        return `href="${baseUrl}/api/track/click/${clickToken}"`;
+      });
+
     const footer = caslFooter.replace("{{contactId}}", r.id);
-    const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a">${personalized}</div>${footer}`;
+    const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a">${personalized}</div>${footer}${openPixel}`;
     try {
       await sendEmail({
         to: r.email,
@@ -144,21 +175,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // One NotificationLog row summarising the whole blast
-  await prisma.notificationLog.create({
-    data: {
-      campaignId,
-      userId: session!.user.id,
-      title: subject,
-      body: subject,
-      status: "sent",
-      sentAt: new Date(),
-      totalSubscribers: recipients.length,
-      deliveredCount: sent,
-      failedCount: failed,
-      audience: { supportLevels, wards, tagIds, excludeDnc, testOnly },
-      ...(sendKey ? { sendKey } : {}),
-    },
+  // Update final delivery counts on the log row we created above.
+  await prisma.notificationLog.update({
+    where: { id: log.id },
+    data: { deliveredCount: sent, failedCount: failed },
   }).catch(() => {});
 
   await audit(prisma, 'email.send', {

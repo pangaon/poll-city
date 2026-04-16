@@ -79,6 +79,19 @@ export async function POST(req: NextRequest) {
 
         if (donation.contactId) {
           await refreshDonorProfile(donation.campaignId, donation.contactId);
+
+          // Advance funnelStage to "donor" if not already there (covers public donations)
+          const contact = await prisma.contact.findUnique({
+            where: { id: donation.contactId },
+            select: { funnelStage: true },
+          });
+          const advanceFrom = new Set(["unknown", "contact", "supporter", "volunteer"]);
+          if (contact && advanceFrom.has(contact.funnelStage as string)) {
+            await prisma.contact.update({
+              where: { id: donation.contactId },
+              data: { funnelStage: "donor", lastContactedAt: new Date() },
+            });
+          }
         }
 
         // Generate receipt + send email — fire-and-forget

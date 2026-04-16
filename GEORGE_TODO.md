@@ -30,6 +30,7 @@ Go to Railway → Poll City service → Variables tab. Add each one:
 
 - [ ] **2. Add `STRIPE_SECRET_KEY` to Railway**
 - [ ] **3. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Railway**
+- [ ] **3b. Also add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel** (the public donation page `/donate/[slug]` runs on Vercel — `NEXT_PUBLIC_` vars are baked into the build and MUST be set in Vercel Project Settings, not just Railway)
 
 ### Step B — Register the fundraising webhook in Stripe Dashboard
 
@@ -287,12 +288,30 @@ These activate your personal debug toolbar when you're logged in as yourself.
 
 ---
 
+## 🟠 AI SESSIONS TO START — Track B (Customer Readiness)
+
+*Sessions 2 and 3 are already running. These are the additional sessions needed before first real customer. Start one at a time after confirming the previous one pushed clean.*
+
+- [ ] **53. Session B1 — Billing + Settings full build**
+  Paste this opener: "Build Session B1: Wire Stripe checkout on /billing (currently display-only, 186 lines). Full settings page on /settings (profile, campaign details, integrations, notifications, danger zone). Full /settings/security (2FA management, active sessions, login history, API keys). Run npm run build before pushing."
+
+- [ ] **54. Session B2 — CASL consent engine + Election Day ops**
+  Paste this opener: "Build Session B2: CASL consent management engine (Phase 9 in comms module — per-contact consent tracking, opt-in/opt-out enforcement on all email+SMS sends, consent audit log). Full /eday election night ops (live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins). Run npm run build before pushing."
+
+- [ ] **55. Session B3 — Finance UI hardening (Sprint 2)**
+  Paste this opener: "Build Session B3: Finance UI Sprint 2 from WORK_QUEUE.md. All 9 finance sub-routes need depth: /finance overview (live chart), /finance/budget (variance analysis), /finance/expenses (receipt upload), /finance/purchase-requests (approval chain), /finance/vendors, /finance/reimbursements, /finance/approvals (bulk actions), /finance/reports (full suite), /finance/audit (filters + export). APIs are all done — UI catch-up only. Run npm run build before pushing."
+
+- [ ] **56. Session B4 — Platform hardening pass**
+  Paste this opener: "Build Session B4: Platform hardening. Adoni per-tool rate limit (PENDING in platform module). Migration baseline — run npx prisma migrate dev --name initial_baseline against Railway. Marketing site full content pass (/marketing/page.tsx needs full content). Stub route kill/build decisions from WORK_QUEUE.md stub routes module — for each: redirect or stub-fill. Run npm run build before pushing."
+
+---
+
 ## ✅ COMPLETED
 
 - #1 `npx prisma db push` — 2026-04-11 — "database already in sync"
 
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-11*
+*This file is maintained by AI sessions. Last updated: 2026-04-15*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
