@@ -77,7 +77,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 5 — Full compliance wiring (configurable limits per campaign) | DONE — d71673f | /api/fundraising/compliance-config + Limits UI tab |
 | Phase 6 — Reports + CSV export + Adoni fundraising tools | DONE — d71673f | /api/fundraising/reports + Reports UI tab + CSV export |
 | Phase 7 — Comms integration (receipt email, donor segments, automation triggers) | DONE — 7e05da5 | receipt email (Stripe webhook + manual), CRM funnel advance to donor, ActivityLog, "Donors" SavedSegment auto-create |
-| Donation pages (public-facing) | DONE — see commit below | /donate/[campaignSlug] public page + /api/donate/[campaignSlug]/intent + funnel advance to donor |
+| Donation pages (public-facing) | DONE — db33dc0 | /donate/[campaignSlug] public page + /api/donate/[campaignSlug]/intent + funnel advance to donor |
 
 ---
 
@@ -97,7 +97,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 2 — Segment builder UI + Audiences tab | DONE — 730833e | AudiencesTab in communications-client.tsx — full segment builder inline |
 | Phase 3 — Scheduled messages + cron | DONE — 57b4177 | ScheduledMessage model, /api/comms/scheduled, /api/cron/send-scheduled |
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | DONE — see below | GAP-017 — /api/webhooks/resend (bounce+complaint+open+click) + /api/webhooks/twilio (STOP/START) |
-| Phase 4b — Email open + click tracking (tracking pixel) | DONE — see commit below | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — pixel embedded in every email blast |
+| Phase 4b — Email open + click tracking (tracking pixel) | DONE — db33dc0 | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — pixel embedded in every email blast |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | DONE — 3be7d35 | InboxThread, InboxMessage, /api/inbox, two-panel UI, Twilio + Resend webhook wiring |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
 | Phase 7 — Automation Engine (triggers, steps, enrollment cron) | PENDING | |
@@ -226,7 +226,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 |---|---|---|
 | Demo public access + guided tour | DONE — 7494b12 | Open /demo/candidate+party+media to public (no token required), build DemoTour overlay, wire into candidate demo |
 | /pcapp — Figma prototype viewer page | DONE — c394f70 | Full-screen iframe, reads NEXT_PUBLIC_FIGMA_APP_URL. George: paste URL into pcapp-client.tsx or set env var in Vercel. |
-| Fundraising — public donation pages | DONE — see commit below | /donate/[campaignSlug] public page + /api/donate/[campaignSlug]/intent + Stripe webhook funnel advance |
+| Fundraising — public donation pages | DONE — db33dc0 | /donate/[campaignSlug] public page + /api/donate/[campaignSlug]/intent + Stripe webhook funnel advance |
 | Marketing site — full build | PENDING | (marketing)/page.tsx exists but needs full content pass |
 
 ---
@@ -356,7 +356,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | Task | Status | Notes |
 |---|---|---|
 | Phase 4 — Delivery tracking webhooks | DONE — see comms module | Resend bounce+complaint+open+click + Twilio STOP/START |
-| Phase 4b — Email open + click tracking pixel | DONE — see commit below | 1x1 GIF route, click redirect, NotificationLog fields, EmailTrackingEvent model |
+| Phase 4b — Email open + click tracking pixel | DONE — db33dc0 | 1x1 GIF route, click redirect, NotificationLog fields, EmailTrackingEvent model |
 | Phase 5 — Unified inbox backend + UI rebuild | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
 | Phase 7 — Automation Engine | PENDING | Triggers, steps, enrollment cron |
