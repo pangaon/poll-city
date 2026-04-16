@@ -26,6 +26,12 @@ export async function GET(req: NextRequest) {
   if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
 
   const userId = session!.user.id;
+
+  // Verify caller is a member of this campaign before returning any campaign data
+  const membership = await prisma.membership.findUnique({
+    where: { userId_campaignId: { userId, campaignId } },
+  });
+  if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
 

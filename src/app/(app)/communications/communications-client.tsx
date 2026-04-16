@@ -67,6 +67,7 @@ type Tab =
   | "history"
   | "audiences"
   | "subscribers"
+  | "analytics"
   | "settings";
 
 type Channel = "email" | "sms" | "all";
@@ -158,6 +159,7 @@ const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ classNam
   { id: "history", label: "History", icon: History },
   { id: "audiences", label: "Audiences", icon: Target },
   { id: "subscribers", label: "Subscribers", icon: UserCircle },
+  { id: "analytics", label: "Analytics", icon: TrendingUp },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -386,6 +388,9 @@ export default function CommunicationsClient({ campaignId, campaignName, tags, w
         )}
         {activeTab === "subscribers" && (
           <SubscribersTab campaignId={campaignId} />
+        )}
+        {activeTab === "analytics" && (
+          <AnalyticsTab campaignId={campaignId} />
         )}
         {activeTab === "settings" && (
           <SettingsTab />
@@ -788,7 +793,8 @@ function ComposeTab({
       <div className="flex-1 min-w-0 space-y-4">
         {/* Channel Selector */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Channel</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5">Channel</p>
+          <p className="text-[11px] text-slate-400 mb-2">Email reaches everyone with an address. SMS is best for urgent GOTV nudges — keep messages under 160 characters.</p>
           <div className="flex gap-2">
             {(["email", "sms"] as const).map((ch) => (
               <button
@@ -879,32 +885,55 @@ function ComposeTab({
           )}
 
           {channel === "email" && (
-            <input
-              type="text"
-              placeholder="Subject line..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-            />
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-600">Subject line</label>
+                <span className={`text-[11px] tabular-nums ${subject.length > 50 ? "text-amber-600 font-semibold" : "text-slate-400"}`}>
+                  {subject.length}/50 — keep under 50 for mobile preview
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Subject line..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
           )}
 
-          <textarea
-            rows={channel === "email" ? 10 : 5}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={channel === "email" ? "Write your email body (HTML supported)..." : "Write your SMS message..."}
-            className="w-full px-3 py-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none font-mono"
-          />
+          <div>
+            <div className="flex items-baseline justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-600">
+                {channel === "email" ? "Body (HTML supported)" : "Message"}
+              </label>
+              {channel === "email" && (
+                <span className="text-[11px] text-slate-400">Use merge fields like {"{{firstName}}"} for personalization</span>
+              )}
+            </div>
+            <textarea
+              rows={channel === "email" ? 10 : 5}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={channel === "email" ? "Write your email body (HTML supported)..." : "Write your SMS message..."}
+              className="w-full px-3 py-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none font-mono"
+            />
+          </div>
 
           {channel === "sms" && (
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>{smsCharCount} characters</span>
-              <span>{smsSegments} SMS segment{smsSegments !== 1 ? "s" : ""}</span>
+              <span>
+                {smsSegments} segment{smsSegments !== 1 ? "s" : ""}
+                <span className="text-slate-400 ml-1">(each segment = 160 chars, billed separately by Twilio)</span>
+              </span>
             </div>
           )}
 
           {/* Schedule */}
-          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+          <div className="pt-2 border-t border-slate-100">
+            <p className="text-[11px] text-slate-400 mb-2">Leave blank to send immediately. Schedule for off-hours delivery (e.g. 9am Tuesday) for better open rates.</p>
+            <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
               <Clock className="w-3.5 h-3.5" />
               Schedule:
@@ -920,6 +949,7 @@ function ComposeTab({
                 Clear
               </button>
             )}
+            </div>
           </div>
 
           {/* Compliance warning */}
@@ -1015,11 +1045,15 @@ function ComposeTab({
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Segment Filters</p>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5">Segment Filters</p>
+            <p className="text-[11px] text-slate-400">Leave all blank to send to your entire reachable list. Add filters to target a subset.</p>
+          </div>
 
           {/* Support levels */}
           <div>
-            <p className="text-xs font-semibold text-slate-600 mb-1.5">Support Level</p>
+            <p className="text-xs font-semibold text-slate-600 mb-0.5">Support Level</p>
+            <p className="text-[11px] text-slate-400 mb-1.5">Target only contacts rated at this support level. Leave blank = all levels.</p>
             <div className="flex flex-wrap gap-1">
               {SUPPORT_LEVELS.map((sl) => (
                 <button
@@ -1082,38 +1116,47 @@ function ComposeTab({
           )}
 
           {/* DNC toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={excludeDnc}
-              onChange={(e) => setExcludeDnc(e.target.checked)}
-              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-xs text-slate-600">Exclude Do-Not-Contact</span>
-          </label>
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={excludeDnc}
+                onChange={(e) => setExcludeDnc(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-600">Exclude Do-Not-Contact</span>
+            </label>
+            <p className="text-[11px] text-slate-400 pl-6">Required for CASL compliance — never send to contacts flagged DNC.</p>
+          </div>
 
           {/* Bounce / opt-out exclusions */}
           {channel === "email" && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={excludeEmailBounced}
-                onChange={(e) => setExcludeEmailBounced(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-600">Exclude bounced emails</span>
-            </label>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeEmailBounced}
+                  onChange={(e) => setExcludeEmailBounced(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-slate-600">Exclude bounced emails</span>
+              </label>
+              <p className="text-[11px] text-slate-400 pl-6">Keeps your sender reputation healthy — bounced addresses won't receive.</p>
+            </div>
           )}
           {channel === "sms" && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={excludeSmsOptOut}
-                onChange={(e) => setExcludeSmsOptOut(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-600">Exclude SMS opt-outs</span>
-            </label>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeSmsOptOut}
+                  onChange={(e) => setExcludeSmsOptOut(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-slate-600">Exclude SMS opt-outs</span>
+              </label>
+              <p className="text-[11px] text-slate-400 pl-6">Contacts who replied STOP will not receive this message.</p>
+            </div>
           )}
 
           {/* Volunteer only */}
@@ -2854,6 +2897,205 @@ function SettingsTab() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: ANALYTICS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface AnalyticsData {
+  totals: { sent: number; delivered: number; opened: number; clicked: number };
+  trend: Array<{ date: string; sent: number; delivered: number; opened: number; clicked: number }>;
+  blasts: Array<{
+    id: string;
+    title: string;
+    sentAt: string | null;
+    sent: number;
+    delivered: number;
+    failed: number;
+    opened: number;
+    clicked: number;
+    openRate: number;
+    clickRate: number;
+  }>;
+  days: number;
+  total: number;
+}
+
+function FunnelBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div>
+      <div className="flex justify-between items-baseline mb-1.5">
+        <span className="text-xs font-medium text-slate-600">{label}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-bold text-slate-900 tabular-nums">{value.toLocaleString()}</span>
+          <span className="text-xs text-slate-400">{pct}%</span>
+        </div>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SparkLine({ data, field, color }: { data: AnalyticsData["trend"]; field: keyof AnalyticsData["trend"][0]; color: string }) {
+  const values = data.map((d) => d[field] as number);
+  const max = Math.max(...values, 1);
+  const w = 180;
+  const h = 48;
+  if (data.length < 2) return <div className="h-12 flex items-center justify-center text-xs text-slate-400">No data</div>;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - (v / max) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-12">
+      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function AnalyticsTab({ campaignId }: { campaignId: string }) {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState<30 | 60 | 90>(30);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/communications/analytics?campaignId=${campaignId}&days=${days}`)
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [campaignId, days]);
+
+  const noData = !loading && (!data || data.total === 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Comms Analytics</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Delivery funnel, engagement trends, and per-blast breakdown</p>
+        </div>
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+          {([30, 60, 90] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${days === d ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+        </div>
+      )}
+
+      {noData && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
+          <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-600">No sends in the last {days} days</p>
+          <p className="text-xs text-slate-400 mt-1">Send your first email or SMS blast to see analytics here.</p>
+        </div>
+      )}
+
+      {!loading && data && data.total > 0 && (
+        <>
+          {/* Delivery Funnel */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-5">Delivery Funnel — Last {days} Days</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <FunnelBar label="Sent" value={data.totals.sent} max={data.totals.sent} color="bg-slate-400" />
+              <FunnelBar label="Delivered" value={data.totals.delivered} max={data.totals.sent} color="bg-blue-500" />
+              <FunnelBar label="Opened" value={data.totals.opened} max={data.totals.sent} color="bg-green-500" />
+              <FunnelBar label="Clicked" value={data.totals.clicked} max={data.totals.sent} color="bg-amber-500" />
+            </div>
+          </div>
+
+          {/* Trend Sparklines */}
+          {data.trend.length >= 2 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {(
+                [
+                  { label: "Sent", field: "sent", color: "#94a3b8" },
+                  { label: "Delivered", field: "delivered", color: "#3b82f6" },
+                  { label: "Opened", field: "opened", color: "#22c55e" },
+                  { label: "Clicked", field: "clicked", color: "#f59e0b" },
+                ] as const
+              ).map(({ label, field, color }) => (
+                <div key={field} className="bg-white border border-slate-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-slate-500 mb-2">{label} trend</p>
+                  <SparkLine data={data.trend} field={field} color={color} />
+                  <p className="text-xs text-slate-400 mt-1 text-right">{data.trend.length} days</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Per-Blast Table */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-700">Per-Blast Breakdown</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Most recent {data.blasts.length} sends</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Blast</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Delivered</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Opened</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Open %</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Clicked</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Click %</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Failed</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent at</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {data.blasts.map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-900 truncate max-w-[220px]">{b.title}</p>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{b.sent.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-blue-700">{b.delivered.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-green-700">{b.opened.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <span className={`font-semibold ${b.openRate >= 20 ? "text-green-700" : b.openRate >= 10 ? "text-amber-700" : "text-slate-500"}`}>
+                          {b.openRate}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-amber-700">{b.clicked.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <span className={`font-semibold ${b.clickRate >= 5 ? "text-green-700" : b.clickRate >= 2 ? "text-amber-700" : "text-slate-500"}`}>
+                          {b.clickRate}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-red-600">{b.failed.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">
+                        {b.sentAt ? new Date(b.sentAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

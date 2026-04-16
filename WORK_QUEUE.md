@@ -99,7 +99,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 4 — Delivery tracking webhooks (Resend bounce, Twilio STOP) | DONE — see below | GAP-017 — /api/webhooks/resend (bounce+complaint+open+click) + /api/webhooks/twilio (STOP/START) |
 | Phase 4b — Email open + click tracking (tracking pixel) | DONE — db33dc0 | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — pixel embedded in every email blast |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | DONE — 3be7d35 | InboxThread, InboxMessage, /api/inbox, two-panel UI, Twilio + Resend webhook wiring |
-| Phase 6 — Analytics (delivery funnel, attribution) | CLAIMED 2026-04-16 | |
+| Phase 6 — Analytics (delivery funnel, attribution) | DONE — see this session | /api/communications/analytics (funnel+trend+per-blast), AnalyticsTab in communications-client.tsx |
 | Phase 7 — Automation Engine (triggers, steps, enrollment cron) | PENDING | |
 | Phase 8 — Social Publishing (real API calls to Facebook/X/LinkedIn) | PENDING | |
 | Phase 9 — Consent Management (CASL engine) | PENDING | |
@@ -261,7 +261,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /settings — full settings page | DONE — 6eae5e2 | Profile, campaign profile, integration status dashboard (6 cards), danger zone (archive). |
 | /settings/security — complete security settings | PENDING | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
-| /notifications — voter outreach full build | CLAIMED 2026-04-16 | 389 lines, basic display. Full push notification composer, opt-in management, delivery stats. |
+| /notifications — voter outreach full build | DONE — see this session | Full push composer + phone preview + opt-in management table + device breakdown + delivery stats tabs |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
 | /eday — election day ops full build | PENDING | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
 | /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |

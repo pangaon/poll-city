@@ -1,33 +1,28 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Send, History, Users, Bell, CalendarClock, BarChart3, FlaskConical, X } from "lucide-react";
-import { Button, Card, CardHeader, CardContent, PageHeader, Badge, Modal, FormField, Input, Textarea, Select, EmptyState } from "@/components/ui";
-import { formatDate } from "@/lib/utils";
+import {
+  Send, History, Users, Bell, CalendarClock, BarChart3, Loader2,
+  X, Check, AlertTriangle, Globe, Smartphone, Monitor, Clock, Trash2,
+  ChevronRight, Shield,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 
-const sendNotificationSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  body: z.string().min(1, "Message is required").max(120, "Maximum 120 characters"),
-  ward: z.string().optional(),
-  riding: z.string().optional(),
-  role: z.array(z.string()).optional(),
-});
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-type SendNotificationInput = z.infer<typeof sendNotificationSchema>;
+type Tab = "compose" | "history" | "subscribers" | "stats";
 
-interface NotificationHistory {
+interface NotificationLog {
   id: string;
   title: string;
   body: string;
-  filters: any;
+  filters: unknown;
   sent: number;
   failed: number;
   total: number;
   sentBy: string;
   sentAt: string;
+  openedCount?: number;
+  clickCount?: number;
 }
 
 interface ScheduledNotification {
@@ -38,9 +33,19 @@ interface ScheduledNotification {
   status: string;
 }
 
-interface StatsPayload {
+interface Subscriber {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  device: string;
+  subscribedAt: string;
+}
+
+interface Stats {
   totals: { total: number; delivered: number; failed: number };
   deliveryRate: number;
+  recent: Array<{ title: string; sentAt: string; totalSubscribers: number; deliveredCount: number; failedCount: number }>;
 }
 
 interface Props {
@@ -50,22 +55,41 @@ interface Props {
   voterOptInCount: number;
 }
 
-export default function NotificationsClient({ campaignId, canSend, voterOptInCount }: Props) {
-  const [history, setHistory] = useState<NotificationHistory[]>([]);
-  const [scheduled, setScheduled] = useState<ScheduledNotification[]>([]);
-  const [stats, setStats] = useState<StatsPayload>({ totals: { total: 0, delivered: 0, failed: 0 }, deliveryRate: 0 });
-  const [loading, setLoading] = useState(true);
-  const [showSend, setShowSend] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"history" | "schedule">("history");
+const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: "compose", label: "Compose", icon: Send },
+  { id: "history", label: "History", icon: History },
+  { id: "subscribers", label: "Subscribers", icon: Users },
+  { id: "stats", label: "Stats", icon: BarChart3 },
+];
 
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function DeviceIcon({ device }: { device: string }) {
+  if (device.includes("Android")) return <Smartphone className="w-3.5 h-3.5 text-green-600" />;
+  if (device.includes("Safari")) return <Globe className="w-3.5 h-3.5 text-blue-600" />;
+  return <Monitor className="w-3.5 h-3.5 text-slate-500" />;
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
+export default function NotificationsClient({ campaignId, canSend, voterOptInCount }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("compose");
+  const [history, setHistory] = useState<NotificationLog[]>([]);
+  const [scheduled, setScheduled] = useState<ScheduledNotification[]>([]);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [stats, setStats] = useState<Stats>({ totals: { total: 0, delivered: 0, failed: 0 }, deliveryRate: 0, recent: [] });
+  const [loading, setLoading] = useState(false);
+
+  // Compose state
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [url, setUrl] = useState("");
   const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
-  const [scheduleMessage, setScheduleMessage] = useState("");
-  const [scheduleAudience, setScheduleAudience] = useState<"all" | "tags">("all");
-  const [scheduleTags, setScheduleTags] = useState("");
-  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const loadHistory = useCallback(async () => {
     const res = await fetch(`/api/notifications/history?campaignId=${campaignId}`);
@@ -79,311 +103,506 @@ export default function NotificationsClient({ campaignId, canSend, voterOptInCou
     setScheduled(data.data || []);
   }, [campaignId]);
 
+  const loadSubscribers = useCallback(async () => {
+    const res = await fetch(`/api/notifications/subscribe?campaignId=${campaignId}`);
+    const data = await res.json();
+    setSubscribers(data.data || []);
+  }, [campaignId]);
+
   const loadStats = useCallback(async () => {
     const res = await fetch(`/api/notifications/stats?campaignId=${campaignId}`);
     const data = await res.json();
-    setStats(data.data || { totals: { total: 0, delivered: 0, failed: 0 }, deliveryRate: 0 });
+    setStats(data.data || { totals: { total: 0, delivered: 0, failed: 0 }, deliveryRate: 0, recent: [] });
   }, [campaignId]);
 
-  const loadAll = useCallback(async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      await Promise.all([loadHistory(), loadScheduled(), loadStats()]);
-    } catch {
-      toast.error("Failed to load notifications data");
-    } finally {
-      setLoading(false);
-    }
+    Promise.all([loadHistory(), loadScheduled(), loadStats()]).finally(() => setLoading(false));
   }, [loadHistory, loadScheduled, loadStats]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    if (activeTab === "subscribers") loadSubscribers();
+  }, [activeTab, loadSubscribers]);
 
-  const sendNotification = useCallback(async (data: SendNotificationInput) => {
-    setSending(true);
-    try {
-      const res = await fetch("/api/notifications/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          title: data.title,
-          body: data.body,
-          filters: {
-            ward: data.ward || undefined,
-            riding: data.riding || undefined,
-            role: data.role?.length ? data.role : undefined,
-          },
-        }),
-      });
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to send notification");
-
-      toast.success(`Notification sent: ${result.data.sent} delivered, ${result.data.failed} failed`);
-      setShowSend(false);
-      await loadAll();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send notification");
-    } finally {
-      setSending(false);
-    }
-  }, [campaignId, loadAll]);
-
-  const sendTestNotification = useCallback(async () => {
-    setTestMessage(null);
-    try {
-      const res = await fetch("/api/notifications/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Test send failed");
-      const message = "Test notification sent to your current browser subscription.";
-      setTestMessage(message);
-      toast.success(message);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Test send failed";
-      setTestMessage(message);
-      toast.error(message);
-    }
-  }, [campaignId]);
-
-  const scheduleNotification = useCallback(async () => {
-    if (!scheduleDate || !scheduleTime || !scheduleMessage) {
-      toast.error("Date, time and message are required");
+  async function handleSend() {
+    if (!title.trim() || !body.trim()) {
+      toast.error("Title and message are required");
       return;
     }
-
-    setScheduleSubmitting(true);
+    setSending(true);
+    setSendResult(null);
     try {
-      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`);
-      const res = await fetch("/api/notifications/schedule", {
+      const payload: Record<string, unknown> = {
+        campaignId,
+        title: title.trim(),
+        body: body.trim(),
+        ...(url.trim() ? { data: { url: url.trim() } } : {}),
+        ...(scheduleDate ? { scheduledFor: new Date(scheduleDate).toISOString() } : {}),
+      };
+      const endpoint = scheduleDate ? "/api/notifications/schedule" : "/api/notifications/send";
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          title: "Scheduled Campaign Notification",
-          body: scheduleMessage,
-          scheduledFor: scheduledFor.toISOString(),
-          audience: {
-            type: scheduleAudience,
-            tags: scheduleAudience === "tags"
-              ? scheduleTags.split(",").map((t) => t.trim()).filter(Boolean)
-              : [],
-          },
-        }),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to schedule");
-
-      toast.success("Notification scheduled");
-      setScheduleMessage("");
+      if (!res.ok) throw new Error(data.error || "Failed");
+      const msg = scheduleDate
+        ? `Scheduled for ${fmtDate(scheduleDate)}`
+        : `Sent to ${data.data?.sent ?? 0} subscribers (${data.data?.failed ?? 0} failed)`;
+      setSendResult({ ok: true, message: msg });
+      toast.success(msg);
+      setTitle("");
+      setBody("");
+      setUrl("");
       setScheduleDate("");
-      setScheduleTime("");
-      setScheduleTags("");
-      await loadAll();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to schedule notification");
-    } finally {
-      setScheduleSubmitting(false);
+      await Promise.all([loadHistory(), loadScheduled(), loadStats()]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Send failed";
+      setSendResult({ ok: false, message: msg });
+      toast.error(msg);
     }
-  }, [campaignId, scheduleAudience, scheduleDate, scheduleMessage, scheduleTags, scheduleTime, loadAll]);
+    setSending(false);
+  }
 
-  const cancelScheduled = useCallback(async (id: string) => {
+  async function cancelScheduled(id: string) {
     const res = await fetch(`/api/notifications/schedule?id=${id}`, { method: "DELETE" });
     const data = await res.json();
-    if (!res.ok) {
-      toast.error(data.error || "Failed to cancel");
-      return;
-    }
-    toast.success("Scheduled notification cancelled");
+    if (!res.ok) { toast.error(data.error || "Failed to cancel"); return; }
+    toast.success("Cancelled");
     await loadScheduled();
-  }, [loadScheduled]);
+  }
 
-  const form = useForm<SendNotificationInput>({
-    resolver: zodResolver(sendNotificationSchema),
-    defaultValues: { title: "", body: "", role: [] },
-  });
+  const bodyLength = body.length;
+  const deviceBreakdown = subscribers.reduce<Record<string, number>>((acc, s) => {
+    const type = s.device.split("/")[0];
+    acc[type] = (acc[type] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Notifications"
-        description="Send instant push alerts, schedule future sends, and monitor delivery performance."
-        actions={
-          canSend && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={sendTestNotification}>
-                <FlaskConical className="w-3.5 h-3.5 mr-2" />
-                Send Test Notification
-              </Button>
-              <Button size="sm" onClick={() => setShowSend(true)}>
-                <Send className="w-3.5 h-3.5 mr-2" />
-                Send Notification
-              </Button>
-            </div>
-          )
-        }
-      />
-
-      {testMessage && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4 text-sm text-blue-900">{testMessage}</CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Voter Opt-Ins</p><p className="text-2xl font-bold">{voterOptInCount}</p></CardContent></Card>
-        <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Total Sent</p><p className="text-2xl font-bold">{stats.totals.total}</p></CardContent></Card>
-        <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Delivered</p><p className="text-2xl font-bold text-emerald-700">{stats.totals.delivered}</p></CardContent></Card>
-        <Card><CardContent className="p-5"><p className="text-sm text-gray-500">Delivery Rate</p><p className="text-2xl font-bold text-blue-700">{stats.deliveryRate}%</p></CardContent></Card>
+    <div className="max-w-[1200px] mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Push alerts to opted-in subscribers — GOTV nudges, event reminders, campaign updates</p>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant={activeTab === "history" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("history")}>
-          <History className="w-4 h-4 mr-2" />History
-        </Button>
-        <Button variant={activeTab === "schedule" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("schedule")}>
-          <CalendarClock className="w-4 h-4 mr-2" />Schedule
-        </Button>
+      {/* Summary bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Opt-Ins", value: voterOptInCount, icon: Users, color: "text-blue-600 bg-blue-50" },
+          { label: "Total Sent", value: stats.totals.total, icon: Send, color: "text-slate-600 bg-slate-100" },
+          { label: "Delivered", value: stats.totals.delivered, icon: Check, color: "text-green-600 bg-green-50" },
+          { label: "Delivery Rate", value: `${stats.deliveryRate}%`, icon: BarChart3, color: "text-emerald-600 bg-emerald-50" },
+        ].map((m) => {
+          const Icon = m.icon;
+          return (
+            <div key={m.label} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
+                <Icon className="w-4.5 h-4.5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wide">{m.label}</p>
+                <p className="text-xl font-bold text-slate-900 tabular-nums">{m.value}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {activeTab === "schedule" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2"><CalendarClock className="w-5 h-5" /><h3 className="text-lg font-semibold">Schedule Notifications</h3></div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Send Date"><Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} /></FormField>
-              <FormField label="Send Time"><Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} /></FormField>
-            </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6 w-fit">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-            <FormField label="Message (max 120)">
-              <Textarea value={scheduleMessage} onChange={(e) => setScheduleMessage(e.target.value.slice(0, 120))} rows={3} placeholder="Election day reminder..." />
-              <p className="text-xs text-gray-500 mt-1">{scheduleMessage.length}/120</p>
-            </FormField>
-
-            <FormField label="Audience">
-              <Select value={scheduleAudience} onChange={(e) => setScheduleAudience(e.target.value as "all" | "tags") }>
-                <option value="all">All Subscribers</option>
-                <option value="tags">Specific Tags</option>
-              </Select>
-            </FormField>
-
-            {scheduleAudience === "tags" && (
-              <FormField label="Tags (comma separated)">
-                <Input value={scheduleTags} onChange={(e) => setScheduleTags(e.target.value)} placeholder="volunteer, ward-3, donor" />
-              </FormField>
+      {/* ── TAB: COMPOSE ──────────────────────────────────────── */}
+      {activeTab === "compose" && (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Composer */}
+          <div className="lg:col-span-3 space-y-4">
+            {!canSend && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">You don&apos;t have permission to send push notifications. Ask your campaign manager for the <strong>comms:send</strong> permission.</p>
+              </div>
             )}
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 max-w-sm">
-              <p className="text-xs text-gray-500 mb-1">Phone Preview</p>
-              <p className="text-sm font-semibold">Poll City Campaign Alert</p>
-              <p className="text-sm text-gray-700">{scheduleMessage || "Your scheduled message preview will appear here."}</p>
+            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Title</label>
+                  <span className={`text-[11px] tabular-nums ${title.length > 50 ? "text-amber-600 font-semibold" : "text-slate-400"}`}>{title.length}/50 — keep short for lock screen display</span>
+                </div>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Election day reminder"
+                  className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  disabled={!canSend}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Message</label>
+                  <span className={`text-[11px] tabular-nums ${bodyLength > 120 ? "text-red-600 font-semibold" : bodyLength > 100 ? "text-amber-600" : "text-slate-400"}`}>{bodyLength}/120</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-1.5">Maximum 120 characters — appears as the notification body on all devices</p>
+                <textarea
+                  rows={3}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value.slice(0, 120))}
+                  placeholder="Polls close at 8pm. Every vote counts."
+                  className="w-full px-3 py-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
+                  disabled={!canSend}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Link URL <span className="normal-case text-slate-400 font-normal">(optional)</span></label>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-1.5">When tapped, opens this URL in the subscriber&apos;s browser. Leave blank to just dismiss.</p>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://vote.poll.city/..."
+                  className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  disabled={!canSend}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Schedule <span className="normal-case text-slate-400 font-normal">(optional)</span></label>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-1.5">Leave blank to send now. Set a time for future delivery — great for morning GOTV reminders.</p>
+                <input
+                  type="datetime-local"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="h-10 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  disabled={!canSend}
+                />
+                {scheduleDate && (
+                  <button onClick={() => setScheduleDate("")} className="ml-2 text-xs text-slate-400 hover:text-red-500">Clear</button>
+                )}
+              </div>
+
+              {/* CASL note */}
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex items-start gap-2">
+                <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">Only sent to subscribers who explicitly opted in through the public voter portal. CASL-compliant by design.</p>
+              </div>
+
+              {sendResult && (
+                <div className={`rounded-lg border px-3 py-2 text-sm flex items-center gap-2 ${sendResult.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                  {sendResult.ok ? <Check className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                  {sendResult.message}
+                </div>
+              )}
+
+              <button
+                onClick={handleSend}
+                disabled={sending || !canSend || !title.trim() || !body.trim()}
+                className="w-full h-11 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+              >
+                {sending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                ) : scheduleDate ? (
+                  <><Clock className="w-4 h-4" /> Schedule Send</>
+                ) : (
+                  <><Send className="w-4 h-4" /> Send Now — {voterOptInCount.toLocaleString()} subscribers</>
+                )}
+              </button>
             </div>
 
-            <Button onClick={scheduleNotification} loading={scheduleSubmitting}>Schedule</Button>
-
-            <div className="pt-4 border-t border-gray-100">
-              <h4 className="font-semibold text-sm mb-3">Scheduled Notifications</h4>
-              {scheduled.length === 0 ? (
-                <p className="text-sm text-gray-500">No scheduled notifications.</p>
-              ) : (
-                <div className="space-y-2">
-                  {scheduled.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
-                      <div>
-                        <p className="font-medium text-sm">{item.body}</p>
-                        <p className="text-xs text-gray-500">{formatDate(item.scheduledFor)}</p>
+            {/* Scheduled queue */}
+            {scheduled.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-sm font-bold text-slate-700">Scheduled ({scheduled.length})</h3>
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {scheduled.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{s.title}</p>
+                        <p className="text-xs text-slate-500 truncate">{s.body}</p>
+                        <p className="text-[11px] text-blue-600 mt-0.5">{fmtDate(s.scheduledFor)}</p>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => cancelScheduled(item.id)}>
-                        <X className="w-4 h-4 mr-1" />Cancel
-                      </Button>
+                      <button
+                        onClick={() => cancelScheduled(s.id)}
+                        className="ml-3 shrink-0 h-7 px-3 rounded-md text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1"
+                      >
+                        <X className="w-3 h-3" /> Cancel
+                      </button>
                     </div>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          {/* Live Preview */}
+          <div className="lg:col-span-2">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 sticky top-6">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Device Preview</p>
+              {/* Phone mockup */}
+              <div className="bg-slate-900 rounded-2xl p-4 mx-auto max-w-[260px]">
+                <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center">
+                      <Bell className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-[11px] font-semibold text-white/80">Poll City</span>
+                    <span className="ml-auto text-[10px] text-white/50">now</span>
+                  </div>
+                  <p className="text-sm font-bold text-white leading-snug">{title || "Notification title"}</p>
+                  <p className="text-xs text-white/70 mt-1 leading-snug">{body || "Your message appears here."}</p>
+                  {url && (
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-blue-300">
+                      <Globe className="w-3 h-3" />
+                      <span className="truncate">{url}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Title length</span>
+                  <span className={title.length > 50 ? "text-amber-600 font-semibold" : "text-slate-700"}>{title.length}/50</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Body length</span>
+                  <span className={bodyLength > 100 ? "text-amber-600 font-semibold" : "text-slate-700"}>{bodyLength}/120</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Audience</span>
+                  <span className="text-slate-700 font-semibold">{voterOptInCount.toLocaleString()} subscribers</span>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
+      {/* ── TAB: HISTORY ──────────────────────────────────────── */}
       {activeTab === "history" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2"><BarChart3 className="w-5 h-5" /><h3 className="text-lg font-semibold">Delivery Statistics & History</h3></div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />)}</div>
-            ) : history.length === 0 ? (
-              <EmptyState icon={<Bell className="w-10 h-10" />} title="No notifications sent" description="Send your first push notification." />
-            ) : (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-700">Send History</h3>
+            <p className="text-xs text-slate-400 mt-0.5">All push notifications sent from this campaign</p>
+          </div>
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Bell className="w-10 h-10 text-slate-200 mb-3" />
+              <p className="text-sm font-semibold text-slate-500">No notifications sent yet</p>
+              <p className="text-xs text-slate-400 mt-1">Compose your first push notification to see history here.</p>
+              <button onClick={() => setActiveTab("compose")} className="mt-4 flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:underline">
+                Go to Compose <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Title</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Stats</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Sent By</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Notification</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Delivered</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Failed</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">By</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {history.map((notification) => (
-                    <tr key={notification.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3"><p className="font-medium">{notification.title}</p><p className="text-xs text-gray-500 truncate max-w-xs">{notification.body}</p></td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="success">Delivered: {notification.sent}</Badge>
-                          <Badge variant="danger">Failed: {notification.failed}</Badge>
-                          <Badge variant="info">Total: {notification.total}</Badge>
-                        </div>
+                <tbody className="divide-y divide-slate-50">
+                  {history.map((n) => (
+                    <tr key={n.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-slate-900 truncate max-w-[240px]">{n.title}</p>
+                        <p className="text-[11px] text-slate-400 truncate max-w-[240px]">{n.body}</p>
                       </td>
-                      <td className="px-4 py-3">{notification.sentBy}</td>
-                      <td className="px-4 py-3">{formatDate(notification.sentAt)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{n.total.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-green-700 font-semibold">{n.sent.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <span className={n.failed > 0 ? "text-red-600 font-semibold" : "text-slate-400"}>{n.failed.toLocaleString()}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-slate-500">{n.sentBy}</td>
+                      <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">{fmtDate(n.sentAt)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
       )}
 
-      <Modal open={showSend} onClose={() => setShowSend(false)} title="Send Push Notification">
-        <form onSubmit={form.handleSubmit(sendNotification)} className="space-y-4">
-          <FormField label="Title" error={form.formState.errors.title?.message}>
-            <Input {...form.register("title")} placeholder="e.g., Election Day Reminder" />
-          </FormField>
+      {/* ── TAB: SUBSCRIBERS ──────────────────────────────────── */}
+      {activeTab === "subscribers" && (
+        <div className="space-y-5">
+          {/* Device breakdown */}
+          {subscribers.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {Object.entries(deviceBreakdown).map(([type, count]) => (
+                <div key={type} className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+                  <DeviceIcon device={type} />
+                  <div>
+                    <p className="text-xs text-slate-500">{type}</p>
+                    <p className="text-xl font-bold text-slate-900 tabular-nums">{count}</p>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+                <div>
+                  <p className="text-xs text-slate-500">Total</p>
+                  <p className="text-xl font-bold text-slate-900 tabular-nums">{subscribers.length}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <FormField label="Message" error={form.formState.errors.body?.message}>
-            <Textarea {...form.register("body")} placeholder="Enter your message..." rows={3} />
-          </FormField>
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-700">Opt-In Management</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Users who have subscribed to push notifications from this campaign</p>
+            </div>
+            {subscribers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Smartphone className="w-10 h-10 text-slate-200 mb-3" />
+                <p className="text-sm font-semibold text-slate-500">No subscribers yet</p>
+                <p className="text-xs text-slate-400 mt-1">Supporters opt in through the public voter portal. Share your campaign link to grow your list.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Subscriber</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Device</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Subscribed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {subscribers.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-slate-900">{s.name}</p>
+                          <p className="text-[11px] text-slate-400">{s.email}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <DeviceIcon device={s.device} />
+                            <span className="text-xs text-slate-600">{s.device}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">{fmtDate(s.subscribedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Ward (optional)"><Input {...form.register("ward")} placeholder="Ward 1" /></FormField>
-            <FormField label="Riding (optional)"><Input {...form.register("riding")} placeholder="Toronto Centre" /></FormField>
+      {/* ── TAB: STATS ────────────────────────────────────────── */}
+      {activeTab === "stats" && (
+        <div className="space-y-5">
+          {/* Funnel */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-5">All-Time Delivery Funnel</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {[
+                { label: "Total Sent", value: stats.totals.total, color: "bg-slate-300", textColor: "text-slate-700" },
+                { label: "Delivered", value: stats.totals.delivered, color: "bg-green-500", textColor: "text-green-700" },
+                { label: "Failed", value: stats.totals.failed, color: "bg-red-400", textColor: "text-red-700" },
+              ].map(({ label, value, color, textColor }) => {
+                const pct = stats.totals.total > 0 ? Math.round((value / stats.totals.total) * 100) : 0;
+                return (
+                  <div key={label}>
+                    <div className="flex justify-between items-baseline mb-1.5">
+                      <span className="text-xs font-medium text-slate-600">{label}</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-lg font-bold tabular-nums ${textColor}`}>{value.toLocaleString()}</span>
+                        <span className="text-xs text-slate-400">{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <FormField label="Target Role (optional)">
-            <Select value={form.watch("role")?.[0] || ""} onChange={(e) => form.setValue("role", e.target.value ? [e.target.value] : [])}>
-              <option value="">All roles</option>
-              <option value="ADMIN">Admin</option>
-              <option value="CAMPAIGN_MANAGER">Campaign Manager</option>
-              <option value="VOLUNTEER">Volunteer</option>
-            </Select>
-          </FormField>
+          {/* Recent sends */}
+          {stats.recent.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-700">Recent Sends</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Title</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent To</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Delivered</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Failed</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {stats.recent.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3 font-medium text-slate-900 truncate max-w-[200px]">{r.title}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-slate-700">{r.totalSubscribers.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-green-700 font-semibold">{r.deliveredCount.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-red-600">{r.failedCount.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">{fmtDate(r.sentAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => setShowSend(false)} className="flex-1">Cancel</Button>
-            <Button type="submit" disabled={sending} className="flex-1">{sending ? "Sending..." : "Send Notification"}</Button>
-          </div>
-        </form>
-      </Modal>
+          {stats.totals.total === 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
+              <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-600">No sends yet</p>
+              <p className="text-xs text-slate-400 mt-1">Send your first notification to start tracking delivery stats.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

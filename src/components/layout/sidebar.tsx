@@ -6,121 +6,127 @@ import { usePathname } from "next/navigation";
 import { useMemo, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Shield, Users, Map, Upload,
-  Settings, Search, Target, DollarSign, CreditCard, Globe, Bell, Printer,
-  HelpCircle, BarChart3, FileText, Mail, MessageSquare,
-  Bot, Activity, Landmark, CalendarDays, Calendar, BookOpen, Lock, Palette, CheckCircle2, Gauge, Trash2, ClipboardList, TrendingUp,
-  FolderKanban, Route, MapPinned, Mic2, PersonStanding, Crown, Plus,
+  LayoutDashboard,
+  Newspaper,
+  Users,
+  HeartHandshake,
+  CheckSquare,
+  ClipboardList,
+  Map,
+  Target,
+  PenSquare,
+  CalendarDays,
+  Mail,
+  Calendar,
+  BarChart3,
+  DollarSign,
+  CreditCard,
+  FileText,
+  BarChart2,
+  Zap,
+  Mic2,
+  Landmark,
+  Printer,
+  ArrowUpDown,
+  Settings,
+  Crown,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
 
 type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
-type NavSection = { id: string; label: string; icon: ComponentType<{ className?: string }>; items: NavItem[] };
+type NavSection = { id: string; label: string; items: NavItem[] };
 
-const HEADQUARTERS_SECTION: NavSection = {
-  id: "headquarters",
-  label: "Headquarters",
-  icon: LayoutDashboard,
+// ── Section definitions ───────────────────────────────────────────────────────
+
+const COMMAND_SECTION: NavSection = {
+  id: "command",
+  label: "Command",
   items: [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/command-center", icon: Activity, label: "Command Center" },
-    { href: "/alerts", icon: Bell, label: "Alerts" },
-    { href: "/contacts", icon: Users, label: "Contacts" },
-    { href: "/volunteers", icon: Users, label: "Volunteers" },
-    { href: "/tasks", icon: CheckCircle2, label: "Tasks" },
-    { href: "/calendar", icon: Calendar, label: "Calendar" },
-    { href: "/calendar/candidate", icon: Mic2, label: "Candidate Schedule" },
+    { href: "/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/briefing",   icon: Newspaper,       label: "Briefing"  },
   ],
 };
 
-const FIELD_OPS_SECTION: NavSection = {
-  id: "field-ops",
-  label: "Field Operations",
-  icon: Map,
+const PEOPLE_SECTION: NavSection = {
+  id: "people",
+  label: "People",
   items: [
-    { href: "/field-ops",                    icon: ClipboardList,  label: "Field Ops" },
-    { href: "/field-ops?tab=programs",        icon: FolderKanban,   label: "Programs" },
-    { href: "/field-ops?tab=routes",          icon: Route,          label: "Routes" },
-    { href: "/field-ops?tab=turf",            icon: MapPinned,      label: "Turf" },
-    { href: "/field-ops?tab=runs",            icon: PersonStanding, label: "Runs" },
-    { href: "/field-ops?tab=lit-drops",       icon: Printer,        label: "Lit Drops" },
-    { href: "/field-ops?tab=teams",           icon: Users,          label: "Teams" },
-    { href: "/field-ops?tab=follow-ups",      icon: Bell,           label: "Follow-Ups" },
-    { href: "/gotv",                          icon: Target,         label: "GOTV" },
-    { href: "/election-night",                icon: Gauge,          label: "Election Night" },
-    { href: "/events",                        icon: CalendarDays,   label: "Events" },
-    { href: "/polls",                         icon: BarChart3,      label: "Polls" },
-    { href: "/lookup",                        icon: Search,         label: "Voter Lookup" },
+    { href: "/contacts",   icon: Users,         label: "Contacts"   },
+    { href: "/volunteers", icon: HeartHandshake, label: "Volunteers" },
+    { href: "/tasks",      icon: CheckSquare,   label: "Tasks"      },
   ],
 };
 
-const FINANCE_SECTION: NavSection = {
-  id: "finance",
-  label: "Finance",
-  icon: DollarSign,
+const FIELD_SECTION: NavSection = {
+  id: "field",
+  label: "Field",
   items: [
-    { href: "/finance", icon: DollarSign, label: "Finance Command" },
-    { href: "/fundraising", icon: TrendingUp, label: "Fundraising" },
-    { href: "/donations", icon: DollarSign, label: "Donations" },
-    { href: "/budget", icon: DollarSign, label: "Legacy Budget" },
-    { href: "/billing", icon: CreditCard, label: "Billing" },
+    { href: "/field-ops",   icon: ClipboardList, label: "Field Ops" },
+    { href: "/field/turf",  icon: Map,           label: "Turf & Map" },
+    { href: "/gotv",        icon: Target,        label: "GOTV"       },
+    { href: "/signs",       icon: PenSquare,     label: "Signs"      },
+    { href: "/events",      icon: CalendarDays,  label: "Events"     },
   ],
 };
 
-const COMMUNICATIONS_SECTION: NavSection = {
-  id: "communications",
-  label: "Communications",
-  icon: Mail,
+const OUTREACH_SECTION: NavSection = {
+  id: "outreach",
+  label: "Outreach",
   items: [
-    { href: "/communications", icon: Mail, label: "Email & SMS" },
-    { href: "/communications/social", icon: Globe, label: "Social Media" },
-    { href: "/notifications", icon: MessageSquare, label: "Voter Outreach" },
-    { href: "/print", icon: Printer, label: "Print & Design" },
-    { href: "/settings/public-page", icon: Globe, label: "Campaign Website" },
+    { href: "/communications", icon: Mail,      label: "Communications" },
+    { href: "/calendar",       icon: Calendar,  label: "Calendar"       },
+    { href: "/polls",          icon: BarChart3, label: "Polls"          },
+  ],
+};
+
+const MONEY_SECTION: NavSection = {
+  id: "money",
+  label: "Money",
+  items: [
+    { href: "/fundraising", icon: DollarSign, label: "Fundraising" },
+    { href: "/finance",     icon: CreditCard, label: "Finance"     },
   ],
 };
 
 const INTELLIGENCE_SECTION: NavSection = {
   id: "intelligence",
-  label: "Analytics & Intel",
-  icon: BarChart3,
+  label: "Intelligence",
   items: [
-    { href: "/analytics", icon: BarChart3, label: "Analytics" },
-    { href: "/reports", icon: FileText, label: "Reports" },
-    { href: "/resources", icon: BookOpen, label: "Resource Library" },
-    { href: "/officials", icon: Landmark, label: "Officials" },
-    { href: "/media", icon: Globe, label: "Media Contacts" },
-    { href: "/coalitions", icon: Globe, label: "Coalitions" },
-    { href: "/intelligence", icon: Shield, label: "Opponent Intel" },
+    { href: "/reports",        icon: FileText,  label: "Reports"       },
+    { href: "/analytics",      icon: BarChart2, label: "Analytics"     },
+    { href: "/election-night", icon: Zap,       label: "Election Night" },
   ],
 };
 
-const SETTINGS_ADMIN_SECTION: NavSection = {
-  id: "settings-admin",
-  label: "Settings & Admin",
-  icon: Settings,
+const CANDIDATE_SECTION: NavSection = {
+  id: "candidate",
+  label: "Candidate",
   items: [
-    { href: "/settings", icon: Settings, label: "Settings" },
-    { href: "/settings/brand", icon: Palette, label: "Brand Kit" },
-    { href: "/settings/team", icon: Users, label: "Team" },
-    { href: "/settings/security", icon: Lock, label: "Security" },
-    { href: "/import-export", icon: Upload, label: "Import / Export" },
-    { href: "/settings/recycle-bin", icon: Trash2, label: "Recycle Bin" },
-    { href: "/help", icon: HelpCircle, label: "Help" },
+    { href: "/calendar/candidate", icon: Mic2,     label: "Candidate Schedule" },
+    { href: "/officials",          icon: Landmark, label: "Officials"          },
   ],
 };
 
+const PLATFORM_SECTION: NavSection = {
+  id: "platform",
+  label: "Platform",
+  items: [
+    { href: "/print",         icon: Printer,    label: "Print"          },
+    { href: "/import-export", icon: ArrowUpDown, label: "Import / Export" },
+    { href: "/settings",      icon: Settings,   label: "Settings"       },
+  ],
+};
+
+// ── Canvasser / Finance role sections ─────────────────────────────────────────
 
 const CANVASSER_SECTIONS: NavSection[] = [
   {
     id: "canvasser",
     label: "Canvasser",
-    icon: Map,
     items: [
-      { href: "/field-ops/walk", icon: Map, label: "My Turf" },
-      { href: "/tasks", icon: CheckCircle2, label: "My Tasks" },
-      { href: "/ai-assist", icon: Bot, label: "Ask Adoni" },
+      { href: "/field-ops/walk", icon: Map,        label: "My Turf"  },
+      { href: "/tasks",          icon: CheckSquare, label: "My Tasks" },
     ],
   },
 ];
@@ -129,91 +135,57 @@ const FINANCE_SECTIONS: NavSection[] = [
   {
     id: "finance",
     label: "Finance",
-    icon: DollarSign,
     items: [
-      { href: "/finance", icon: DollarSign, label: "Overview" },
-      { href: "/finance/budget", icon: BarChart3, label: "Budget" },
-      { href: "/finance/expenses", icon: CreditCard, label: "Expenses" },
-      { href: "/finance/purchase-requests", icon: FileText, label: "Purchase Requests" },
-      { href: "/finance/vendors", icon: FileText, label: "Vendors" },
-      { href: "/finance/reimbursements", icon: FileText, label: "Reimbursements" },
-      { href: "/finance/approvals", icon: CheckCircle2, label: "Approvals" },
-      { href: "/finance/reports", icon: BarChart3, label: "Reports" },
-      { href: "/donations", icon: DollarSign, label: "Donations" },
+      { href: "/finance",                    icon: CreditCard, label: "Overview"          },
+      { href: "/finance/budget",             icon: BarChart2,  label: "Budget"            },
+      { href: "/finance/expenses",           icon: DollarSign, label: "Expenses"          },
+      { href: "/finance/purchase-requests",  icon: FileText,   label: "Purchase Requests" },
+      { href: "/finance/reimbursements",     icon: FileText,   label: "Reimbursements"    },
+      { href: "/finance/approvals",          icon: CheckSquare, label: "Approvals"        },
+      { href: "/finance/reports",            icon: BarChart3,  label: "Reports"           },
+      { href: "/donations",                  icon: DollarSign, label: "Donations"         },
     ],
   },
   {
     id: "account",
     label: "My Account",
-    icon: Settings,
     items: [
       { href: "/settings", icon: Settings, label: "My Account" },
     ],
   },
 ];
 
-function sectionHasActivePath(pathname: string, items: NavItem[]): boolean {
-  return items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const roleName = (session?.user?.role ?? "").toString().toUpperCase();
   const isCanvasserOnly = roleName === "VOLUNTEER" || roleName === "CANVASSER";
   const isFinanceOnly = roleName.includes("FINANCE");
 
-  const sidebarSections = useMemo(() => {
+  const sidebarSections = useMemo((): NavSection[] => {
     if (isCanvasserOnly) return CANVASSER_SECTIONS;
     if (isFinanceOnly) return FINANCE_SECTIONS;
-    const settingsItems = [...SETTINGS_ADMIN_SECTION.items];
 
-    if (isAdmin) {
-      settingsItems.push(
-        { href: "/ops/videos", icon: CalendarDays, label: "Videos & Docs" },
-        { href: "/ops/verify", icon: CheckCircle2, label: "Verify Features" },
-        { href: "/ops/security", icon: Shield, label: "Security Monitor" }
-      );
-    }
-
+    const platformItems = [...PLATFORM_SECTION.items];
     if (isSuperAdmin) {
-      settingsItems.push(
-        { href: "/ops/content-review", icon: FileText, label: "Content Review" },
-        { href: "/settings/permissions", icon: Shield, label: "Permission Control Center" }
-      );
+      platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
     }
 
-    const sections: NavSection[] = [
-      HEADQUARTERS_SECTION,
-      FIELD_OPS_SECTION,
-      FINANCE_SECTION,
-      COMMUNICATIONS_SECTION,
+    return [
+      COMMAND_SECTION,
+      PEOPLE_SECTION,
+      FIELD_SECTION,
+      OUTREACH_SECTION,
+      MONEY_SECTION,
       INTELLIGENCE_SECTION,
-      {
-        ...SETTINGS_ADMIN_SECTION,
-        items: settingsItems,
-      },
+      CANDIDATE_SECTION,
+      { ...PLATFORM_SECTION, items: platformItems },
     ];
-
-    if (isSuperAdmin) {
-      sections.unshift({
-        id: "operator",
-        label: "Operator Centre",
-        icon: Crown,
-        items: [
-          { href: "/ops", icon: Crown, label: "Platform Overview" },
-          { href: "/ops/clients", icon: Plus, label: "Client Manager" },
-          { href: "/ops/campaigns", icon: LayoutDashboard, label: "All Campaigns" },
-          { href: "/ops/security", icon: Shield, label: "Security Monitor" },
-        ],
-      });
-    }
-
-    return sections;
-  }, [isAdmin, isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
+  }, [isCanvasserOnly, isFinanceOnly, isSuperAdmin]);
 
   function openAdoni() {
     window.dispatchEvent(new CustomEvent("pollcity:open-adoni"));
@@ -234,11 +206,10 @@ export default function Sidebar() {
         <CampaignSwitcher />
       </div>
 
-      {/* Nav — always-visible, no collapse */}
+      {/* Nav */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto scrollbar-thin space-y-4">
         {sidebarSections.map((section) => (
           <section key={section.id}>
-            {/* Section label — not clickable, just a label */}
             <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
               {section.label}
             </p>

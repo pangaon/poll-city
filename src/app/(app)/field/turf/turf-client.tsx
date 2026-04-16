@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Map as MapIcon, Plus, X, CheckCircle2, Clock, PlayCircle,
   UserCheck, Users, ChevronRight, Navigation, AlertCircle,
-  Trash2, Zap, BarChart3, RotateCcw, Home,
+  Trash2, Zap, BarChart3, RotateCcw, Home, Pencil, List, Undo2,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState,
@@ -15,6 +16,13 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { TurfStatus, FieldProgramType } from "@prisma/client";
+import type { ContactDot } from "@/components/maps/turf-draw-map";
+
+// Dynamically import the draw map (Leaflet requires no SSR)
+const TurfDrawMap = dynamic(
+  () => import("@/components/maps/turf-draw-map"),
+  { ssr: false, loading: () => <div className="h-[360px] rounded-lg bg-gray-100 flex items-center justify-center text-sm text-gray-500">Loading map…</div> },
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -100,6 +108,16 @@ function completionColor(pct: number): string {
   return "bg-gray-200";
 }
 
+// ── Contact preview type (shared by both drawer modes) ────────────────────────
+
+interface PreviewContact {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  supportLevel: string | null;
+  household?: { lat: number | null; lng: number | null } | null;
+}
+
 // ── Create Drawer ──────────────────────────────────────────────────────────────
 
 function CreateDrawer({
@@ -115,21 +133,99 @@ function CreateDrawer({
   onClose: () => void;
   onCreate: (turf: TurfRow) => void;
 }) {
+  // ── Shared state ──────────────────────────────────────────────────────────
+  const [mode, setMode] = useState<"poll" | "map">("poll");
   const [name, setName] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // ── Poll/Ward mode state ──────────────────────────────────────────────────
   const [ward, setWard] = useState("");
   const [pollNumber, setPollNumber] = useState("");
   const [oddEven, setOddEven] = useState("all");
-  const [assignedUserId, setAssignedUserId] = useState<string>("");
-  const [notes, setNotes] = useState("");
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  const [saving, setSaving] = useState(false);
+
+  // ── Map draw mode state ───────────────────────────────────────────────────
+  const [vertices, setVertices] = useState<[number, number][]>([]);
+  const [mapContacts, setMapContacts] = useState<ContactDot[]>([]);
+  const [mapContactIds, setMapContactIds] = useState<string[]>([]);
+  const [mapPreviewCount, setMapPreviewCount] = useState<number | null>(null);
+  const [mapPreviewing, setMapPreviewing] = useState(false);
+  const [mapContactsLoaded, setMapContactsLoaded] = useState(false);
 
   const distinctWards = Array.from(new Set(density.map((d) => d.ward).filter(Boolean) as string[]));
-  const pollsForWard = ward
-    ? density.filter((d) => d.ward === ward)
-    : density;
+  const pollsForWard = ward ? density.filter((d) => d.ward === ward) : density;
 
+  // ── Load all geocoded contacts for the map (once, when map mode is activated)
+  useEffect(() => {
+    if (mode !== "map" || mapContactsLoaded) return;
+    const sp = new URLSearchParams({ campaignId });
+    fetch(`/api/turf/preview?${sp}`)
+      .then((r) => r.json())
+      .then((json: { contacts: PreviewContact[] }) => {
+        const dots: ContactDot[] = (json.contacts ?? [])
+          .filter((c) => c.household?.lat && c.household?.lng)
+          .map((c) => ({
+            id: c.id,
+            lat: c.household!.lat!,
+            lng: c.household!.lng!,
+            supportLevel: c.supportLevel,
+          }));
+        setMapContacts(dots);
+        setMapContactsLoaded(true);
+      })
+      .catch(() => toast.error("Could not load contacts for map"));
+  }, [mode, campaignId, mapContactsLoaded]);
+
+  const handleAddVertex = useCallback((latlng: [number, number]) => {
+    setVertices((prev) => [...prev, latlng]);
+    setMapPreviewCount(null);
+    setMapContactIds([]);
+  }, []);
+
+  function handleUndoVertex() {
+    setVertices((prev) => prev.slice(0, -1));
+    setMapPreviewCount(null);
+    setMapContactIds([]);
+  }
+
+  function handleClearVertices() {
+    setVertices([]);
+    setMapPreviewCount(null);
+    setMapContactIds([]);
+  }
+
+  async function handleMapPreview() {
+    if (vertices.length < 3) {
+      toast.error("Draw at least 3 vertices to define a boundary");
+      return;
+    }
+    setMapPreviewing(true);
+    try {
+      // Build a GeoJSON Polygon from vertices (close the ring by repeating first point)
+      const ring = [...vertices, vertices[0]].map(([lat, lng]) => [lng, lat]);
+      const polygon: GeoJSON.Polygon = {
+        type: "Polygon",
+        coordinates: [ring],
+      };
+      const sp = new URLSearchParams({
+        campaignId,
+        boundary: encodeURIComponent(JSON.stringify(polygon)),
+      });
+      const res = await fetch(`/api/turf/preview?${sp}`);
+      const json = await res.json() as { contacts: { id: string }[]; total: number };
+      setMapPreviewCount(json.total);
+      setMapContactIds((json.contacts ?? []).map((c) => c.id));
+    } catch {
+      toast.error("Preview failed");
+    } finally {
+      setMapPreviewing(false);
+    }
+  }
+
+  // ── Poll/Ward preview ─────────────────────────────────────────────────────
   async function handlePreview() {
     if (!ward && !pollNumber) {
       toast.error("Select a ward or poll number to preview contacts");
@@ -150,18 +246,35 @@ function CreateDrawer({
     }
   }
 
+  // ── Create turf ───────────────────────────────────────────────────────────
   async function handleCreate() {
     if (!name.trim()) { toast.error("Turf name is required"); return; }
-    if (!ward && !pollNumber) { toast.error("Select a ward or poll number"); return; }
     setSaving(true);
     try {
-      // First fetch contact IDs for this turf definition
-      const sp = new URLSearchParams({ campaignId, oddEven });
-      if (ward) sp.set("ward", ward);
-      if (pollNumber) sp.set("pollNumber", pollNumber);
-      const previewRes = await fetch(`/api/turf/preview?${sp}`);
-      const previewJson = await previewRes.json() as { contacts: { id: string }[] };
-      const contactIds = previewJson.contacts.map((c: { id: string }) => c.id);
+      let contactIds: string[] = [];
+
+      if (mode === "map") {
+        if (vertices.length < 3) { toast.error("Draw at least 3 vertices on the map"); setSaving(false); return; }
+        if (mapContactIds.length === 0) {
+          // Run preview first if not done
+          const ring = [...vertices, vertices[0]].map(([lat, lng]) => [lng, lat]);
+          const polygon: GeoJSON.Polygon = { type: "Polygon", coordinates: [ring] };
+          const sp = new URLSearchParams({ campaignId, boundary: encodeURIComponent(JSON.stringify(polygon)) });
+          const previewRes = await fetch(`/api/turf/preview?${sp}`);
+          const previewJson = await previewRes.json() as { contacts: { id: string }[] };
+          contactIds = previewJson.contacts.map((c) => c.id);
+        } else {
+          contactIds = mapContactIds;
+        }
+      } else {
+        if (!ward && !pollNumber) { toast.error("Select a ward or poll number"); setSaving(false); return; }
+        const sp = new URLSearchParams({ campaignId, oddEven });
+        if (ward) sp.set("ward", ward);
+        if (pollNumber) sp.set("pollNumber", pollNumber);
+        const previewRes = await fetch(`/api/turf/preview?${sp}`);
+        const previewJson = await previewRes.json() as { contacts: { id: string }[] };
+        contactIds = previewJson.contacts.map((c) => c.id);
+      }
 
       const res = await fetch("/api/field/turf", {
         method: "POST",
@@ -169,9 +282,9 @@ function CreateDrawer({
         body: JSON.stringify({
           campaignId,
           name: name.trim(),
-          ward: ward || undefined,
-          pollNumber: pollNumber || undefined,
-          oddEven,
+          ward: mode === "poll" ? (ward || undefined) : undefined,
+          pollNumber: mode === "poll" ? (pollNumber || undefined) : undefined,
+          oddEven: mode === "poll" ? oddEven : "all",
           contactIds,
           assignedUserId: assignedUserId || null,
           notes: notes || undefined,
@@ -199,13 +312,41 @@ function CreateDrawer({
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={SPRING}
-      className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-white shadow-2xl flex flex-col"
+      className="fixed inset-y-0 right-0 z-40 w-full max-w-lg bg-white shadow-2xl flex flex-col"
     >
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 className="text-lg font-semibold text-gray-900">Create Turf</h2>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
           <X className="h-5 w-5" />
         </button>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="px-6 pt-4">
+        <div className="flex rounded-lg bg-gray-100 p-1 gap-1">
+          <button
+            type="button"
+            onClick={() => setMode("poll")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              mode === "poll" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+            )}
+          >
+            <List className="h-4 w-4" />
+            By Poll / Ward
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("map")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              mode === "map" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+            )}
+          >
+            <Pencil className="h-4 w-4" />
+            Draw on Map
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -217,51 +358,134 @@ function CreateDrawer({
           />
         </FormField>
 
-        <FormField label="Ward">
-          <Select value={ward} onChange={(e) => { setWard(e.target.value); setPollNumber(""); setPreviewCount(null); }}>
-            <option value="">— Any ward —</option>
-            {distinctWards.map((w) => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </Select>
-        </FormField>
+        {/* ── Poll / Ward mode ── */}
+        {mode === "poll" && (
+          <>
+            <FormField label="Ward">
+              <Select value={ward} onChange={(e) => { setWard(e.target.value); setPollNumber(""); setPreviewCount(null); }}>
+                <option value="">— Any ward —</option>
+                {distinctWards.map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </Select>
+            </FormField>
 
-        <FormField label="Poll Number">
-          <Select value={pollNumber} onChange={(e) => { setPollNumber(e.target.value); setPreviewCount(null); }}>
-            <option value="">— Any poll —</option>
-            {pollsForWard.map((d) => (
-              <option key={d.poll} value={d.poll}>
-                Poll {d.poll} ({d.contactCount} contacts)
-              </option>
-            ))}
-          </Select>
-        </FormField>
+            <FormField label="Poll Number">
+              <Select value={pollNumber} onChange={(e) => { setPollNumber(e.target.value); setPreviewCount(null); }}>
+                <option value="">— Any poll —</option>
+                {pollsForWard.map((d) => (
+                  <option key={d.poll} value={d.poll}>
+                    Poll {d.poll} ({d.contactCount} contacts)
+                  </option>
+                ))}
+              </Select>
+            </FormField>
 
-        <FormField label="Streets">
-          <Select value={oddEven} onChange={(e) => { setOddEven(e.target.value); setPreviewCount(null); }}>
-            <option value="all">All streets</option>
-            <option value="odd">Odd side only</option>
-            <option value="even">Even side only</option>
-          </Select>
-        </FormField>
+            <FormField label="Streets">
+              <Select value={oddEven} onChange={(e) => { setOddEven(e.target.value); setPreviewCount(null); }}>
+                <option value="all">All streets</option>
+                <option value="odd">Odd side only</option>
+                <option value="even">Even side only</option>
+              </Select>
+            </FormField>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePreview}
-            loading={previewing}
-            className="flex-1"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Preview Contacts
-          </Button>
-          {previewCount !== null && (
-            <span className="text-sm font-semibold text-emerald-600">
-              {previewCount} contacts
-            </span>
-          )}
-        </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreview}
+                loading={previewing}
+                className="flex-1"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Preview Contacts
+              </Button>
+              {previewCount !== null && (
+                <span className="text-sm font-semibold text-emerald-600">
+                  {previewCount} contacts
+                </span>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Draw on Map mode ── */}
+        {mode === "map" && (
+          <>
+            <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700">
+              Click on the map to add vertices. Draw at least 3 points to define your turf boundary.
+              Contacts with geocoded addresses will appear as coloured dots.
+            </div>
+
+            <TurfDrawMap
+              contacts={mapContacts}
+              vertices={vertices}
+              onAddVertex={handleAddVertex}
+            />
+
+            {/* Vertex controls */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUndoVertex}
+                disabled={vertices.length === 0}
+                className="gap-1"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                Undo
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearVertices}
+                disabled={vertices.length === 0}
+                className="gap-1"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+              <span className="text-xs text-gray-500 ml-1">{vertices.length} vertices</span>
+            </div>
+
+            {/* Preview contacts in boundary */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMapPreview}
+                loading={mapPreviewing}
+                disabled={vertices.length < 3}
+                className="flex-1"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Preview Contacts in Boundary
+              </Button>
+              {mapPreviewCount !== null && (
+                <span className="text-sm font-semibold text-emerald-600">
+                  {mapPreviewCount} contacts
+                </span>
+              )}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+              {[
+                { color: "#1D9E75", label: "Strong Support" },
+                { color: "#6ee7b7", label: "Lean Support" },
+                { color: "#EF9F27", label: "Undecided" },
+                { color: "#fca5a5", label: "Lean Oppose" },
+                { color: "#E24B4A", label: "Strong Oppose" },
+                { color: "#94a3b8", label: "Unknown" },
+              ].map(({ color, label }) => (
+                <span key={label} className="flex items-center gap-1">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: color }} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
 
         <FormField label="Assign To">
           <Select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>

@@ -1,8 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
+import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
+// GET /api/notifications/subscribe?campaignId=... — list all push subscribers
+export async function GET(req: NextRequest) {
+  const { session, error } = await apiAuth(req);
+  if (error) return error;
+  const campaignId = req.nextUrl.searchParams.get("campaignId");
+  const { forbidden } = await guardCampaignRoute(session!.user.id, campaignId, "analytics:read");
+  if (forbidden) return forbidden;
+
+  const subs = await prisma.pushSubscription.findMany({
+    where: { campaignId: campaignId! },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      createdAt: true,
+      endpoint: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  return NextResponse.json({
+    data: subs.map((s) => ({
+      id: s.id,
+      userId: s.user.id,
+      name: s.user.name ?? "Unknown",
+      email: s.user.email ?? "—",
+      // Infer device type from endpoint host (best-effort)
+      device: s.endpoint.includes("fcm.googleapis") ? "Android/Chrome" : s.endpoint.includes("updates.push.services.mozilla") ? "Firefox" : s.endpoint.includes("web.push.apple") ? "Safari" : "Browser",
+      subscribedAt: s.createdAt,
+    })),
+    total: subs.length,
+  }, { headers: NO_STORE_HEADERS });
+}
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);

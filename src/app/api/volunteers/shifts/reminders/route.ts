@@ -16,6 +16,20 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const campaignId = body.campaignId as string | undefined;
 
+  // If a specific campaign is targeted, verify the caller is a member of that campaign.
+  // Without this check, any authenticated user could trigger email sends to another campaign's volunteers.
+  if (campaignId) {
+    const membership = await prisma.membership.findUnique({
+      where: { userId_campaignId: { userId: session!.user.id, campaignId } },
+    });
+    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else {
+    // No campaignId = cross-campaign send (cron use). Restrict to SUPER_ADMIN only.
+    if (session!.user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   const now = new Date();
   const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000); // 25h window (cron runs hourly)
 
