@@ -3,9 +3,13 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, "form");
+    if (limited) return limited;
+
     const { session, error } = await apiAuth(req);
     if (error) return error;
 
@@ -31,6 +35,7 @@ export async function GET(req: NextRequest) {
         doNotContact: false,
       },
       orderBy: [{ supportLevel: "asc" }, { lastName: "asc" }],
+      take: 50000,
     });
 
     const rows = contacts.map((c) => ({

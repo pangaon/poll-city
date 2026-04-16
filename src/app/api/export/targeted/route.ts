@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     }
     case "volunteers": {
       const vols = await prisma.volunteerProfile.findMany({
-        where: { campaignId },
+        where: { campaignId, deletedAt: null },
         include: { user: { select: { name: true, email: true } } },
         take: 10000,
       });
@@ -133,14 +133,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Log export
-  await prisma.activityLog.create({
+  await prisma.exportLog.create({
     data: {
       campaignId,
       userId: session.user.id as string,
-      action: "export.targeted",
-      entityType: "Export",
-      entityId: type,
-      details: { type, filters, rowCount: data.length, format } as object,
+      exportType: type,
+      format,
+      recordCount: data.length,
+      filters: filters as object,
     },
   });
 

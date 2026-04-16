@@ -3,9 +3,13 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
 import { rowsToCsv, csvResponse, exportFilename } from "@/lib/export/csv";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
+    const limited = await rateLimit(req, "form");
+    if (limited) return limited;
+
     const { session, error } = await apiAuth(req);
     if (error) return error;
 
@@ -25,6 +29,7 @@ export async function GET(req: NextRequest) {
 
     const donations = await prisma.donation.findMany({
       where: { campaignId, deletedAt: null },
+      take: 50000,
       include: {
         contact: {
           select: {

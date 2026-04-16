@@ -132,6 +132,7 @@ export default function ExportPanel({ campaignId }: Props) {
   const [history, setHistory]               = useState<ExportHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef    = useRef<AbortController | null>(null);
 
   // Load export history on mount
   useEffect(() => { void loadHistory(); }, [campaignId]);
@@ -139,9 +140,13 @@ export default function ExportPanel({ campaignId }: Props) {
   // Debounced preview count whenever type or filters change
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
     setPreviewCount(null);
     debounceRef.current = setTimeout(() => { void fetchPreviewCount(); }, 450);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
+    };
   }, [exportType, filters]);
 
   async function loadHistory() {
@@ -156,18 +161,24 @@ export default function ExportPanel({ campaignId }: Props) {
   }
 
   async function fetchPreviewCount() {
+    const controller = new AbortController();
+    abortRef.current = controller;
     setPreviewing(true);
     try {
       const res = await fetch("/api/export/targeted", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: exportType, filters: buildApiFilters(), fields: [], format: "csv", countOnly: true }),
+        signal: controller.signal,
       });
       if (!res.ok) return;
       const json = await res.json();
       if (typeof json?.count === "number") setPreviewCount(json.count);
-    } catch { /* non-blocking */ }
-    finally { setPreviewing(false); }
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return; // superseded by newer request
+    } finally {
+      setPreviewing(false);
+    }
   }
 
   function buildApiFilters() {
