@@ -202,6 +202,11 @@ Every major user action. Every downstream effect. Honest status.
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — batch updateMany by email |
 | Bounced contacts flagged | ✓ CONNECTED | wired 2026-04-08 — emailBounced flag, campaign-scoped, does NOT set doNotContact |
 | Unsubscribe → contact.doNotContact | ⚠ PARTIAL | updates newsletterSubscriber but not contact |
+| Open tracking pixel embedded | ✓ CONNECTED | wired 2026-04-16 — 1×1 GIF at /api/track/open/[token] injected into every blast email |
+| Click tracking on all http(s) links | ✓ CONNECTED | wired 2026-04-16 — all hrefs rewritten to /api/track/click/[token] redirect |
+| EmailTrackingEvent created on open | ✓ CONNECTED | wired 2026-04-16 — idempotent (one open event per contact per blast); $transaction with openedCount increment |
+| EmailTrackingEvent created on click | ✓ CONNECTED | wired 2026-04-16 — all clicks recorded; $transaction with clickCount increment |
+| NotificationLog.openedCount / clickCount | ✓ CONNECTED | wired 2026-04-16 — db33dc0 |
 
 ### SMS Blast Sent
 | Effect | Status | Notes |
@@ -236,6 +241,20 @@ Every major user action. Every downstream effect. Honest status.
 | contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-08 — set when receipt email sent |
 | doNotContact check before recording | ✗ NOT CONNECTED | |
 | Major donation ($500+) → superSupporter | ✓ CONNECTED | lifecycle automation handles this |
+
+### Public Donation Page (Stripe — unauthenticated)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Stripe PaymentIntent created | ✓ CONNECTED | wired 2026-04-16 — POST /api/donate/[campaignSlug]/intent |
+| Donation record pre-created (status=processing) | ✓ CONNECTED | wired 2026-04-16 — created before PaymentIntent; updated with paymentIntentId after |
+| Contact found-or-created by email | ✓ CONNECTED | wired 2026-04-16 — findOrCreateContact() scoped by campaignId; new contacts start with funnelStage=donor |
+| Contact funnelStage advanced → donor | ✓ CONNECTED | wired 2026-04-16 — Stripe webhook payment_intent.succeeded; advances if ≤ volunteer |
+| contact.lastContactedAt updated | ✓ CONNECTED | wired 2026-04-16 — set in funnel advance on webhook |
+| Donation status → completed on payment | ✓ CONNECTED | wired 2026-04-16 — existing Stripe webhook handler; db33dc0 |
+| Receipt email sent | ✓ CONNECTED | existing Stripe webhook sendDonationReceiptEmail() fires on payment_intent.succeeded |
+| Compliance evaluation | ✓ CONNECTED | existing refreshDonorProfile() called in Stripe webhook |
+| recordedById = campaign admin | ✓ CONNECTED | first ADMIN/CAMPAIGN_MANAGER member used as system actor |
+| Rate limiting on public endpoint | ✓ CONNECTED | rateLimit(req, "form") applied |
 
 ---
 
