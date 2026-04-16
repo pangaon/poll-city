@@ -236,6 +236,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | Rebuild Dashboard to match Figma | BLOCKED | Waiting on spec files OR start from MASTER_CLAUDE.md |
 | Rebuild Contacts/CRM to match Figma | BLOCKED | Waiting on spec files |
 | Rebuild Field Ops / Canvassing to match Figma | BLOCKED | Waiting on spec files |
+| Field Ops full end-state Figma design brief | DONE — 2026-04-16 | docs/FIELD_OPS_FIGMA_PROMPT.md — 13 tabs, full vision, all modules, GOTV, 6 deliverables spec'd |
 
 ---
 
