@@ -262,21 +262,6 @@ export default function ImportExportClient({ campaignId }: Props) {
     void loadImportHistory();
   }, [campaignId]);
 
-  // Load export history from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(`poll-city-export-history-${campaignId}`);
-      if (stored) setExportHistory(JSON.parse(stored));
-    } catch { /* non-blocking */ }
-  }, [campaignId]);
-
-  function saveExportHistoryItem(item: ExportHistoryItem) {
-    setExportHistory(prev => {
-      const next = [item, ...prev].slice(0, 50);
-      try { localStorage.setItem(`poll-city-export-history-${campaignId}`, JSON.stringify(next)); } catch { /* ok */ }
-      return next;
-    });
-  }
 
   async function loadImportHistory() {
     try {
@@ -679,51 +664,6 @@ export default function ImportExportClient({ campaignId }: Props) {
     }
   }
 
-  async function doExport(endpoint: string, label: string) {
-    setExportingByEndpoint((prev) => ({ ...prev, [endpoint]: true }));
-    try {
-      const res = await fetch(`${endpoint}?campaignId=${campaignId}`);
-      if (!res.ok) {
-        const errorPayload = await res.json().catch(() => ({}));
-        throw new Error(errorPayload?.error ?? "Export failed");
-      }
-
-      const blob = await res.blob();
-      const contentDisposition = res.headers.get("Content-Disposition") ?? "";
-      const filenameMatch = contentDisposition.match(/filename=\"([^\"]+)\"/);
-      const filename = filenameMatch?.[1] ?? `${label.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.csv`;
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`${label} downloaded`);
-
-      // Save to export history
-      saveExportHistoryItem({
-        type: label,
-        filename,
-        rows: 0, // We don't know row count from blob
-        downloadedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : `Failed to export ${label}`);
-    } finally {
-      setExportingByEndpoint((prev) => ({ ...prev, [endpoint]: false }));
-    }
-  }
-
-  async function exportOpsPack() {
-    setBulkExporting(true);
-    try {
-      for (const ex of EXPORT_TYPES) {
-        await doExport(ex.endpoint, ex.label);
-      }
-      toast.success("Operations export pack complete");
-    } finally { setBulkExporting(false); }
-  }
 
   function downloadTemplate() {
     const csv = `${CSV_HEADERS.join(",")}\nJane,Smith,jane@email.com,416-555-0100,123 Main St,,Toronto,ON,M4C 1A1,Ward 12,Toronto—Danforth,strong_support,Transit;Housing,yes,no,no,Great contact at the door`;
@@ -732,8 +672,6 @@ export default function ImportExportClient({ campaignId }: Props) {
     a.download = "poll-city-import-template.csv";
     a.click();
   }
-
-  const anyExporting = Object.values(exportingByEndpoint).some(Boolean) || bulkExporting;
 
   function SmartSummaryCard({
     analysisData, onImport, importing: isImporting, onShowAdvanced,
