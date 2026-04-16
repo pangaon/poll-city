@@ -320,20 +320,10 @@ Two steps: wire up the prototype viewer, then get the design specs into this rep
   8. Go to **Deployments** tab → click **Redeploy** on the latest deployment
   9. Done — you can now visit `app.poll.city/pcapp` to see your Figma prototype inside the app
 
-- [ ] **58. Get the design specs into the Next.js repo so AI can build to match**
-  1. Open VS Code
-  2. Open your **Figma Make project folder** (the separate one — NOT the poll-city Next.js folder)
-  3. In the Explorer sidebar, find the folder: `src` → `imports` → `pasted_text`
-  4. You will see 3 files:
-     - `poll-city-design-spec.md`
-     - `poll-city-command-center.md`
-     - `poll-city-field-ops.md`
-  5. Right-click each file → **Copy**
-  6. Switch to the **poll-city** (Next.js) project in VS Code
-  7. Open the `docs` folder
-  8. Right-click inside `docs` → **Paste** — repeat for all 3 files
-  9. Open a new Claude session and say: `"Read docs/FIGMA_SPEC_HANDOFF.md and start building the campaign app UI to match the Figma design. Spec files are now in docs/."`
-  10. Done — AI will build every screen to match your Figma exactly
+- [x] **58. SKIP — spec files do not exist in Figma Make project** (confirmed April 16)
+  Those 3 files (`poll-city-design-spec.md` etc.) were never created. AI sessions build
+  from MASTER_CLAUDE.md + the build queue in `docs/FIGMA_SPEC_HANDOFF.md` instead.
+  No action needed. AI is unblocked.
 
 ---
 
