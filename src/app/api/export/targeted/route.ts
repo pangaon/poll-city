@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     filters,
     fields,
     format,
+    countOnly,
   } = parsed.data as {
     type: ExportType;
     filters: {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
     };
     fields: string[];
     format: "csv" | "json";
+    countOnly: boolean;
   };
 
   // Build where clause from filters
@@ -60,6 +62,20 @@ export async function POST(req: NextRequest) {
   if (filters.hasPhone) where.phone = { not: null };
   if (filters.hasEmail) where.email = { not: null };
   if (filters.notContactedSince) where.lastContactedAt = { lt: new Date(filters.notContactedSince) };
+
+  // Fast-path: just return the count for preview, no data serialisation
+  if (countOnly) {
+    const countMap: Record<ExportType, () => Promise<number>> = {
+      contacts: () => prisma.contact.count({ where }),
+      walklist: () => prisma.contact.count({ where: { ...where, address1: { not: null } } }),
+      gotv: () => prisma.contact.count({ where: { ...where, supportLevel: { in: ["strong_support", "leaning_support"] } } }),
+      signs: () => prisma.sign.count({ where: { campaignId, deletedAt: null } }),
+      volunteers: () => prisma.volunteerProfile.count({ where: { campaignId, deletedAt: null } }),
+      donations: () => prisma.donation.count({ where: { campaignId, deletedAt: null } }),
+    };
+    const count = await countMap[type]();
+    return NextResponse.json({ count });
+  }
 
   let data: Record<string, unknown>[];
 

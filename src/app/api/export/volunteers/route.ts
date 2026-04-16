@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     });
 
     const volunteers = await prisma.volunteerProfile.findMany({
-      where: { campaignId },
+      where: { campaignId, deletedAt: null },
       include: {
         user: { select: { name: true, email: true, phone: true } },
         contact: { select: { firstName: true, lastName: true, email: true, phone: true } },

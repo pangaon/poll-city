@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
 
-  if (!file || !mappingsRaw) {
+  if (!file || !mappingsRaw || !campaignId) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
   }
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const rowsToCheck = prepared.validRows.slice(0, 5000);
 
   const existingContacts = await prisma.contact.findMany({
-    where: { campaignId: campaignId ?? undefined },
+    where: { campaignId, deletedAt: null },
     select: {
       id: true,
       firstName: true,

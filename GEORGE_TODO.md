@@ -88,6 +88,17 @@ Email (Resend) powers: donation receipt emails, event reminders, volunteer invit
 - [ ] **15. Add `RESEND_FROM_EMAIL` to Railway** (value: `Poll City <noreply@poll.city>`)
 - [ ] **16. Add `RESEND_REPLY_TO` to Railway** (value: `support@poll.city`)
 
+### Unified Inbox — receive email replies from contacts
+
+The Unified Inbox (built Session 3, April 15) shows inbound SMS automatically via the Twilio webhook. For inbound **email** replies to appear in the inbox, you need Resend to forward replies to the app.
+
+- [ ] **59. Set up Resend inbound email for each campaign**
+  1. Go to [resend.com](https://resend.com) → **Inbound** (left sidebar)
+  2. Click **Create endpoint** → set the URL to: `https://app.poll.city/api/webhooks/resend`
+  3. In each campaign's settings (`/settings`), set **Reply-to email** to the inbound address Resend gives you (e.g. `campaign@inbound.poll.city`)
+  4. When a contact replies to a campaign email, it will flow into the Unified Inbox automatically.
+  *Note: Requires a Resend-managed inbound domain with MX records — see Resend docs.*
+
 ---
 
 ## 🟡 SMS — Comms SMS blasts won't send without these
@@ -285,6 +296,39 @@ These activate your personal debug toolbar when you're logged in as yourself.
   3. Make it: **Private**
   4. Do not add anything yet — just create the empty repo
   This is where ATLAS (the proprietary approval-rating algorithm) will live.
+
+---
+
+## 🎨 FIGMA → NEXT.JS UI MATCHING (new — from April 16 session)
+
+The goal: AI sessions will rebuild the Next.js app screens to match your Figma design exactly.
+Two steps: wire up the prototype viewer, then get the design specs into this repo.
+
+- [ ] **57. Activate the Figma prototype viewer inside the app**
+  1. Go to [vercel.com](https://vercel.com) → click your Poll City project
+  2. Click **Settings** (top nav)
+  3. Click **Environment Variables** (left sidebar)
+  4. Click **Add New**
+  5. Name: `NEXT_PUBLIC_FIGMA_APP_URL`
+  6. Value: `https://valley-revise-45442235.figma.site`
+  7. Click **Save**
+  8. Go to **Deployments** tab → click **Redeploy** on the latest deployment
+  9. Done — you can now visit `app.poll.city/pcapp` to see your Figma prototype inside the app
+
+- [ ] **58. Get the design specs into the Next.js repo so AI can build to match**
+  1. Open VS Code
+  2. Open your **Figma Make project folder** (the separate one — NOT the poll-city Next.js folder)
+  3. In the Explorer sidebar, find the folder: `src` → `imports` → `pasted_text`
+  4. You will see 3 files:
+     - `poll-city-design-spec.md`
+     - `poll-city-command-center.md`
+     - `poll-city-field-ops.md`
+  5. Right-click each file → **Copy**
+  6. Switch to the **poll-city** (Next.js) project in VS Code
+  7. Open the `docs` folder
+  8. Right-click inside `docs` → **Paste** — repeat for all 3 files
+  9. Open a new Claude session and say: `"Read docs/FIGMA_SPEC_HANDOFF.md and start building the campaign app UI to match the Figma design. Spec files are now in docs/."`
+  10. Done — AI will build every screen to match your Figma exactly
 
 ---
 

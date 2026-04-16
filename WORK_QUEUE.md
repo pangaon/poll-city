@@ -220,6 +220,25 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 ---
 
+## MODULE: FIGMA UI MATCHING (new — April 16, 2026)
+
+George has a Figma Make prototype at https://valley-revise-45442235.figma.site that is the design reference for the entire campaign staff app. The goal is to rebuild the Next.js UI to match it exactly.
+
+**Context:** The Figma Make project is a separate Vite/react-router project on George's machine. MASTER_CLAUDE.md in the repo root is the bridge document. Detailed per-screen specs live in the Figma Make project at `src/imports/pasted_text/` (3 files: poll-city-design-spec.md, poll-city-command-center.md, poll-city-field-ops.md). Those files are NOT yet in this repo.
+
+**Session opener for the next session that picks this up:**
+"Read MASTER_CLAUDE.md and docs/FIGMA_SPEC_HANDOFF.md first. George wants the Next.js campaign app UI rebuilt to match the Figma Make prototype at https://valley-revise-45442235.figma.site. Check if George has added the 3 spec files to docs/ (poll-city-design-spec.md, poll-city-command-center.md, poll-city-field-ops.md). If yes — start building from those specs, one screen at a time, beginning with Dashboard. If no — build from MASTER_CLAUDE.md §17 build queue order: (1) Fundraising Command Centre 9-tab, (2) Finance/Budget Suite, (3) GOTV Module, (4) Election Night Dashboard, (5) Adoni global drawer, (6) Contact Profile deep view. Run npm run build before every push."
+
+| Task | Status | Notes |
+|---|---|---|
+| Import Figma spec files into docs/ | PENDING — George action | George must copy 3 files from Figma Make project — see GEORGE_TODO.md item 58 |
+| Set NEXT_PUBLIC_FIGMA_APP_URL in Vercel | PENDING — George action | See GEORGE_TODO.md item 57 — activates /pcapp prototype viewer |
+| Rebuild Dashboard to match Figma | BLOCKED | Waiting on spec files OR start from MASTER_CLAUDE.md |
+| Rebuild Contacts/CRM to match Figma | BLOCKED | Waiting on spec files |
+| Rebuild Field Ops / Canvassing to match Figma | BLOCKED | Waiting on spec files |
+
+---
+
 ## MODULE: DEMO + MARKETING
 
 | Task | Status | Notes |

@@ -42,4 +42,5 @@ export const targetedExportSchema = z.object({
   }).default({}),
   fields: z.array(z.string()).default([]),
   format: z.enum(["csv", "json"]).default("csv"),
+  countOnly: z.boolean().optional().default(false),
 });
