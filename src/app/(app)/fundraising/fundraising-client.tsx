@@ -232,6 +232,10 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
 
+  // ── Overview Chart ──
+  const [overviewChart, setOverviewChart] = useState<{ period: string; amount: number; count: number }[]>([]);
+  const [overviewChartLoading, setOverviewChartLoading] = useState(false);
+
   // ── Modals ──
   const [showAddDonation, setShowAddDonation] = useState(false);
   const [showAddInitiative, setShowAddInitiative] = useState(false);
@@ -370,8 +374,16 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
     } finally { setRefundsLoading(false); }
   }, [campaignId, refundsPage]);
 
-  // Load stats on mount
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  const fetchOverviewChart = useCallback(async () => {
+    setOverviewChartLoading(true);
+    try {
+      const r = await fetch(`/api/fundraising/reports?campaignId=${campaignId}&period=year&groupBy=month`);
+      if (r.ok) { const d = await r.json(); setOverviewChart(d.data?.timeSeries ?? []); }
+    } finally { setOverviewChartLoading(false); }
+  }, [campaignId]);
+
+  // Load stats + overview chart on mount
+  useEffect(() => { fetchStats(); fetchOverviewChart(); }, [fetchStats, fetchOverviewChart]);
 
   // Load tab data on tab change
   useEffect(() => {
@@ -620,6 +632,49 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                     )}
                   </div>
                 )}
+
+                {/* Revenue trend chart */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-gray-400" />
+                        <span className="font-semibold text-sm text-gray-800">Revenue — {new Date().getFullYear()}</span>
+                      </div>
+                      {!overviewChartLoading && overviewChart.length > 0 && (
+                        <span className="text-xs text-gray-400">Monthly</span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {overviewChartLoading ? (
+                      <Shimmer className="h-40" />
+                    ) : overviewChart.length === 0 ? (
+                      <div className="h-40 flex items-center justify-center">
+                        <div className="text-center">
+                          <BarChart3 className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                          <p className="text-sm text-gray-400">No revenue data this year yet</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={160}>
+                        <AreaChart data={overviewChart} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="overviewGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={GREEN} stopOpacity={0.18} />
+                              <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(1)}k`} />
+                          <Tooltip formatter={(value: unknown) => [fmt(typeof value === "number" ? value : 0), "Raised"]} contentStyle={{ fontSize: 12, border: "1px solid #e5e7eb", borderRadius: 8 }} />
+                          <Area type="monotone" dataKey="amount" stroke={GREEN} strokeWidth={2} fill="url(#overviewGrad)" dot={{ r: 3, fill: GREEN, strokeWidth: 0 }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
 
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* By-status */}
