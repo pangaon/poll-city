@@ -238,15 +238,15 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | Task | Status | Notes |
 |---|---|---|
 | /billing — complete Stripe payment integration | DONE — 13965bc | Invoice history, portal button, past-due banner, cancel-at-period-end warning, success/cancel URL toasts, animated plan selector. |
-| /settings — full settings page | PENDING | 289 lines, too thin. Add all sections: profile, campaign details, integrations, notifications, danger zone. |
+| /settings — full settings page | DONE — 6eae5e2 | Profile, campaign profile, integration status dashboard (6 cards), danger zone (archive). |
 | /settings/security — complete security settings | PENDING | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
 | /notifications — voter outreach full build | PENDING | 389 lines, basic display. Full push notification composer, opt-in management, delivery stats. |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
 | /eday — election day ops full build | PENDING | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
 | /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |
-| /briefing — daily briefing full build | PENDING | 223 lines, no visualizations. Morning briefing: key metrics, top tasks, AI summary, weather/news feed. |
-| /ai-assist — full Adoni in-app page | PENDING | 133 lines. Full conversation UI, suggested prompts, history, context-aware page assist. |
+| /briefing — daily briefing full build | DONE — c110dc2 | Adoni morning summary card + health score + priorities + canvassing pace + red flags. |
+| /ai-assist — full Adoni in-app page | DONE — 108e504 | Full chat UI, 4 category groups, suggested prompts, localStorage history, copy button. |
 
 ---
 
@@ -320,8 +320,8 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | /volunteers/expenses — full expense workflow | PENDING | 381 lines. Add receipt upload, policy check, approval, direct deposit. |
 | /contacts/duplicates — full merge workflow | PENDING | 351 lines. Add field-by-field merge picker, merge history, auto-merge rules. |
 | /intelligence — full opponent intel | PENDING | 314 lines. Add statement tracker, vote record, approval chart, Adoni analysis. |
-| /resources/ai-creator — full AI creator | PENDING | 194 lines. Add all content types, tone selector, campaign context injection, history. |
-| /communications/inbox — unified inbox full build | PENDING | 251 lines. Full two-way thread view, reply, tag, assign, snooze. |
+| /resources/ai-creator — full AI creator | DONE — 6e490f5 | All 7 content types, tone selector (4 tones), campaign context injection, localStorage generation history. |
+| /communications/inbox — unified inbox full build | DONE — 3be7d35 | Two-panel thread view, reply, channel filter, status management, webhook wiring. |
 | /settings/fields — full custom fields | PENDING | 488 lines. Add field reordering, conditional display, data type validation, import map. |
 | /settings/recycle-bin — full soft delete management | PENDING | 295 lines. Add restore, permanent delete, filter by type, bulk actions. |
 
@@ -345,7 +345,7 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 | /call-list — build or kill | PENDING | 8 lines. Phone banking list view. Build if phone banking is in scope, kill otherwise. |
 | /supporters/super — build or kill | PENDING | 74 lines. Super supporter management. Build VIP supporter tier, or merge into /contacts. |
 | /widgets/[widgetId] — build or kill | PENDING | 21 lines. Public embeddable widget. Build if embeds are needed for campaign websites. |
-| /coalitions — full build | PENDING | 56 lines. Coalition partner tracking, endorsement management, shared voter data requests. |
+| /coalitions — full build | DONE — 7ee982f | 350+ lines. CRUD + org logos + member count + edit flow + inline delete confirm + summary stats. |
 
 ---
 

@@ -60,16 +60,22 @@ function Shimmer({ className }: { className?: string }) {
 /* ── main ───────────────────────────────────────────────────── */
 export default function IntelligenceClient({ campaignId }: { campaignId: string }) {
   const [data, setData] = useState<IntelligenceData | null>(null);
+  const [noOfficial, setNoOfficial] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trendRange, setTrendRange] = useState<"30" | "60" | "90">("30");
 
   useEffect(() => {
-    // Simulate fetching ATLAS data — use real endpoint when available
-    const timer = setTimeout(() => {
-      setData(generateMockData());
-      setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    fetch(`/api/intelligence/atlas?campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((d: Partial<IntelligenceData> & { noOfficial?: boolean }) => {
+        if (d.noOfficial) {
+          setNoOfficial(true);
+        } else {
+          setData(d as IntelligenceData);
+        }
+      })
+      .catch(() => setNoOfficial(true))
+      .finally(() => setLoading(false));
   }, [campaignId]);
 
   const trendData = useMemo(() => {
@@ -102,6 +108,19 @@ export default function IntelligenceClient({ campaignId }: { campaignId: string 
           <Shimmer className="h-64" />
           <Shimmer className="h-64" />
         </div>
+      </div>
+    );
+  }
+
+  if (noOfficial) {
+    return (
+      <div className="max-w-3xl mx-auto p-6 text-center py-20">
+        <Brain className="w-12 h-12 mx-auto mb-4" style={{ color: NAVY }} />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">No Official Linked</h2>
+        <p className="text-gray-500 max-w-sm mx-auto">
+          ATLAS intelligence requires an elected official to be linked to this campaign.
+          Ask your system administrator to link the appropriate official record.
+        </p>
       </div>
     );
   }
@@ -267,48 +286,3 @@ export default function IntelligenceClient({ campaignId }: { campaignId: string 
   );
 }
 
-/* ── mock data generator ────────────────────────────────────── */
-function generateMockData(): IntelligenceData {
-  const today = new Date();
-  function daysAgo(n: number) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - n);
-    return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-  }
-
-  function trendLine(days: number, base: number) {
-    const points: ApprovalEntry[] = [];
-    let val = base;
-    for (let i = days; i >= 0; i--) {
-      val = Math.max(20, Math.min(80, val + (Math.random() - 0.48) * 3));
-      points.push({ date: daysAgo(i), rating: Math.round(val) });
-    }
-    return points;
-  }
-
-  function signalLine(days: number) {
-    const points: SignalPoint[] = [];
-    for (let i = days; i >= 0; i--) {
-      points.push({ date: daysAgo(i), count: Math.floor(Math.random() * 150 + 50) });
-    }
-    return points;
-  }
-
-  const trend30 = trendLine(30, 55);
-  const trend60 = trendLine(60, 52);
-  const trend90 = trendLine(90, 50);
-  const current = trend30[trend30.length - 1].rating;
-  const prev = trend30[trend30.length - 8]?.rating ?? current;
-
-  return {
-    officialName: "Mayor Olivia Chow",
-    currentRating: current,
-    velocity: current > prev + 2 ? "up" : current < prev - 2 ? "down" : "flat",
-    trend30,
-    trend60,
-    trend90,
-    sentiment: { positive: 42, neutral: 31, negative: 27 },
-    signalVolume: signalLine(30),
-    totalSignals: 8421,
-  };
-}
