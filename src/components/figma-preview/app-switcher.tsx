@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, LayoutDashboard, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function AppSwitcher() {
   const pathname = usePathname();
 
   const current =
-    APPS.find((a) => pathname.startsWith(a.path.split("/").slice(0, 4).join("/"))) ??
+    APPS.find((a) => pathname?.startsWith(a.path.split("/").slice(0, 4).join("/"))) ??
     APPS[0];
 
   return (
@@ -69,7 +69,7 @@ export function AppSwitcher() {
           >
             {APPS.map((app) => {
               const Icon = app.icon;
-              const isActive = pathname.startsWith(app.path.split("/").slice(0, 4).join("/"));
+              const isActive = pathname?.startsWith(app.path.split("/").slice(0, 4).join("/")) ?? false;
               return (
                 <Link
                   key={app.id}

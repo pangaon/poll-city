@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MapPin, User, Phone, Flag, CheckCircle2, Zap, Navigation,
   Camera, MessageSquare, AlertCircle, Wifi, WifiOff, Clock, Undo2,

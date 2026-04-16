@@ -126,7 +126,7 @@ export function Candidate() {
                 <BarChart data={FUNDRAISING_DATA}>
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#AAB2FF", fontSize: 11 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B72A0", fontSize: 10 }} tickFormatter={(v) => `$${v/1000}k`} />
-                  <Tooltip contentStyle={{ backgroundColor: "#050A1F", border: "1px solid #2979FF", borderRadius: "4px", color: "#F5F7FF" }} formatter={(v: number) => [`$${v.toLocaleString()}`, "Raised"]} />
+                  <Tooltip contentStyle={{ backgroundColor: "#050A1F", border: "1px solid #2979FF", borderRadius: "4px", color: "#F5F7FF" }} formatter={(v: unknown) => [`$${(v as number).toLocaleString()}`, "Raised"]} />
                   <Bar dataKey="raised" radius={[4, 4, 0, 0]}>{FUNDRAISING_DATA.map((_, i) => <Cell key={i} fill={i === FUNDRAISING_DATA.length - 1 ? "#FFD600" : "#2979FF"} />)}</Bar>
                 </BarChart>
               </ResponsiveContainer>

@@ -27,5 +27,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "prisma/seeds", "mobile"]
+  "exclude": ["node_modules", "prisma/seeds", "mobile", "figma_design_pollcity_iosapp"]
 }

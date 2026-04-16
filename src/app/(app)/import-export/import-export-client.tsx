@@ -1042,16 +1042,9 @@ export default function ImportExportClient({ campaignId }: Props) {
       className="max-w-5xl space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: NAVY }}>Import / Export</h1>
-          <p className="text-sm text-gray-500 mt-0.5">AI mapping, fuzzy dedupe, phone matching, and one-click exports</p>
-        </div>
-        <div className="flex gap-2">
-          <MButton variant="outline" size="sm" onClick={() => window.location.href = "/import-export/smart-import"}>
-            <ArrowUpFromLine className="w-4 h-4" /> Smart Import Wizard
-          </MButton>
-        </div>
+      <div>
+        <h1 className="text-xl font-bold" style={{ color: NAVY }}>Import / Export</h1>
+        <p className="text-sm text-gray-500 mt-0.5">AI column mapping · fuzzy dedupe · voter-to-phone matching · filtered exports</p>
       </div>
 
       {/* Tab switcher */}
@@ -1087,11 +1080,37 @@ export default function ImportExportClient({ campaignId }: Props) {
             transition={{ duration: 0.2 }}
             className="space-y-5"
           >
-            {/* Import card */}
+            {/* Smart Import Wizard — primary CTA */}
+            <motion.a
+              href="/import-export/smart-import"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              transition={spring}
+              className="flex items-center justify-between gap-4 p-5 rounded-2xl border-2 cursor-pointer group"
+              style={{ borderColor: GREEN, backgroundColor: `${GREEN}06` }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}15` }}>
+                  <ArrowUpFromLine className="w-6 h-6" style={{ color: GREEN }} />
+                </div>
+                <div>
+                  <p className="font-bold text-base" style={{ color: NAVY }}>Smart Import Wizard</p>
+                  <p className="text-sm text-gray-500">Guided 5-step flow — upload, map columns, preview duplicates, choose merge strategy, import. Recommended for all new imports.</p>
+                </div>
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white group-hover:opacity-90" style={{ backgroundColor: GREEN }}>
+                Start <ArrowUpFromLine className="w-4 h-4" />
+              </div>
+            </motion.a>
+
+            {/* Manual Import card */}
             <Card className="overflow-hidden">
-              <CardHeader className="border-b-2 border-[#1D9E75]">
+              <CardHeader className="border-b-2 border-gray-200">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold" style={{ color: NAVY }}>Quick Import</h3>
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Manual Import</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">For experienced users. Drop a file and import immediately.</p>
+                  </div>
                   <div className="flex gap-2">
                     <MButton size="sm" variant="ghost" onClick={downloadTemplate}>
                       <FileText className="w-3.5 h-3.5" /> Template
@@ -1630,104 +1649,8 @@ export default function ImportExportClient({ campaignId }: Props) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="space-y-5"
           >
-            {/* Exports card */}
-            <Card className="overflow-hidden">
-              <CardHeader className="border-b-2 border-[#1D9E75]">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h3 className="font-semibold" style={{ color: NAVY }}>Targeted Exports</h3>
-                  <MButton onClick={exportOpsPack} loading={bulkExporting} variant="outline" size="sm">
-                    <Download className="w-4 h-4" /> Export All (Ops Pack)
-                  </MButton>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Purpose-built CSV exports for GOTV, canvassing, volunteers, donations, and compliance.</p>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {/* Background processing indicator */}
-                <AnimatePresence>
-                  {anyExporting && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mb-4 rounded-lg p-3 flex items-center gap-3"
-                      style={{ backgroundColor: `${GREEN}10`, border: `1px solid ${GREEN}30` }}
-                    >
-                      <div className="relative w-5 h-5">
-                        <Shimmer className="w-5 h-5 rounded-full" />
-                      </div>
-                      <p className="text-sm font-medium" style={{ color: GREEN }}>Preparing export...</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {EXPORT_TYPES.map((ex) => (
-                    <motion.button
-                      key={ex.endpoint}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      transition={spring}
-                      onClick={() => doExport(ex.endpoint, ex.label)}
-                      disabled={exportingByEndpoint[ex.endpoint]}
-                      className="flex items-start gap-3 text-left p-4 border border-gray-200 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors min-h-[44px] disabled:opacity-60"
-                    >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}10`, color: GREEN }}>
-                        {exportingByEndpoint[ex.endpoint]
-                          ? <Shimmer className="w-5 h-5 rounded" />
-                          : ex.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: NAVY }}>{ex.label}</p>
-                        <p className="text-xs text-gray-500">{ex.description}</p>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Export history */}
-            <Card>
-              <CardHeader>
-                <h3 className="font-semibold flex items-center gap-2" style={{ color: NAVY }}>
-                  <History className="w-4 h-4" /> Export History
-                </h3>
-              </CardHeader>
-              <CardContent>
-                {exportHistory.length === 0 ? (
-                  <EmptyState
-                    icon={<Download className="w-10 h-10" />}
-                    title="No exports yet"
-                    description="Download any export above to see it tracked here."
-                  />
-                ) : (
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-gray-600 font-medium">Type</th>
-                          <th className="px-3 py-2 text-left text-gray-600 font-medium">Filename</th>
-                          <th className="px-3 py-2 text-left text-gray-600 font-medium">When</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {exportHistory.slice(0, 20).map((item, i) => (
-                          <tr key={`${item.downloadedAt}-${i}`} className="hover:bg-gray-50/50">
-                            <td className="px-3 py-2">
-                              <Badge variant="info">{item.type}</Badge>
-                            </td>
-                            <td className="px-3 py-2 text-gray-800 truncate max-w-[200px]">{item.filename}</td>
-                            <td className="px-3 py-2 text-gray-500">{new Date(item.downloadedAt).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ExportPanel campaignId={campaignId} />
           </motion.div>
         )}
       </AnimatePresence>
