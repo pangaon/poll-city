@@ -16,7 +16,10 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 
 ## 🟠 STRIPE — Fundraising donations won't process without these
 
-Phase 4 (Stripe integration) is built and deployed. These env vars make it live.
+**ARCHITECTURE NOTE (2026-04-16):** Stripe Connect is now fully wired.
+Each campaign connects their own Stripe Express account. Donations flow directly
+to the campaign's bank. Poll City automatically takes 1.5% of each donation.
+Print shop marketplace fee is 15% (unchanged). Your SaaS subscriptions go direct to you.
 
 ### Step A — Add env vars to Railway
 
@@ -31,6 +34,24 @@ Go to Railway → Poll City service → Variables tab. Add each one:
 - [ ] **2. Add `STRIPE_SECRET_KEY` to Railway**
 - [ ] **3. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Railway**
 - [ ] **3b. Also add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel** (the public donation page `/donate/[slug]` runs on Vercel — `NEXT_PUBLIC_` vars are baked into the build and MUST be set in Vercel Project Settings, not just Railway)
+
+### Step A2 — Enable Stripe Connect on YOUR Stripe account
+
+This is a one-time platform-level setting. Campaigns cannot connect until you do this.
+
+- [ ] **3c. Enable Stripe Connect** in your Stripe Dashboard:
+  1. Go to [stripe.com](https://stripe.com) → **Connect** (left sidebar)
+  2. Click **Get started** (or it may already be enabled if you've used it before)
+  3. Under **Platform settings**, set:
+     - Business type: **Platform** (not marketplace)
+     - Onboarding: **Express** (recommended — Stripe handles the hosted form)
+  4. Under **Branding**, add Poll City logo/name so campaigns see it during onboarding
+  5. Save
+
+- [ ] **3d. Set Connect return/refresh URLs in Stripe Dashboard**:
+  1. Go to Connect → Settings → OAuth
+  2. Add `https://app.poll.city` to **Redirect URIs**
+  3. Save
 
 ### Step B — Register the fundraising webhook in Stripe Dashboard
 
@@ -63,7 +84,17 @@ These power the pricing page and client subscription management.
 - [ ] **6. Register platform webhook in Stripe**: URL `https://app.poll.city/api/stripe/webhook`
 - [ ] **7. Add `STRIPE_WEBHOOK_SECRET` to Railway**
 - [ ] **8. Add `STRIPE_STARTER_PRICE_ID` to Railway**
-- [ ] **9. Add `STRIPE_PRO_PRICE_ID` to Railway**
+- [ ] **9. Add `STRIPE_PRO_PRICE_ID` to Railway`**
+
+### Step D — How campaigns connect their Stripe (your clients do this, not you)
+
+Once your platform is live, each campaign connects their account by:
+1. Going to **Fundraising → Settings** inside app.poll.city
+2. Clicking **Connect Stripe** (triggers the `/api/campaigns/[id]/stripe/onboard` endpoint you just shipped)
+3. Completing Stripe's hosted Express onboarding form (~5 minutes, needs bank account + ID)
+4. Redirected back to app.poll.city — campaign is now ready to accept donations
+
+Until a campaign completes this, the donation page shows: *"This campaign is not yet accepting online donations."*
 
 ---
 
