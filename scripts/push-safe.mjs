@@ -7,7 +7,10 @@ function run(command, options = {}) {
 
 function runLogged(command) {
   console.log(`\n$ ${command}`);
-  execSync(command, { stdio: "inherit" });
+  const env = command.includes("npm run build")
+    ? { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096", NEXT_TELEMETRY_DISABLED: "1" }
+    : process.env;
+  execSync(command, { stdio: "inherit", env });
 }
 
 function fail(message) {
