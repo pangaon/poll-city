@@ -983,13 +983,6 @@ model Campaign {
   foodOrders           FoodOrder[]
   vendorOutreachLogs   VendorOutreachLog[]
 
-  // Reputation Command + Alerts Engine (RCAE)
-  reputationAlerts        ReputationAlert[]
-  reputationIssues        ReputationIssue[]
-  reputationResponseActions ReputationResponseAction[]
-  reputationResponsePages ReputationResponsePage[]
-  amplificationActions    AmplificationAction[]
-
   @@unique([customDomain])
   @@index([slug])
   @@index([isPublic, isActive])
