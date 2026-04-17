@@ -224,12 +224,12 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 | Task | Status | Notes |
 |---|---|---|
-| Build fix — CampaignType missing "leadership" | CLAIMED 2026-04-16 | dashboard-studio.tsx:120 |
-| GAP-1+2 — Print job pre-confirmed as paid + no webhook | CLAIMED 2026-04-16 | create-intent sets "paid" before Stripe confirms; no payment_intent.succeeded handler |
-| GAP-3+4 — subscription.updated missing + hardcoded 30-day period | CLAIMED 2026-04-16 | Platform webhook gaps — plan drift + period end drift |
-| GAP-5 — Cross-campaign donor customer sharing | CLAIMED 2026-04-16 | Code comment + architectural note; no schema change needed |
-| GAP-6 — Orphan Stripe products/prices on abandoned flows | CLAIMED 2026-04-16 | Replace products.create+prices.create with inline price_data |
-| GAP-7 — Duplicated Stripe client instantiation in 4 files | CLAIMED 2026-04-16 | Import { stripe } from connect.ts everywhere |
+| Build fix — CampaignType missing "leadership" | DONE — 36a5414 | dashboard-studio.tsx:120 |
+| GAP-1+2 — Print job pre-confirmed as paid + no webhook | DONE — 36a5414 | status="awarded" on intent create; payment_intent.succeeded/failed handlers added to platform webhook |
+| GAP-3+4 — subscription.updated missing + hardcoded 30-day period | DONE — 36a5414 | customer.subscription.updated handler added; period dates use Stripe's actual values |
+| GAP-5 — Cross-campaign donor customer sharing | DONE — 36a5414 | Code comment + architectural note added; by-design for Connect destination charges |
+| GAP-6 — Orphan Stripe products/prices on abandoned flows | DONE — 36a5414 | Replaced products.create+prices.create with inline price_data (product_data inline, double-cast) |
+| GAP-7 — Duplicated Stripe client instantiation in 4 files | DONE — 36a5414 | All 4 files now import { stripe } from @/lib/stripe/connect |
 
 ---
 
