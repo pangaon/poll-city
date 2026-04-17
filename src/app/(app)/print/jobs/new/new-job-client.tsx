@@ -286,12 +286,18 @@ export default function NewPrintJobClient({ campaignId }: Props) {
 
             {/* Budget fields */}
             <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-gray-100">
-              <FormField label="Budget Min ($)" description="Optional — minimum you want to spend">
-                <Input type="number" min={0} value={form.budgetMin} onChange={(e) => setForm((prev) => ({ ...prev, budgetMin: e.target.value }))} placeholder="e.g. 500" />
-              </FormField>
-              <FormField label="Budget Max ($)" description="Optional — cap for this job">
-                <Input type="number" min={0} value={form.budgetMax} onChange={(e) => setForm((prev) => ({ ...prev, budgetMax: e.target.value }))} placeholder="e.g. 1500" />
-              </FormField>
+              <div>
+                <FormField label="Budget Min ($)">
+                  <Input type="number" min={0} value={form.budgetMin} onChange={(e) => setForm((prev) => ({ ...prev, budgetMin: e.target.value }))} placeholder="e.g. 500" />
+                </FormField>
+                <p className="text-xs text-gray-400 mt-1">Optional — minimum you want to spend</p>
+              </div>
+              <div>
+                <FormField label="Budget Max ($)">
+                  <Input type="number" min={0} value={form.budgetMax} onChange={(e) => setForm((prev) => ({ ...prev, budgetMax: e.target.value }))} placeholder="e.g. 1500" />
+                </FormField>
+                <p className="text-xs text-gray-400 mt-1">Optional — cap for this job</p>
+              </div>
             </div>
 
             {/* Pricing table */}

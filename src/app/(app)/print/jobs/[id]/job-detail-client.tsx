@@ -241,15 +241,15 @@ export default function JobDetailClient({ jobId }: Props) {
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-              {specs.size && <><dt className="text-gray-500">Size</dt><dd className="font-medium col-span-1">{String(specs.size)}</dd></>}
-              {specs.stock && <><dt className="text-gray-500">Stock</dt><dd className="font-medium">{String(specs.stock)}</dd></>}
-              {specs.turnaround && <><dt className="text-gray-500">Turnaround</dt><dd className="font-medium capitalize">{String(specs.turnaround)}</dd></>}
-              {specs.doubleSided !== undefined && <><dt className="text-gray-500">Sides</dt><dd className="font-medium">{specs.doubleSided ? "Double sided" : "Single sided"}</dd></>}
-              {specs.coatingUV && <><dt className="text-gray-500">Coating</dt><dd className="font-medium">UV gloss</dd></>}
-              {specs.coatingMatte && <><dt className="text-gray-500">Coating</dt><dd className="font-medium">Matte</dd></>}
-              {specs.designMethod && <><dt className="text-gray-500">Design</dt><dd className="font-medium capitalize">{String(specs.designMethod).replace("_", " ")}</dd></>}
-              {specs.totalPrice && <><dt className="text-gray-500">Est. Total</dt><dd className="font-medium text-emerald-700">${Number(specs.totalPrice).toLocaleString()}</dd></>}
-              {specs.unitPrice && <><dt className="text-gray-500">Est. Unit</dt><dd className="font-medium">${Number(specs.unitPrice).toFixed(2)}</dd></>}
+              {!!specs.size && <><dt className="text-gray-500">Size</dt><dd className="font-medium col-span-1">{String(specs.size)}</dd></>}
+              {!!specs.stock && <><dt className="text-gray-500">Stock</dt><dd className="font-medium">{String(specs.stock)}</dd></>}
+              {!!specs.turnaround && <><dt className="text-gray-500">Turnaround</dt><dd className="font-medium capitalize">{String(specs.turnaround)}</dd></>}
+              {specs.doubleSided !== undefined && <><dt className="text-gray-500">Sides</dt><dd className="font-medium">{!!specs.doubleSided ? "Double sided" : "Single sided"}</dd></>}
+              {!!specs.coatingUV && <><dt className="text-gray-500">Coating</dt><dd className="font-medium">UV gloss</dd></>}
+              {!!specs.coatingMatte && <><dt className="text-gray-500">Coating</dt><dd className="font-medium">Matte</dd></>}
+              {!!specs.designMethod && <><dt className="text-gray-500">Design</dt><dd className="font-medium capitalize">{String(specs.designMethod).replace("_", " ")}</dd></>}
+              {!!specs.totalPrice && <><dt className="text-gray-500">Est. Total</dt><dd className="font-medium text-emerald-700">${Number(specs.totalPrice).toLocaleString()}</dd></>}
+              {!!specs.unitPrice && <><dt className="text-gray-500">Est. Unit</dt><dd className="font-medium">${Number(specs.unitPrice).toFixed(2)}</dd></>}
             </dl>
             {job.description && <p className="mt-3 text-sm text-gray-600 border-t border-gray-100 pt-3">{job.description}</p>}
             {(job.deliveryAddress || job.deliveryCity) && (
