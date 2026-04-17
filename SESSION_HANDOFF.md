@@ -17,9 +17,9 @@
 
 **Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE).
 
-**Working tree:** One untracked orphan — `src/app/api/qr/batch/route.ts` (batch QR creation endpoint, max 30, from prior stash). Not committed. Safe to claim and push when ready.
+**Working tree:** Clean. All files committed and pushed.
 
-**Stashes:** All old conflict stashes dropped. Working tree otherwise clean.
+**Stashes:** None.
 
 ---
 
@@ -42,6 +42,23 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — QR Capture UX hardening + batch creation)
+
+**What shipped (commit `fd3ef35`):**
+- **Network error fix:** `POST /api/qr` — wrapped `prisma.qrCode.create` in try/catch; now returns `{ error: "..." }` JSON instead of HTML 500 that the client couldn't parse (root of the "Network error. Please try again." bug)
+- **`POST /api/qr/batch`** — new endpoint, create up to 30 QR codes in one request; items array (label + locationName per code) + shared settings (type/funnel/placement/teaserMode/landingConfig)
+- **Modal rebuilt** (`qr-hub-client.tsx`) — three modes:
+  - **Quick:** placement auto-sets type+funnel, 3 fields, ~10 second flow
+  - **Full Setup:** all fields + 12-intent multi-select checkbox grid
+  - **Batch:** auto-number (prefix + count) or location list (one per line, up to 30)
+- PLACEMENT_DEFAULTS map: picking placement drives type+funnel automatically
+- Error messages now show actual server text, not a generic catch string
+- Railway DB migration was already run (per prior session) — QR tables live, codes should create successfully
+
+**NOTE:** GEORGE_TODO.md step 2 (QR migration) was already done per the prior session that ran `npx prisma db push`. If QR code creation still fails, check the error message — it will now say exactly what's wrong.
 
 ---
 
