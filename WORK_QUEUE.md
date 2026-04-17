@@ -356,9 +356,9 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| /print/jobs — full job management | CLAIMED 2026-04-17 | 216 lines. Add status pipeline, vendor assignment, delivery tracking, cost tracking. |
-| /print/jobs/[id] — full job detail | CLAIMED 2026-04-17 | 258 lines. Add proof approval flow, revision history, delivery status, invoice. |
-| /print/jobs/new — full job creation | CLAIMED 2026-04-17 | 299 lines. Add product selector, quantity estimator, template picker, budget check. |
+| /print/jobs — full job management | DONE — 275bad7 | Status pipeline, vendor assignment, delivery tracking, cost tracking. |
+| /print/jobs/[id] — full job detail | DONE — 275bad7 | Proof approval flow, revision history, delivery status, invoice. |
+| /print/jobs/new — full job creation | DONE — 275bad7 | Product selector, quantity estimator, template picker, budget check. |
 | /print/templates — full customization | PENDING | 311 lines. Add template editor link, category filter, preview, usage stats. |
 | /print/packs — full pack management | PENDING | 549 lines. Add pack builder, bulk order, field distribution tracking. |
 | /print/shops — full shop listing | PENDING | 169 lines. Add distance filter, capacity, turnaround time, ratings, contact. |

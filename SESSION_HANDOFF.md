@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: full platform audit + report)
+**Updated by:** Claude Sonnet 4.6 (session: Sprint 4 print/jobs DONE — WORK_QUEUE hardened)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -15,7 +15,7 @@
 - The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 
-**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE).
+**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (275bad7 + b64242b — jobs list, detail, new — DONE).
 
 **Working tree:** Clean. All files committed and pushed.
 
@@ -42,6 +42,17 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — WORK_QUEUE hardening: Sprint 4 print/jobs marked DONE)
+
+**What happened:**
+- WORK_QUEUE updated: `/print/jobs`, `/print/jobs/[id]`, `/print/jobs/new` — CLAIMED → DONE (275bad7 + b64242b)
+- SESSION_HANDOFF broadcast updated to reflect Sprint 4 print suite is live
+- No code written — coordination file fix only
+
+**Next session opener:** Sprint 4 is partially done. Print/jobs suite is live. Next up: `/print/templates` (PENDING — 311 lines, template editor link + category filter + preview + usage stats), or start `/forms` (234 lines). Pick one, claim it, build it.
 
 ---
 
