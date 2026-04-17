@@ -10,6 +10,8 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "bcryptjs", "resend"],
     optimizePackageImports: ["lucide-react", "recharts"],
+    workerThreads: false,
+    cpus: 1,
   },
 
   // Pass VAPID key to client-side
