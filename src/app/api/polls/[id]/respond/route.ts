@@ -513,6 +513,78 @@ export async function POST(
     return NextResponse.json({ data: { recorded: validRatings.length, receipt: receipt.receiptCode } }, { status: 201 });
   }
 
+  // ── EMOJI REACT (select one emoji option) ────────────────────────────────
+  if (poll.type === "emoji_react") {
+    const optionId = typeof body.optionId === "string" ? body.optionId : null;
+    if (!optionId) {
+      return NextResponse.json({ error: "optionId required for emoji_react polls" }, { status: 422 });
+    }
+    if (!validOptionIds.has(optionId)) {
+      return NextResponse.json({ error: "optionId does not belong to this poll" }, { status: 422 });
+    }
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+    const receipt = generateReceipt(params.id);
+    const err = await runWithDuplicateProtection(async () => {
+      await prisma.$transaction([
+        prisma.pollResponse.create({
+          data: { pollId: params.id, voteHash, receiptHash: receipt.receiptHash, optionId, postalCode, ward, riding, ipHash },
+        }),
+        prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
+      ]);
+    });
+    if (err) return err;
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
+    return NextResponse.json({ data: { recorded: 1, receipt: receipt.receiptCode } }, { status: 201 });
+  }
+
+  // ── PRIORITY RANK (drag-to-order priority selection) ─────────────────────
+  if (poll.type === "priority_rank") {
+    const rawRanked = Array.isArray(body.rankedResponses) ? body.rankedResponses : null;
+    if (!rawRanked || rawRanked.length === 0) {
+      return NextResponse.json({ error: "rankedResponses array required for priority_rank polls" }, { status: 422 });
+    }
+    const validRanked = rawRanked.filter(
+      (r): r is { optionId: string; rank: number } => {
+        if (!r || typeof r !== "object") return false;
+        const entry = r as Record<string, unknown>;
+        return (
+          typeof entry.optionId === "string" &&
+          validOptionIds.has(entry.optionId) &&
+          typeof entry.rank === "number" &&
+          Number.isInteger(entry.rank) &&
+          entry.rank >= 1 &&
+          entry.rank <= validOptionIds.size
+        );
+      }
+    );
+    if (validRanked.length === 0) {
+      return NextResponse.json({ error: "No valid ranked responses (check optionId and rank values)" }, { status: 422 });
+    }
+    const existingVote = await prisma.pollResponse.findUnique({ where: { voteHash }, select: { id: true } });
+    if (existingVote) return NextResponse.json({ error: "You have already voted on this poll" }, { status: 409 });
+    const receipt = generateReceipt(params.id);
+    const err = await runWithDuplicateProtection(async () => {
+      await prisma.$transaction([
+        prisma.pollResponse.createMany({
+          data: validRanked.map((r, idx) => ({
+            pollId: params.id,
+            optionId: r.optionId,
+            rank: r.rank,
+            voteHash: idx === 0 ? voteHash : null,
+            receiptHash: idx === 0 ? receipt.receiptHash : null,
+            postalCode, ward, riding, ipHash,
+          })),
+          skipDuplicates: true,
+        }),
+        prisma.poll.update({ where: { id: params.id }, data: { totalResponses: { increment: 1 } } }),
+      ]);
+    });
+    if (err) return err;
+    if (sessionUserId) void awardPollCredits(sessionUserId, params.id);
+    return NextResponse.json({ data: { recorded: validRanked.length, receipt: receipt.receiptCode } }, { status: 201 });
+  }
+
   // Unknown poll type
   return NextResponse.json({ error: `Poll type "${poll.type}" does not support voting via this endpoint` }, { status: 422 });
 }
@@ -622,6 +694,29 @@ export async function GET(
       take: 50,
     });
     return NextResponse.json({ data: { poll, results: entries, type: "word_cloud" } });
+  }
+
+  if (poll.type === "emoji_react") {
+    const results = poll.options.map((o) => ({ ...o, count: o._count.responses }));
+    return NextResponse.json({ data: { poll, results, type: "emoji_react" } });
+  }
+
+  if (poll.type === "priority_rank") {
+    const results = await Promise.all(
+      poll.options.map(async (opt) => {
+        const rows = await prisma.pollResponse.findMany({
+          where: { pollId: poll.id, optionId: opt.id },
+          select: { rank: true },
+        });
+        const validRanks = rows.map((r) => r.rank).filter((r): r is number => r !== null);
+        const avgRank = validRanks.length > 0
+          ? validRanks.reduce((a, b) => a + b, 0) / validRanks.length
+          : null;
+        return { id: opt.id, text: opt.text, count: rows.length, avgRank };
+      })
+    );
+    results.sort((a, b) => (a.avgRank ?? 999) - (b.avgRank ?? 999));
+    return NextResponse.json({ data: { poll, results, type: "priority_rank" } });
   }
 
   if (poll.type === "timeline_radar") {

@@ -5,36 +5,46 @@ import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
 import { Suspense } from "react";
 import PrintWalkListClient from "@/app/(app)/canvassing/print-walk-list/print-walk-list-client";
 
-export const metadata = { title: "Walk List — Print" };
+export const metadata = { title: "Print Preview — Poll City" };
 
 interface Props {
   searchParams: {
     assignmentId?: string;
+    assignmentName?: string;
     ward?: string;
     support?: string;
     standalone?: string;
-    mode?: string;
+    mode?: "canvass" | "signs" | "lit-drop";
+    template?: string;
   };
 }
 
-/**
- * Isolated print page — no sidebar, no topbar, no app chrome.
- * Renders the walk list document and auto-triggers window.print() on load.
- * Lives outside (app) layout so the browser captures only the document.
- */
 export default async function PrintWalkListPage({ searchParams }: Props) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
   const { campaignId, campaignName } = await resolveActiveCampaign();
 
+  const mode = (["canvass", "signs", "lit-drop"] as const).includes(
+    searchParams.mode as "canvass" | "signs" | "lit-drop",
+  )
+    ? (searchParams.mode as "canvass" | "signs" | "lit-drop")
+    : "canvass";
+
+  const template = (["standard", "compact", "signs", "gotv"] as const).includes(
+    searchParams.template as "standard" | "compact" | "signs" | "gotv",
+  )
+    ? (searchParams.template as "standard" | "compact" | "signs" | "gotv")
+    : "standard";
+
   return (
     <Suspense>
       <PrintWalkListClient
         campaignId={campaignId}
         campaignName={campaignName}
-        mode="canvass"
+        mode={mode}
         defaultAssignmentId={searchParams.assignmentId}
+        defaultTemplate={template}
       />
     </Suspense>
   );
