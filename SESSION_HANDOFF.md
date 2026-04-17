@@ -26,7 +26,24 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Platform isolation audit + George invisibility)
+## LAST SESSION (2026-04-17 — Edge cases, UX gaps, compliance engine hardening)
+
+**What shipped (all confirmed in HEAD):**
+
+### Edge case fixes
+- **Email/SMS blast skip count** — `POST /api/communications/audience` now returns `skipped` + `totalInSegment`. Email + SMS composers show amber warning when contacts in the selected segment have no email/phone. Previously silent skip.
+- **Canvassing empty states** — turf list now says "draw a boundary on the map to create your first turf"; walk list empty state points to the New Walk List button.
+- **Recurring failed plans** — failed plans now show Contact (mailto pre-written) + Cancel buttons. Previously no action was available for failed plans.
+- **Receipts tab** — filter bar (All / Needs Attention / Sent / Voided), failed receipts show red badge + row highlight + "Retry Send" CTA. Previously failed receipts looked identical to pending.
+
+### Compliance engine hardening — accountant/auditor experience
+- **Auto-apply election-type rules on setup** — setup wizard completion now upserts `FundraisingComplianceConfig` with correct limits: federal=$1,675, provincial=$3,425, municipal=$1,200. Previously all campaigns defaulted to Ontario municipal regardless of type.
+- **Legal framework banner** — compliance tab now shows applicable law (Canada Elections Act / Ontario Election Finances Act), contribution limit, anonymous cap, corporate/union status for the campaign's election type.
+- **Fundraising page** now passes `electionType` + `jurisdiction` to client.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Platform isolation audit + George invisibility)
 
 **What shipped — commit d27336f:**
 
@@ -126,9 +143,16 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Platform isolation audit complete (2026-04-17). George (SUPER_ADMIN) is now invisible
-to campaign users — team lists, activity feeds, task records, finance records all clean.
-Build stable on Windows: workerThreads: false + cpus: 1 in next.config.js. Vercel green.
+Edge case + compliance hardening complete (2026-04-17). All confirmed in HEAD.
+Build command on Windows: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
+
+What's live:
+- Email/SMS blast now shows skip count when contacts have no email/phone
+- Canvassing empty states have guidance text
+- Recurring failed plans have Contact + Cancel buttons
+- Receipts tab has filter bar + red badge for failed receipts
+- Compliance auto-initializes from election type on setup wizard completion
+- Legal framework banner in compliance tab (federal=$1,675, provincial=$3,425, municipal=$1,200)
 
 Read WORK_QUEUE.md. Next Sprint 1 priority:
 
