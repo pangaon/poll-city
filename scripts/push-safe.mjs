@@ -61,6 +61,8 @@ if (behind > 0) {
 runLogged("npm run security:gates");
 runLogged("npm run test:contracts");
 runLogged("npm run test");
+// Windows ENOENT race: pre-create .next dirs Next.js renames into during build
+run("node -e \"const fs=require('fs');['.next/server/pages','.next/export'].forEach(d=>fs.mkdirSync(d,{recursive:true}))\"");
 runLogged("npm run build");
 
 if (shouldPush) {
