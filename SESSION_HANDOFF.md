@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: FuelOps — campaign food & vendor logistics module)
+**Updated by:** Claude Sonnet 4.6 (session: Finance Sprint 2 — expenses receipt upload + vendors full edit)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -26,7 +26,37 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Site-wide input intelligence: write assist, spellcheck, address autocomplete)
+## LAST SESSION (2026-04-17 — Finance Sprint 2: expenses receipt upload + vendors full edit)
+
+**What shipped — commit 2850704:**
+
+### New infrastructure
+- **`/api/finance/assets` (POST)** — receipt/invoice upload to Vercel Blob. JPG/PNG/WebP/PDF, 10MB max, magic-byte validation. Returns `{ id, fileUrl, fileName }`. Creates `FinanceAsset` record with `campaignId` scope.
+
+### Expenses page (`expenses-client.tsx`) — major expansion
+- **Receipt upload** — file picker in Add Expense modal; uploads to `/api/finance/assets` first, attaches `receiptAssetId` to expense creation. Receipt previewed as link on expense row.
+- **`missingReceipt` auto-flag** — set `true` when expense > $500 submitted without a receipt.
+- **Reject flow** — "Reject" button on pending expenses opens reason modal; POSTs to `/api/finance/expenses/:id/reject`.
+- **Bulk CSV import** — "Import CSV" button; parses 5-column format (description, amount, date, payment_method, notes); shows preview table with validation errors; sequential POST loop.
+- **Vendor dropdown** — vendor name field replaced with `vendorId` selector populated from `/api/finance/vendors`.
+- **`missingReceipt` URL filter** — page reads `?missingReceipt=true` on mount; shows amber compliance badge in filter bar; filter toggle in UI.
+- **GET include fix** — `receiptAsset` + `invoiceAsset` now included in expense list API response.
+
+### Vendors page (`vendors-client.tsx`) — major expansion
+- **Full edit** — pencil icon per card opens populated modal; PATCH `/api/finance/vendors/:id` on save.
+- **Deactivate** — PATCH with `{ isActive: false }`; card goes grey with "Inactive" badge.
+- **Extended fields** — `address`, `website`, `paymentTerms`, `taxNumber`, `notes`, `isPreferred` all editable.
+- **W-9 badge** — amber badge appears on card when `taxNumber` is set.
+- **Type + preferred filters** — vendor type dropdown + "Preferred only" amber toggle in filter bar.
+
+### Sniff notes
+- No new schema changes needed — `FinanceAsset` model already existed.
+- Build: `npm run build` exits 0, `tsc --noEmit` exits 0.
+- `VENDOR_FIELDS` const defined outside component (JSX `as const` syntax restriction).
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Site-wide input intelligence: write assist, spellcheck, address autocomplete)
 
 **What shipped — commit 8f8dd18:**
 
@@ -353,26 +383,23 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Finance Sprint 2 gap-close DONE (2026-04-17) — commit 1901656. Build is green.
+Finance Sprint 2 DONE (2026-04-17) — commit 2850704. Build is green.
 
 What's live in finance:
-- /finance/expenses — missingReceipt filter wired end-to-end (overview badge → URL param → API WHERE clause)
-- /finance/budget — budget cap sub-label in footer ("of $X cap", red when over-allocated)
-- /finance/budget — full inline editing, per-line lock/approve, approve-all, delete now committed
+- /finance/expenses — receipt upload (Vercel Blob), reject flow, bulk CSV import, vendor dropdown, missingReceipt auto-flag
+- /finance/vendors — full edit modal, deactivate, W-9 badge, preferred filter, type filter
+- /api/finance/assets — new receipt/invoice upload endpoint (magic-byte validated, campaignId scoped)
 - /finance/purchase-requests — full approval chain DONE (commit e900943)
+- /finance/budget — full inline editing, lock/approve, cap sub-label, variance column
 - /finance/reimbursements — CLAIMED 2026-04-17 (in progress by another session)
 
 Next recommended tasks (in priority order):
 1. /finance/reimbursements — CLAIMED — continue or claim if abandoned (bank info, approval chain, batch)
-2. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
-3. /finance/approvals — bulk approve/reject, delegation, escalation rules, audit trail
-4. CIE Phase 2 — Wire outreach email (Resend "claim your profile" to verified candidates)
+2. /finance/approvals — bulk approve/reject, delegation, escalation rules, audit trail
+3. /finance/reports — spend by category, period comparison, export CSV/PDF
+4. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
 
-KNOWN: intel module, fuel module, reputation module all exist on disk but are untracked in git.
-  src/lib/intel/, src/lib/reputation/, src/app/(app)/intel/, src/app/api/intel/ etc. are ?? untracked.
-  Do NOT git add these blindly — they have TypeScript errors in route files (session.user typing).
-  The build passes WITH these files present because Next.js webpack compiles them but tsc skips them
-  during build (inline import("next-auth").Session doesn't pick up module augmentation correctly).
+KNOWN: reputation module files untracked (`src/app/api/reputation/`, `src/lib/reputation/`) — another session built but didn't commit. Do not git add blindly.
 
 Read WORK_QUEUE.md. Pick one unclaimed task, claim it, run npm run build before pushing.
 ```
