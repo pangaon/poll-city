@@ -458,8 +458,18 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
   ```
   Until this runs, campaigns of type nomination/leadership will fail to save.
 
+- [ ] **61. Run security schema migration when Railway DB is reachable**
+  Two new models added: `UserSession` (active session tracking) and `ApiKey` (API key management).
+  Prisma client regenerated locally but Railway DB has not been migrated.
+  Connect to Railway and run:
+  ```
+  npx prisma migrate dev --name security_sessions_apikeys --skip-seed
+  ```
+  Until this runs: the Active Sessions and API Keys sections of /settings/security will fail silently
+  (writes to those tables will error). 2FA, WebAuthn, and login history work fine — they use existing models.
+
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-16*
+*This file is maintained by AI sessions. Last updated: 2026-04-17*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
