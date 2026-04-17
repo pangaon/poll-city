@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-16
-**Updated by:** Claude Sonnet 4.6 (session: /eday full build)
+**Last updated:** 2026-04-17
+**Updated by:** Claude Sonnet 4.6 (session: platform isolation audit + fixes)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -26,7 +26,28 @@
 
 ---
 
-## LAST SESSION (2026-04-16 — Security settings + Import hardening)
+## LAST SESSION (2026-04-17 — Platform isolation audit + George invisibility)
+
+**What shipped — commit d27336f:**
+
+### SUPER_ADMIN isolation — George is now invisible to campaign users
+10-gap audit of the platform. All gaps closed. George's identity no longer surfaces in any campaign-facing view.
+
+- **seed.ts** — all `admin.id` references in ActivityLog, Tasks, Interactions, FinanceExpenses reassigned to campaign team members. Only two Membership entries remain (required for demo login; both commented explaining why).
+- **Team list** — `prisma.membership.findMany` in both `settings/team/page.tsx` and `api/team/route.ts` now filters `user: { role: { not: "SUPER_ADMIN" } }`. George never appears in team lists even if memberships exist.
+- **Activity feed** — `api/activity/live-feed/route.ts` filters `visibleActivities` by excluding SUPER_ADMIN role. George's actions never appear in the war room dashboard feed.
+- **Team UI** — `SUPER_ADMIN` removed from the `ROLES` array in `team-client.tsx`. Campaign managers can no longer see or assign the platform operator role.
+- **Build fixes (pre-existing, now resolved):**
+  - `CampaignType` in `dashboard-studio.tsx` — added `"nomination"` and `"leadership"` to the union
+  - `import-pipeline.ts` — `ParseAndMapResult.mappedRows` interface updated to match actual `{ mapped, rawRow, idx }` structure
+  - `stripe/subscription/route.ts` — `items` array cast moved to outer level to fix Stripe SDK discriminated union error
+  - `next.config.js` — `workerThreads: false, cpus: 1` added to kill Windows NTFS race condition during build. **This is permanent — Vercel builds are now stable.**
+
+**Vercel:** `d27336f` is green and Current.
+
+---
+
+## PREVIOUS SESSION (2026-04-16 — Security settings + Import hardening)
 
 **What shipped — commits c5a4a51, ad628fb, b106236, 36a5414, 685f8c3:**
 
@@ -105,9 +126,9 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Recent commits: c5a4a51 shipped security settings (2FA/WebAuthn/sessions/API keys/PIPEDA) +
-import hardening (transforms panel, failed-rows CSV, merge strategy enforcement, conflict preview).
-ad628fb fixed Stripe SDK v22 type errors. All on main, build clean.
+Platform isolation audit complete (2026-04-17). George (SUPER_ADMIN) is now invisible
+to campaign users — team lists, activity feeds, task records, finance records all clean.
+Build stable on Windows: workerThreads: false + cpus: 1 in next.config.js. Vercel green.
 
 Read WORK_QUEUE.md. Next Sprint 1 priority:
 
