@@ -26,7 +26,50 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Polls full stack)
+## LAST SESSION (2026-04-17 — FuelOps: campaign food & vendor logistics)
+
+**What shipped — commit 7e46815 (FuelOps) + 7b3945f (schema fix):**
+
+### FuelOps — full enterprise module
+
+**Schema additions** (7 new models + 3 enum extensions):
+- `FoodVendor` — Ontario-wide vendor network (campaignId nullable = platform-wide)
+- `FoodVendorPricingTier` — per-headcount pricing tiers with lead time
+- `FoodVendorAgreement` — campaign-vendor partnership agreements
+- `FoodRequest` — food/catering/beverage/volunteer meal requests
+- `FoodQuote` — vendor quotes against requests
+- `FoodOrder` — confirmed orders with delivery tracking
+- `VendorOutreachLog` — outreach sequence tracking
+- `FinanceBudgetLineCategory.food` + `FinanceVendorType.food_vendor` + `FinanceSourceType.fuel_order` added
+
+**Core lib** (`src/lib/fuel/`):
+- `ranking-engine.ts` — 6-component weighted scoring: price 30%, reliability 25%, lead time 15%, distance 10%, dietary fit 10%, partnership 10%
+- `post-fuel-expense.ts` — auto-posts FinanceExpense on confirm/deliver, idempotent via `externalReference: "fuelorder:{id}"`, fallback budget line: food → events → volunteer_support
+- `email-transport.ts` — production/stub adapter wrapping `src/lib/email.ts`
+- `outreach-sequences.ts` — 3-step sequence builder (initial/follow_up_1/follow_up_2)
+
+**API Routes** (9 routes under `/api/fuel`):
+- Vendors: GET/POST list, GET/PATCH/DELETE detail, GET/POST pricing tiers, GET/POST agreements
+- Requests: GET/POST list, GET/PATCH detail, GET/POST quotes, POST quote select (creates order)
+- Orders: GET list, PATCH status pipeline
+- Outreach: GET logs, POST send step or update status
+
+**UI** (11 pages under `/fuel`):
+- Dashboard: 4 stat cards, urgent requests (<48h), recent orders
+- Vendors: searchable list with filters, add-vendor modal, full vendor detail with outreach panel
+- Requests: status-filtered list, new request form with ranked vendor results, request detail with quote comparison
+- Orders: status pipeline cards with advance/cancel
+- Outreach CRM: pending alert banner, manual status updates
+
+**Seed data:** 30 Ontario food vendors across 10 cities, `isSeeded: true`, deterministic IDs
+
+**Tests:** 21 passing (13 ranking-engine + 6 outreach-sequences + 2 integration)
+
+**Schema fix:** Removed orphaned RCAE back-relations from Campaign model (models never implemented).
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Polls full stack)
 
 **What shipped — commit d99a89c:**
 
@@ -263,26 +306,27 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-CIE (Candidate Intelligence Engine) DONE (2026-04-17). Full detection/scoring/review/outreach pipeline live.
+FuelOps DONE (2026-04-17) — commit 7e46815. Full campaign food & vendor logistics module live.
 Build command: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 What's live:
-- /intel — 6-tab command center (SUPER_ADMIN only)
-- /api/intel/* — source registry, leads, profiles, news, outreach, health
-- /api/cron/intel-ingest — run with CRON_SECRET Bearer header to ingest all active CIE sources
-- POST /api/intel/seed — seed 16 sources into DataSource table (run once after db push)
+- /fuel — dashboard, vendors, requests, orders, outreach CRM (5-tab nav)
+- /api/fuel/* — vendors, requests, quotes, orders, outreach
+- 30 Ontario food vendors seeded (platform-wide, campaignId: null)
+- Expense bridge: orders auto-post FinanceExpense on confirm/deliver
+- Ranking engine: 6-component weighted scoring live
 
-CRITICAL: db push still needed:
-  npx prisma db push
-  (6 new models: CandidateLead, CandidateProfile, NewsArticle, NewsSignal, CandidateOutreachAttempt, IntelSourceHealth)
-  (DataSource has 9 new fields)
+CRITICAL — db push still needed against Railway:
+  npx prisma db push --skip-generate
+  (7 new models: FoodVendor, FoodVendorPricingTier, FoodVendorAgreement, FoodRequest, FoodQuote, FoodOrder, VendorOutreachLog)
+  (3 enum extensions: FinanceBudgetLineCategory.food, FinanceVendorType.food_vendor, FinanceSourceType.fuel_order)
 
-GEORGE TODO: Add NEWS_API_KEY to Railway env vars to enable NewsAPI.org ingestion.
+No new GEORGE_TODO items — FuelOps is self-contained.
 
 Next recommended tasks:
-1. Communications Phase 7 — Automation Engine (AutomationFlow, triggers, steps, enrollment cron)
-2. CIE Phase 2 — Wire outreach email (Resend template for "claim your profile" to verified candidates)
-3. Finance Phase 8 hardening (remaining Sprint 2 items)
+1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
+2. CIE Phase 2 — Wire outreach email (Resend "claim your profile" template to verified candidates)
+3. FuelOps notifications — volunteer/staff email/SMS when order status changes
 
 Read WORK_QUEUE.md. Pick one, claim it, run npm run build before pushing.
 ```
