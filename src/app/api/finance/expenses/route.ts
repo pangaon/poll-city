@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
   const q = p.get("q");
   const limit = Math.min(Number(p.get("limit") ?? 50), 200);
   const offset = Number(p.get("offset") ?? 0);
+  const missingReceipt = p.get("missingReceipt");
 
   const expenses = await prisma.financeExpense.findMany({
     where: {
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
       ...(status ? { expenseStatus: status as FinanceExpenseStatus } : {}),
       ...(budgetLineId ? { budgetLineId } : {}),
       ...(vendorId ? { vendorId } : {}),
+      ...(missingReceipt === "true" ? { missingReceipt: true } : {}),
       ...(from || to ? {
         expenseDate: {
           ...(from ? { gte: new Date(from) } : {}),
@@ -87,6 +89,8 @@ export async function GET(req: NextRequest) {
       enteredBy: { select: { id: true, name: true } },
       approvedBy: { select: { id: true, name: true } },
       splitLines: true,
+      receiptAsset: { select: { id: true, fileName: true, fileUrl: true } },
+      invoiceAsset: { select: { id: true, fileName: true, fileUrl: true } },
     },
     orderBy: { expenseDate: "desc" },
     take: limit,
@@ -94,7 +98,14 @@ export async function GET(req: NextRequest) {
   });
 
   const total = await prisma.financeExpense.count({
-    where: { campaignId, deletedAt: null },
+    where: {
+      campaignId,
+      deletedAt: null,
+      ...(status ? { expenseStatus: status as FinanceExpenseStatus } : {}),
+      ...(budgetLineId ? { budgetLineId } : {}),
+      ...(vendorId ? { vendorId } : {}),
+      ...(missingReceipt === "true" ? { missingReceipt: true } : {}),
+    },
   });
 
   return NextResponse.json({ data: expenses, total });
