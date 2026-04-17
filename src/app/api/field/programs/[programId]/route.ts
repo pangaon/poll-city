@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       routes: {
         where: { deletedAt: null },
         select: {
-          id: true, name: true, status: true, totalStops: true,
+          id: true, name: true, status: true, isLocked: true, totalStops: true,
           estimatedMinutes: true, pollNumber: true, ward: true,
           _count: { select: { targets: true, shifts: true } },
         },
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [outcomeRows, dailyAttempts, canvasserGroups] = await Promise.all([
+  const [outcomeRows, dailyAttempts, canvasserGroups, routeAttemptGroups] = await Promise.all([
     prisma.fieldAttempt.groupBy({
       by: ["outcome"],
       where: { fieldProgramId: programId, campaignId },
@@ -71,6 +71,11 @@ export async function GET(req: NextRequest, { params }: Params) {
       _count: { _all: true },
       orderBy: { _count: { _all: "desc" } },
       take: 20,
+    }),
+    prisma.fieldAttempt.groupBy({
+      by: ["routeId"],
+      where: { fieldProgramId: programId, campaignId, routeId: { not: null } },
+      _count: { _all: true },
     }),
   ]);
 
