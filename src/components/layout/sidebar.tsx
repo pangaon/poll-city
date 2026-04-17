@@ -39,6 +39,7 @@ import {
   Brain,
   Search,
   Smartphone,
+  Package,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -76,7 +77,8 @@ const FIELD_SECTION: NavSection = {
     { href: "/field-ops",      icon: ClipboardList, label: "Field Ops"     },
     { href: "/field/programs", icon: ClipboardList, label: "Programs"      },
     { href: "/field/turf",     icon: Map,           label: "Turf & Map"    },
-    { href: "/field/mobile",   icon: Smartphone,    label: "Mobile Entry"  },
+    { href: "/field/mobile",     icon: Smartphone,    label: "Mobile Entry"  },
+    { href: "/field/materials",  icon: Package,       label: "Materials"     },
     { href: "/gotv",       icon: Target,        label: "GOTV"          },
     { href: "/eday",       icon: Vote,          label: "Election Day"  },
     { href: "/signs",      icon: PenSquare,     label: "Signs"         },
