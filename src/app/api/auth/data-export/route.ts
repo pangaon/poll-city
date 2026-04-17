@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       where: { userId },
       select: {
         role: true,
-        createdAt: true,
+        joinedAt: true,
         campaign: { select: { name: true, electionType: true } },
       },
     }),
