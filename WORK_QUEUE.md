@@ -122,7 +122,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 6 — Finance ↔ Fundraising reconciliation | DONE — 0188808 | GAP-005; /api/finance/reconciliation |
 | Phase 6 — Audit trail UI | DONE — 0a8d74b | /finance/audit |
 | Phase 7 — AI assist | DONE — 64d5dcc | get_finance_summary + get_budget_alerts (budget:read) |
-| Phase 8 — Hardening + permissions | PENDING | |
+| Phase 8 — Hardening + permissions | CLAIMED 2026-04-17 | Finance overview chart + variance table + recent transactions |
 
 ---
 
