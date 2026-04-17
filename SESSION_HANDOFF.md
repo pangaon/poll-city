@@ -43,6 +43,18 @@
 
 ---
 
+## LAST SESSION (2026-04-17 — npx prisma db push — Railway fully in sync)
+
+**What happened:** George ran `npx prisma db push` directly from this session. Railway DB is now fully in sync with the Prisma schema.
+
+**Tables now live on Railway:** AutomationRule, AutomationStep, AutomationEnrollment, AutomationStepCompletion, all CIE models (CandidateLead, CandidateProfile, NewsArticle, NewsSignal, CandidateOutreachAttempt, IntelSourceHealth), all RCAE models, QR Capture models, Finance FINANCE role enum.
+
+**GEORGE_TODO items closed:** 2 (QR migration), 62 (full db push), 66 (automation tables). Committed as `1059853`.
+
+**Platform is now fully wired end-to-end in production.** Every feature that was code-complete but blocked on DB schema is now live.
+
+---
+
 ## LAST SESSION (2026-04-17 — Sprint 3 COMPLETE: /field/materials + pre-existing build fixes)
 
 **What shipped:**
