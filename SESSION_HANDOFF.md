@@ -1,122 +1,167 @@
-# Session Handoff
+# Session Handoff — Poll City
+## The Army of One Coordination File
 
-**Last updated:** 2026-04-10
-**Session type:** Fundraising Suite build + platform sync + coordination system
+**Last updated:** 2026-04-16
+**Updated by:** Claude Sonnet 4.6 (session: /eday full build)
 
----
-
-## What shipped this session (all pushed, Vercel deploying)
-
-### Fundraising Suite — Phases 1-3 (commit d0a9c81)
-- Full domain model: 14 enums, 10 new Prisma models (FundraisingCampaign, DonorProfile, Pledge, Refund, DonationReceipt, RecurrencePlan, DonorAuditLog, etc.)
-- All APIs: /api/fundraising/{donations, campaigns, donors, sources, pledges, refunds, receipts, recurring, stats}
-- Compliance engine: src/lib/fundraising/compliance.ts — evaluateCompliance(), refreshDonorProfile()
-- Fundraising Command Center UI: /fundraising — 9 tabs (overview, donations, donors, initiatives, recurring, pledges, receipts, refunds, compliance)
-- Sidebar: /fundraising added to Finance section with TrendingUp icon
-
-### Field Programs + Routes (commit 730833e)
-- /api/field/programs + /[programId] — canvassing program CRUD
-- /api/field/routes + /[routeId]/{optimize,targets} — route management
-- /app/(app)/field/programs/ + /routes/ — UI pages for both
-- Sidebar: Programs + Routes added to Field Operations section
-
-### CRM additions (commit 730833e)
-- /api/crm/households + /[id]/{members,members/[contactId]} — household management
-- /app/(app)/contacts/duplicates/ — Duplicate review UI
-
-### Communications (commit 730833e)
-- /api/comms/segments + /[segmentId]/count — saved segments API
-- SavedSegment model in schema.prisma
-
-### Finance (commit 730833e)
-- src/lib/finance/post-print-expense.ts — print order → Finance expense auto-posting
-
-### Schema additions (730833e)
-- CandidateAppearance, CalendarSyncAccount, CalendarSyncLog, SavedSegment models
-
-### Coordination system (commit after this)
-- WORK_QUEUE.md — session task registry with claim/done mechanism
-- CLAUDE.md — mandatory session start rule (git pull + read WORK_QUEUE before touching anything)
-- SESSION_HANDOFF.md — this file, accurate current state
+> Every session reads this file. Every session updates it at the end.
+> This is not optional. This is how one army stays coordinated.
 
 ---
 
-## Current platform state (as of 2026-04-10)
+## HOW TO USE THIS FILE
 
-### Fully built and live
-- Auth: email/password + 2FA
-- Dashboard: all 8 data fields wired, 6 modes
-- GOTV: shared metrics truth, priority list, mark voted, rides
-- Field Ops: walk list, GPS, door-knock logging, signs, command centre
-- Field Ops: Programs + Routes (new)
-- Finance Suite: budget, expenses, vendors, procurement, reimbursements, approval queue
-- Fundraising Suite: full domain model, all APIs, compliance engine, Command Center UI
-- Communications: email/SMS blast, audience sizing, social schema, saved segments
-- Print: walk list, packs, inventory, print to finance bridge
-- CRM: contacts, households, duplicate detection + review UI
-- Adoni: 24 tools, multilingual, injection defense, real DB operations
-- Calendar: schema done (11 models)
+**At session start (takes 30 seconds):**
+1. `git pull origin main`
+2. Read WORK_QUEUE.md — task registry
+3. Read this file — battlefield state and context
+4. Claim your task in WORK_QUEUE.md before touching anything
 
-### Schema in code but NOT in production DB — George must run npx prisma db push
-- Calendar models (Calendar, CalendarItem, CalendarItemAssignment, etc.)
-- SavedSegment
-- CandidateAppearance, CalendarSyncAccount, CalendarSyncLog
-- All fundraising models (FundraisingCampaign, DonorProfile, Pledge, Refund, etc.)
-
-### Pending — see WORK_QUEUE.md
-- Calendar APIs + full UI (blocked until db push)
-- Communications Phases 3-10
-- Fundraising Phases 4-7 (Stripe, compliance config UI, reports, comms integration)
-- Field Ops Chunks 7-15
-- Finance Phases 6-8
-- Platform hardening: 145 legacy requirePermission routes to guardCampaignRoute
+**At session end:**
+1. Push all code (build must be green first)
+2. Update the "LAST SESSION" block below
+3. Update "CURRENT PLATFORM STATE" if anything changed
+4. Write the next session opener in "NEXT SESSION OPENER"
+5. Commit and push this file
 
 ---
 
-## LOGICAL BUILD ORDER — what must come before what
+## LAST SESSION (2026-04-16 — /eday full build)
 
-These dependencies matter. Do not build Phase N+1 before Phase N is done:
+**What shipped — commit 3cd4b3f:**
 
-1. **George runs `npx prisma db push`** → unlocks Calendar APIs + all fundraising endpoints in production
-2. **Calendar Phase 1 (APIs)** → before cross-system wiring (events/comms/print → calendar)
-3. **Comms Phase 1 (Templates)** → before Comms Phase 3 (scheduled messages use templates)
-4. **Comms Phase 3 (Scheduled Messages)** → before Comms Phase 7 (automations)
-5. **Fundraising Phase 4 (Stripe)** → before Phase 7 (receipt email delivery)
-6. **guardCampaignRoute migration** → can run any time, standalone, high security value
-7. **Field Ops Chunks 7-9** → before Chunk 14 (follow-up and GOTV integration)
+`/eday` — full election day ops rebuild (role-aware)
 
-Safe to build in parallel:
-- Finance Phase 6 (reports) — no dependencies on anything pending
-- guardCampaignRoute migration — standalone
-- Comms Templates (Phase 1) — no blockers
-- Fundraising Phase 6 (reports) — no Stripe dependency
+- **Campaign Managers** (ADMIN/CAMPAIGN_MANAGER/SUPER_ADMIN) now see a 4-tab election day command center:
+  - **Command tab** — The Gap hero number, voted count, hourly vote rate chart (last 6h), win threshold progress bar, projection to poll close, scrutineer quick-status, results pulse. 30s auto-refresh.
+  - **Strike-Off tab** — Top 25 P1 (strong support) contacts not yet voted. One-tap mark-voted with optimistic gap decrement. Click-to-call.
+  - **Rides tab** — Accessibility + ride-flagged supporters. Arrange Ride + Mark Voted in same card.
+  - **Polls tab** — Scrutineer deployment grid (credential status + submission status) + live results feed with running candidate totals.
+
+- **All other roles** — unchanged scrutineer OCR result-entry tool (byte-for-byte original).
+
+- **New API: `/api/eday/ops`** — single round-trip returning all four panels. Requires ADMIN|CAMPAIGN_MANAGER|SUPER_ADMIN. `no-store` cache. Pulls from: `getGotvSummaryMetrics`, `ScrutineerAssignment`, `LiveResult`, `Contact` (priority + rides).
+
+**Connection chain verified:**
+- Mark Voted → `POST /api/gotv/mark-voted` → `Contact.voted = true` + `ActivityLog` via `executeAction` → gap returned in response → UI updates optimistically
+- Arrange Ride → `POST /api/gotv/rides/[id]/arranged` → contact notes + `ActivityLog`
+
+**The session before this (2026-04-15):**
+Commit `5a13f4c` — Comms Analytics tab (funnel + trend + per-blast) + /notifications full rebuild (composer + subscribers + stats).
 
 ---
 
-## What George needs to do (your action items)
+## CURRENT PLATFORM STATE (as of 2026-04-16)
 
-### CRITICAL — do this now
+### What is live and working
+
+| Module | Status | Key commit |
+|---|---|---|
+| Auth (email/password) | ✓ LIVE | — |
+| Dashboard (all 8 data fields) | ✓ LIVE | — |
+| CRM (contacts, households, duplicates) | ✓ LIVE | 730833e |
+| Field Ops — full 16-chunk build | ✓ LIVE | d8e7314 |
+| GOTV (gap, mark-voted, rides, priority list) | ✓ LIVE | — |
+| Finance Suite (budget→audit, 9 tabs) | ✓ LIVE | 0a8d74b |
+| Fundraising Suite (Phases 1-7 + public donate pages) | ✓ LIVE | db33dc0 |
+| Communications (email, SMS, social, inbox, analytics) | ✓ LIVE | 5a13f4c |
+| /notifications (push composer, subscribers, stats) | ✓ LIVE | 5a13f4c |
+| Print (enterprise rebuild, 15 templates, packs, inventory) | ✓ LIVE | 0a8d74b |
+| Calendar (full 4-view UI, APIs, candidate schedule) | ✓ LIVE | b5170f0 |
+| /eday — CM command center + scrutineer OCR | ✓ LIVE | 3cd4b3f |
+| /eday/hq — election night results | ✓ LIVE | 8d96160 |
+| /billing — Stripe integration | ✓ LIVE | 13965bc |
+| /settings — profile, campaign, integrations, danger zone | ✓ LIVE | 6eae5e2 |
+| /briefing — daily AI briefing | ✓ LIVE | c110dc2 |
+| /ai-assist — Adoni in-app page | ✓ LIVE | 108e504 |
+| Demo + guided tour | ✓ LIVE | 7494b12 |
+| /coalitions | ✓ LIVE | 7ee982f |
+
+### Sprint 1 — still PENDING (customer-facing, do these first)
+
+| Route | What's missing |
+|---|---|
+| `/settings/security` | 2FA management, active sessions, login history, API keys |
+| `/settings/brand` | Full colour picker, logo upload, font selector, preview |
+| `/eday` | ✓ DONE this session |
+| `/polls/[id]/live` | 99 lines only — real-time result stream, party breakdown |
+
+### George's manual actions outstanding (full list in GEORGE_TODO.md)
+
+Critical blockers:
+- Items 2-3: Stripe keys to Railway
+- Items 10-16: Resend email setup
+- Item 22: `ANTHROPIC_API_KEY` to Railway (Adoni is dead without this in prod)
+- Items 49-50: Railway backups + PWA install
+
+---
+
+## NEXT SESSION OPENER
+
+**Copy this verbatim into the next session:**
+
 ```
-npx prisma db push
+Commit 3cd4b3f shipped: /eday full election day ops rebuild — role-aware CM command center
+(Command/Strike-Off/Rides/Polls tabs + GOTV gap, mark-voted, rides, scrutineer deployment)
++ scrutineer OCR tool unchanged for non-manager roles.
+
+Read WORK_QUEUE.md. Sprint 1 PENDING priority:
+
+1. /settings/security — 501 lines, incomplete. Add: 2FA enable/disable with QR code flow,
+   active sessions list (device + last seen + revoke button), login history (last 10 logins
+   with IP + device), API keys management (generate/revoke). Auth: apiAuth + membership guard.
+   This is customer-facing security — build it fully.
+
+2. /settings/brand — 377 lines, incomplete. Full colour picker (primary/secondary/accent),
+   logo upload (store URL), font selector (system fonts), live preview of how the campaign
+   brand looks. Writes to Campaign model fields.
+
+Pick one, claim it in WORK_QUEUE.md, build it fully. Run npm run build before pushing.
+Report what is live, what George needs to do, any risks.
 ```
-Run this against Railway. Every calendar and fundraising API call fails in production until this runs.
-The schema has 15+ new models that are in the code but not in the database.
-
-### Check Vercel
-Watch for green on commit `730833e` and the coordination commit after it.
-
-### Stripe environment variables
-When ready to build fundraising Phase 4:
-Add to Railway environment:
-- STRIPE_SECRET_KEY
-- STRIPE_WEBHOOK_SECRET
-- NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-
-### When starting a new session
-Tell it: "Read WORK_QUEUE.md and SESSION_HANDOFF.md first, then tell me what the next logical thing to build is."
-The session will check what is done, what is claimed, pick the next unblocked task in dependency order.
 
 ---
 
-*Coordination system live as of 2026-04-10.*
-*New sessions: read WORK_QUEUE.md before touching anything. Claim before building. Mark done when pushed.*
+## DEPENDENCY MAP — what blocks what
+
+Build these in order:
+1. `/settings/security` — standalone, no blockers
+2. `/settings/brand` — standalone, no blockers
+3. `/polls/[id]/live` — standalone, no blockers
+4. `Comms Phase 7` (automation engine) — needs Phase 6 done ✓
+5. `Calendar Phase 6` (Google/Outlook OAuth) — needs George to set up credentials
+6. `Migration baseline` (GAP-003) — run before first real customer, CRITICAL
+
+Safe to build in any order (no dependencies):
+- Any Sprint 2 Finance UI hardening items
+- Any Sprint 3 Field sub-module items
+- Any Sprint 4 Print/Forms items
+
+---
+
+## ARMY OF ONE — SESSION DISCIPLINE
+
+We are one army running as multiple sessions. The rules:
+
+1. **One task at a time per session.** Claim in WORK_QUEUE.md before starting. Push the claim commit immediately.
+2. **Build passes before push.** `npm run build` exits 0. No exceptions. No "I'll fix it next session."
+3. **End of session: update this file.** The next session is reading it cold. Treat it like a war room brief.
+4. **Never assume another session's work is done.** Check WORK_QUEUE.md. If it says CLAIMED, leave it.
+5. **George's manual actions go in GEORGE_TODO.md.** Not in chat. Not in this file. In that file.
+6. **If you're the current running session** reading this mid-session: your job is to finish what you claimed, update this file, and close cleanly.
+
+---
+
+## KNOWN RISKS (carry until resolved)
+
+| Risk | Severity | Status |
+|---|---|---|
+| `ANTHROPIC_API_KEY` not in Railway | HIGH | Adoni returns 500 in prod — George must add it |
+| No Resend config | HIGH | All emails fail silently in prod |
+| No Stripe keys in Railway | HIGH | Donations/billing broken in prod |
+| Migration baseline (GAP-003) not run | CRITICAL | Must run before first real customer |
+| No Redis (rate limiting) | MEDIUM | Rate limits disabled — stub passes through |
+
+---
+
+*Updated end-of-session every time. If this file is stale: the session that shipped last forgot to update it. Check git log for the latest commit.*
