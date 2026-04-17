@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role);
+  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role);
   const status = req.nextUrl.searchParams.get("status");
 
   const reimbursements = await prisma.financeReimbursement.findMany({

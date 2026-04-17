@@ -479,27 +479,65 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
-- [ ] **62. Run `npx prisma db push` after CIE schema is merged** — CRITICAL
-  The Candidate Intelligence Engine added 6 new models and extended DataSource.
-  Run from the project root (Railway DB must be reachable):
-  ```
-  npx prisma db push
-  ```
-  Until this runs, the CIE will crash (tables don't exist). The build passes locally without DB access.
+- [ ] **62. Run `npx prisma db push` — CRITICAL, do this before anything else** — covers CIE + RCAE + Finance Phase 8 schema in one shot
 
-- [ ] **63. Run POST /api/intel/seed once after db push**
-  Seeds 16 source registry entries into DataSource. Run from Railway console or curl:
-  ```
-  curl -X POST https://your-domain.vercel.app/api/intel/seed \
-    -H "Cookie: <your SUPER_ADMIN session cookie>"
-  ```
-  Or trigger from the /intel command center "Seed Sources" button when logged in as SUPER_ADMIN.
+  **Why only you:** AI agents can write code but cannot connect to your Railway PostgreSQL instance. The DATABASE_URL contains your DB password — it lives in your `.env` which is gitignored. Without running this, `/intel`, `/reputation`, and Finance role-gating will all 500 in production.
 
-- [ ] **64. Add NEWS_API_KEY to Railway environment variables** — optional (enables NewsAPI.org)
-  1. Go to Railway → your project → Variables
-  2. Add: `NEWS_API_KEY` = your NewsAPI.org API key (free tier: 100 req/day)
-  3. Get a key at https://newsapi.org/register
-  Without this, NewsAPI source ingestion will log an error and skip — RSS sources still work.
+  **What it creates:**
+  - 6 CIE tables: `candidate_leads`, `candidate_profiles`, `news_articles`, `news_signals`, `candidate_outreach_attempts`, `intel_source_health`
+  - 8 RCAE tables: `reputation_alerts`, `reputation_issues`, `issue_alert_links`, `reputation_recommendations`, `reputation_response_actions`, `reputation_response_pages`, `amplification_actions`, `amplification_participations`
+  - Finance: adds `FINANCE` enum value to the `Role` enum (additive — zero data risk)
+  - Also extends `DataSource` with 9 new CIE fields
+
+  **Steps:**
+  1. Make sure Vercel deployment is green first (wait for the green dot on the latest push)
+  2. On your local machine with Railway DB accessible, run from the project root:
+     ```
+     npx prisma db push
+     ```
+  3. You should see: `Your database is now in sync with your Prisma schema.`
+  4. If it says "can't reach database" — open Railway → your project → connect tab → copy the connection string into your local `.env` as `DATABASE_URL` then retry
+
+  **Zero risk:** `db push` is additive-only for these changes — new tables, new enum value. No existing data is touched.
+
+---
+
+- [ ] **63. Run CIE source seed — do this immediately after item 62**
+
+  **Why only you:** This calls a SUPER_ADMIN-gated endpoint. You need to be logged into the live site as George (the SUPER_ADMIN account) to hit it. AI agents can't log in as you.
+
+  **What it does:** Populates the `DataSource` table with 16 pre-configured Canadian election monitoring sources (Elections Canada, Elections Ontario, Toronto/Brampton/Mississauga/Vaughan/Markham/Ottawa open data, CBC News RSS, Toronto Star RSS, OpenNorth, StatsCan boundaries, Government of Canada News). Without this, the CIE has no sources to ingest from.
+
+  **Steps — pick one:**
+
+  Option A (easiest) — browser:
+  1. Go to `https://app.poll.city/intel` (log in as SUPER_ADMIN)
+  2. Click **"Seed Sources"** button in the top-right of the command center
+  3. You should see a toast: "16 sources seeded"
+
+  Option B — curl from terminal:
+  ```bash
+  # First grab your session cookie from browser DevTools → Application → Cookies → next-auth.session-token
+  curl -X POST https://app.poll.city/api/intel/seed \
+    -H "Cookie: next-auth.session-token=<your-token-here>"
+  ```
+
+---
+
+- [ ] **64. Add NEWS_API_KEY to Railway** — optional but recommended (enables live news ingestion)
+
+  **Why only you:** Railway environment variables require Railway admin access. AI agents can only edit code files — they can't set secrets on a remote platform.
+
+  **What it unlocks:** The NewsAPI.org source in the CIE registry becomes active. Without it, that one source logs a skip warning and the other 15 RSS/open-data sources still run fine.
+
+  **Steps:**
+  1. Get a free API key at newsapi.org/register (100 requests/day free, $449/mo for production)
+  2. Go to Railway → your Poll City project → **Variables** tab
+  3. Click **New Variable**
+  4. Name: `NEWS_API_KEY` — Value: your key from step 1
+  5. Railway will auto-redeploy. No code change needed.
+
+  **Cost note:** Free tier is fine for testing. If you go live with hourly ingestion across 16 sources you'll want the paid plan (~$449 USD/mo). Alternatively leave it disabled — CBC + Toronto Star RSS feeds are free and cover Ontario municipal news well.
 
 ---
 

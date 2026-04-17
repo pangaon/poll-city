@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
   const offset = Number(p.get("offset") ?? 0);
   const missingReceipt = p.get("missingReceipt");
 
+  const hideSalaries = ["VOLUNTEER", "VOLUNTEER_LEADER"].includes(membership.role);
+
   const expenses = await prisma.financeExpense.findMany({
     where: {
       campaignId,
@@ -69,6 +71,12 @@ export async function GET(req: NextRequest) {
       ...(budgetLineId ? { budgetLineId } : {}),
       ...(vendorId ? { vendorId } : {}),
       ...(missingReceipt === "true" ? { missingReceipt: true } : {}),
+      ...(hideSalaries ? {
+        OR: [
+          { budgetLineId: null },
+          { budgetLine: { category: { notIn: ["staffing", "contractors"] } } },
+        ],
+      } : {}),
       ...(from || to ? {
         expenseDate: {
           ...(from ? { gte: new Date(from) } : {}),
@@ -105,6 +113,12 @@ export async function GET(req: NextRequest) {
       ...(budgetLineId ? { budgetLineId } : {}),
       ...(vendorId ? { vendorId } : {}),
       ...(missingReceipt === "true" ? { missingReceipt: true } : {}),
+      ...(hideSalaries ? {
+        OR: [
+          { budgetLineId: null },
+          { budgetLine: { category: { notIn: ["staffing", "contractors"] } } },
+        ],
+      } : {}),
     },
   });
 

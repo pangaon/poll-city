@@ -166,7 +166,7 @@ export default function Sidebar() {
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const roleName = (session?.user?.role ?? "").toString().toUpperCase();
   const isCanvasserOnly = roleName === "VOLUNTEER" || roleName === "CANVASSER";
-  const isFinanceOnly = roleName.includes("FINANCE");
+  const isFinanceOnly = session?.user?.role === "FINANCE";
 
   const sidebarSections = useMemo((): NavSection[] => {
     if (isCanvasserOnly) return CANVASSER_SECTIONS;

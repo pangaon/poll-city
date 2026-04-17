@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { userId_campaignId: { userId: session!.user.id, campaignId: line.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
   if (line.isLocked && membership.role !== "SUPER_ADMIN" && membership.role !== "ADMIN") {
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     where: { userId_campaignId: { userId: session!.user.id, campaignId: line.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 

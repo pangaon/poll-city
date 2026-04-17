@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   if (!["draft", "needs_review"].includes(expense.expenseStatus)) {
-    const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role);
+    const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role);
     if (!isManager) {
       return NextResponse.json({ error: "Cannot edit expense in status: " + expense.expenseStatus }, { status: 409 });
     }
@@ -124,7 +124,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const { expense, membership } = await getExpenseWithAuth(params.id, session!.user.id);
   if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
   if (expense.expenseStatus === "paid") {

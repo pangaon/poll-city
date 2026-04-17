@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { budget, membership } = await getBudget(params.id, session!.user.id);
   if (!budget) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
   if (budget.status === "locked") {

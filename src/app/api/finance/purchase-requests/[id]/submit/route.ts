@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { userId_campaignId: { userId: session!.user.id, campaignId: pr.campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (pr.requestedByUserId !== session!.user.id && !["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role)) {
+  if (pr.requestedByUserId !== session!.user.id && !["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Can only submit your own requests" }, { status: 403 });
   }
   if (pr.requestStatus !== "draft") {

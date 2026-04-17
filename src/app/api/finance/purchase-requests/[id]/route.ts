@@ -42,7 +42,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const isOwner = pr.requestedByUserId === session!.user.id;
-  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role);
+  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role);
   if (!isOwner && !isManager) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (!["draft", "submitted"].includes(pr.requestStatus)) {
     return NextResponse.json({ error: "Can only cancel draft or submitted requests" }, { status: 409 });

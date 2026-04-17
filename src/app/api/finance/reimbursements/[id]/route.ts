@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const isOwner = r.userId === session!.user.id;
-  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"].includes(membership.role);
+  const isManager = ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role);
   if (!isOwner && !isManager) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   return NextResponse.json({ data: r });
