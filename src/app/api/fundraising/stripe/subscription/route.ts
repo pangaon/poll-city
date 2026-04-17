@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
       destination: campaign.stripeConnectedAccountId!,
     },
     metadata: { campaignId, recurrencePlanId, type: "campaign_recurring_donation" },
+    // Stripe SDK types require `product` (ID) but inline creation uses `product_data` — cast at items level
     items: [{
       price_data: {
         currency:    currency.toLowerCase(),
@@ -147,8 +148,8 @@ export async function POST(req: NextRequest) {
           name:     `Campaign recurring donation — ${campaignId}`,
           metadata: { campaignId, recurrencePlanId },
         },
-      } as unknown as Stripe.SubscriptionCreateParams.Item["price_data"],
-    }],
+      },
+    }] as unknown as Stripe.SubscriptionCreateParams["items"],
   });
 
   // Extract the client_secret from the first invoice's PaymentIntent.

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           // Retrieve the subscription to get Stripe's actual billing period dates.
           // current_period_start/end removed from Stripe SDK v14+ types — cast to access them.
           type SubWithPeriod = Stripe.Subscription & { current_period_start: number; current_period_end: number };
-          const stripeSub = await stripe!.subscriptions.retrieve(session.subscription as string) as SubWithPeriod;
+          const stripeSub = await stripe!.subscriptions.retrieve(session.subscription as string) as unknown as SubWithPeriod;
           await prisma.subscription.upsert({
             where: { userId },
             update: {
