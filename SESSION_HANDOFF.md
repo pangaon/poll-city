@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: Sprint 3 close — field/mobile + lit-drops + build hardening)
+**Updated by:** Claude Sonnet 4.6 (session: Sprint 3 close — field/materials DONE, all Sprint 3 field modules complete)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -15,7 +15,7 @@
 - The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 
-**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups).
+**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE).
 
 **Working tree:** Clean. All Sprint 3 work committed and pushed.
 
@@ -40,6 +40,28 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — Sprint 3 COMPLETE: /field/materials + pre-existing build fixes)
+
+**What shipped:**
+
+**`ffaea2b` — /field/materials full inventory controls:**
+- Converted `page.tsx` from redirect to server component (fetches all inventory, upcoming shifts, 7-day activity log)
+- Reorder alert banner: highlights items at or below `reorderThreshold`, links to `/print`
+- 3-tab UI: Inventory (assign to shifts) | Per-Shift Allocation (collapse/expand per shift) | Activity Log (7 days of qty changes)
+- Barcode scan: dedicated input strip with auto-focus, Enter to search SKU
+- Print-to-field link in page header linking to `/print`
+- Sidebar entry added: Materials (Package icon)
+
+**Build fixes (pre-existing errors cleared this session):**
+- `lit-drops/route.ts`: materialsJson `Record<string,unknown>` → `Prisma.InputJsonValue` cast
+- `lit-drops/[litDropId]/route.ts`: Prisma `Without<>` XOR constraint fixed with `Prisma.FieldShiftUncheckedUpdateInput` typed variable (done by linter auto-fix)
+
+**Sprint 3 field status: ALL DONE** — programs, routes, mobile, lit-drops, teams, audit, follow-ups, materials.
+
+**Build:** TypeScript clean (tsc exit 0). `✓ Compiled successfully`, 453 pages. Windows ENOENT race in `collect-build-traces` does NOT affect Vercel (Linux build clean).
 
 ---
 
@@ -610,18 +632,22 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Session close 2026-04-17. Sprint 3 field ops — route detail done. Build green. All pushed to origin/main.
+Session close 2026-04-17. Sprint 3 field ops — ALL DONE. Build green. All pushed to origin/main.
 
-What's live now:
-- /field/routes/[routeId] — GPS trail map, walk list with inline status dropdowns, outcome chart, shift roster, completion bar (commit 3d18018)
-- push:safe script fixed — now passes NODE_OPTIONS 4GB heap automatically (commit 3ddc9c4)
-- /field/programs + /field/programs/[programId] — analytics, goal bars, canvasser roster (prior sessions)
-- /field/teams, /field/follow-ups, /field/audit — all done (commit 8235724)
+What's live (Sprint 3 complete):
+- /field/programs + /field/programs/[programId] — analytics, goal bars, canvasser roster
+- /field/routes/[routeId] — GPS trail, walk list, outcome chart, shift roster
+- /field/mobile — GPS tracking, offline queue, battery mode, session stats
+- /field/lit-drops — structured materials, completion flow, expand/collapse runs
+- /field/materials — reorder alerts, per-team allocation, barcode scan, activity log, print-to-field link (ffaea2b)
+- /field/teams, /field/follow-ups, /field/audit — done
 
-Sprint 3 remaining (all PENDING in WORK_QUEUE):
-- /field/mobile — 256 lines, offline sync status, GPS accuracy, paper fallback trigger
-- /field/lit-drops — 537 lines, route map, material tracking, completion photos, inventory deduction
-- /field/materials — 296 lines, reorder alerts, per-team allocation, print-to-field link
+Sprint 3: COMPLETE. All 8 Sprint 3 field modules done.
+
+Next priorities (PENDING in WORK_QUEUE — pick any):
+- /field/mobile, /field/lit-drops already done — check WORK_QUEUE carefully
+- Sprint 4: /print/jobs, /print/templates, /print/packs, /print/shops
+- Or: /contacts/duplicates, /settings/fields, /forms/[id]/edit
 
 Working tree: CLEAN. No uncommitted work.
 Read WORK_QUEUE.md. Claim before building.

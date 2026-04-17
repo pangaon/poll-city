@@ -348,7 +348,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /field/mobile — full mobile dashboard | DONE — 83f4e33 | GPS tracking (high/medium/low/denied), offline queue + auto-sync, battery mode, doors-today counter, paper export. |
 | /field/audit — full audit + filters | DONE — 8235724 | Action type filter, date range, export, canvasser comparison. |
 | /field/lit-drops — full operations | DONE — d7d446f | Structured materials list, expand/collapse per run, completion flow with used qty tracking. |
-| /field/materials — full inventory controls | CLAIMED 2026-04-17 | 296 lines. Add reorder alerts, per-team allocation, print-to-field link, barcode scan. |
+| /field/materials — full inventory controls | DONE — ffaea2b | Reorder alerts, per-team allocation, barcode scan, activity log, print-to-field link. |
 
 ---
 
