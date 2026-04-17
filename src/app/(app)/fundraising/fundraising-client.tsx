@@ -165,7 +165,25 @@ const COMPLIANCE_BADGE: Record<string, { label: string; color: string }> = {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export default function FundraisingClient({ campaignId }: { campaignId: string }) {
+/* ── Election-type legal framework map ────────────────────────────────────── */
+const LEGAL_FRAMEWORK: Record<string, {
+  law: string;
+  donorLimit: number;
+  anonCap: number;
+  corporate: boolean;
+  union: boolean;
+  notes?: string;
+}> = {
+  municipal:   { law: "Ontario Election Finances Act (municipal tier)",   donorLimit: 1200,  anonCap: 25,  corporate: false, union: false },
+  provincial:  { law: "Ontario Election Finances Act (provincial tier)",  donorLimit: 3425,  anonCap: 0,   corporate: false, union: false, notes: "No anonymous donations permitted." },
+  federal:     { law: "Canada Elections Act",                              donorLimit: 1675,  anonCap: 0,   corporate: false, union: false, notes: "Indexed annually. Only Canadian citizens and permanent residents may contribute." },
+  by_election: { law: "Ontario Election Finances Act (provincial tier)",  donorLimit: 3425,  anonCap: 0,   corporate: false, union: false },
+  nomination:  { law: "Party nomination rules + Ontario Election Finances Act", donorLimit: 1200, anonCap: 0, corporate: false, union: false, notes: "Rules vary by party — verify with your returning officer." },
+  leadership:  { law: "Ontario Party Leadership Rules + Elections Ontario",     donorLimit: 3425, anonCap: 0, corporate: false, union: false, notes: "Contributors must be party members. Self-contribution up to $50,000." },
+  other:       { law: "Consult your jurisdiction's election authority",   donorLimit: 1200,  anonCap: 25,  corporate: false, union: false, notes: "Rules not auto-applied. Configure limits manually and verify with your local election authority." },
+};
+
+export default function FundraisingClient({ campaignId, electionType = "municipal", jurisdiction }: { campaignId: string; electionType?: string; jurisdiction?: string | null }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -208,6 +226,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
   const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [receiptsPage, setReceiptsPage] = useState(1);
   const [receiptsTotal, setReceiptsTotal] = useState(0);
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState<"all" | "needs_attention" | "sent" | "void">("all");
 
   // ── Refunds ──
   const [refunds, setRefunds] = useState<Refund[]>([]);
@@ -1171,50 +1190,84 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
 
             {/* ─── RECEIPTS ─────────────────────────────────────────── */}
             {tab === "receipts" && (
-              <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-xs text-gray-500 uppercase">
-                        <th className="text-left px-4 py-3 font-medium">Receipt #</th>
-                        <th className="text-left px-4 py-3 font-medium">Donor</th>
-                        <th className="text-right px-4 py-3 font-medium">Amount</th>
-                        <th className="text-left px-4 py-3 font-medium">Status</th>
-                        <th className="text-left px-4 py-3 font-medium">Issued</th>
-                        <th className="text-left px-4 py-3 font-medium">Sent</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {receiptsLoading ? (
-                        [...Array(6)].map((_, i) => <tr key={i} className="border-b">{[...Array(7)].map((_, j) => <td key={j} className="px-4 py-3"><Shimmer className="h-4" /></td>)}</tr>)
-                      ) : receipts.length === 0 ? (
-                        <tr><td colSpan={7} className="px-4 py-12 text-center"><EmptyState title="No receipts" description="Generate receipts from the Donations tab after a donation is processed." /></td></tr>
-                      ) : receipts.map((r) => (
-                        <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b hover:bg-gray-50">
-                          <td className="px-4 py-3 font-mono text-xs">{r.receiptNumber}</td>
-                          <td className="px-4 py-3">{r.donation.contact ? `${r.donation.contact.firstName} ${r.donation.contact.lastName}` : "—"}</td>
-                          <td className="px-4 py-3 text-right font-semibold" style={{ color: GREEN }}>{fmt(r.donation.amount)}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant={["sent", "resent"].includes(r.receiptStatus) ? "success" : r.receiptStatus === "void" ? "danger" : "default"}>{r.receiptStatus}</Badge>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-500">{r.issuedDate ? new Date(r.issuedDate).toLocaleDateString() : "—"}</td>
-                          <td className="px-4 py-3 text-xs text-gray-500">{r.sentAt ? new Date(r.sentAt).toLocaleDateString() : "—"}</td>
-                          <td className="px-4 py-3">
-                            {r.receiptStatus !== "void" && (
-                              <button className="text-xs font-medium" style={{ color: GREEN }}
-                                onClick={() => fetch(`/api/fundraising/receipts/${r.id}`, { method: "POST" })
-                                  .then(() => { toast.success("Receipt resent"); fetchReceipts(); })}>
-                                Resend
-                              </button>
-                            )}
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="space-y-3">
+                {/* Filter bar */}
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { key: "all",             label: "All" },
+                    { key: "needs_attention", label: "Needs Attention" },
+                    { key: "sent",            label: "Sent" },
+                    { key: "void",            label: "Voided" },
+                  ] as const).map(({ key, label }) => (
+                    <button key={key} onClick={() => setReceiptStatusFilter(key)}
+                      className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                        receiptStatusFilter === key
+                          ? key === "needs_attention" ? "bg-red-600 text-white border-red-600" : "bg-[#0A2342] text-white border-[#0A2342]"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                      }`}>
+                      {label}
+                      {key === "needs_attention" && receipts.filter((r) => r.receiptStatus === "failed" || r.receiptStatus === "pending").length > 0 && (
+                        <span className="ml-1.5 bg-red-100 text-red-700 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+                          {receipts.filter((r) => r.receiptStatus === "failed" || r.receiptStatus === "pending").length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
                 </div>
-              </Card>
+                <Card>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-xs text-gray-500 uppercase">
+                          <th className="text-left px-4 py-3 font-medium">Receipt #</th>
+                          <th className="text-left px-4 py-3 font-medium">Donor</th>
+                          <th className="text-right px-4 py-3 font-medium">Amount</th>
+                          <th className="text-left px-4 py-3 font-medium">Status</th>
+                          <th className="text-left px-4 py-3 font-medium">Issued</th>
+                          <th className="text-left px-4 py-3 font-medium">Sent</th>
+                          <th className="px-4 py-3" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {receiptsLoading ? (
+                          [...Array(6)].map((_, i) => <tr key={i} className="border-b">{[...Array(7)].map((_, j) => <td key={j} className="px-4 py-3"><Shimmer className="h-4" /></td>)}</tr>)
+                        ) : (() => {
+                          const filtered = receiptStatusFilter === "all" ? receipts
+                            : receiptStatusFilter === "needs_attention" ? receipts.filter((r) => r.receiptStatus === "failed" || r.receiptStatus === "pending")
+                            : receiptStatusFilter === "sent" ? receipts.filter((r) => ["sent", "resent"].includes(r.receiptStatus))
+                            : receipts.filter((r) => r.receiptStatus === "void");
+                          return filtered.length === 0 ? (
+                            <tr><td colSpan={7} className="px-4 py-12 text-center"><EmptyState title="No receipts" description={receiptStatusFilter === "all" ? "Generate receipts from the Donations tab after a donation is processed." : `No ${receiptStatusFilter === "needs_attention" ? "failed or pending" : receiptStatusFilter} receipts.`} /></td></tr>
+                          ) : filtered.map((r) => (
+                            <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                              className={`border-b hover:bg-gray-50 ${r.receiptStatus === "failed" ? "bg-red-50/40" : ""}`}>
+                              <td className="px-4 py-3 font-mono text-xs">{r.receiptNumber}</td>
+                              <td className="px-4 py-3">{r.donation.contact ? `${r.donation.contact.firstName} ${r.donation.contact.lastName}` : "—"}</td>
+                              <td className="px-4 py-3 text-right font-semibold" style={{ color: GREEN }}>{fmt(r.donation.amount)}</td>
+                              <td className="px-4 py-3">
+                                <Badge variant={["sent", "resent"].includes(r.receiptStatus) ? "success" : ["void", "failed"].includes(r.receiptStatus) ? "danger" : "default"}>
+                                  {r.receiptStatus === "failed" ? "Failed — Resend" : r.receiptStatus}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 text-xs text-gray-500">{r.issuedDate ? new Date(r.issuedDate).toLocaleDateString() : "—"}</td>
+                              <td className="px-4 py-3 text-xs text-gray-500">{r.sentAt ? new Date(r.sentAt).toLocaleDateString() : "—"}</td>
+                              <td className="px-4 py-3">
+                                {r.receiptStatus !== "void" && (
+                                  <button className={`text-xs font-medium ${r.receiptStatus === "failed" ? "text-red-600 font-bold" : ""}`} style={r.receiptStatus !== "failed" ? { color: GREEN } : undefined}
+                                    onClick={() => fetch(`/api/fundraising/receipts/${r.id}`, { method: "POST" })
+                                      .then(() => { toast.success("Receipt resent"); fetchReceipts(); })}>
+                                    {r.receiptStatus === "failed" ? "Retry Send" : "Resend"}
+                                  </button>
+                                )}
+                              </td>
+                            </motion.tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </div>
             )}
 
             {/* ─── COMPLIANCE ───────────────────────────────────────── */}
@@ -1268,6 +1321,33 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                 {/* ── Compliance Limits Config ── */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 mt-2">Donation Limits & Rules</h3>
+
+                  {/* Legal framework banner — shows the rules that apply to this campaign type */}
+                  {(() => {
+                    const framework = LEGAL_FRAMEWORK[electionType] ?? LEGAL_FRAMEWORK.other;
+                    return (
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                          <svg className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 4.25v3.5a.75.75 0 0 1-1.5 0v-3.5a.75.75 0 0 1 1.5 0zM8 12a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+                          <div>
+                            <p className="text-xs font-bold text-blue-900 mb-1">
+                              Applicable law — {framework.law}
+                              {jurisdiction ? ` · ${jurisdiction}` : ""}
+                            </p>
+                            <ul className="text-xs text-blue-800 space-y-0.5">
+                              <li>• Max contribution per donor per year: <strong>${framework.donorLimit.toLocaleString()} CAD</strong></li>
+                              <li>• Anonymous donation cap: <strong>{framework.anonCap > 0 ? `$${framework.anonCap}` : "Not permitted"}</strong></li>
+                              <li>• Corporate donations: <strong>{framework.corporate ? "Permitted" : "Not permitted"}</strong></li>
+                              <li>• Union donations: <strong>{framework.union ? "Permitted" : "Not permitted"}</strong></li>
+                              {framework.notes && <li className="mt-1 text-blue-700 italic">Note: {framework.notes}</li>}
+                            </ul>
+                            <p className="text-[10px] text-blue-600 mt-2">These limits were applied automatically when your campaign was set up. You may override them below — verify with your financial officer before changing.</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {complianceConfigLoading ? (
                     <div className="space-y-3">{[...Array(4)].map((_, i) => <Shimmer key={i} className="h-10" />)}</div>
                   ) : (
@@ -1276,7 +1356,7 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
                             <Label>Annual limit per donor (CAD)</Label>
-                            <p className="text-xs text-gray-500 mb-1.5">Ontario municipal default: $1,200</p>
+                            <p className="text-xs text-gray-500 mb-1.5">Set by your jurisdiction — see above</p>
                             <Input type="number" min="0" step="1" value={configForm.annualLimitPerDonor}
                               onChange={(e) => setConfigForm((f) => ({ ...f, annualLimitPerDonor: parseFloat(e.target.value) || 0 }))} />
                           </div>

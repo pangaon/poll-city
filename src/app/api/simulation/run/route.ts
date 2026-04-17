@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiAuth } from "@/lib/auth/helpers";
 import { runSimulation, isSimulationEnabled } from "@/lib/simulation/engine";
+import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,19 @@ export async function POST(req: NextRequest) {
   try { raw = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const parsed = Body.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "campaignId required" }, { status: 422 });
+
+  // Hard guard: verify the campaign is actually a demo campaign.
+  // SUPER_ADMIN role is not sufficient — simulation must never touch real campaign data.
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: parsed.data.campaignId },
+    select: { isDemo: true },
+  });
+  if (!campaign?.isDemo) {
+    return NextResponse.json(
+      { error: "Simulation can only run on demo campaigns (isDemo=true). This campaign is real — refusing." },
+      { status: 403 },
+    );
+  }
 
   const result = await runSimulation(parsed.data.campaignId);
   return NextResponse.json(result);

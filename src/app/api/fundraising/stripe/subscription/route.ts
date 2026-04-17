@@ -108,6 +108,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Create or retrieve Stripe Customer by email.
+  // NOTE (GAP-5): Customers are on the platform account (required for Connect
+  // destination charges). A donor with the same email across two campaigns will
+  // reuse the same Stripe Customer object — this is intentional Stripe Connect
+  // architecture. Money still flows to each campaign separately via transfer_data.
+  // If per-campaign customer isolation is ever required, store stripeCustomerId
+  // on DonorProfile scoped by campaignId and create separate Customer objects.
   const existingCustomers = await stripe!.customers.list({ email: donorEmail, limit: 1 });
   const customer = existingCustomers.data.length > 0
     ? existingCustomers.data[0]
@@ -120,23 +126,8 @@ export async function POST(req: NextRequest) {
   const { interval, interval_count } = stripeInterval(frequency);
   const amountCents = Math.round(amount * 100);
 
-  // Stripe subscription price_data requires an existing Product ID.
-  // Create an ephemeral product + price pair, then subscribe to the price.
-  const product = await stripe!.products.create({
-    name:     `Campaign recurring donation — ${campaignId}`,
-    metadata: { campaignId, recurrencePlanId },
-  });
-
-  const price = await stripe!.prices.create({
-    currency:       currency.toLowerCase(),
-    unit_amount:    amountCents,
-    recurring:      { interval, interval_count },
-    product:        product.id,
-    metadata:       { campaignId, recurrencePlanId },
-  });
-
-  // Create the Stripe Subscription — money flows to campaign's Connect account.
-  // application_fee_percent: Poll City retains 1.5% of each recurring charge.
+  // Create the Stripe Subscription with inline price_data — avoids orphan
+  // Product/Price objects accumulating when donors abandon the checkout flow.
   const subscription = await stripe!.subscriptions.create({
     customer:           customer.id,
     payment_behavior:   "default_incomplete",
@@ -147,7 +138,17 @@ export async function POST(req: NextRequest) {
       destination: campaign.stripeConnectedAccountId!,
     },
     metadata: { campaignId, recurrencePlanId, type: "campaign_recurring_donation" },
-    items: [{ price: price.id }],
+    items: [{
+      price_data: {
+        currency:    currency.toLowerCase(),
+        unit_amount: amountCents,
+        recurring:   { interval, interval_count },
+        product_data: {
+          name:     `Campaign recurring donation — ${campaignId}`,
+          metadata: { campaignId, recurrencePlanId },
+        },
+      } as unknown as Stripe.SubscriptionCreateParams.Item["price_data"],
+    }],
   });
 
   // Extract the client_secret from the first invoice's PaymentIntent.

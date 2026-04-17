@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
+import { stripe } from "@/lib/stripe/connect";
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-}) : null;
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -37,7 +35,11 @@ export async function POST(request: NextRequest) {
         const userId = session.metadata?.userId;
         const plan = session.metadata?.plan as "starter" | "pro";
 
-        if (userId && plan) {
+        if (userId && plan && session.subscription) {
+          // Retrieve the subscription to get Stripe's actual billing period dates.
+          // current_period_start/end removed from Stripe SDK v14+ types — cast to access them.
+          type SubWithPeriod = Stripe.Subscription & { current_period_start: number; current_period_end: number };
+          const stripeSub = await stripe!.subscriptions.retrieve(session.subscription as string) as SubWithPeriod;
           await prisma.subscription.upsert({
             where: { userId },
             update: {
@@ -45,8 +47,9 @@ export async function POST(request: NextRequest) {
               stripeCustomerId: session.customer as string,
               stripeSubscriptionId: session.subscription as string,
               plan,
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+              cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+              currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
+              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
             },
             create: {
               userId,
@@ -54,8 +57,9 @@ export async function POST(request: NextRequest) {
               status: "active",
               stripeCustomerId: session.customer as string,
               stripeSubscriptionId: session.subscription as string,
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+              currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
+              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
             },
           });
         }
@@ -74,12 +78,13 @@ export async function POST(request: NextRequest) {
         });
 
         if (subscription) {
+          // Use Stripe's actual billing period dates, not a hardcoded 30-day offset.
           await prisma.subscription.update({
             where: { id: subscription.id },
             data: {
               status: "active",
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              currentPeriodStart: new Date(invoice.period_start * 1000),
+              currentPeriodEnd: new Date(invoice.period_end * 1000),
             },
           });
         }
@@ -120,6 +125,66 @@ export async function POST(request: NextRequest) {
             data: { status: "canceled" },
           });
         }
+        break;
+      }
+
+      // GAP-3 fix: sync plan + period when subscriber upgrades/downgrades via portal.
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+
+        const dbSub = await prisma.subscription.findFirst({
+          where: { stripeSubscriptionId: sub.id },
+        });
+        if (!dbSub) break;
+
+        const priceId = sub.items.data[0]?.price.id;
+        const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID;
+        const proPriceId = process.env.STRIPE_PRO_PRICE_ID;
+
+        const planMap: Record<string, "starter" | "pro"> = {};
+        if (starterPriceId) planMap[starterPriceId] = "starter";
+        if (proPriceId) planMap[proPriceId] = "pro";
+        const newPlan = priceId ? planMap[priceId] : undefined;
+
+        const subStatus =
+          sub.status === "active" ? "active" :
+          sub.status === "past_due" ? "past_due" :
+          sub.status === "canceled" ? "canceled" : "incomplete";
+
+        await prisma.subscription.update({
+          where: { id: dbSub.id },
+          data: {
+            status: subStatus,
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+            currentPeriodStart: new Date(((sub as unknown as { current_period_start: number }).current_period_start) * 1000),
+            currentPeriodEnd: new Date(((sub as unknown as { current_period_end: number }).current_period_end) * 1000),
+            ...(newPlan ? { plan: newPlan } : {}),
+          },
+        });
+        break;
+      }
+
+      // GAP-1+2 fix: advance print job status only after Stripe confirms the charge.
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        if (pi.metadata?.type !== "print_job_payment" || !pi.metadata?.printJobId) break;
+
+        await prisma.printJob.updateMany({
+          where: { paymentIntentId: pi.id },
+          data: { paymentStatus: "paid", status: "in_production" },
+        });
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        if (pi.metadata?.type !== "print_job_payment" || !pi.metadata?.printJobId) break;
+
+        // Payment failed — job stays "awarded" so the campaign can retry payment.
+        await prisma.printJob.updateMany({
+          where: { paymentIntentId: pi.id },
+          data: { paymentStatus: "pending" },
+        });
         break;
       }
 

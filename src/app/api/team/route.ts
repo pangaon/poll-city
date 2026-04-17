@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (forbidden) return forbidden;
 
   const members = await prisma.membership.findMany({
-    where: { campaignId: campaignId! },
+    where: { campaignId: campaignId!, user: { role: { not: "SUPER_ADMIN" } } },
     include: { user: { select: { id: true, name: true, email: true, lastLoginAt: true } } },
     orderBy: { joinedAt: "asc" },
   });

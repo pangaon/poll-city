@@ -28,8 +28,15 @@ export async function GET(req: NextRequest) {
       createdAt: true,
       completedAt: true,
       rollbackDeadline: true,
+      invalidRows: true,
     },
   });
 
-  return NextResponse.json({ data: logs });
+  // Derive invalidRowCount from stored JSON without sending the full payload
+  const data = logs.map(({ invalidRows, ...rest }) => ({
+    ...rest,
+    invalidRowCount: Array.isArray(invalidRows) ? (invalidRows as unknown[]).length : 0,
+  }));
+
+  return NextResponse.json({ data });
 }

@@ -15,15 +15,47 @@ const UNION_KEYWORDS = [
   "seiu", "ibew", "iamaw", "usw", "amalgamated",
 ];
 
-// Ontario municipal defaults
+// Ontario municipal defaults (Election Finances Act)
 export const DEFAULT_COMPLIANCE_CONFIG = {
-  annualLimitPerDonor: 1200,    // $1,200 CAD
+  annualLimitPerDonor: 1200,    // $1,200 CAD — Ontario municipal
   anonymousLimit: 25,           // $25 CAD
   allowCorporate: false,
   allowUnion: false,
   blockMode: "review" as "review" | "block",
   warningThreshold: 0.9,
 };
+
+/**
+ * Election-type-aware compliance defaults.
+ *
+ * Sources:
+ *   municipal  — Ontario Election Finances Act, municipal tier
+ *   provincial — Ontario Election Finances Act, provincial tier
+ *   federal    — Canada Elections Act
+ *   nomination — Ontario Election Finances Act, party nomination contests
+ *   leadership — Ontario Election Finances Act s.43 + OLP 2026 Leadership Rules
+ *                $3,425/year per candidate (indexed); self-contribution up to $50,000;
+ *                spending limit $1,000,000; contributors must be Ontario residents using own funds.
+ *   by_election — same as provincial
+ */
+export const ELECTION_TYPE_COMPLIANCE: Record<string, Partial<typeof DEFAULT_COMPLIANCE_CONFIG>> = {
+  municipal:   { annualLimitPerDonor: 1200,  anonymousLimit: 25,  allowCorporate: false, allowUnion: false },
+  provincial:  { annualLimitPerDonor: 3425,  anonymousLimit: 0,   allowCorporate: false, allowUnion: false },
+  federal:     { annualLimitPerDonor: 1675,  anonymousLimit: 0,   allowCorporate: false, allowUnion: false }, // 2024 indexed limit
+  by_election: { annualLimitPerDonor: 3425,  anonymousLimit: 0,   allowCorporate: false, allowUnion: false },
+  nomination:  { annualLimitPerDonor: 1200,  anonymousLimit: 0,   allowCorporate: false, allowUnion: false }, // party rules vary — use municipal as floor
+  leadership:  { annualLimitPerDonor: 3425,  anonymousLimit: 0,   allowCorporate: false, allowUnion: false }, // OLP 2026 / Elections Ontario leadership rules
+  other:       { annualLimitPerDonor: 1200,  anonymousLimit: 25,  allowCorporate: false, allowUnion: false },
+};
+
+/**
+ * Get compliance defaults for a given election type.
+ * Falls back to DEFAULT_COMPLIANCE_CONFIG for unknown types.
+ */
+export function getComplianceDefaults(electionType: string): typeof DEFAULT_COMPLIANCE_CONFIG {
+  const overrides = ELECTION_TYPE_COMPLIANCE[electionType] ?? {};
+  return { ...DEFAULT_COMPLIANCE_CONFIG, ...overrides };
+}
 
 export interface ComplianceResult {
   status: "pending" | "approved" | "flagged" | "over_limit" | "blocked";
@@ -49,20 +81,34 @@ export async function evaluateCompliance(opts: {
   excludeDonationId?: string; // exclude self when re-evaluating
   config?: typeof DEFAULT_COMPLIANCE_CONFIG;
 }): Promise<ComplianceResult> {
-  // Load per-campaign config from DB when not passed inline
+  // Load per-campaign config from DB when not passed inline.
+  // Priority: inline opts.config > DB row > election-type defaults > DEFAULT_COMPLIANCE_CONFIG.
   let dbConfig: Partial<typeof DEFAULT_COMPLIANCE_CONFIG> = {};
+  let electionTypeDefaults: Partial<typeof DEFAULT_COMPLIANCE_CONFIG> = {};
+
   if (!opts.config) {
-    const row = await prisma.fundraisingComplianceConfig.findUnique({
-      where: { campaignId: opts.campaignId },
-      select: {
-        annualLimitPerDonor: true,
-        anonymousLimit: true,
-        allowCorporate: true,
-        allowUnion: true,
-        blockMode: true,
-        warningThreshold: true,
-      },
-    });
+    const [row, campaign] = await Promise.all([
+      prisma.fundraisingComplianceConfig.findUnique({
+        where: { campaignId: opts.campaignId },
+        select: {
+          annualLimitPerDonor: true,
+          anonymousLimit: true,
+          allowCorporate: true,
+          allowUnion: true,
+          blockMode: true,
+          warningThreshold: true,
+        },
+      }),
+      prisma.campaign.findUnique({
+        where: { id: opts.campaignId },
+        select: { electionType: true },
+      }),
+    ]);
+
+    if (campaign?.electionType) {
+      electionTypeDefaults = ELECTION_TYPE_COMPLIANCE[campaign.electionType] ?? {};
+    }
+
     if (row) {
       dbConfig = {
         annualLimitPerDonor: row.annualLimitPerDonor,
@@ -74,7 +120,8 @@ export async function evaluateCompliance(opts: {
       };
     }
   }
-  const cfg = { ...DEFAULT_COMPLIANCE_CONFIG, ...(opts.config ?? dbConfig) };
+  // Merge order: base → election-type → DB row → inline opts.config
+  const cfg = { ...DEFAULT_COMPLIANCE_CONFIG, ...electionTypeDefaults, ...dbConfig, ...(opts.config ?? {}) };
 
   // R-002 — Anonymous cap (always hard block)
   if (opts.isAnonymous && opts.amount > cfg.anonymousLimit) {

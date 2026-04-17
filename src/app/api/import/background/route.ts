@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
+  const mergeStrategyRaw = (formData.get("mergeStrategy") as string | null) ?? "update";
   const transformsRaw = formData.get("transforms") as string | null;
 
   if (!file || !mappingsRaw) {
@@ -47,6 +48,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid mappings JSON" }, { status: 400 });
   }
 
+  const mergeStrategy = ["skip", "update", "update_empty", "create_all"].includes(mergeStrategyRaw)
+    ? mergeStrategyRaw
+    : "update";
+
   let transforms: TransformConfig | undefined;
   if (transformsRaw) {
     try {
@@ -58,6 +63,7 @@ export async function POST(req: NextRequest) {
   const prepared = await parseAndMapImportFile(file, mappings, transforms);
 
   // Create job in queued state with parsed data stored for background processing
+  // mergeStrategy is packed into the mapping JSON (no schema change needed)
   const importLog = await prisma.importLog.create({
     data: {
       campaignId: campaignId!,
@@ -66,7 +72,7 @@ export async function POST(req: NextRequest) {
       fileType: prepared.fileType,
       totalRows: prepared.totalRows,
       status: "queued",
-      mapping: mappings,
+      mapping: { columns: mappings, mergeStrategy } as unknown as object,
       warnings: prepared.warnings,
       invalidRows: prepared.invalidRows,
       parsedData: prepared.validRows as unknown as object[],

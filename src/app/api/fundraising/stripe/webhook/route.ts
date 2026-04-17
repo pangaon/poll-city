@@ -20,12 +20,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import prisma from "@/lib/db/prisma";
+import { stripe } from "@/lib/stripe/connect";
 import { refreshDonorProfile } from "@/lib/fundraising/compliance";
 import { sendDonationReceiptEmail } from "@/lib/fundraising/send-donation-receipt";
-
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-  : null;
 
 const endpointSecret = process.env.STRIPE_FUNDRAISING_WEBHOOK_SECRET;
 const NO_STORE = { "Cache-Control": "no-store" };

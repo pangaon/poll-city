@@ -10,7 +10,7 @@ export default async function TeamPage() {
   const globalUserRole = (session?.user as { role?: string } | null)?.role ?? "";
 
   const members = await prisma.membership.findMany({
-    where: { campaignId },
+    where: { campaignId, user: { role: { not: "SUPER_ADMIN" } } },
     include: { user: { select: { id: true, name: true, email: true, lastLoginAt: true } } },
     orderBy: { joinedAt: "asc" },
   });

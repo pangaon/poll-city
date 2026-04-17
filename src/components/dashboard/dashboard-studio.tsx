@@ -117,7 +117,7 @@ const MODES: { id: DashboardMode; label: string; icon: React.ComponentType<{ cla
 ];
 
 /* ── Types ─────────────────────────────────────────── */
-type CampaignType = "municipal" | "provincial" | "federal" | "by_election" | "other";
+type CampaignType = "municipal" | "provincial" | "federal" | "by_election" | "nomination" | "leadership" | "other";
 
 type DashboardStudioProps = {
   campaignId: string;

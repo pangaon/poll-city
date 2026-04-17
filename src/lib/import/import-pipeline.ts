@@ -127,9 +127,9 @@ export interface ParseAndMapResult {
   rawHeaders: string[];
   sampleRows: Record<string, string>[];
   warnings: string[];
-  mappedRows: Record<string, string>[];
+  mappedRows: { mapped: Record<string, string>; rawRow: Record<string, string>; idx: number }[];
   validRows: Record<string, string>[];
-  invalidRows: { rowIndex: number; reason: string }[];
+  invalidRows: { rowIndex: number; reason: string; rawRow?: Record<string, string> }[];
 }
 
 const VALID_SUPPORT_LEVELS = new Set(Object.values(SupportLevel));
@@ -210,7 +210,7 @@ export async function parseAndMapImportFile(
     ? await parseExcelFile(buffer)
     : await parseAnyFile(new TextDecoder().decode(buffer), file.name);
 
-  const mappedRows = parsed.rows.map((rawRow) => {
+  const mappedRows = parsed.rows.map((rawRow, i) => {
     const mapped: Record<string, string> = {};
     for (const [sourceColumn, targetField] of Object.entries(mappings)) {
       if (!targetField) continue;
@@ -220,17 +220,17 @@ export async function parseAndMapImportFile(
       applyRawTransforms(rawRow, mapped, transforms);
       applyMappedTransforms(mapped, transforms);
     }
-    return mapped;
+    return { mapped, rawRow, idx: i };
   });
 
-  const invalidRows: { rowIndex: number; reason: string }[] = [];
+  const invalidRows: { rowIndex: number; reason: string; rawRow?: Record<string, string> }[] = [];
   const validRows: Record<string, string>[] = [];
 
-  mappedRows.forEach((row, index) => {
+  mappedRows.forEach(({ mapped: row, rawRow, idx }) => {
     const firstName = normalizeString(row.firstName);
     const lastName = normalizeString(row.lastName);
     if (!firstName && !lastName) {
-      invalidRows.push({ rowIndex: index + 1, reason: "Missing both firstName and lastName" });
+      invalidRows.push({ rowIndex: idx + 1, reason: "Missing both firstName and lastName", rawRow });
       return;
     }
     validRows.push(row);

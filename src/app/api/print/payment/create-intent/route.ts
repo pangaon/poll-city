@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import prisma from "@/lib/db/prisma";
-
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" })
-  : null;
+import { stripe } from "@/lib/stripe/connect";
 
 export async function POST(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -57,19 +53,23 @@ export async function POST(req: NextRequest) {
       destination: bid.shop.stripeAccountId,
     },
     metadata: {
+      type: "print_job_payment",
       printJobId: job.id,
       printBidId: bid.id,
       campaignId: job.campaignId,
     },
   });
 
+  // Status = "awarded" (bid selected, awaiting payment confirmation).
+  // paymentStatus remains at its default "pending".
+  // The /api/stripe/webhook payment_intent.succeeded handler advances
+  // paymentStatus → "paid" and status → "in_production" once Stripe confirms.
   await prisma.printJob.update({
     where: { id: job.id },
     data: {
       awardedBidId: bid.id,
       paymentIntentId: intent.id,
-      paymentStatus: "paid",
-      status: "in_production",
+      status: "awarded",
     },
   });
 

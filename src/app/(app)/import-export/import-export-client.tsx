@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Upload, FileText, AlertCircle, CheckCircle, History,
   Link2, FileSpreadsheet, Users, MapPin,
-  ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw, Clock,
+  ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw, Clock, Download,
 } from "lucide-react";
 import { Card, CardHeader, CardContent, Select, Badge, EmptyState } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
@@ -134,6 +134,7 @@ interface ImportHistoryItem {
   importedCount: number;
   updatedCount: number;
   skippedCount: number;
+  invalidRowCount?: number;
   createdAt: string;
   rollbackDeadline?: string | null;
 }
@@ -1691,6 +1692,7 @@ export default function ImportExportClient({ campaignId }: Props) {
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Imported</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Updated</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Skipped</th>
+                          <th className="px-3 py-2 text-left text-gray-600 font-medium">Failed rows</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">When</th>
                           <th className="px-3 py-2 text-left text-gray-600 font-medium">Rollback</th>
                         </tr>
@@ -1712,6 +1714,19 @@ export default function ImportExportClient({ campaignId }: Props) {
                               <td className="px-3 py-2 text-gray-700">{item.importedCount ?? 0}</td>
                               <td className="px-3 py-2 text-gray-700">{item.updatedCount ?? 0}</td>
                               <td className="px-3 py-2 text-gray-700">{item.skippedCount ?? 0}</td>
+                              <td className="px-3 py-2">
+                                {(item.invalidRowCount ?? 0) > 0 ? (
+                                  <a
+                                    href={`/api/import/failed-rows?importLogId=${item.id}&campaignId=${campaignId}`}
+                                    className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    {item.invalidRowCount} row{item.invalidRowCount !== 1 ? "s" : ""}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-300 text-xs">—</span>
+                                )}
+                              </td>
                               <td className="px-3 py-2 text-gray-500">{new Date(item.createdAt).toLocaleString()}</td>
                               <td className="px-3 py-2">
                                 {canRollback ? (

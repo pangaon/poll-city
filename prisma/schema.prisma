@@ -712,7 +712,46 @@ model User {
   clientInviteTokens  ClientInviteToken[] @relation("ClientInviteRecipient")
   sentClientInvites   ClientInviteToken[] @relation("ClientInviteCreator")
 
+  userSessions  UserSession[]
+  apiKeys       ApiKey[]
+
   @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER SESSION + API KEYS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserSession {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique // hashed session identifier
+  device    String?   // e.g. "Chrome on Windows", "Safari on iPhone"
+  ip        String?
+  lastSeen  DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("user_sessions")
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String    // user-visible label
+  keyPrefix   String    // first 8 chars — shown in UI after creation
+  keyHash     String    @unique // bcrypt hash of the full key
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("api_keys")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

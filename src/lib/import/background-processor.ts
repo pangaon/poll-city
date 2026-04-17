@@ -54,10 +54,21 @@ export async function processNextChunk(importLogId: string): Promise<{
     await prisma.importLog.update({ where: { id: importLogId }, data: { status: "processing" } });
   }
 
+  // Read merge strategy packed into mapping JSON (backward-compat: default "update")
+  const mappingJson = job.mapping as { columns?: unknown; mergeStrategy?: string } | null;
+  const mergeStrategy: string = mappingJson?.mergeStrategy ?? "update";
+
   // Load existing contacts for dedup
   const existingContacts = await prisma.contact.findMany({
-    where: { campaignId: job.campaignId },
-    select: { id: true, firstName: true, lastName: true, postalCode: true, phone: true, email: true, externalId: true },
+    where: { campaignId: job.campaignId, deletedAt: null },
+    select: {
+      id: true, firstName: true, lastName: true, postalCode: true,
+      phone: true, email: true, externalId: true,
+      // fields needed for update_empty strategy
+      phone2: true, businessPhone: true, email2: true, address1: true,
+      city: true, province: true, ward: true, riding: true, notes: true,
+      preferredLanguage: true, source: true,
+    },
   });
 
   let importedInChunk = 0;
@@ -75,18 +86,39 @@ export async function processNextChunk(importLogId: string): Promise<{
         const duplicate = existingContacts.find((existing) => isLikelyDuplicate(row, existing));
 
         try {
-          if (duplicate) {
-            await tx.contact.update({
-              where: { id: duplicate.id },
-              data: { ...writeData, importSource: "smart_import", source: writeData.source ?? "smart_import" },
-            });
+          if (duplicate && mergeStrategy === "skip") {
+            // skip duplicates — count as skipped, no DB write
+            updatedInChunk++; // reuse counter but mark as "handled"
+          } else if (duplicate && mergeStrategy !== "create_all") {
+            // update or update_empty
+            let updatePayload: Partial<typeof writeData>;
+            if (mergeStrategy === "update_empty") {
+              // Only fill fields that are currently null/empty on the existing record
+              const existing = duplicate as Record<string, unknown>;
+              updatePayload = Object.fromEntries(
+                Object.entries(writeData).filter(([key, val]) => {
+                  const cur = existing[key];
+                  return val && (cur === null || cur === undefined || cur === "");
+                })
+              ) as Partial<typeof writeData>;
+            } else {
+              updatePayload = writeData;
+            }
+            // Only issue the UPDATE if there's actually something to change
+            if (Object.keys(updatePayload).length > 0) {
+              await tx.contact.update({
+                where: { id: duplicate.id },
+                data: { ...updatePayload, importSource: "smart_import" },
+              });
+            }
             updatedInChunk++;
           } else {
+            // create_all or no duplicate found
             const created = await tx.contact.create({
               data: { campaignId: job.campaignId, ...writeData, importSource: "smart_import" },
               select: { id: true, firstName: true, lastName: true, postalCode: true, phone: true, email: true, externalId: true },
             });
-            existingContacts.push(created);
+            existingContacts.push({ ...created, phone2: null, businessPhone: null, email2: null, address1: null, city: null, province: null, ward: null, riding: null, notes: null, preferredLanguage: "en", source: "smart_import" });
             createdIds.push(created.id);
             importedInChunk++;
           }

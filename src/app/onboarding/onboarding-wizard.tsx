@@ -152,7 +152,7 @@ export default function OnboardingWizard({
         body: JSON.stringify({ campaignId }),
       });
       if (!res.ok) throw new Error("Failed");
-      router.push("/dashboard");
+      router.push("/briefing");
       router.refresh();
     } catch {
       toast.error("Something went wrong. Try again.");

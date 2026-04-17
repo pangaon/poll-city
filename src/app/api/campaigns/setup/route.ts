@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { getComplianceDefaults } from "@/lib/fundraising/compliance";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,32 @@ export async function PATCH(req: NextRequest) {
   const campaign = await prisma.campaign.update({
     where: { id: campaignId },
     data: patch,
-    select: { id: true, onboardingComplete: true },
+    select: { id: true, onboardingComplete: true, electionType: true },
   });
+
+  // On wizard completion: auto-initialize fundraising compliance config with the
+  // correct election-type rules if one hasn't been configured yet.
+  // This ensures federal campaigns get $1,675 limits, not the $1,200 municipal default.
+  if (b.complete && campaign.electionType) {
+    const existing = await prisma.fundraisingComplianceConfig.findUnique({
+      where: { campaignId },
+    });
+    if (!existing) {
+      const defaults = getComplianceDefaults(campaign.electionType);
+      await prisma.fundraisingComplianceConfig.create({
+        data: {
+          campaignId,
+          annualLimitPerDonor: defaults.annualLimitPerDonor,
+          anonymousLimit: defaults.anonymousLimit,
+          allowCorporate: defaults.allowCorporate,
+          allowUnion: defaults.allowUnion,
+          blockMode: defaults.blockMode,
+          warningThreshold: defaults.warningThreshold,
+          updatedByUserId: session!.user.id,
+        },
+      });
+    }
+  }
 
   await prisma.activityLog.create({
     data: {

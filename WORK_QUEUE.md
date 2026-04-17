@@ -220,6 +220,19 @@ Quick summary of open items (see GEORGE_TODO.md for step-by-step instructions):
 
 ---
 
+## MODULE: STRIPE HARDENING (audit gaps — April 16 2026)
+
+| Task | Status | Notes |
+|---|---|---|
+| Build fix — CampaignType missing "leadership" | CLAIMED 2026-04-16 | dashboard-studio.tsx:120 |
+| GAP-1+2 — Print job pre-confirmed as paid + no webhook | CLAIMED 2026-04-16 | create-intent sets "paid" before Stripe confirms; no payment_intent.succeeded handler |
+| GAP-3+4 — subscription.updated missing + hardcoded 30-day period | CLAIMED 2026-04-16 | Platform webhook gaps — plan drift + period end drift |
+| GAP-5 — Cross-campaign donor customer sharing | CLAIMED 2026-04-16 | Code comment + architectural note; no schema change needed |
+| GAP-6 — Orphan Stripe products/prices on abandoned flows | CLAIMED 2026-04-16 | Replace products.create+prices.create with inline price_data |
+| GAP-7 — Duplicated Stripe client instantiation in 4 files | CLAIMED 2026-04-16 | Import { stripe } from connect.ts everywhere |
+
+---
+
 ## MODULE: FIGMA UI MATCHING (new — April 16, 2026)
 
 George has a Figma Make prototype at https://valley-revise-45442235.figma.site that is the design reference for the entire campaign staff app. The goal is to rebuild the Next.js UI to match it exactly.

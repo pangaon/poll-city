@@ -17,7 +17,7 @@ interface Member {
 }
 
 const ROLES = [
-  { value: "SUPER_ADMIN", label: "Super Admin", description: "Platform-wide control, billing, all campaigns" },
+  // SUPER_ADMIN intentionally excluded — platform operator role is not assignable at campaign level
   { value: "ADMIN", label: "Admin", description: "Full access to everything in this campaign" },
   { value: "CAMPAIGN_MANAGER", label: "Campaign Manager", description: "All features except billing and team" },
   { value: "FIELD_DIRECTOR", label: "Field Director", description: "Canvassing, walk lists, volunteer shifts, GOTV" },

@@ -32,11 +32,12 @@ export async function GET(req: NextRequest) {
     where,
     orderBy: { createdAt: "desc" },
     take: limit,
-    include: { user: { select: { name: true } } },
+    include: { user: { select: { name: true, role: true } } },
   });
+  const visibleActivities = activities.filter((a) => a.user?.role !== "SUPER_ADMIN");
 
-  // Transform into human-readable feed items
-  const feed = activities.map((a) => {
+  // Transform into human-readable feed items — SUPER_ADMIN actions are filtered above
+  const feed = visibleActivities.map((a) => {
     const who = a.user?.name?.split(" ")[0] ?? "Someone";
     const details = (a.details ?? {}) as Record<string, unknown>;
     const time = a.createdAt;

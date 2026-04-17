@@ -114,6 +114,7 @@ async function main() {
     create: { name: "Ward 12 — City Council 2026", slug: "ward-12-2026", description: "Municipal election campaign for Ward 12 City Council seat.", electionType: ElectionType.municipal, jurisdiction: "City of Toronto — Ward 12", electionDate: new Date("2026-10-26"), candidateName: "Sam Rivera", candidateTitle: "Candidate for City Council, Ward 12", candidateBio: "Sam Rivera is a longtime Ward 12 resident with 15 years of experience in housing and transit advocacy.", candidateEmail: "sam@ward12campaign.ca", candidatePhone: "416-555-0200", primaryColor: "#1e40af" },
   });
   for (const { userId, role } of [
+    // admin.id membership kept for demo login — filtered from all campaign-facing views by SUPER_ADMIN exclusion queries
     { userId: admin.id,      role: Role.ADMIN },
     { userId: manager.id,    role: Role.CAMPAIGN_MANAGER },
     { userId: comms.id,      role: Role.CAMPAIGN_MANAGER },
@@ -227,10 +228,10 @@ async function main() {
   // ── Tasks ──────────────────────────────────────────────────────────────────
   await prisma.task.createMany({
     data: [
-      { campaignId: campaign.id, contactId: contacts[2].id, assignedToId: manager.id, createdById: admin.id, title: "Follow up with Patricia Nguyen re: Oak Street", status: TaskStatus.pending, priority: TaskPriority.high, dueDate: new Date(Date.now() + 3 * 86400000) },
+      { campaignId: campaign.id, contactId: contacts[2].id, assignedToId: manager.id, createdById: manager.id, title: "Follow up with Patricia Nguyen re: Oak Street", status: TaskStatus.pending, priority: TaskPriority.high, dueDate: new Date(Date.now() + 3 * 86400000) },
       { campaignId: campaign.id, contactId: contacts[5].id, assignedToId: volunteer1.id, createdById: manager.id, title: "Re-canvass Carlos Reyes — safety concerns", status: TaskStatus.pending, priority: TaskPriority.medium, dueDate: new Date(Date.now() + 7 * 86400000) },
-      { campaignId: campaign.id, assignedToId: manager.id, createdById: admin.id, title: "Prepare phone bank list for weekend volunteers", status: TaskStatus.in_progress, priority: TaskPriority.high, dueDate: new Date(Date.now() + 2 * 86400000) },
-      { campaignId: campaign.id, contactId: contacts[9].id, assignedToId: admin.id, createdById: admin.id, title: "Coffee meeting with Grant Morrison — business outreach", status: TaskStatus.pending, priority: TaskPriority.medium, dueDate: new Date(Date.now() + 5 * 86400000) },
+      { campaignId: campaign.id, assignedToId: manager.id, createdById: manager.id, title: "Prepare phone bank list for weekend volunteers", status: TaskStatus.in_progress, priority: TaskPriority.high, dueDate: new Date(Date.now() + 2 * 86400000) },
+      { campaignId: campaign.id, contactId: contacts[9].id, assignedToId: manager.id, createdById: manager.id, title: "Coffee meeting with Grant Morrison — business outreach", status: TaskStatus.pending, priority: TaskPriority.medium, dueDate: new Date(Date.now() + 5 * 86400000) },
       { campaignId: campaign.id, assignedToId: volunteer1.id, createdById: manager.id, title: "Deliver lawn signs to confirmed supporters", status: TaskStatus.completed, priority: TaskPriority.medium, dueDate: new Date(Date.now() - 86400000), completedAt: new Date(Date.now() - 86400000) },
     ],
   });
@@ -594,7 +595,7 @@ async function main() {
   });
   await prisma.activityLog.createMany({
     data: [
-      { campaignId: campaign.id, userId: admin.id, action: "created", entityType: "campaign", entityId: campaign.id, details: { name: campaign.name } },
+      { campaignId: campaign.id, userId: manager.id, action: "created", entityType: "campaign", entityId: campaign.id, details: { name: campaign.name } },
       { campaignId: campaign.id, userId: volunteer1.id, action: "logged_interaction", entityType: "contact", entityId: contacts[0].id, details: { type: "door_knock", contactName: "Jennifer Walsh" } },
       { campaignId: campaign.id, userId: manager.id, action: "updated_support_level", entityType: "contact", entityId: contacts[2].id, details: { from: "undecided", to: "leaning_support", contactName: "Patricia Nguyen" } },
     ],
@@ -743,7 +744,7 @@ async function main() {
     { contactId: contacts[3].id, userId: volunteer1.id, type: InteractionType.door_knock,       notes: "Marcus very hostile. Left lit. Do not revisit.",                                   supportLevel: SupportLevel.strong_opposition, createdAt: new Date(Date.now() - 12 * 86400000) },
     { contactId: contacts[8].id, userId: manager.id,    type: InteractionType.phone_call,       notes: "Spoke through daughter. Fatima now leaning support, interested in seniors programme.", supportLevel: SupportLevel.leaning_support, createdAt: new Date(Date.now() - 4 * 86400000) },
     { contactId: contacts[7].id, userId: volunteer2.id, type: InteractionType.door_knock,       notes: "Robert not home again (3rd attempt). Left lit with neighbour.",                    followUpNeeded: true, createdAt: new Date(Date.now() - 2  * 86400000) },
-    { contactId: contacts[9].id, userId: admin.id,      type: InteractionType.field_encounter,  notes: "Coffee meeting. Discussed transit and business priorities. Donated $500 on the spot.", supportLevel: SupportLevel.leaning_support, createdAt: new Date(Date.now() - 3 * 86400000) },
+    { contactId: contacts[9].id, userId: manager.id,    type: InteractionType.field_encounter,  notes: "Coffee meeting. Discussed transit and business priorities. Donated $500 on the spot.", supportLevel: SupportLevel.leaning_support, createdAt: new Date(Date.now() - 3 * 86400000) },
   ] });
 
   // ── 22 additional signs (total 25) — distributed across all polls ──────────
@@ -1011,12 +1012,12 @@ async function main() {
 
   // Operational tasks — 10 covering full campaign workflow
   await prisma.task.createMany({ data: [
-    { campaignId: campaign.id, assignedToId: manager.id,    createdById: admin.id,    title: "Follow up with Grant Morrison on May fundraiser co-host",                 status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  7 * 86400000) },
+    { campaignId: campaign.id, assignedToId: manager.id,    createdById: manager.id,  title: "Follow up with Grant Morrison on May fundraiser co-host",                 status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  7 * 86400000) },
     { campaignId: campaign.id, assignedToId: field.id,      createdById: manager.id,  title: "Finalise Poll 15 & 18 canvass route in Field Ops",                        status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  2 * 86400000) },
     { campaignId: campaign.id, assignedToId: volcoord.id,   createdById: manager.id,  title: "Confirm GOTV Training headcount — send reminder to all registered volunteers", status: TaskStatus.pending, priority: TaskPriority.medium, dueDate: new Date(Date.now() + 21 * 86400000) },
     { campaignId: campaign.id, assignedToId: comms.id,      createdById: manager.id,  title: "Draft social media posts for Meet Sam — East Ward 12 event",              status: TaskStatus.in_progress, priority: TaskPriority.high,   dueDate: new Date(Date.now() +  7 * 86400000) },
     { campaignId: campaign.id, assignedToId: data.id,       createdById: manager.id,  title: "Export Poll 4 contact list for canvass refresher",                        status: TaskStatus.completed,   priority: TaskPriority.medium, dueDate: new Date(Date.now() -  5 * 86400000), completedAt: new Date(Date.now() - 4 * 86400000) },
-    { campaignId: campaign.id, assignedToId: treasurer.id,  createdById: admin.id,    title: "Prepare Q1 donation report for candidate review",                         status: TaskStatus.pending,     priority: TaskPriority.medium, dueDate: new Date(Date.now() + 10 * 86400000) },
+    { campaignId: campaign.id, assignedToId: treasurer.id,  createdById: manager.id,  title: "Prepare Q1 donation report for candidate review",                         status: TaskStatus.pending,     priority: TaskPriority.medium, dueDate: new Date(Date.now() + 10 * 86400000) },
     { campaignId: campaign.id, assignedToId: events.id,     createdById: manager.id,  title: "Book venue and A/V for GOTV Training — confirm with campaign office",     status: TaskStatus.in_progress, priority: TaskPriority.high,   dueDate: new Date(Date.now() + 14 * 86400000) },
     { campaignId: campaign.id, assignedToId: volunteer1.id, createdById: field.id,    title: "Complete remaining stops on Poll 4 & 7 assignment before Saturday",       status: TaskStatus.pending,     priority: TaskPriority.high,   dueDate: new Date(Date.now() +  4 * 86400000) },
     { campaignId: campaign.id, assignedToId: comms.id,      createdById: manager.id,  title: "Upload housing forum photos to campaign website gallery",                  status: TaskStatus.completed,   priority: TaskPriority.low,    dueDate: new Date(Date.now() - 14 * 86400000), completedAt: new Date(Date.now() - 13 * 86400000) },
@@ -1067,7 +1068,8 @@ async function main() {
     },
   });
 
-  // Assign admin as ADMIN on the demo campaign
+  // Assign admin as ADMIN on the demo campaign — needed for demo login via resolveActiveCampaign.
+  // SUPER_ADMIN users are filtered from all campaign-facing views (team list, activity feed) by exclusion queries.
   await prisma.membership.upsert({
     where: { userId_campaignId: { userId: admin.id, campaignId: demoCampaign.id } },
     update: { role: Role.ADMIN },
@@ -1680,7 +1682,7 @@ async function main() {
       description: "Campaign coordinator — Rachel Dubois, June 2026",
       paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
       expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
-      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      enteredByUserId: treasurer.id, approvedByUserId: treasurer.id,
       notes: "Paid to registered contractor. HST number on file.",
     },
   });
@@ -1692,7 +1694,7 @@ async function main() {
       description: "Campaign coordinator — Rachel Dubois, July 2026",
       paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.unpaid,
       expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
-      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      enteredByUserId: treasurer.id, approvedByUserId: treasurer.id,
       notes: "Approved, scheduled for payment Aug 1.",
     },
   });
@@ -1716,7 +1718,7 @@ async function main() {
       description: "Campaign brand package — logo, colour system, typography, brand guide PDF",
       paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
       expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.manual,
-      enteredByUserId: manager.id, approvedByUserId: admin.id,
+      enteredByUserId: manager.id, approvedByUserId: manager.id,
       notes: "Delivered March 18. Files in Google Drive /Brand. Approved by candidate.",
     },
   });
@@ -1729,7 +1731,7 @@ async function main() {
       description: "Campaign website design and build — ward12sam.ca, responsive, bilingual",
       paymentMethod: FinancePaymentMethod.etransfer, paymentStatus: FinancePaymentStatus.paid,
       expenseStatus: FinanceExpenseStatus.paid, sourceType: FinanceSourceType.manual,
-      enteredByUserId: manager.id, approvedByUserId: admin.id,
+      enteredByUserId: manager.id, approvedByUserId: manager.id,
       notes: "Launched April 1. Includes donation page integration and CMS for issues page.",
     },
   });
@@ -1811,7 +1813,7 @@ async function main() {
       description: "Official agent appointment registration — City of Toronto filing fee",
       paymentMethod: FinancePaymentMethod.cheque, paymentStatus: FinancePaymentStatus.paid,
       expenseStatus: FinanceExpenseStatus.approved, sourceType: FinanceSourceType.manual,
-      enteredByUserId: treasurer.id, approvedByUserId: admin.id,
+      enteredByUserId: treasurer.id, approvedByUserId: treasurer.id,
       notes: "Cheque #4401 to Receiver General. Receipt #MEA-2026-00441.",
     },
   });

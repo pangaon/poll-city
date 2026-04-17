@@ -60,14 +60,19 @@ export async function POST(req: NextRequest) {
       phone: true,
       email: true,
       externalId: true,
+      address1: true,
+      city: true,
+      province: true,
     },
   });
 
-  const duplicateSamples: Array<{
+  type DupSample = {
     rowIndex: number;
-    incoming: { firstName: string; lastName: string; email?: string; phone?: string };
-    existing: { id: string; firstName: string; lastName: string; email?: string; phone?: string };
-  }> = [];
+    incoming: Record<string, string | undefined>;
+    existing: Record<string, string | undefined>;
+    changedFields: string[];
+  };
+  const duplicateSamples: DupSample[] = [];
 
   let probableDuplicates = 0;
   for (let i = 0; i < rowsToCheck.length; i++) {
@@ -75,22 +80,18 @@ export async function POST(req: NextRequest) {
     const found = existingContacts.find((existing) => isLikelyDuplicate(row, existing));
     if (found) {
       probableDuplicates++;
-      if (duplicateSamples.length < 20) {
+      if (duplicateSamples.length < 10) {
+        const compareFields = ["firstName", "lastName", "email", "phone", "address1", "city", "province", "postalCode"] as const;
+        const changedFields = compareFields.filter((f) => {
+          const incomingVal = (row[f] ?? "").trim().toLowerCase();
+          const existingVal = ((found as Record<string, string | null>)[f] ?? "").trim().toLowerCase();
+          return incomingVal && existingVal && incomingVal !== existingVal;
+        });
         duplicateSamples.push({
           rowIndex: i + 1,
-          incoming: {
-            firstName: row.firstName ?? "",
-            lastName: row.lastName ?? "",
-            email: row.email,
-            phone: row.phone,
-          },
-          existing: {
-            id: found.id,
-            firstName: found.firstName,
-            lastName: found.lastName,
-            email: found.email ?? undefined,
-            phone: found.phone ?? undefined,
-          },
+          incoming: Object.fromEntries(compareFields.map((f) => [f, row[f] ?? undefined])),
+          existing: Object.fromEntries(compareFields.map((f) => [f, ((found as Record<string, string | null>)[f] ?? undefined) as string | undefined])),
+          changedFields,
         });
       }
     }

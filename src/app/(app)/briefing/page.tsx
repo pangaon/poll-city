@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sun, TrendingUp, TrendingDown, AlertTriangle, Calendar, CheckCircle, Users, ArrowRight, Target, DollarSign, MapPin, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { Sun, TrendingUp, TrendingDown, AlertTriangle, Calendar, CheckCircle, Users, ArrowRight, Target, DollarSign, MapPin, ChevronRight, Sparkles, Loader2, Rocket, Upload, CreditCard } from "lucide-react";
 
 interface BriefingData {
   campaign: { name: string; candidateName: string | null; daysToElection: number | null; phase: string };
@@ -109,6 +109,10 @@ export default function BriefingPage() {
   const phase = d.campaign.phase;
   const phaseLabel = phase === "GOTV_FINAL" ? "GOTV — Final Push" : phase === "GOTV_EARLY" ? "GOTV Phase" : phase === "MOMENTUM" ? "Momentum Phase" : phase === "FOUNDATION" ? "Foundation Phase" : phase === "ELECTION_DAY" ? "ELECTION DAY" : "Post-Election";
 
+  // New campaign: no contacts imported and in early Foundation phase
+  const isNewCampaign = d.totals.contacts < 10 && phase === "FOUNDATION";
+  const hasYesterdayActivity = d.yesterday.doorsKnocked > 0 || d.yesterday.newSupporters > 0 || d.yesterday.donations > 0;
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6 pb-20">
       {/* Header */}
@@ -117,6 +121,44 @@ export default function BriefingPage() {
         <h1 className="text-3xl font-bold text-gray-900 mt-1">{timeGreeting()}, {d.campaign.candidateName?.split(" ")[0] ?? "there"}.</h1>
         <p className="text-gray-500 mt-1">Here is where your campaign stands this morning.</p>
       </div>
+
+      {/* Day 1 Welcome — shown when campaign has no data yet */}
+      {isNewCampaign && (
+        <div className="rounded-2xl border border-[#1D9E75]/30 bg-gradient-to-br from-[#1D9E75]/10 to-emerald-50 p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#1D9E75] flex items-center justify-center shrink-0">
+              <Rocket className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-900">
+                Welcome to your campaign command centre.
+              </p>
+              <p className="text-sm text-slate-600 mt-1">
+                {d.campaign.daysToElection !== null
+                  ? `You have ${d.campaign.daysToElection} days until election day. Here's what to do first.`
+                  : "Let's get your campaign operational. Three things need your attention right now."}
+              </p>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Link href="/import-export" className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 hover:border-[#1D9E75] hover:bg-[#1D9E75]/5 rounded-xl text-sm font-medium text-slate-700 transition-colors group">
+                  <Upload className="w-4 h-4 text-[#1D9E75] shrink-0" />
+                  <span>Import your contacts</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-auto text-slate-300 group-hover:text-[#1D9E75]" />
+                </Link>
+                <Link href="/settings/team" className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 hover:border-[#1D9E75] hover:bg-[#1D9E75]/5 rounded-xl text-sm font-medium text-slate-700 transition-colors group">
+                  <Users className="w-4 h-4 text-[#1D9E75] shrink-0" />
+                  <span>Invite your team</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-auto text-slate-300 group-hover:text-[#1D9E75]" />
+                </Link>
+                <Link href="/fundraising?tab=settings" className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 hover:border-[#1D9E75] hover:bg-[#1D9E75]/5 rounded-xl text-sm font-medium text-slate-700 transition-colors group">
+                  <CreditCard className="w-4 h-4 text-[#1D9E75] shrink-0" />
+                  <span>Connect donations</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-auto text-slate-300 group-hover:text-[#1D9E75]" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Adoni Summary */}
       {(adoniLoading || adoniSummary) && (
@@ -165,16 +207,22 @@ export default function BriefingPage() {
             </div>
           )}
 
-          {/* Yesterday's Activity */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Yesterday</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div><p className="text-2xl font-bold text-gray-900">{d.yesterday.doorsKnocked}</p><p className="text-xs text-gray-500">doors knocked</p></div>
-              <div><p className="text-2xl font-bold text-emerald-600">+{d.yesterday.newSupporters}</p><p className="text-xs text-gray-500">new supporters</p></div>
-              <div><p className="text-2xl font-bold text-gray-900">{d.yesterday.donations}</p><p className="text-xs text-gray-500">donations</p></div>
-              <div><p className="text-2xl font-bold text-gray-900">${d.yesterday.donationAmount.toLocaleString()}</p><p className="text-xs text-gray-500">raised</p></div>
+          {/* Yesterday's Activity — hidden entirely for brand new campaigns with no activity */}
+          {(!isNewCampaign || hasYesterdayActivity) && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Yesterday</p>
+              {hasYesterdayActivity ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div><p className="text-2xl font-bold text-gray-900">{d.yesterday.doorsKnocked}</p><p className="text-xs text-gray-500">doors knocked</p></div>
+                  <div><p className="text-2xl font-bold text-emerald-600">+{d.yesterday.newSupporters}</p><p className="text-xs text-gray-500">new supporters</p></div>
+                  <div><p className="text-2xl font-bold text-gray-900">{d.yesterday.donations}</p><p className="text-xs text-gray-500">donations</p></div>
+                  <div><p className="text-2xl font-bold text-gray-900">${d.yesterday.donationAmount.toLocaleString()}</p><p className="text-xs text-gray-500">raised</p></div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 py-1">No activity recorded yet — your numbers will appear here once your team starts canvassing.</p>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
 

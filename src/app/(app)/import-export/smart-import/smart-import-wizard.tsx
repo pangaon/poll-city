@@ -45,7 +45,7 @@ interface Props { campaignId: string; }
 
 type Step = "upload" | "map" | "duplicates" | "strategy" | "done";
 
-type MergeStrategy = "skip" | "update" | "create_all";
+type MergeStrategy = "skip" | "update" | "update_empty" | "create_all";
 
 interface AnalysisResult {
   filename: string;
@@ -65,11 +65,19 @@ interface ImportResult {
   errors: string[];
 }
 
+interface DupSample {
+  rowIndex: number;
+  incoming: Record<string, string | undefined>;
+  existing: Record<string, string | undefined>;
+  changedFields: string[];
+}
+
 interface ReviewSummary {
   validRows: number;
   invalidRows: number;
   probableDuplicates: number;
   newRecordsEstimate: number;
+  duplicateSamples?: DupSample[];
 }
 
 type TargetEntity = "contacts" | "volunteers" | "documents" | "custom_fields";
@@ -405,6 +413,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
         invalidRows: cleanData.data.invalidRows,
         probableDuplicates: dupData.data.probableDuplicates,
         newRecordsEstimate: dupData.data.newRecordsEstimate,
+        duplicateSamples: dupData.data.duplicateSamples ?? [],
       });
       setStep("duplicates");
     } finally { setPreparingReview(false); }
@@ -1088,6 +1097,62 @@ export default function SmartImportWizard({ campaignId }: Props) {
                     {reviewSummary.invalidRows} row(s) have issues and will be skipped during import.
                   </div>
                 )}
+
+                {/* Merge conflict preview */}
+                {reviewSummary && (reviewSummary.duplicateSamples?.length ?? 0) > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Sample merge conflicts — fields that would change
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {reviewSummary.duplicateSamples!.map((sample, si) => (
+                        <motion.div
+                          key={si}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: si * 0.05 }}
+                          className="rounded-xl border border-gray-100 overflow-hidden"
+                        >
+                          <div className="bg-gray-50 px-3 py-2 flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-700">
+                              Row {sample.rowIndex}: {sample.incoming.firstName} {sample.incoming.lastName}
+                            </span>
+                            {sample.changedFields.length > 0 ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: "#EF9F27" }}>
+                                {sample.changedFields.length} field{sample.changedFields.length !== 1 ? "s" : ""} differ
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400">no changes</span>
+                            )}
+                          </div>
+                          {sample.changedFields.length > 0 && (
+                            <table className="text-xs w-full">
+                              <thead>
+                                <tr className="bg-gray-50/50">
+                                  <th className="px-3 py-1.5 text-left text-gray-500 font-medium w-24">Field</th>
+                                  <th className="px-3 py-1.5 text-left text-gray-500 font-medium">Current in DB</th>
+                                  <th className="px-3 py-1.5 text-left font-medium" style={{ color: GREEN }}>Incoming</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {sample.changedFields.map((field) => (
+                                  <tr key={field}>
+                                    <td className="px-3 py-1.5 font-mono text-gray-400">{field}</td>
+                                    <td className="px-3 py-1.5 text-gray-500 max-w-[120px] truncate">{sample.existing[field] ?? "—"}</td>
+                                    <td className="px-3 py-1.5 font-medium max-w-[120px] truncate" style={{ color: GREEN }}>{sample.incoming[field] ?? "—"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Use &quot;Fill empty fields only&quot; on the next step if you don&apos;t want to overwrite existing data.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1126,9 +1191,16 @@ export default function SmartImportWizard({ campaignId }: Props) {
                     {
                       key: "update" as MergeStrategy,
                       title: "Update existing",
-                      desc: "Import new contacts and update matching records with incoming data. Empty fields are not overwritten.",
+                      desc: "Import new contacts and update all fields on matching records with incoming data.",
                       badge: "Recommended",
                       badgeColor: NAVY,
+                    },
+                    {
+                      key: "update_empty" as MergeStrategy,
+                      title: "Fill empty fields only",
+                      desc: "Import new contacts and only fill blank fields on existing records — never overwrite data you already have.",
+                      badge: "Non-destructive",
+                      badgeColor: GREEN,
                     },
                     {
                       key: "create_all" as MergeStrategy,
@@ -1190,7 +1262,8 @@ export default function SmartImportWizard({ campaignId }: Props) {
                     <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> {analysis.totalRows.toLocaleString()} rows will be processed</li>
                     <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> {mappedCount} columns mapped to target fields</li>
                     {mergeStrategy === "skip" && <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> Duplicates will be skipped entirely</li>}
-                    {mergeStrategy === "update" && <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> Existing records will be enriched with new data</li>}
+                    {mergeStrategy === "update" && <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> All fields on existing records will be updated with incoming data</li>}
+                    {mergeStrategy === "update_empty" && <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> Only blank fields on existing records will be filled — no overwrites</li>}
                     {mergeStrategy === "create_all" && <li className="flex items-start gap-2"><AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-amber-500" /> All rows will be created as new contacts</li>}
                     <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: GREEN }} /> Invalid rows are skipped and logged</li>
                   </ul>

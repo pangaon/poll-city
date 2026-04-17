@@ -14,6 +14,11 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Monitor,
+  Key,
+  Plus,
+  XCircle,
+  LogOut,
 } from "lucide-react";
 
 interface Props {
@@ -23,6 +28,8 @@ interface Props {
   webauthnCount: number;
   hasPhone: boolean;
   email: string;
+  initialSessions: SessionRow[];
+  initialApiKeys: ApiKeyRow[];
 }
 
 type SecurityEvent = {
@@ -34,10 +41,32 @@ type SecurityEvent = {
   createdAt: string;
 };
 
+type SessionRow = {
+  id: string;
+  device: string | null;
+  ip: string | null;
+  lastSeen: string;
+  createdAt: string;
+};
+
+type ApiKeyRow = {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+};
+
 export default function SecurityClient(props: Props) {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(props.twoFactorEnabled);
   const [webauthnCount, setWebauthnCount] = useState(props.webauthnCount);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [sessions, setSessions] = useState<SessionRow[]>(props.initialSessions);
+  const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>(props.initialApiKeys);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyResult, setNewKeyResult] = useState<{ key: string; prefix: string } | null>(null);
+  const [newKeyCopied, setNewKeyCopied] = useState(false);
+  const [showNewKeyForm, setShowNewKeyForm] = useState(false);
   const [setupState, setSetupState] = useState<
     | { phase: "idle" }
     | { phase: "scanning"; secret: string; qr: string }
@@ -49,6 +78,7 @@ export default function SecurityClient(props: Props) {
   const [showDisable, setShowDisable] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [revokingAll, setRevokingAll] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/security-events")
@@ -61,6 +91,8 @@ export default function SecurityClient(props: Props) {
     setMsg({ kind, text });
     setTimeout(() => setMsg(null), 4000);
   }
+
+  // ── 2FA setup ──────────────────────────────────────────────────────────────
 
   async function startSetup() {
     setMsg(null);
@@ -100,6 +132,8 @@ export default function SecurityClient(props: Props) {
     flash("ok", "2FA disabled");
   }
 
+  // ── WebAuthn ───────────────────────────────────────────────────────────────
+
   async function enrollBiometric() {
     try {
       const { startRegistration } = await import("@simplewebauthn/browser");
@@ -122,8 +156,13 @@ export default function SecurityClient(props: Props) {
     }
   }
 
+  // ── Backup codes ───────────────────────────────────────────────────────────
+
   function downloadBackupCodes(codes: string[]) {
-    const blob = new Blob([`Poll City — 2FA Backup Codes\n\n${codes.join("\n")}\n\nKeep these safe. Each code can be used once.\n`], { type: "text/plain" });
+    const blob = new Blob(
+      [`Poll City — 2FA Backup Codes\n\n${codes.join("\n")}\n\nKeep these safe. Each code can be used once.\n`],
+      { type: "text/plain" },
+    );
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "poll-city-backup-codes.txt";
@@ -137,11 +176,61 @@ export default function SecurityClient(props: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  // ── Sessions ───────────────────────────────────────────────────────────────
+
+  async function refreshSessions() {
+    const r = await fetch("/api/auth/sessions");
+    const d = await r.json();
+    setSessions(d.sessions ?? []);
+  }
+
+  async function revokeSession(id: string) {
+    const r = await fetch(`/api/auth/sessions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!r.ok) return flash("err", "Could not revoke session");
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    flash("ok", "Session revoked");
+  }
+
+  async function revokeAllSessions() {
+    setRevokingAll(true);
+    const r = await fetch("/api/auth/sessions?all=true", { method: "DELETE" });
+    setRevokingAll(false);
+    if (!r.ok) return flash("err", "Could not revoke sessions");
+    setSessions([]);
+    flash("ok", "All sessions ended — you will be signed out shortly");
+    // Redirect to login after a brief pause
+    setTimeout(() => { window.location.href = "/login"; }, 2000);
+  }
+
+  // ── API Keys ───────────────────────────────────────────────────────────────
+
+  async function generateKey() {
+    if (!newKeyName.trim()) return;
+    const r = await fetch("/api/auth/api-keys", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: newKeyName.trim() }),
+    });
+    const d = await r.json();
+    if (!r.ok) return flash("err", d.error ?? "Could not create key");
+    setNewKeyResult({ key: d.key, prefix: d.keyPrefix });
+    setApiKeys((prev) => [{ id: d.id, name: d.name, keyPrefix: d.keyPrefix, lastUsedAt: null, createdAt: d.createdAt }, ...prev]);
+    setNewKeyName("");
+    setShowNewKeyForm(false);
+  }
+
+  async function revokeApiKey(id: string) {
+    const r = await fetch(`/api/auth/api-keys?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!r.ok) return flash("err", "Could not revoke key");
+    setApiKeys((prev) => prev.filter((k) => k.id !== id));
+    flash("ok", "API key revoked");
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 md:py-10 space-y-6 pb-[env(safe-area-inset-bottom)]">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Security</h1>
-        <p className="text-sm text-slate-600">Protect your account with two-factor authentication and biometrics.</p>
+        <p className="text-sm text-slate-600">Protect your account with two-factor authentication, sessions, and API keys.</p>
       </header>
 
       {msg && (
@@ -152,7 +241,7 @@ export default function SecurityClient(props: Props) {
         </div>
       )}
 
-      {/* 2FA Section */}
+      {/* ── 2FA Section ────────────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${twoFactorEnabled ? "bg-emerald-100" : "bg-slate-100"}`}>
@@ -319,7 +408,7 @@ export default function SecurityClient(props: Props) {
         )}
       </section>
 
-      {/* WebAuthn Section */}
+      {/* ── WebAuthn Section ───────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
@@ -340,7 +429,7 @@ export default function SecurityClient(props: Props) {
         </button>
       </section>
 
-      {/* MFA method preference */}
+      {/* ── Verification method ────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
         <h2 className="font-bold text-slate-900 mb-3">Verification method</h2>
         <div className="space-y-2">
@@ -360,7 +449,62 @@ export default function SecurityClient(props: Props) {
         </div>
       </section>
 
-      {/* Login History */}
+      {/* ── Active Sessions ────────────────────────────────────────────────── */}
+      <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Monitor className="w-5 h-5 text-slate-500" />
+            <h2 className="font-bold text-slate-900">Active sessions</h2>
+          </div>
+          <button
+            onClick={refreshSessions}
+            className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center"
+            aria-label="Refresh sessions"
+          >
+            <RefreshCw className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+
+        {sessions.length === 0 ? (
+          <p className="text-sm text-slate-500">No active sessions recorded.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {sessions.map((s) => (
+              <li key={s.id} className="py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                  <Monitor className="w-4 h-4 text-slate-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-900 truncate">{s.device ?? "Unknown device"}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    Last seen {new Date(s.lastSeen).toLocaleString()}
+                    {s.ip ? ` · ${s.ip}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeSession(s.id)}
+                  className="h-8 px-3 text-xs font-semibold text-red-700 border border-red-200 rounded-lg hover:bg-red-50 shrink-0"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-4 pt-3 border-t border-slate-100">
+          <button
+            onClick={revokeAllSessions}
+            disabled={revokingAll || sessions.length === 0}
+            className="h-10 px-4 text-sm font-semibold text-red-700 border-2 border-red-200 rounded-lg hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
+          >
+            <LogOut className="w-4 h-4" />
+            {revokingAll ? "Signing out…" : "Sign out of all devices"}
+          </button>
+        </div>
+      </section>
+
+      {/* ── Login History ──────────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-slate-900">Login & security activity</h2>
@@ -382,7 +526,7 @@ export default function SecurityClient(props: Props) {
           <ul className="divide-y divide-slate-100">
             {events.map((ev) => (
               <li key={ev.id} className="py-3 flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${ev.success ? "bg-emerald-500" : "bg-red-500"}`} />
+                <div className={`w-2 h-2 rounded-full shrink-0 ${ev.success ? "bg-emerald-500" : "bg-red-500"}`} />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-slate-900 truncate">{prettyEvent(ev.type)}</p>
                   <p className="text-xs text-slate-500 truncate">
@@ -399,7 +543,113 @@ export default function SecurityClient(props: Props) {
         )}
       </section>
 
-      {/* PIPEDA + delete */}
+      {/* ── API Keys ───────────────────────────────────────────────────────── */}
+      <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Key className="w-5 h-5 text-slate-500" />
+            <div>
+              <h2 className="font-bold text-slate-900">API keys</h2>
+              <p className="text-xs text-slate-500">For automated integrations and scripts</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setShowNewKeyForm(true); setNewKeyResult(null); }}
+            className="h-9 px-3 rounded-lg bg-blue-700 text-white text-sm font-semibold flex items-center gap-1.5 hover:bg-blue-800"
+          >
+            <Plus className="w-4 h-4" /> New key
+          </button>
+        </div>
+
+        {/* New key form */}
+        {showNewKeyForm && (
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <label className="block text-sm font-semibold text-slate-700">Key name</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="e.g. Zapier integration"
+                className="flex-1 h-11 px-3 border-2 border-slate-300 rounded-lg focus:border-blue-600 focus:outline-none text-sm"
+                maxLength={100}
+              />
+              <button
+                onClick={generateKey}
+                disabled={!newKeyName.trim()}
+                className="h-11 px-4 rounded-lg bg-blue-700 text-white font-semibold text-sm disabled:opacity-50"
+              >
+                Generate
+              </button>
+              <button
+                onClick={() => setShowNewKeyForm(false)}
+                className="h-11 px-3 rounded-lg border-2 border-slate-300 text-slate-700 font-semibold text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Key reveal — one-time display */}
+        {newKeyResult && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-2">
+            <p className="text-sm font-semibold text-amber-900">
+              Copy this key now — it will never be shown again.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono bg-white border border-amber-200 rounded px-3 py-2 break-all">{newKeyResult.key}</code>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(newKeyResult.key);
+                  setNewKeyCopied(true);
+                  setTimeout(() => setNewKeyCopied(false), 2000);
+                }}
+                className="h-10 w-10 rounded-lg border border-amber-300 flex items-center justify-center text-amber-800 hover:bg-amber-100"
+                aria-label="Copy key"
+              >
+                {newKeyCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            <button
+              onClick={() => setNewKeyResult(null)}
+              className="text-xs text-amber-800 underline"
+            >
+              I&apos;ve saved it
+            </button>
+          </div>
+        )}
+
+        {apiKeys.length === 0 ? (
+          <p className="text-sm text-slate-500">No API keys yet.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {apiKeys.map((k) => (
+              <li key={k.id} className="py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                  <Key className="w-4 h-4 text-slate-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-900 truncate">{k.name}</p>
+                  <p className="text-xs text-slate-500 font-mono truncate">
+                    {k.keyPrefix}… · Created {new Date(k.createdAt).toLocaleDateString()}
+                    {k.lastUsedAt ? ` · Last used ${new Date(k.lastUsedAt).toLocaleDateString()}` : " · Never used"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeApiKey(k.id)}
+                  className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-red-600 hover:bg-red-50 shrink-0"
+                  aria-label="Revoke key"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ── PIPEDA + delete ────────────────────────────────────────────────── */}
       <section className="bg-white rounded-2xl border border-slate-200 p-5 md:p-6 space-y-4">
         <h2 className="font-bold text-slate-900">Your data (PIPEDA)</h2>
         <div className="flex flex-col md:flex-row gap-2">
