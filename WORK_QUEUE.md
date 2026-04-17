@@ -330,7 +330,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /finance/approvals — queue + bulk actions | DONE — db3f05a | RejectModal (replaces prompt()), bulk Approve All button, type/urgency badges, summary counts. |
 | /finance/reports — full report suite | DONE — 0a8d74b | Budget vs actual tab, reconciliation tab, monthly burn chart, at-risk lines, category bars, CSV export. |
 | /finance/audit — full audit trail + filters | DONE — db3f05a | Date range + entity type + actor name filters, CSV export, paginated, expandable before/after diff. |
-| Finance Phase 8 — hardening + permissions | CLAIMED 2026-04-17 | Role-based access: Finance role can only see finance. Staff cannot see salaries. |
+| Finance Phase 8 — hardening + permissions | DONE — 1b42cb9 | Role-based access: Finance role can only see finance. Staff cannot see salaries. |
 
 ---
 

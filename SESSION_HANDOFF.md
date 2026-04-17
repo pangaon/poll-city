@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: Finance Sprint 2 — expenses receipt upload + vendors full edit)
+**Updated by:** Claude Sonnet 4.6 (session: Finance Phase 8 — FINANCE role access control)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -26,7 +26,26 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Sprint 2 Finance hardening complete — session close)
+## LAST SESSION (2026-04-17 — Finance Phase 8: FINANCE role access control + salary privacy)
+
+**What shipped — commit 1b42cb9:**
+
+### FINANCE role — fully wired end-to-end
+- **Middleware** — FINANCE role restricted to finance-relevant paths only. Any other path → `/finance`.
+- **Finance layout** — server-side role check; non-finance roles redirected to `/dashboard`.
+- **Sidebar** — `isFinanceOnly` now correctly checks `session.user.role === "FINANCE"`. FINANCE_SECTIONS updated: added Vendors + Audit Trail tabs.
+- **Auth helpers** — `isFinanceRole()`, `canViewStaffingLines()`, `FINANCE` permissions array added to `helpers.ts`.
+- **Audit trail API** — explicit FINANCE role check added.
+- **Reports overview API** — FINANCE role sees variance table with `staffing` lines filtered out (salary privacy).
+- **Expenses API** — VOLUNTEER/VOLUNTEER_LEADER see expenses minus staffing+contractors categories (already live from 5657880, confirmed).
+- Build: `npm run build` exits 0, TypeScript clean.
+- George: run `npx prisma db push` to apply FINANCE enum to Railway (covered by GEORGE_TODO item 62).
+
+### Sprint 2 Finance — now fully complete (all 9 sub-routes + Phase 8 DONE)
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Sprint 2 Finance hardening complete — session close)
 
 **What shipped — commits e900943, 0814977, db3f05a:**
 
@@ -409,30 +428,25 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Session close 2026-04-17. Sprint 2 Finance complete. CIE + RCAE live. Build green. All pushed to origin/main.
+Session close 2026-04-17. Sprint 2 Finance 100% DONE (all 9 sub-routes + Phase 8). Build green. All pushed to origin/main.
 
-Sprint 2 Finance DONE (8/9 sub-routes):
-- /finance/purchase-requests — partial approval, overrun warning, expandable rows (e900943)
-- /finance/reimbursements — ApproveModal, RejectModal, MarkPaidModal, isManager gating (db3f05a)
-- /finance/approvals — RejectModal replaces prompt(), bulk Approve All (db3f05a)
-- /finance/audit — actor filter, CSV export, date range (db3f05a)
-- /finance/reports, /finance/expenses, /finance/vendors, /finance/budget — all DONE in prior sessions
-Only remaining: Finance Phase 8 (role-based access) — PENDING
+Finance is now fully complete:
+- FINANCE role: middleware-enforced path restriction, server-side layout redirect, correct sidebar isolation
+- Salary privacy: VOLUNTEER/VOLUNTEER_LEADER can't see staffing/contractors expenses; FINANCE role can't see staffing variance lines in reports
+- All 9 Sprint 2 sub-routes DONE: budget, expenses, vendors, purchase-requests, reimbursements, approvals, reports, audit, Phase 8
+- RCAE live at /reputation | CIE live at /intel | QR Capture claimed (src/lib/qr/ untracked — that session should commit)
 
-RCAE live at /reputation (alerts, command center, issues, response pages)
-CIE live at /intel (candidate detection, scoring, outreach)
+GEORGE MUST DO before /intel or /reputation work (GEORGE_TODO.md item 62):
+npx prisma db push — applies CIE + RCAE + FINANCE enum to Railway (additive-only, zero data risk)
 
-GEORGE MUST DO (GEORGE_TODO.md items 62-64):
-1. npx prisma migrate dev --name cie-rcae — creates CIE + RCAE tables in Railway (CRITICAL — these pages 404 until this runs)
-2. POST /api/intel/seed — seeds source registry (after migrate)
-3. Add NEWS_API_KEY to Railway (optional for live news ingestion)
+Next recommended tasks (all PENDING in WORK_QUEUE):
+1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
+2. Sprint 3 — Field sub-modules depth (/field/programs, /field/teams, /field/routes/[id], etc.)
+3. Sprint 4 — Print/Forms/Ops polish
+4. QR Capture + Geo-Triggered Prospect Funnel — claimed by another session (check if still active)
 
-Next recommended tasks:
-1. Finance Phase 8 — role-based access (Finance role only, staff can't see salaries)
-2. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
-3. Sprint 3 — Field sub-modules depth
-
-Working tree is clean. Read WORK_QUEUE.md. Claim before building.
+Working tree: `src/lib/qr/` untracked (another session's uncommitted work — do NOT git add blindly).
+Read WORK_QUEUE.md. Claim before building.
 ```
 
 ---
