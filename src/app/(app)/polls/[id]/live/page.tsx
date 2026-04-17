@@ -6,6 +6,7 @@ import Link from "next/link";
 import LiveResultsStream from "@/components/polls/LiveResultsStream";
 import { ArrowLeft, Pencil, Globe, Lock, EyeOff } from "lucide-react";
 import LivePageActions from "./live-page-actions";
+import DemographicsPanel from "./demographics-panel";
 
 export const metadata = { title: "Live Results — Poll City" };
 
@@ -85,6 +86,9 @@ export default async function PollLivePage({ params }: { params: { id: string } 
           initialTotal={poll.totalResponses}
         />
       </div>
+
+      {/* Geographic breakdown + trend (lazy client-side fetch) */}
+      <DemographicsPanel pollId={poll.id} />
 
       {/* Share + actions */}
       <LivePageActions
