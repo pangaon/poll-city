@@ -540,29 +540,102 @@ function ProspectsQuickView({ campaignId }: { campaignId: string }) {
 // ── Create QR Modal ────────────────────────────────────────────────────────
 
 const QR_TYPES = [
-  { value: "campaign", label: "Campaign" },
-  { value: "event_booth", label: "Event Booth" },
-  { value: "location", label: "Location / Transit" },
-  { value: "lawn_sign", label: "Lawn Sign" },
-  { value: "flyer_print", label: "Flyer / Print" },
-  { value: "volunteer_capture", label: "Volunteer Capture" },
-  { value: "issue_petition", label: "Issue / Petition" },
-  { value: "smart_dynamic", label: "Smart Dynamic" },
-  { value: "generic_social", label: "Generic (Public)" },
+  { value: "campaign",           label: "Campaign"           },
+  { value: "event_booth",        label: "Event Booth"        },
+  { value: "location",           label: "Location / Transit" },
+  { value: "lawn_sign",          label: "Lawn Sign"          },
+  { value: "flyer_print",        label: "Flyer / Print"      },
+  { value: "volunteer_capture",  label: "Volunteer Capture"  },
+  { value: "issue_petition",     label: "Issue / Petition"   },
+  { value: "smart_dynamic",      label: "Smart Dynamic"      },
+  { value: "generic_social",     label: "Generic (Public)"   },
 ];
 
 const FUNNEL_TYPES = [
   { value: "general_engagement", label: "General Engagement" },
-  { value: "supporter_capture", label: "Supporter Capture" },
-  { value: "volunteer_signup", label: "Volunteer Sign-Up" },
-  { value: "sign_request", label: "Sign Request" },
-  { value: "event_rsvp", label: "Event RSVP" },
-  { value: "issue_pulse", label: "Issue Pulse" },
-  { value: "update_request", label: "Stay Updated" },
-  { value: "donation", label: "Donation" },
+  { value: "supporter_capture",  label: "Supporter Capture"  },
+  { value: "volunteer_signup",   label: "Volunteer Sign-Up"  },
+  { value: "sign_request",       label: "Sign Request"       },
+  { value: "event_rsvp",         label: "Event RSVP"         },
+  { value: "issue_pulse",        label: "Issue Pulse"        },
+  { value: "update_request",     label: "Stay Updated"       },
+  { value: "donation",           label: "Donation"           },
 ];
 
 const PLACEMENT_TYPES = Object.entries(PLACEMENT_LABELS).map(([value, label]) => ({ value, label }));
+
+// Smart defaults: picking a placement pre-fills type + funnel
+const PLACEMENT_DEFAULTS: Record<string, { type: string; funnelType: string }> = {
+  bus_stop:            { type: "location",          funnelType: "general_engagement" },
+  transit_shelter:     { type: "location",          funnelType: "general_engagement" },
+  crosswalk_pole:      { type: "location",          funnelType: "general_engagement" },
+  lawn_sign:           { type: "lawn_sign",         funnelType: "supporter_capture"  },
+  campaign_sign:       { type: "lawn_sign",         funnelType: "supporter_capture"  },
+  event_booth:         { type: "event_booth",       funnelType: "event_rsvp"         },
+  pop_up_booth:        { type: "event_booth",       funnelType: "event_rsvp"         },
+  festival:            { type: "event_booth",       funnelType: "event_rsvp"         },
+  sponsorship_table:   { type: "event_booth",       funnelType: "event_rsvp"         },
+  flyer:               { type: "flyer_print",       funnelType: "general_engagement" },
+  poster:              { type: "flyer_print",       funnelType: "general_engagement" },
+  door_hanger:         { type: "flyer_print",       funnelType: "general_engagement" },
+  print_material:      { type: "flyer_print",       funnelType: "general_engagement" },
+  public_handout:      { type: "flyer_print",       funnelType: "general_engagement" },
+  volunteer_clipboard: { type: "volunteer_capture", funnelType: "volunteer_signup"   },
+  campaign_office:     { type: "campaign",          funnelType: "supporter_capture"  },
+  community_board:     { type: "campaign",          funnelType: "general_engagement" },
+  storefront_partner:  { type: "campaign",          funnelType: "general_engagement" },
+  branded_merchandise: { type: "generic_social",    funnelType: "general_engagement" },
+};
+
+const ALL_INTENTS = [
+  { value: "support",             label: "I support this candidate", emoji: "✊" },
+  { value: "keep_updated",        label: "Keep me updated",          emoji: "📬" },
+  { value: "volunteer",           label: "I want to volunteer",      emoji: "🙋" },
+  { value: "request_sign",        label: "I want a lawn sign",       emoji: "🪧" },
+  { value: "more_info",           label: "Tell me more",             emoji: "ℹ️" },
+  { value: "donate",              label: "I want to donate",         emoji: "💚" },
+  { value: "concern",             label: "I have a concern",         emoji: "💬" },
+  { value: "live_nearby",         label: "I live nearby",            emoji: "🏠" },
+  { value: "help_at_location",    label: "I can help here",          emoji: "🤝" },
+  { value: "interested_in_issue", label: "I care about an issue",    emoji: "🔍" },
+  { value: "attend_event",        label: "Attend an event",          emoji: "🎟️" },
+  { value: "just_browsing",       label: "Just browsing",            emoji: "👀" },
+];
+
+const DEFAULT_INTENTS = ["keep_updated", "support", "volunteer", "request_sign", "more_info", "just_browsing"];
+
+type ModalMode = "quick" | "full" | "batch";
+
+const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 placeholder-slate-600";
+const selectCls = "w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-white/30";
+const labelCls = "text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5";
+
+function TeaserToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? "bg-amber-500" : "bg-slate-600"}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+      <div>
+        <div className="text-white text-sm font-medium">Teaser mode</div>
+        <div className="text-slate-400 text-xs">Capture leads in background — reveal after upgrade</div>
+      </div>
+    </div>
+  );
+}
+
+async function safeJsonError(res: Response): Promise<string> {
+  try {
+    const d = await res.json();
+    return d.error ?? `Server error ${res.status}`;
+  } catch {
+    return `Server error ${res.status}`;
+  }
+}
 
 function CreateQrModal({
   campaignId,
@@ -573,19 +646,52 @@ function CreateQrModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [form, setForm] = useState({
-    label: "",
-    type: "campaign",
-    funnelType: "general_engagement",
-    placementType: "",
-    locationName: "",
-    locationAddress: "",
-    headline: "",
-    subheadline: "",
-    teaserMode: false,
-  });
+  const [mode, setMode] = useState<ModalMode>("quick");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Quick form ──────────────────────────────────────────────────────────
+  const [quick, setQuick] = useState({ label: "", placementType: "", locationName: "", teaserMode: false });
+
+  // ── Full form ───────────────────────────────────────────────────────────
+  const [full, setFull] = useState({
+    label: "", type: "campaign", funnelType: "general_engagement",
+    placementType: "", locationName: "", locationAddress: "",
+    headline: "", subheadline: "", teaserMode: false,
+    enabledIntents: DEFAULT_INTENTS,
+  });
+
+  // ── Batch form ──────────────────────────────────────────────────────────
+  const [batch, setBatch] = useState({
+    placementType: "", funnelType: "general_engagement", type: "location",
+    teaserMode: false, headline: "",
+    batchMode: "auto" as "auto" | "list",
+    prefix: "", count: "5",
+    locations: "",
+  });
+
+  const handleFullPlacementChange = (p: string) => {
+    const d = PLACEMENT_DEFAULTS[p];
+    setFull((f) => ({ ...f, placementType: p, ...(d ? { type: d.type, funnelType: d.funnelType } : {}) }));
+  };
+
+  const handleBatchPlacementChange = (p: string) => {
+    const d = PLACEMENT_DEFAULTS[p];
+    setBatch((f) => ({ ...f, placementType: p, ...(d ? { type: d.type, funnelType: d.funnelType } : {}) }));
+  };
+
+  const toggleIntent = (intent: string) => {
+    setFull((f) => ({
+      ...f,
+      enabledIntents: f.enabledIntents.includes(intent)
+        ? f.enabledIntents.filter((i) => i !== intent)
+        : [...f.enabledIntents, intent],
+    }));
+  };
+
+  const batchCount = batch.batchMode === "auto"
+    ? Math.min(30, Math.max(1, parseInt(batch.count, 10) || 1))
+    : batch.locations.split("\n").filter((l) => l.trim()).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -593,38 +699,84 @@ function CreateQrModal({
     setError(null);
 
     try {
-      const res = await fetch("/api/qr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          type: form.type,
-          funnelType: form.funnelType,
-          placementType: form.placementType || undefined,
-          label: form.label || undefined,
-          locationName: form.locationName || undefined,
-          locationAddress: form.locationAddress || undefined,
-          teaserMode: form.teaserMode,
-          landingConfig: {
-            headline: form.headline || undefined,
-            subheadline: form.subheadline || undefined,
-          },
-        }),
-      });
+      let ok = false;
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to create QR code");
-        return;
+      if (mode === "quick") {
+        const d = PLACEMENT_DEFAULTS[quick.placementType] ?? { type: "campaign", funnelType: "general_engagement" };
+        const res = await fetch("/api/qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId, type: d.type, funnelType: d.funnelType,
+            placementType: quick.placementType || undefined,
+            label: quick.label || undefined,
+            locationName: quick.locationName || undefined,
+            teaserMode: quick.teaserMode,
+          }),
+        });
+        if (!res.ok) { setError(await safeJsonError(res)); return; }
+        ok = true;
+
+      } else if (mode === "full") {
+        const res = await fetch("/api/qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId, type: full.type, funnelType: full.funnelType,
+            placementType: full.placementType || undefined,
+            label: full.label || undefined,
+            locationName: full.locationName || undefined,
+            locationAddress: full.locationAddress || undefined,
+            teaserMode: full.teaserMode,
+            landingConfig: {
+              headline: full.headline || undefined,
+              subheadline: full.subheadline || undefined,
+              enabledIntents: full.enabledIntents.length > 0 ? full.enabledIntents : undefined,
+            },
+          }),
+        });
+        if (!res.ok) { setError(await safeJsonError(res)); return; }
+        ok = true;
+
+      } else {
+        const lines = batch.batchMode === "auto"
+          ? Array.from({ length: batchCount }, (_, i) => (batch.prefix ? `${batch.prefix} #${i + 1}` : `Code #${i + 1}`))
+          : batch.locations.split("\n").map((l) => l.trim()).filter(Boolean);
+
+        if (lines.length === 0) { setError("Enter at least one location."); return; }
+        if (lines.length > 30) { setError("Maximum 30 per batch."); return; }
+
+        const items = lines.map((l) => ({ label: l, locationName: l }));
+        const res = await fetch("/api/qr/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaignId, items,
+            shared: {
+              type: batch.type, funnelType: batch.funnelType,
+              placementType: batch.placementType || undefined,
+              teaserMode: batch.teaserMode,
+              landingConfig: batch.headline ? { headline: batch.headline } : undefined,
+            },
+          }),
+        });
+        if (!res.ok) { setError(await safeJsonError(res)); return; }
+        ok = true;
       }
 
-      onCreated();
+      if (ok) onCreated();
     } catch {
       setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  const MODES = [
+    { id: "quick" as ModalMode,  label: "Quick",      desc: "3 fields, done" },
+    { id: "full"  as ModalMode,  label: "Full Setup",  desc: "All options"   },
+    { id: "batch" as ModalMode,  label: "Batch",       desc: "Up to 30 codes" },
+  ];
 
   return (
     <motion.div
@@ -641,121 +793,224 @@ function CreateQrModal({
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
       >
-        <div className="p-5 border-b border-white/5 flex items-center justify-between">
-          <div>
-            <h2 className="text-white font-bold text-lg">Create QR Code</h2>
-            <p className="text-slate-400 text-xs mt-0.5">Configure your new capture code</p>
+        {/* Header */}
+        <div className="p-5 border-b border-white/5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-white font-bold text-lg">Create QR Code</h2>
+              <p className="text-slate-400 text-xs mt-0.5">Physical-to-digital prospect capture</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
+          {/* Mode tabs */}
+          <div className="grid grid-cols-3 gap-1 p-1 bg-white/5 rounded-xl">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => { setMode(m.id); setError(null); }}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors text-center ${
+                  mode === m.id
+                    ? "bg-[#0A2342] text-white shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <div>{m.label}</div>
+                <div className={`text-[10px] font-normal mt-0.5 ${mode === m.id ? "text-slate-400" : "text-slate-600"}`}>{m.desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Label</label>
-            <input
-              type="text"
-              placeholder="e.g. Finch & Yonge Bus Stop"
-              value={form.label}
-              onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 placeholder-slate-600"
-            />
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-white/30"
-              >
-                {QR_TYPES.map((t) => (
-                  <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>
-                ))}
-              </select>
+          {/* ── QUICK MODE ─────────────────────────────────────────────── */}
+          {mode === "quick" && (
+            <>
+              <div className="bg-[#1D9E75]/10 border border-[#1D9E75]/20 rounded-xl p-3 text-slate-300 text-xs">
+                Pick a placement and we handle the rest — type and funnel are set automatically.
+              </div>
+              <div>
+                <label className={labelCls}>Placement</label>
+                <select value={quick.placementType} onChange={(e) => setQuick((f) => ({ ...f, placementType: e.target.value }))} className={selectCls}>
+                  <option value="" className="bg-slate-900">Where will this QR code live?</option>
+                  {PLACEMENT_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Label <span className="text-slate-600 normal-case font-normal">(optional)</span></label>
+                <input type="text" placeholder="e.g. Finch & Yonge Bus Stop" value={quick.label} onChange={(e) => setQuick((f) => ({ ...f, label: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Location <span className="text-slate-600 normal-case font-normal">(optional)</span></label>
+                <input type="text" placeholder="e.g. Finch Ave W & Yonge St" value={quick.locationName} onChange={(e) => setQuick((f) => ({ ...f, locationName: e.target.value }))} className={inputCls} />
+              </div>
+              <TeaserToggle value={quick.teaserMode} onChange={(v) => setQuick((f) => ({ ...f, teaserMode: v }))} />
+            </>
+          )}
+
+          {/* ── FULL MODE ──────────────────────────────────────────────── */}
+          {mode === "full" && (
+            <>
+              <div>
+                <label className={labelCls}>Label</label>
+                <input type="text" placeholder="e.g. Finch & Yonge Bus Stop" value={full.label} onChange={(e) => setFull((f) => ({ ...f, label: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Placement</label>
+                <select value={full.placementType} onChange={(e) => handleFullPlacementChange(e.target.value)} className={selectCls}>
+                  <option value="" className="bg-slate-900">Select placement…</option>
+                  {PLACEMENT_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                </select>
+                {full.placementType && PLACEMENT_DEFAULTS[full.placementType] && (
+                  <p className="text-slate-500 text-xs mt-1">Auto-set: {QR_TYPES.find(t => t.value === full.type)?.label} · {FUNNEL_TYPES.find(t => t.value === full.funnelType)?.label}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Type</label>
+                  <select value={full.type} onChange={(e) => setFull((f) => ({ ...f, type: e.target.value }))} className={selectCls}>
+                    {QR_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Funnel</label>
+                  <select value={full.funnelType} onChange={(e) => setFull((f) => ({ ...f, funnelType: e.target.value }))} className={selectCls}>
+                    {FUNNEL_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Location Name</label>
+                <input type="text" placeholder="e.g. Finch & Yonge Transit Shelter" value={full.locationName} onChange={(e) => setFull((f) => ({ ...f, locationName: e.target.value }))} className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Landing Headline</label>
+                  <input type="text" placeholder="Your Ward, Your Voice" value={full.headline} onChange={(e) => setFull((f) => ({ ...f, headline: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Subheadline</label>
+                  <input type="text" placeholder="Connect with your team" value={full.subheadline} onChange={(e) => setFull((f) => ({ ...f, subheadline: e.target.value }))} className={inputCls} />
+                </div>
+              </div>
+              {/* Intent multi-select */}
+              <div>
+                <label className={labelCls}>Enabled Intents <span className="text-slate-600 normal-case font-normal">({full.enabledIntents.length} selected)</span></label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ALL_INTENTS.map((intent) => {
+                    const on = full.enabledIntents.includes(intent.value);
+                    return (
+                      <button
+                        key={intent.value}
+                        type="button"
+                        onClick={() => toggleIntent(intent.value)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs text-left transition-colors ${
+                          on
+                            ? "bg-[#1D9E75]/20 border-[#1D9E75]/40 text-[#1D9E75]"
+                            : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
+                        }`}
+                      >
+                        {on ? <CheckSquare className="h-3 w-3 flex-shrink-0" /> : <Square className="h-3 w-3 flex-shrink-0" />}
+                        <span className="truncate">{intent.emoji} {intent.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <TeaserToggle value={full.teaserMode} onChange={(v) => setFull((f) => ({ ...f, teaserMode: v }))} />
+            </>
+          )}
+
+          {/* ── BATCH MODE ─────────────────────────────────────────────── */}
+          {mode === "batch" && (
+            <>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-slate-300 text-xs">
+                Generate up to 30 QR codes at once — perfect for blanketing a transit corridor or deploying across all your lawn signs.
+              </div>
+              <div>
+                <label className={labelCls}>Placement (all codes)</label>
+                <select value={batch.placementType} onChange={(e) => handleBatchPlacementChange(e.target.value)} className={selectCls}>
+                  <option value="" className="bg-slate-900">Select placement type…</option>
+                  {PLACEMENT_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Type</label>
+                  <select value={batch.type} onChange={(e) => setBatch((f) => ({ ...f, type: e.target.value }))} className={selectCls}>
+                    {QR_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Funnel</label>
+                  <select value={batch.funnelType} onChange={(e) => setBatch((f) => ({ ...f, funnelType: e.target.value }))} className={selectCls}>
+                    {FUNNEL_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              {/* How to name them */}
+              <div>
+                <label className={labelCls}>Naming Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["auto", "list"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setBatch((f) => ({ ...f, batchMode: m }))}
+                      className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                        batch.batchMode === m
+                          ? "bg-[#0A2342] border-blue-500/40 text-white"
+                          : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
+                      }`}
+                    >
+                      {m === "auto" ? "Auto-number" : "Location list"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {batch.batchMode === "auto" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Name Prefix</label>
+                    <input type="text" placeholder="e.g. Bus Stop" value={batch.prefix} onChange={(e) => setBatch((f) => ({ ...f, prefix: e.target.value }))} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Count (max 30)</label>
+                    <input type="number" min={1} max={30} value={batch.count} onChange={(e) => setBatch((f) => ({ ...f, count: e.target.value }))} className={inputCls} />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className={labelCls}>Locations (one per line)</label>
+                  <textarea
+                    placeholder={"Finch & Yonge\nFinch & Bathurst\nFinch & Jane\nFinch & Keele"}
+                    value={batch.locations}
+                    onChange={(e) => setBatch((f) => ({ ...f, locations: e.target.value }))}
+                    rows={5}
+                    className={`${inputCls} resize-none`}
+                  />
+                  <p className="text-slate-500 text-xs mt-1">{batchCount} location{batchCount !== 1 ? "s" : ""} · max 30</p>
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Landing Headline (all codes)</label>
+                <input type="text" placeholder="Your Ward, Your Voice" value={batch.headline} onChange={(e) => setBatch((f) => ({ ...f, headline: e.target.value }))} className={inputCls} />
+              </div>
+              <TeaserToggle value={batch.teaserMode} onChange={(v) => setBatch((f) => ({ ...f, teaserMode: v }))} />
+              <div className="bg-white/5 rounded-xl p-3 text-center">
+                <Layers className="h-5 w-5 text-blue-400 mx-auto mb-1" />
+                <div className="text-white font-bold text-lg">{batchCount}</div>
+                <div className="text-slate-400 text-xs">QR codes will be created</div>
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+              {error}
             </div>
-            <div>
-              <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Funnel</label>
-              <select
-                value={form.funnelType}
-                onChange={(e) => setForm((f) => ({ ...f, funnelType: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-white/30"
-              >
-                {FUNNEL_TYPES.map((t) => (
-                  <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Placement</label>
-            <select
-              value={form.placementType}
-              onChange={(e) => setForm((f) => ({ ...f, placementType: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-white/30"
-            >
-              <option value="" className="bg-slate-900">Select placement…</option>
-              {PLACEMENT_TYPES.map((t) => (
-                <option key={t.value} value={t.value} className="bg-slate-900">{t.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Location Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Finch & Yonge Transit Shelter"
-              value={form.locationName}
-              onChange={(e) => setForm((f) => ({ ...f, locationName: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 placeholder-slate-600"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Landing Headline</label>
-            <input
-              type="text"
-              placeholder="e.g. Your Ward, Your Voice"
-              value={form.headline}
-              onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 placeholder-slate-600"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-300 text-xs font-semibold uppercase tracking-wider block mb-1.5">Landing Subheadline</label>
-            <input
-              type="text"
-              placeholder="e.g. Connect with your local campaign team"
-              value={form.subheadline}
-              onChange={(e) => setForm((f) => ({ ...f, subheadline: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 placeholder-slate-600"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, teaserMode: !f.teaserMode }))}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                form.teaserMode ? "bg-amber-500" : "bg-slate-600"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  form.teaserMode ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-            <div>
-              <div className="text-white text-sm font-medium">Teaser mode</div>
-              <div className="text-slate-400 text-xs">Collect leads in background — unlock later</div>
-            </div>
-          </div>
-
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -771,7 +1026,11 @@ function CreateQrModal({
               whileTap={{ scale: 0.97 }}
               className="flex-1 py-3 rounded-xl bg-[#1D9E75] text-white text-sm font-bold disabled:opacity-50 hover:bg-[#18896a] transition-colors"
             >
-              {submitting ? "Creating…" : "Create QR Code"}
+              {submitting
+                ? "Creating…"
+                : mode === "batch"
+                  ? `Create ${batchCount} QR Code${batchCount !== 1 ? "s" : ""}`
+                  : "Create QR Code"}
             </motion.button>
           </div>
         </form>

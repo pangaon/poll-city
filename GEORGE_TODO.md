@@ -11,6 +11,11 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 ## 🔴 CRITICAL — Platform is broken without these
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
+- [ ] **2. Run QR Capture migration on Railway** — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
+  1. Open Railway → Poll City service → Connect tab → copy the `DATABASE_URL`
+  2. In this repo: `DATABASE_URL="<paste>" npx prisma migrate dev --name qr-capture --skip-seed`
+  3. OR if you want non-destructive: `DATABASE_URL="<paste>" npx prisma db push`
+  4. Confirm: try creating a QR code at /qr — the "Network error" should disappear
 
 ---
 
