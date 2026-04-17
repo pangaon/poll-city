@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload, ChevronRight, Check, AlertTriangle, ArrowLeft, X,
   Sparkles, FileSpreadsheet, ShieldCheck, Merge, Play,
+  Scissors, GitMerge, TextSearch, Plus, Wand2, ChevronDown,
 } from "lucide-react";
 import { Card, CardHeader, CardContent, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,21 @@ import { motion, AnimatePresence } from "framer-motion";
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
 const spring = { type: "spring" as const, stiffness: 400, damping: 25 };
+
+/* ── Transform types ────────────────────────────────────────────────── */
+
+interface AutoCleanOptions { trimWhitespace: boolean; titleCaseNames: boolean; normalizePhones: boolean; normalizePostal: boolean; }
+interface SplitRule { id: string; sourceColumn: string; delimiter: string; firstPart: string; restPart: string; }
+interface MergeRule { id: string; sourceCol1: string; separator: string; sourceCol2: string; targetField: string; }
+interface FindReplaceRule { id: string; targetField: string; find: string; replace: string; }
+interface TransformConfig { autoClean: AutoCleanOptions; splitRules: SplitRule[]; mergeRules: MergeRule[]; findReplaceRules: FindReplaceRule[]; }
+
+const DEFAULT_TRANSFORMS: TransformConfig = {
+  autoClean: { trimWhitespace: true, titleCaseNames: true, normalizePhones: true, normalizePostal: true },
+  splitRules: [],
+  mergeRules: [],
+  findReplaceRules: [],
+};
 
 interface Props { campaignId: string; }
 
@@ -160,6 +176,9 @@ export default function SmartImportWizard({ campaignId }: Props) {
   const [mergeStrategy, setMergeStrategy] = useState<MergeStrategy>("update");
   const [importProgress, setImportProgress] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [transforms, setTransforms] = useState<TransformConfig>(DEFAULT_TRANSFORMS);
+  const [showTransforms, setShowTransforms] = useState(false);
+  const [showTransformPreview, setShowTransformPreview] = useState(false);
 
   const STEPS: Step[] = ["upload", "map", "duplicates", "strategy", "done"];
   const STEP_LABELS = ["Upload", "Map Columns", "Preview", "Strategy", "Done"];
@@ -253,6 +272,78 @@ export default function SmartImportWizard({ campaignId }: Props) {
     } catch { toast.error("Failed to delete template"); }
   }
 
+  function computeTransformedPreview(rawRow: Record<string, string>): Record<string, string> {
+    const mapped: Record<string, string> = {};
+    for (const [header, mapping] of Object.entries(mappings)) {
+      if (mapping.targetField) mapped[mapping.targetField] = rawRow[header] ?? "";
+    }
+    // Split rules
+    for (const rule of transforms.splitRules) {
+      if (!rule.sourceColumn || !rule.delimiter || !rule.firstPart) continue;
+      const val = (rawRow[rule.sourceColumn] ?? "").trim();
+      if (!val) continue;
+      const delimIdx = val.indexOf(rule.delimiter);
+      if (delimIdx < 0) continue;
+      const first = val.slice(0, delimIdx).trim();
+      const rest = val.slice(delimIdx + rule.delimiter.length).trim();
+      if (first) mapped[rule.firstPart] = first;
+      if (rest && rule.restPart) mapped[rule.restPart] = rest;
+    }
+    // Merge rules
+    for (const rule of transforms.mergeRules) {
+      if (!rule.sourceCol1 || !rule.sourceCol2 || !rule.targetField) continue;
+      const v1 = (rawRow[rule.sourceCol1] ?? "").trim();
+      const v2 = (rawRow[rule.sourceCol2] ?? "").trim();
+      const merged = [v1, v2].filter(Boolean).join(rule.separator ?? " ");
+      if (merged) mapped[rule.targetField] = merged;
+    }
+    // Auto-clean
+    const nameKeys = new Set(["firstName", "lastName", "middleName"]);
+    const phoneKeys = new Set(["phone", "phone2", "businessPhone"]);
+    for (const key of Object.keys(mapped)) {
+      let val = mapped[key] ?? "";
+      if (transforms.autoClean.trimWhitespace) val = val.trim().replace(/\s+/g, " ");
+      if (transforms.autoClean.titleCaseNames && nameKeys.has(key)) {
+        val = val.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+      }
+      if (transforms.autoClean.normalizePhones && phoneKeys.has(key)) {
+        const digits = val.replace(/\D/g, "");
+        if (digits.length === 11 && digits[0] === "1") val = digits.slice(1);
+        else if (digits.length === 10) val = digits;
+      }
+      if (transforms.autoClean.normalizePostal && key === "postalCode") {
+        const clean = val.replace(/\s/g, "").toUpperCase();
+        if (/^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(clean)) val = `${clean.slice(0, 3)} ${clean.slice(3)}`;
+      }
+      mapped[key] = val;
+    }
+    // Find & replace
+    for (const rule of transforms.findReplaceRules) {
+      if (!rule.targetField || !rule.find) continue;
+      mapped[rule.targetField] = (mapped[rule.targetField] ?? "").split(rule.find).join(rule.replace ?? "");
+    }
+    return mapped;
+  }
+
+  function addSplitRule() {
+    setTransforms((prev) => ({
+      ...prev,
+      splitRules: [...prev.splitRules, { id: crypto.randomUUID(), sourceColumn: "", delimiter: " ", firstPart: "firstName", restPart: "lastName" }],
+    }));
+  }
+  function addMergeRule() {
+    setTransforms((prev) => ({
+      ...prev,
+      mergeRules: [...prev.mergeRules, { id: crypto.randomUUID(), sourceCol1: "", separator: " ", sourceCol2: "", targetField: "address1" }],
+    }));
+  }
+  function addFindReplaceRule() {
+    setTransforms((prev) => ({
+      ...prev,
+      findReplaceRules: [...prev.findReplaceRules, { id: crypto.randomUUID(), targetField: "province", find: "", replace: "" }],
+    }));
+  }
+
   // Step 1: Upload and analyze
   async function handleFile(f: File) {
     setFile(f);
@@ -287,10 +378,13 @@ export default function SmartImportWizard({ campaignId }: Props) {
 
     setPreparingReview(true);
     try {
+      const transformsJson = JSON.stringify(transforms);
+
       const cleanForm = new FormData();
       cleanForm.append("file", file);
       cleanForm.append("campaignId", campaignId);
       cleanForm.append("mappings", JSON.stringify(mappingConfig));
+      cleanForm.append("transforms", transformsJson);
 
       const cleanRes = await fetch("/api/import/clean", { method: "POST", body: cleanForm });
       const cleanData = await cleanRes.json();
@@ -300,6 +394,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
       dupForm.append("file", file);
       dupForm.append("campaignId", campaignId);
       dupForm.append("mappings", JSON.stringify(mappingConfig));
+      dupForm.append("transforms", transformsJson);
 
       const dupRes = await fetch("/api/import/duplicates", { method: "POST", body: dupForm });
       const dupData = await dupRes.json();
@@ -331,6 +426,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
       form.append("campaignId", campaignId);
       form.append("mappings", JSON.stringify(mappingConfig));
       form.append("mergeStrategy", mergeStrategy);
+      form.append("transforms", JSON.stringify(transforms));
 
       // Contacts → background queue so large voter files (5k–25k rows) never hit Vercel timeout
       if (targetEntity === "contacts") {
@@ -664,6 +760,281 @@ export default function SmartImportWizard({ campaignId }: Props) {
                 </div>
               </Card>
             )}
+
+            {/* ── Data Cleaning Panel ─────────────────────────────── */}
+            <Card>
+              <button
+                type="button"
+                onClick={() => setShowTransforms((v) => !v)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 rounded-t-xl transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-4 h-4" style={{ color: GREEN }} />
+                  <span className="text-sm font-semibold" style={{ color: NAVY }}>Data Cleaning</span>
+                  {(transforms.splitRules.length + transforms.mergeRules.length + transforms.findReplaceRules.length) > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: GREEN }}>
+                      {transforms.splitRules.length + transforms.mergeRules.length + transforms.findReplaceRules.length} rule{transforms.splitRules.length + transforms.mergeRules.length + transforms.findReplaceRules.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">trim, title-case, split, merge, find &amp; replace</span>
+                </div>
+                <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", showTransforms && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {showTransforms && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-5 pb-5 space-y-5 border-t border-gray-100">
+                      {/* Auto-clean toggles */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-4 mb-3">Auto-clean (applied to all rows)</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {([
+                            { key: "trimWhitespace" as const, label: "Trim extra spaces" },
+                            { key: "titleCaseNames" as const, label: "Title-case names" },
+                            { key: "normalizePhones" as const, label: "Normalize phone numbers" },
+                            { key: "normalizePostal" as const, label: "Format postal codes" },
+                          ] as { key: keyof AutoCleanOptions; label: string }[]).map(({ key, label }) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setTransforms((prev) => ({ ...prev, autoClean: { ...prev.autoClean, [key]: !prev.autoClean[key] } }))}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors text-left min-h-[44px]",
+                                transforms.autoClean[key]
+                                  ? "text-white border-transparent"
+                                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                              )}
+                              style={transforms.autoClean[key] ? { backgroundColor: GREEN, borderColor: GREEN } : undefined}
+                            >
+                              <Check className={cn("w-3.5 h-3.5 flex-shrink-0", transforms.autoClean[key] ? "opacity-100" : "opacity-0")} />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Split rules */}
+                      {transforms.splitRules.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Split Column</p>
+                          {transforms.splitRules.map((rule) => (
+                            <div key={rule.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-xl p-3">
+                              <Scissors className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <select
+                                value={rule.sourceColumn}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, splitRules: prev.splitRules.map((r) => r.id === rule.id ? { ...r, sourceColumn: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                <option value="">Column to split...</option>
+                                {analysis.rawHeaders.map((h) => <option key={h} value={h}>{h}</option>)}
+                              </select>
+                              <span className="text-xs text-gray-400">by</span>
+                              <input
+                                type="text"
+                                value={rule.delimiter}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, splitRules: prev.splitRules.map((r) => r.id === rule.id ? { ...r, delimiter: e.target.value } : r) }))}
+                                placeholder="delimiter"
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-20 min-h-[36px]"
+                              />
+                              <span className="text-xs text-gray-400">→ first part:</span>
+                              <select
+                                value={rule.firstPart}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, splitRules: prev.splitRules.map((r) => r.id === rule.id ? { ...r, firstPart: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                {TARGET_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                              </select>
+                              <span className="text-xs text-gray-400">rest:</span>
+                              <select
+                                value={rule.restPart}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, splitRules: prev.splitRules.map((r) => r.id === rule.id ? { ...r, restPart: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                <option value="">— Skip —</option>
+                                {TARGET_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                              </select>
+                              <button type="button" onClick={() => setTransforms((prev) => ({ ...prev, splitRules: prev.splitRules.filter((r) => r.id !== rule.id) }))} className="ml-auto p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Merge rules */}
+                      {transforms.mergeRules.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Merge Columns</p>
+                          {transforms.mergeRules.map((rule) => (
+                            <div key={rule.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-xl p-3">
+                              <GitMerge className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <select
+                                value={rule.sourceCol1}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, mergeRules: prev.mergeRules.map((r) => r.id === rule.id ? { ...r, sourceCol1: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                <option value="">Column 1...</option>
+                                {analysis.rawHeaders.map((h) => <option key={h} value={h}>{h}</option>)}
+                              </select>
+                              <input
+                                type="text"
+                                value={rule.separator}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, mergeRules: prev.mergeRules.map((r) => r.id === rule.id ? { ...r, separator: e.target.value } : r) }))}
+                                placeholder="separator"
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-20 min-h-[36px]"
+                              />
+                              <select
+                                value={rule.sourceCol2}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, mergeRules: prev.mergeRules.map((r) => r.id === rule.id ? { ...r, sourceCol2: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                <option value="">Column 2...</option>
+                                {analysis.rawHeaders.map((h) => <option key={h} value={h}>{h}</option>)}
+                              </select>
+                              <span className="text-xs text-gray-400">→</span>
+                              <select
+                                value={rule.targetField}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, mergeRules: prev.mergeRules.map((r) => r.id === rule.id ? { ...r, targetField: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                {TARGET_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                              </select>
+                              <button type="button" onClick={() => setTransforms((prev) => ({ ...prev, mergeRules: prev.mergeRules.filter((r) => r.id !== rule.id) }))} className="ml-auto p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Find & replace rules */}
+                      {transforms.findReplaceRules.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Find &amp; Replace</p>
+                          {transforms.findReplaceRules.map((rule) => (
+                            <div key={rule.id} className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-xl p-3">
+                              <TextSearch className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">In</span>
+                              <select
+                                value={rule.targetField}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, findReplaceRules: prev.findReplaceRules.map((r) => r.id === rule.id ? { ...r, targetField: e.target.value } : r) }))}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 min-h-[36px] bg-white"
+                              >
+                                {TARGET_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                              </select>
+                              <span className="text-xs text-gray-500">find</span>
+                              <input
+                                type="text"
+                                value={rule.find}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, findReplaceRules: prev.findReplaceRules.map((r) => r.id === rule.id ? { ...r, find: e.target.value } : r) }))}
+                                placeholder="find..."
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-24 min-h-[36px]"
+                              />
+                              <span className="text-xs text-gray-500">replace with</span>
+                              <input
+                                type="text"
+                                value={rule.replace}
+                                onChange={(e) => setTransforms((prev) => ({ ...prev, findReplaceRules: prev.findReplaceRules.map((r) => r.id === rule.id ? { ...r, replace: e.target.value } : r) }))}
+                                placeholder="replacement"
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-28 min-h-[36px]"
+                              />
+                              <button type="button" onClick={() => setTransforms((prev) => ({ ...prev, findReplaceRules: prev.findReplaceRules.filter((r) => r.id !== rule.id) }))} className="ml-auto p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add rule buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={addSplitRule}
+                          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors min-h-[36px]">
+                          <Plus className="w-3.5 h-3.5" /><Scissors className="w-3.5 h-3.5" /> Split column
+                        </button>
+                        <button type="button" onClick={addMergeRule}
+                          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors min-h-[36px]">
+                          <Plus className="w-3.5 h-3.5" /><GitMerge className="w-3.5 h-3.5" /> Merge columns
+                        </button>
+                        <button type="button" onClick={addFindReplaceRule}
+                          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors min-h-[36px]">
+                          <Plus className="w-3.5 h-3.5" /><TextSearch className="w-3.5 h-3.5" /> Find &amp; Replace
+                        </button>
+                      </div>
+
+                      {/* Transform preview toggle */}
+                      {analysis.sampleRows.length > 0 && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setShowTransformPreview((v) => !v)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                          >
+                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showTransformPreview && "rotate-180")} />
+                            {showTransformPreview ? "Hide" : "Preview"} transformed data ({analysis.sampleRows.length} rows)
+                          </button>
+                          <AnimatePresence>
+                            {showTransformPreview && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden mt-3"
+                              >
+                                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                                  <table className="text-xs w-full">
+                                    <thead className="bg-gray-50">
+                                      <tr>
+                                        <th className="px-3 py-2 text-left text-gray-600 font-medium w-24">Field</th>
+                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">Before</th>
+                                        <th className="px-3 py-2 text-left font-medium" style={{ color: GREEN }}>After</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                      {(() => {
+                                        const firstRow = analysis.sampleRows[0];
+                                        const rawMapped: Record<string, string> = {};
+                                        for (const [h, m] of Object.entries(mappings)) {
+                                          if (m.targetField) rawMapped[m.targetField] = firstRow[h] ?? "";
+                                        }
+                                        const transformed = computeTransformedPreview(firstRow);
+                                        const previewFields = ["firstName", "lastName", "phone", "postalCode", "address1", "email", "province"];
+                                        return previewFields
+                                          .filter((k) => rawMapped[k] !== undefined || transformed[k] !== undefined)
+                                          .map((k) => {
+                                            const before = rawMapped[k] ?? "—";
+                                            const after = transformed[k] ?? "—";
+                                            const changed = before !== after;
+                                            return (
+                                              <tr key={k} className={changed ? "bg-emerald-50/50" : undefined}>
+                                                <td className="px-3 py-2 font-mono text-gray-500">{k}</td>
+                                                <td className="px-3 py-2 text-gray-500 max-w-[140px] truncate">{before}</td>
+                                                <td className="px-3 py-2 max-w-[140px] truncate font-medium" style={{ color: changed ? GREEN : "#9ca3af" }}>
+                                                  {after}{changed && <span className="ml-1 text-[10px] text-emerald-500">✓</span>}
+                                                </td>
+                                              </tr>
+                                            );
+                                          });
+                                      })()}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
 
             <div className="flex gap-3">
               <MButton variant="outline" onClick={() => setStep("upload")}>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
-import { parseAndMapImportFile, isLikelyDuplicate, type MappingConfig } from "@/lib/import/import-pipeline";
+import { parseAndMapImportFile, isLikelyDuplicate, type MappingConfig, type TransformConfig } from "@/lib/import/import-pipeline";
 
 const MAX_FILE_SIZE = 50_000_000;
 
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
+  const transformsRaw = formData.get("transforms") as string | null;
 
   if (!file || !mappingsRaw || !campaignId) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
@@ -39,7 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid mappings JSON" }, { status: 400 });
   }
 
-  const prepared = await parseAndMapImportFile(file, mappings);
+  let transforms: TransformConfig | undefined;
+  if (transformsRaw) {
+    try {
+      transforms = JSON.parse(transformsRaw) as TransformConfig;
+    } catch { /* ignore */ }
+  }
+
+  const prepared = await parseAndMapImportFile(file, mappings, transforms);
   const rowsToCheck = prepared.validRows.slice(0, 5000);
 
   const existingContacts = await prisma.contact.findMany({

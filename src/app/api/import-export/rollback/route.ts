@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
       importedCount: true,
       rollbackData: true,
       rollbackDeadline: true,
+      completedAt: true,
+      createdAt: true,
       status: true,
     },
   });
@@ -60,6 +62,27 @@ export async function POST(req: NextRequest) {
   const contactIds = importLog.rollbackData as string[];
   if (!Array.isArray(contactIds) || contactIds.length === 0) {
     return NextResponse.json({ error: "No contacts to roll back" }, { status: 400 });
+  }
+
+  // Safety check: count how many imported contacts have been canvassed since the import completed
+  const canvassedCount = await prisma.interaction.count({
+    where: {
+      contactId: { in: contactIds },
+      createdAt: { gte: importLog.completedAt ?? importLog.createdAt },
+    },
+  });
+
+  // If contacts have been canvassed and caller didn't acknowledge, block with a warning
+  const { force } = b as { force?: boolean };
+  if (canvassedCount > 0 && !force) {
+    return NextResponse.json(
+      {
+        error: "canvassed_contacts_warning",
+        canvassedCount,
+        message: `${canvassedCount} contact${canvassedCount !== 1 ? "s" : ""} from this import have been canvassed since it was imported. Rolling back will hide those contacts and their canvassing data. Pass force: true to proceed anyway.`,
+      },
+      { status: 409 }
+    );
   }
 
   // Soft-delete all imported contacts

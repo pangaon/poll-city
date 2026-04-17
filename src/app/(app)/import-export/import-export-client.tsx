@@ -265,6 +265,8 @@ export default function ImportExportClient({ campaignId }: Props) {
   const [phoneMatch, setPhoneMatch] = useState<PhoneMatchPreview | null>(null);
   const [history, setHistory] = useState<ImportHistoryItem[]>([]);
   const [rollingBack, setRollingBack] = useState<Set<string>>(new Set());
+  const [activeImportJob, setActiveImportJob] = useState<{ id: string; filename: string; pct: number } | null>(null);
+  const activeImportPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [useAiMatch, setUseAiMatch] = useState(true);
   const [matchMode, setMatchMode] = useState<"strict" | "balanced" | "aggressive">("balanced");
   const [applyConfidenceThreshold, setApplyConfidenceThreshold] = useState(80);
@@ -288,6 +290,10 @@ export default function ImportExportClient({ campaignId }: Props) {
 
   useEffect(() => {
     void loadImportHistory();
+    return () => {
+      if (activeImportPollRef.current) clearInterval(activeImportPollRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
 
 
@@ -296,25 +302,58 @@ export default function ImportExportClient({ campaignId }: Props) {
       const res = await fetch(`/api/import/history?campaignId=${campaignId}`);
       if (!res.ok) return;
       const data = await res.json();
-      setHistory(Array.isArray(data?.data) ? data.data : []);
+      const items: ImportHistoryItem[] = Array.isArray(data?.data) ? data.data : [];
+      setHistory(items);
+
+      // Reconnect to any in-progress import from a previous session
+      const inProgress = items.find((i) => i.status === "queued" || i.status === "processing");
+      if (inProgress && !activeImportJob) {
+        setActiveImportJob({ id: inProgress.id, filename: inProgress.filename, pct: 0 });
+        if (activeImportPollRef.current) clearInterval(activeImportPollRef.current);
+        activeImportPollRef.current = setInterval(async () => {
+          try {
+            const pRes = await fetch(`/api/import/progress?id=${inProgress.id}`);
+            const pData = await pRes.json();
+            setActiveImportJob({ id: inProgress.id, filename: inProgress.filename, pct: pData.progressPct ?? 0 });
+            if (["completed", "completed_with_errors", "failed"].includes(pData.status)) {
+              clearInterval(activeImportPollRef.current!);
+              activeImportPollRef.current = null;
+              setActiveImportJob(null);
+              void loadImportHistory();
+              toast.success(
+                pData.status === "failed"
+                  ? `Import of "${inProgress.filename}" failed`
+                  : `Import of "${inProgress.filename}" complete — ${pData.importedCount ?? 0} new contacts`,
+                { duration: 8000 }
+              );
+            }
+          } catch { /* non-blocking */ }
+        }, 3000);
+      }
     } catch { /* Non-blocking */ }
   }
 
-  async function handleRollback(importLogId: string, filename: string) {
-    if (!confirm(`Roll back all contacts from "${filename}"? They will be moved to the Recycle Bin.`)) return;
+  async function handleRollback(importLogId: string, filename: string, force = false) {
+    if (!force && !confirm(`Undo import of "${filename}"?\n\nAll contacts from this import will be moved to the Recycle Bin.`)) return;
     setRollingBack((prev) => new Set(prev).add(importLogId));
     try {
-      const res = await fetch("/api/import/rollback", {
+      const res = await fetch("/api/import-export/rollback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importLogId }),
+        body: JSON.stringify({ importLogId, campaignId, force }),
       });
       const json = await res.json();
       if (res.ok) {
-        toast.success(json.message ?? "Import rolled back successfully");
+        toast.success(json.message ?? "Import undone successfully");
         await loadImportHistory();
+      } else if (res.status === 409 && json.error === "canvassed_contacts_warning") {
+        // Canvassed contacts warning — ask user to confirm override
+        const proceed = confirm(
+          `⚠️ Canvassing data at risk\n\n${json.message}\n\nProceed anyway?`
+        );
+        if (proceed) await handleRollback(importLogId, filename, true);
       } else {
-        toast.error(json.error ?? "Failed to roll back import");
+        toast.error(json.error ?? "Failed to undo import");
       }
     } catch {
       toast.error("Network error during rollback");
@@ -1069,6 +1108,36 @@ export default function ImportExportClient({ campaignId }: Props) {
       transition={{ duration: 0.35 }}
       className="max-w-5xl space-y-6"
     >
+      {/* In-progress import reconnect banner */}
+      <AnimatePresence>
+        {activeImportJob && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50"
+          >
+            <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800">
+                Import in progress — {activeImportJob.filename}
+              </p>
+              <div className="mt-1.5 h-1.5 rounded-full bg-amber-200 overflow-hidden w-full">
+                <motion.div
+                  className="h-full rounded-full bg-amber-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${activeImportJob.pct}%` }}
+                  transition={{ duration: 0.4 }}
+                />
+              </div>
+            </div>
+            <span className="text-xs font-bold text-amber-700 tabular-nums flex-shrink-0">
+              {activeImportJob.pct}%
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold" style={{ color: NAVY }}>Import / Export</h1>

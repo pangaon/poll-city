@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
-import { parseAndMapImportFile, type MappingConfig } from "@/lib/import/import-pipeline";
+import { parseAndMapImportFile, type MappingConfig, type TransformConfig } from "@/lib/import/import-pipeline";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { MAX_UPLOAD_BYTES } from "@/lib/security/xlsx-safety";
 
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get("file") as File | null;
   const campaignId = formData.get("campaignId") as string | null;
   const mappingsRaw = formData.get("mappings") as string | null;
+  const transformsRaw = formData.get("transforms") as string | null;
 
   if (!file || !mappingsRaw) {
     return NextResponse.json({ error: "file, campaignId, and mappings are required" }, { status: 400 });
@@ -46,8 +47,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid mappings JSON" }, { status: 400 });
   }
 
+  let transforms: TransformConfig | undefined;
+  if (transformsRaw) {
+    try {
+      transforms = JSON.parse(transformsRaw) as TransformConfig;
+    } catch { /* ignore malformed transforms */ }
+  }
+
   // Parse and validate the file (fast — just reading rows, not writing to DB)
-  const prepared = await parseAndMapImportFile(file, mappings);
+  const prepared = await parseAndMapImportFile(file, mappings, transforms);
 
   // Create job in queued state with parsed data stored for background processing
   const importLog = await prisma.importLog.create({
