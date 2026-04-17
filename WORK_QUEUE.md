@@ -439,6 +439,17 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 ---
 
+---
+
+## MODULE: QR CAPTURE + GEO-TRIGGERED PROSPECT FUNNEL
+
+| Task | Status | Notes |
+|---|---|---|
+| QR Capture + Geo-Triggered Prospect Funnel — full enterprise build | CLAIMED 2026-04-17 | Schema extension, public landing flow, intent/capture APIs, admin QR hub, analytics, prospect/opportunity center, teaser layer, seed data |
+
+---
+
+*Last updated: 2026-04-17 — QR Capture claimed. — Claude Sonnet 4.6*
 *Last updated: 2026-04-17 — RCAE module claimed. — Claude Sonnet 4.6*
 *Last updated: 2026-04-15 — Full platform route audit complete (115 routes). 46 FULL BUILD, 54 PARTIAL, 15 STUB. All gaps now tracked above. Sprints 1-5 + stub decisions added. — Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*
