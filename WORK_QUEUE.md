@@ -81,6 +81,14 @@ No session may start a task already marked CLAIMED or DONE.
 
 ---
 
+## MODULE: FUELOPS — CAMPAIGN FOOD & VENDOR LOGISTICS
+
+| Task | Status | Notes |
+|---|---|---|
+| FuelOps — full module build (schema, API, UI, seed, tests) | CLAIMED 2026-04-17 | 7 models, 10 pages, ranking engine, expense bridge, outreach CRM |
+
+---
+
 ## MODULE: COMMUNICATIONS PLATFORM
 
 | Task | Status | Notes |
