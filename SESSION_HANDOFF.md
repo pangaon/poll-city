@@ -45,6 +45,35 @@ If you are a session that was interrupted by George's system shutdown: your work
 
 ---
 
+## LAST SESSION (2026-04-17 — Recovery session: clean working tree, fix TS errors, push all pending commits)
+
+**What shipped:**
+
+Resumed after system crash. Working tree had ~12 uncommitted changes from 3+ prior sessions. All committed and pushed via `npm run push:safe` (build exit 0).
+
+**Commits pushed this session (12 total, all now on origin/main):**
+- `2442d51` — WORK_QUEUE housekeeping: Phase 7 DONE, QR Capture DONE
+- `68c9d98` — /field/programs API: outcome analytics (contactedCount, supporterCount)
+- `c693e4f` — /field/programs UI: analytics cards, goal bars, quick status toggle
+- `5583f39` — /field/programs: completedRoutes via route.groupBy
+- `de42975` — fix: pass campaignId in status toggle
+- `a4a163d` — program detail: include route status/lock/stops
+- `9ff2724` — program detail: analytics tabs, sparkline, canvasser roster
+- `cd87643` — WORK_QUEUE: mark field/programs/[programId] DONE
+- `78a85ed` — fix: add analytics defaults to field-ops serializer
+- `14cffb2` — fix(qr): InputJsonValue cast, try/catch in POST
+- `fc36517` — GEORGE_TODO QR migration item + qr-hub-client improvements
+
+**TS errors fixed:**
+- `prisma.fieldRoute` → `prisma.route` (wrong model name)
+- `groupBy orderBy { _count: { _all } }` → `{ _count: { fieldName } }` (Prisma API)
+- `r._count._all` → `r._count?._all ?? 0` (optional chaining)
+- `field-ops/page.tsx` missing `contactedCount/supporterCount/completedRoutes` on Program serialization
+
+**Build:** `npm run push:safe` exit 0. All 12 commits pushed to origin/main.
+
+---
+
 ## LAST SESSION (2026-04-17 — Comms Phase 7: Automation Engine + WORK_QUEUE housekeeping)
 
 **What shipped — commit 8572d00:**
