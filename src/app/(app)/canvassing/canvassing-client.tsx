@@ -332,8 +332,12 @@ function TurfsTab({
             {Array.from({ length: 5 }).map((_, i) => <ShimmerSkeleton key={i} className="h-14" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-24">
-            <p className="text-xs text-gray-400">No turfs {statusFilter && `with status "${STATUS_LABELS[statusFilter]}"`}</p>
+          <div className="flex flex-col items-center justify-center h-24 gap-1.5 px-4 text-center">
+            <p className="text-xs text-gray-400">
+              {statusFilter
+                ? `No turfs with status "${STATUS_LABELS[statusFilter]}"`
+                : "No turfs yet — draw a boundary on the map to create your first turf."}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -443,8 +447,9 @@ function ListsTab({
         {loading ? (
           <div className="space-y-2 p-3">{Array.from({ length: 3 }).map((_, i) => <ShimmerSkeleton key={i} className="h-16" />)}</div>
         ) : lists.length === 0 ? (
-          <div className="flex items-center justify-center h-24">
+          <div className="flex flex-col items-center justify-center h-24 gap-1.5 px-4 text-center">
             <p className="text-xs text-gray-400">No walk lists yet</p>
+            <p className="text-[10px] text-gray-300">Use <strong className="text-gray-400">+ New Walk List</strong> above to assign contacts to a volunteer.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">

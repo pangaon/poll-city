@@ -1106,10 +1106,21 @@ export default function FundraisingClient({ campaignId }: { campaignId: string }
                           <td className="px-4 py-3 text-xs text-gray-500">{p.nextChargeDate ? new Date(p.nextChargeDate).toLocaleDateString() : "—"}</td>
                           <td className="px-4 py-3 text-center">{p.failureCount > 0 ? <span className="text-xs font-medium text-red-600">{p.failureCount}</span> : "—"}</td>
                           <td className="px-4 py-3">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               {p.status === "active" && <button className="text-xs text-amber-600 font-medium" onClick={() => handlePlanAction(p.id, "pause")}>Pause</button>}
                               {p.status === "paused" && <button className="text-xs font-medium" style={{ color: GREEN }} onClick={() => handlePlanAction(p.id, "resume")}>Resume</button>}
                               {["active", "paused"].includes(p.status) && <button className="text-xs text-red-600 font-medium" onClick={() => handlePlanAction(p.id, "cancel")}>Cancel</button>}
+                              {p.status === "failed" && p.contact?.email && (
+                                <a
+                                  href={`mailto:${p.contact.email}?subject=Action required: your recurring donation&body=Hi ${p.contact.firstName ?? ""},\n\nWe noticed your recurring donation of ${fmt(p.amount, p.currency)} could not be processed. Please update your payment details.\n\nThank you for your support.`}
+                                  className="text-xs font-medium text-blue-600 hover:underline"
+                                >
+                                  Contact
+                                </a>
+                              )}
+                              {p.status === "failed" && (
+                                <button className="text-xs text-red-600 font-medium" onClick={() => handlePlanAction(p.id, "cancel")}>Cancel</button>
+                              )}
                             </div>
                           </td>
                         </motion.tr>
