@@ -316,9 +316,9 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /finance — overview complete | DONE — 83ca093 | Spend chart, compliance card, recent transactions, quick-add modal. |
 | /finance/budget — variance analysis + approval | DONE — 1901656 | Inline amount editing, per-line lock/approve, approve-all, delete, variance column, over-budget footer. |
 | /finance/expenses — full form + receipt upload | DONE — 2850704 | Receipt upload (FinanceAsset), vendor dropdown fix, policy warning >$500, reject flow, date-range filter, CSV bulk import. |
-| /finance/purchase-requests — full approval chain | CLAIMED 2026-04-17 | 251 lines. Add multi-level approval, auto-reject on budget overrun, email notifications. |
+| /finance/purchase-requests — full approval chain | DONE — e900943 | ApproveModal (partial + overrun warning), RejectModal, manager-only actions, submittedCount badge, expandable rows. |
 | /finance/vendors — full vendor profiles | DONE — 2850704 | Type filter, preferred-only toggle, edit modal (PATCH), deactivate, W-9 badge, address/website/payment terms display. |
-| /finance/reimbursements — full workflow | PENDING | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
+| /finance/reimbursements — full workflow | CLAIMED 2026-04-17 | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
 | /finance/approvals — queue + bulk actions | PENDING | 179 lines. Add bulk approve/reject, delegation, escalation rules, audit trail. |
 | /finance/reports — full report suite | PENDING | 468 lines. Add all report types: P&L, compliance, per-category breakdown, CSV/PDF export. |
 | /finance/audit — full audit trail + filters | PENDING | 237 lines. Add date range, user filter, export, anomaly flags. |

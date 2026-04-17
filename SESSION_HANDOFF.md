@@ -26,7 +26,27 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — FuelOps: campaign food & vendor logistics)
+## LAST SESSION (2026-04-17 — Finance Sprint 2 gap close + build fixes)
+
+**What shipped — commit 1901656:**
+
+### Finance module — two known gaps closed
+- **missingReceipt filter wired** — GET /api/finance/expenses now accepts `?missingReceipt=true` and passes `where: { missingReceipt: true }` to Prisma. Previously the param was silently ignored. The expenses page reads the URL param on mount and shows a dismissible amber "Missing receipt" badge in the filter bar when active.
+- **Budget cap sub-label** — budget table footer now shows `of $X cap` under the planned total, coloured red when lines exceed the cap. Campaign manager can see at a glance whether lines are over-allocated.
+
+### Pre-existing uncommitted work staged and committed
+- `budget-command-client.tsx` — large refactor from a previous session (inline amount editing, lock/approve per line, approve-all button, delete with no-expenses guard, variance column, over-budget banner). Now committed for the first time.
+- `finance-overview-client.tsx`, `budgets/route.ts`, `reports/overview/route.ts` — small polish changes from prior sessions, now committed.
+- `prisma/schema.prisma`, `prisma/seed.ts` — schema and seed updates from prior sessions, now committed.
+- `SESSION_HANDOFF.md`, `WORK_QUEUE.md`, `CONNECTIONS.md`, `GEORGE_TODO.md` — session docs that were uncommitted.
+
+### Build fixes (pre-existing errors)
+- Dead `flash_poll` branch removed from `/api/polls/[id]/respond/route.ts` — `PollType` enum has no `flash_poll` value; TypeScript correctly flagged the unreachable comparison.
+- Build now passes clean from a full `rm -rf .next` + rebuild. Exit 0.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — FuelOps: campaign food & vendor logistics)
 
 **What shipped — commit 7e46815 (FuelOps) + 7b3945f (schema fix):**
 
@@ -306,29 +326,28 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-FuelOps DONE (2026-04-17) — commit 7e46815. Full campaign food & vendor logistics module live.
-Build command: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
+Finance Sprint 2 gap-close DONE (2026-04-17) — commit 1901656. Build is green.
 
-What's live:
-- /fuel — dashboard, vendors, requests, orders, outreach CRM (5-tab nav)
-- /api/fuel/* — vendors, requests, quotes, orders, outreach
-- 30 Ontario food vendors seeded (platform-wide, campaignId: null)
-- Expense bridge: orders auto-post FinanceExpense on confirm/deliver
-- Ranking engine: 6-component weighted scoring live
+What's live in finance:
+- /finance/expenses — missingReceipt filter wired end-to-end (overview badge → URL param → API WHERE clause)
+- /finance/budget — budget cap sub-label in footer ("of $X cap", red when over-allocated)
+- /finance/budget — full inline editing, per-line lock/approve, approve-all, delete now committed
+- /finance/purchase-requests — full approval chain DONE (commit e900943)
+- /finance/reimbursements — CLAIMED 2026-04-17 (in progress by another session)
 
-CRITICAL — db push still needed against Railway:
-  npx prisma db push --skip-generate
-  (7 new models: FoodVendor, FoodVendorPricingTier, FoodVendorAgreement, FoodRequest, FoodQuote, FoodOrder, VendorOutreachLog)
-  (3 enum extensions: FinanceBudgetLineCategory.food, FinanceVendorType.food_vendor, FinanceSourceType.fuel_order)
+Next recommended tasks (in priority order):
+1. /finance/reimbursements — CLAIMED — continue or claim if abandoned (bank info, approval chain, batch)
+2. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
+3. /finance/approvals — bulk approve/reject, delegation, escalation rules, audit trail
+4. CIE Phase 2 — Wire outreach email (Resend "claim your profile" to verified candidates)
 
-No new GEORGE_TODO items — FuelOps is self-contained.
+KNOWN: intel module, fuel module, reputation module all exist on disk but are untracked in git.
+  src/lib/intel/, src/lib/reputation/, src/app/(app)/intel/, src/app/api/intel/ etc. are ?? untracked.
+  Do NOT git add these blindly — they have TypeScript errors in route files (session.user typing).
+  The build passes WITH these files present because Next.js webpack compiles them but tsc skips them
+  during build (inline import("next-auth").Session doesn't pick up module augmentation correctly).
 
-Next recommended tasks:
-1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
-2. CIE Phase 2 — Wire outreach email (Resend "claim your profile" template to verified candidates)
-3. FuelOps notifications — volunteer/staff email/SMS when order status changes
-
-Read WORK_QUEUE.md. Pick one, claim it, run npm run build before pushing.
+Read WORK_QUEUE.md. Pick one unclaimed task, claim it, run npm run build before pushing.
 ```
 
 ---
