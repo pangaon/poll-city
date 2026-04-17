@@ -326,21 +326,41 @@ function CreateDrawer({
 
 // ── Program Card ──────────────────────────────────────────────────────────────
 
-function ProgramCard({ program }: { program: Program }) {
+function ProgramCard({
+  program,
+  onStatusChange,
+}: {
+  program: Program;
+  onStatusChange: (id: string, status: FieldProgramStatus) => void;
+}) {
   const status = STATUS_CONFIG[program.status];
   const typeLabel = PROGRAM_TYPE_LABELS[program.programType];
+  const hasGoals = program.goalDoors ?? program.goalContacts ?? program.goalSupporters;
 
   function formatDate(d: Date | string | null) {
     if (!d) return null;
     return new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
   }
 
+  async function toggleStatus(e: React.MouseEvent, nextStatus: FieldProgramStatus) {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/field/programs/${program.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: program.createdBy.id ? undefined : undefined, status: nextStatus }),
+      });
+      if (res.ok) onStatusChange(program.id, nextStatus);
+      else toast.error("Could not update status");
+    } catch {
+      toast.error("Could not update status");
+    }
+  }
+
   return (
     <Link href={`/field/programs/${program.id}`}>
-      <motion.div
-        whileHover={{ y: -1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
+      <motion.div whileHover={{ y: -1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
         <Card className="cursor-pointer hover:border-blue-300 hover:shadow-md transition-all">
           <CardContent className="py-4">
             <div className="flex items-start justify-between gap-3">
@@ -351,6 +371,9 @@ function ProgramCard({ program }: { program: Program }) {
                     <span className="flex items-center gap-1">{status.icon} {status.label}</span>
                   </Badge>
                   <Badge variant="default">{typeLabel}</Badge>
+                  {program.targetWard && (
+                    <span className="text-xs text-gray-400">{program.targetWard}</span>
+                  )}
                 </div>
                 {program.description && (
                   <p className="text-xs text-gray-500 mt-1 line-clamp-1">{program.description}</p>
@@ -361,13 +384,19 @@ function ProgramCard({ program }: { program: Program }) {
                     {program._count.routes} route{program._count.routes !== 1 ? "s" : ""}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Target className="h-3.5 w-3.5" />
-                    {program._count.targets.toLocaleString()} targets
+                    <DoorOpen className="h-3.5 w-3.5" />
+                    {program._count.attempts.toLocaleString()} doors
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />
                     {program._count.shifts} shift{program._count.shifts !== 1 ? "s" : ""}
                   </span>
+                  {program.contactedCount > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {program.contactedCount.toLocaleString()} contacts
+                    </span>
+                  )}
                   {(program.startDate || program.endDate) && (
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
@@ -375,8 +404,65 @@ function ProgramCard({ program }: { program: Program }) {
                     </span>
                   )}
                 </div>
+
+                {/* Goal progress bars */}
+                {hasGoals && (
+                  <div className="mt-3 space-y-1.5">
+                    {program.goalDoors && (
+                      <GoalBar
+                        label="Doors"
+                        value={program._count.attempts}
+                        goal={program.goalDoors}
+                        color="#0A2342"
+                      />
+                    )}
+                    {program.goalContacts && (
+                      <GoalBar
+                        label="Contacts"
+                        value={program.contactedCount}
+                        goal={program.goalContacts}
+                        color="#1D9E75"
+                      />
+                    )}
+                    {program.goalSupporters && (
+                      <GoalBar
+                        label="Supporters"
+                        value={program.supporterCount}
+                        goal={program.goalSupporters}
+                        color="#EF9F27"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0 mt-1" />
+
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+                {program.status === "active" && (
+                  <button
+                    onClick={(e) => toggleStatus(e, "paused")}
+                    className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 px-2 py-1 rounded border border-amber-200 hover:border-amber-300 transition-colors"
+                  >
+                    <Pause className="h-3 w-3" /> Pause
+                  </button>
+                )}
+                {program.status === "paused" && (
+                  <button
+                    onClick={(e) => toggleStatus(e, "active")}
+                    className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1 px-2 py-1 rounded border border-emerald-200 hover:border-emerald-300 transition-colors"
+                  >
+                    <PlayCircle className="h-3 w-3" /> Resume
+                  </button>
+                )}
+                {program.status === "planning" && (
+                  <button
+                    onClick={(e) => toggleStatus(e, "active")}
+                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 rounded border border-blue-200 hover:border-blue-300 transition-colors"
+                  >
+                    <PlayCircle className="h-3 w-3" /> Activate
+                  </button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -393,7 +479,12 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   function handleCreated(p: Program) {
-    setPrograms((prev) => [p, ...prev]);
+    setPrograms((prev) => [{ ...p, contactedCount: 0, supporterCount: 0 }, ...prev]);
+  }
+
+  function handleStatusChange(id: string, status: FieldProgramStatus) {
+    setPrograms((prev) => prev.map((p) => p.id === id ? { ...p, status } : p));
+    toast.success(`Program ${status}`);
   }
 
   const filtered = statusFilter === "all"
@@ -402,6 +493,9 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
 
   const activeCount = programs.filter((p) => p.status === "active").length;
   const planningCount = programs.filter((p) => p.status === "planning").length;
+  const totalDoors = programs.reduce((s, p) => s + p._count.attempts, 0);
+  const totalContacts = programs.reduce((s, p) => s + p.contactedCount, 0);
+  const contactRate = totalDoors > 0 ? Math.round((totalContacts / totalDoors) * 100) : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -416,20 +510,31 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
         }
       />
 
-      {/* Stats strip */}
+      {/* Analytics summary */}
       {programs.length > 0 && (
-        <div className="flex gap-4 mb-5 text-sm">
-          <span className="text-emerald-600 font-medium">{activeCount} active</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-blue-600 font-medium">{planningCount} planning</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-gray-500">
-            {programs.reduce((s, p) => s + p._count.routes, 0)} total routes
-          </span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <div className="text-xl font-bold text-[#0A2342]">{activeCount}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Active</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <div className="text-xl font-bold text-gray-700">{totalDoors.toLocaleString()}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Doors Knocked</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <div className="text-xl font-bold text-[#1D9E75]">{totalContacts.toLocaleString()}</div>
+            <div className="text-xs text-gray-500 mt-0.5">Contacts Made</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+            <div className="text-xl font-bold text-[#EF9F27]">{contactRate}%</div>
+            <div className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
+              <TrendingUp className="h-3 w-3" /> Contact Rate
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Filter */}
+      {/* Status filter */}
       {programs.length > 0 && (
         <div className="flex gap-2 mb-5 flex-wrap">
           {(["all", "planning", "active", "paused", "completed", "archived"] as const).map((s) => (
@@ -442,7 +547,7 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
                   : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
               }`}
             >
-              {s === "all" ? "All" : STATUS_CONFIG[s as FieldProgramStatus].label}
+              {s === "all" ? `All (${programs.length})` : STATUS_CONFIG[s as FieldProgramStatus].label}
             </button>
           ))}
         </div>
@@ -478,7 +583,7 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               >
-                <ProgramCard program={p} />
+                <ProgramCard program={p} onStatusChange={handleStatusChange} />
               </motion.div>
             ))}
           </AnimatePresence>
