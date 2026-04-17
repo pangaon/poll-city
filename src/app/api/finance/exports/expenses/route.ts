@@ -32,15 +32,25 @@ export async function GET(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership) return new Response("Forbidden", { status: 403 });
+  if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
+    return new Response("Insufficient permissions", { status: 403 });
+  }
 
   const status = p.get("status");
   const from = p.get("from");
   const to = p.get("to");
+  const hideSalaries = ["VOLUNTEER", "VOLUNTEER_LEADER"].includes(membership.role);
 
   const expenses = await prisma.financeExpense.findMany({
     where: {
       campaignId,
       deletedAt: null,
+      ...(hideSalaries ? {
+        OR: [
+          { budgetLineId: null },
+          { budgetLine: { category: { notIn: ["staffing", "contractors"] } } },
+        ],
+      } : {}),
       ...(status ? { expenseStatus: status as FinanceExpenseStatus } : {}),
       ...(from || to
         ? {
