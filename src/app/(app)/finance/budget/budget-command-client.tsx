@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Plus, ChevronRight, ChevronDown, Lock, AlertTriangle, DollarSign, Pencil, X, Check } from "lucide-react";
+import { Plus, ChevronRight, ChevronDown, Lock, AlertTriangle, DollarSign, X } from "lucide-react";
 
 interface BudgetLine {
   id: string;
@@ -75,6 +75,11 @@ function BudgetLineRow({ line, depth, campaignId, onRefresh }: {
         <td className="px-4 py-2.5 text-right text-sm font-medium text-gray-900 dark:text-white">{cad(line.actualAmount)}</td>
         <td className={`px-4 py-2.5 text-right text-sm font-medium ${remaining < 0 ? "text-red-600" : "text-emerald-600"}`}>
           {cad(remaining)}
+        </td>
+        <td className="px-4 py-2.5 text-right">
+          <span className={`text-xs font-semibold ${utilPct > 1 ? "text-red-600" : utilPct >= line.warningThresholdPct ? "text-amber-600" : "text-emerald-600"}`}>
+            {utilPct > 1 ? "+" : ""}{Math.round((utilPct - 1) * 100)}%
+          </span>
         </td>
         <td className="px-4 py-2.5 text-right">
           <div className="flex items-center justify-end gap-1">
@@ -245,8 +250,22 @@ export default function BudgetCommandClient({ campaignId }: { campaignId: string
             </div>
           </div>
 
+          {/* Over-budget alert banner */}
+          {(() => {
+            const overLines = activeBudget.budgetLines.filter((l) => {
+              const p = Number(l.plannedAmount);
+              return p > 0 && (Number(l.actualAmount) + Number(l.committedAmount)) > p;
+            });
+            return overLines.length > 0 ? (
+              <div className="mx-4 mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span><strong>{overLines.length}</strong> line{overLines.length !== 1 ? "s" : ""} over budget: {overLines.map((l) => l.name).join(", ")}</span>
+              </div>
+            ) : null;
+          })()}
+
           {/* Lines table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mt-2">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-400 border-b border-gray-50 dark:border-slate-800">
@@ -255,6 +274,7 @@ export default function BudgetCommandClient({ campaignId }: { campaignId: string
                   <th className="px-4 py-2 text-right">Committed</th>
                   <th className="px-4 py-2 text-right">Actual</th>
                   <th className="px-4 py-2 text-right">Remaining</th>
+                  <th className="px-4 py-2 text-right">Variance</th>
                   <th className="px-4 py-2 text-right">Used</th>
                 </tr>
               </thead>
@@ -271,6 +291,13 @@ export default function BudgetCommandClient({ campaignId }: { campaignId: string
                   <td className="px-4 py-2.5 text-right text-sm text-gray-900 dark:text-white">{cad(totalActual)}</td>
                   <td className={`px-4 py-2.5 text-right text-sm ${totalPlanned - totalActual - totalCommitted < 0 ? "text-red-600" : "text-emerald-600"}`}>
                     {cad(totalPlanned - totalActual - totalCommitted)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-sm">
+                    {totalPlanned > 0 && (
+                      <span className={`text-xs font-semibold ${(totalActual + totalCommitted) > totalPlanned ? "text-red-600" : "text-emerald-600"}`}>
+                        {(totalActual + totalCommitted) > totalPlanned ? "+" : ""}{Math.round(((totalActual + totalCommitted) / totalPlanned - 1) * 100)}%
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5" />
                 </tr>

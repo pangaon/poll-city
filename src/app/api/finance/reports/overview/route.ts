@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     missingReceipts,
     unpaidBills,
     openPRs,
+    recentExpenses,
   ] = await Promise.all([
     prisma.campaignBudget.findMany({
       where: { campaignId, status: { in: ["active", "draft"] } },
@@ -67,6 +68,19 @@ export async function GET(req: NextRequest) {
     }),
     prisma.financePurchaseRequest.count({
       where: { campaignId, requestStatus: "submitted", deletedAt: null },
+    }),
+    prisma.financeExpense.findMany({
+      where: { campaignId, deletedAt: null },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        expenseDate: true,
+        expenseStatus: true,
+        budgetLine: { select: { category: true } },
+      },
+      orderBy: { expenseDate: "desc" },
+      take: 6,
     }),
   ]);
 
@@ -187,6 +201,14 @@ export async function GET(req: NextRequest) {
         unpaidBillsAmount: Number(unpaidBills._sum.amount ?? 0),
         openPurchaseRequests: openPRs,
       },
+      recentExpenses: recentExpenses.map((e) => ({
+        id: e.id,
+        description: e.description,
+        amount: Number(e.amount),
+        expenseDate: e.expenseDate.toISOString(),
+        expenseStatus: e.expenseStatus,
+        category: e.budgetLine?.category ?? "other",
+      })),
     },
   });
 }

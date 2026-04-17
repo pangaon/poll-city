@@ -289,7 +289,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| /finance — overview complete | PENDING | 238 lines. Add live spend-vs-budget chart, compliance status, recent transactions, quick-add expense. |
+| /finance — overview complete | CLAIMED 2026-04-17 | 238 lines. Add live spend-vs-budget chart, compliance status, recent transactions, quick-add expense. |
 | /finance/budget — variance analysis + approval | PENDING | 427 lines. Add variance columns, over-budget alerts, line-item approval workflow. |
 | /finance/expenses — full form + receipt upload | PENDING | 349 lines. Add receipt image upload, category enforcement, policy validation, bulk import. |
 | /finance/purchase-requests — full approval chain | PENDING | 251 lines. Add multi-level approval, auto-reject on budget overrun, email notifications. |
