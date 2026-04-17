@@ -189,13 +189,29 @@ Safe zones for AI agents:
 
 ## WHAT HAPPENED LAST TIME (learn from it)
 
-In April 2026, background agents built excellent features but pushed without running
+**Incident 1 — April 2026:** Background agents built excellent features but pushed without running
 `npm run build`. Two dynamic route conflicts caused 10+ consecutive failed Vercel
 deployments. George saw a wall of red and nearly had a heart attack.
 
-The fix was 5 minutes of work. The anxiety was unnecessary and could have been avoided.
+**Incident 2 — April 17 2026:** George's system shut down mid-session with multiple agents
+running simultaneously. Five commits pushed in rapid succession — none of them had run a
+full build first. Result: 5 consecutive red Vercel deployments. Root causes:
 
-**The lesson: a green local build before push is a courtesy to George, not a formality.**
+1. `communications-client.tsx` — Comms Phase 7 used `step.config.days` (typed `unknown`) directly in JSX `&&` — TypeScript rejects `unknown` as `ReactNode`. Fix: `!!` cast.
+2. `qr/[qrId]/page.tsx` — QR Capture session committed with Prisma `Date` fields passed raw to a client component expecting `string`. Fix: `.toISOString()` serialization.
+3. `api/qr/[qrId]/route.ts` — `landingConfig` / `brandOverride` (`Record<string,unknown>`) not cast to `Prisma.InputJsonValue` / `Prisma.JsonNull`. Fix: explicit Prisma type cast.
+4. `reputation/command/command-center-client.tsx` — `ACTION_LABEL` map missing 4 values that existed in the `RepRecActionType` enum. TypeScript caught the gap. Fix: add all 4 labels.
+5. `automation-engine.ts` — `add_tag`/`remove_tag` treated `contact.tags` as `string[]` but it is a relational join (`Tag` + `ContactTag`). Fix: use `prisma.tag.upsert` + `prisma.contactTag.create/deleteMany`.
+
+**THE HARDCODED RULES THIS ADDS:**
+
+1. **Before ANY push — run `npm run build` from scratch.** Not tsc. The full build. Exit 0.
+2. **JSON fields from Prisma require explicit `Prisma.InputJsonValue` or `Prisma.JsonNull` casts** when writing back. Never pass `Record<string,unknown>` or `null` directly.
+3. **Prisma `Date` fields must be `.toISOString()` serialized** before passing to client components with `string` interfaces.
+4. **When you add enum values to Prisma schema**, immediately grep for every `Record<EnumType, ...>` map in the codebase and add the missing keys. Incomplete maps are compile errors.
+5. **Never assume `contact.tags` is a `string[]`** — it is a relation. Always use `prisma.tag.upsert` + `prisma.contactTag` operations.
+6. **`unknown` values in JSX `&&` chains must be cast to `boolean` with `!!`** before the JSX expression, or TypeScript will complain the result is not `ReactNode`.
+7. **When a session ends unexpectedly, the next session MUST run `npm run build` before doing anything else.** Treat an interrupted session as "build unknown — verify first."
 
 ---
 

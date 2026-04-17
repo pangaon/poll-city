@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: Finance Phase 8 — FINANCE role access control)
+**Updated by:** Claude Sonnet 4.6 (session: BUILD RECOVERY — 5 red deployments fixed, platform restored to green)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -23,6 +23,25 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — BUILD RECOVERY: 5 red Vercel deployments diagnosed and fixed)
+
+**What happened:** George's system shut down mid-session with multiple agents running. 5 commits had been pushed with no `npm run build` verification. Platform was red.
+
+**Build errors fixed (commit 5ee6469):**
+1. `communications-client.tsx:2181` — `step.config.days` (unknown) used in JSX `&&` → `!!` cast
+2. `qr/[qrId]/page.tsx` — Prisma Date fields passed raw to client expecting string → `.toISOString()`
+3. `api/qr/[qrId]/route.ts` — `landingConfig`/`brandOverride` not cast to `Prisma.InputJsonValue`/`Prisma.JsonNull`
+4. `reputation/command/command-center-client.tsx` — `ACTION_LABEL` missing 4 enum members (`send_sms`, `send_email_blast`, `post_social`, `create_task`)
+5. `automation-engine.ts` — `add_tag`/`remove_tag` used `contact.tags as string[]` but it's a relational join → fixed to `tag.upsert` + `contactTag.create/deleteMany`
+
+**Also committed:** Full QR Capture module (was untracked — the prior session built it but never committed before shutdown).
+
+**CLAUDE.md updated** with 7 hardcoded rules to prevent this class of error in all future sessions.
+
+**Build status:** GREEN ✓. Pushed to origin/main as commit 5ee6469. Vercel deploying now — George to confirm green dot.
 
 ---
 
