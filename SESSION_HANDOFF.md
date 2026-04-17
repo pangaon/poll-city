@@ -45,6 +45,33 @@ If you are a session that was interrupted by George's system shutdown: your work
 
 ---
 
+## LAST SESSION (2026-04-17 — Sprint 3: /field/routes/[routeId] route detail + push:safe heap fix)
+
+**What shipped:**
+
+Resumed after context compaction. Found `route-detail-client.tsx` had 299 uncommitted insertions from prior session. Build was green (TSC exit 0, `NODE_OPTIONS=4GB`). Committed and pushed via `npm run push:safe` (exit 0).
+
+**Commits pushed (2):**
+- `3d18018` — feat(field): Sprint 3 — route detail UI with GPS trail, walk list, outcome chart, shift roster
+- `3ddc9c4` — fix(scripts): pass NODE_OPTIONS 4GB heap + disable telemetry in push-safe build
+
+**Route detail feature — what's live at `/field/routes/[routeId]`:**
+- Stats strip: Doors / Attempts / Contacts / Supporters
+- Completion progress bar with per-target-status breakdown legend
+- Status advancement (Draft → Published → Assigned → In Progress → Completed → Archived)
+- Lock/unlock button
+- GPS trail map (dynamic — shows empty state when no GPS data)
+- Outcome breakdown chart (animated bars, all 14 outcomes covered)
+- Assigned shifts panel with canvasser check-in status chips
+- Full walk list with inline status dropdowns (optimistic update + revert on error)
+- Prisma orderBy fix: `_count.outcome` (was invalid `_count._all`)
+
+**push:safe fix:** Script now passes `NODE_OPTIONS="--max-old-space-size=4096"` and `NEXT_TELEMETRY_DISABLED=1` for the build step. Future sessions won't hit OOM.
+
+**Build:** `npm run push:safe` exit 0.
+
+---
+
 ## LAST SESSION (2026-04-17 — Session resume: verify field/programs done, push 13 queued commits)
 
 **What shipped:**
@@ -549,24 +576,20 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Session close 2026-04-17. Sprint 2 Finance 100% DONE (all 9 sub-routes + Phase 8). Build green. All pushed to origin/main.
+Session close 2026-04-17. Sprint 3 field ops — route detail done. Build green. All pushed to origin/main.
 
-Finance is now fully complete:
-- FINANCE role: middleware-enforced path restriction, server-side layout redirect, correct sidebar isolation
-- Salary privacy: VOLUNTEER/VOLUNTEER_LEADER can't see staffing/contractors expenses; FINANCE role can't see staffing variance lines in reports
-- All 9 Sprint 2 sub-routes DONE: budget, expenses, vendors, purchase-requests, reimbursements, approvals, reports, audit, Phase 8
-- RCAE live at /reputation | CIE live at /intel | QR Capture claimed (src/lib/qr/ untracked — that session should commit)
+What's live now:
+- /field/routes/[routeId] — GPS trail map, walk list with inline status dropdowns, outcome chart, shift roster, completion bar (commit 3d18018)
+- push:safe script fixed — now passes NODE_OPTIONS 4GB heap automatically (commit 3ddc9c4)
+- /field/programs + /field/programs/[programId] — analytics, goal bars, canvasser roster (prior sessions)
+- /field/teams, /field/follow-ups, /field/audit — all done (commit 8235724)
 
-GEORGE MUST DO before /intel or /reputation work (GEORGE_TODO.md item 62):
-npx prisma db push — applies CIE + RCAE + FINANCE enum to Railway (additive-only, zero data risk)
+Sprint 3 remaining (all PENDING in WORK_QUEUE):
+- /field/mobile — 256 lines, offline sync status, GPS accuracy, paper fallback trigger
+- /field/lit-drops — 537 lines, route map, material tracking, completion photos, inventory deduction
+- /field/materials — 296 lines, reorder alerts, per-team allocation, print-to-field link
 
-Next recommended tasks (all PENDING in WORK_QUEUE):
-1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
-2. Sprint 3 — Field sub-modules depth (/field/programs, /field/teams, /field/routes/[id], etc.)
-3. Sprint 4 — Print/Forms/Ops polish
-4. QR Capture + Geo-Triggered Prospect Funnel — claimed by another session (check if still active)
-
-Working tree: `src/lib/qr/` untracked (another session's uncommitted work — do NOT git add blindly).
+Working tree: CLEAN. No uncommitted work.
 Read WORK_QUEUE.md. Claim before building.
 ```
 

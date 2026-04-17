@@ -342,7 +342,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 |---|---|---|
 | /field/programs — full management | DONE — de42975 | Analytics cards, goal bars (doors/contacts/supporters), quick status toggle, contactedCount/supporterCount/completedRoutes. |
 | /field/programs/[programId] — full detail | DONE — 9ff2724 | 642 lines. Goal bars, outcome breakdown, daily sparkline, canvasser roster with rank bars, route heat map, status actions. |
-| /field/routes/[routeId] — full route detail | CLAIMED 2026-04-17 | 458 lines. Add interactive map, stop-by-stop list, canvasser GPS trail, outcomes summary. |
+| /field/routes/[routeId] — full route detail | DONE — 3d18018 | GPS trail map, walk list with inline status dropdowns, outcome breakdown chart, shift roster, completion bar. |
 | /field/teams — full team management | DONE — 8235724 | Performance stats, shift scheduling, leaderboard, contact assignment. |
 | /field/follow-ups — full workflow | DONE — 8235724 | Assignment to canvasser, bulk re-assign, outcome tracking, Adoni scripts. |
 | /field/mobile — full mobile dashboard | PENDING | 256 lines. Add offline sync status, GPS accuracy, battery-friendly mode, paper fallback trigger. |
