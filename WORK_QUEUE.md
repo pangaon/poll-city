@@ -345,7 +345,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /field/routes/[routeId] — full route detail | DONE — 3d18018 | GPS trail map, walk list with inline status dropdowns, outcome breakdown chart, shift roster, completion bar. |
 | /field/teams — full team management | DONE — 8235724 | Performance stats, shift scheduling, leaderboard, contact assignment. |
 | /field/follow-ups — full workflow | DONE — 8235724 | Assignment to canvasser, bulk re-assign, outcome tracking, Adoni scripts. |
-| /field/mobile — full mobile dashboard | PENDING | 256 lines. Add offline sync status, GPS accuracy, battery-friendly mode, paper fallback trigger. |
+| /field/mobile — full mobile dashboard | CLAIMED 2026-04-17 | 256 lines. Add offline sync status, GPS accuracy, battery-friendly mode, paper fallback trigger. |
 | /field/audit — full audit + filters | DONE — 8235724 | Action type filter, date range, export, canvasser comparison. |
 | /field/lit-drops — full operations | PENDING | 537 lines. Add route map, material tracking, completion photos, inventory deduction. |
 | /field/materials — full inventory controls | PENDING | 296 lines. Add reorder alerts, per-team allocation, print-to-field link, barcode scan. |
