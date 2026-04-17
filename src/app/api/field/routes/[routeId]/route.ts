@@ -33,6 +33,13 @@ export async function GET(req: NextRequest, { params }: Params) {
           id: true, name: true, shiftType: true, status: true,
           scheduledDate: true, startTime: true, endTime: true,
           _count: { select: { assignments: true } },
+          assignments: {
+            select: {
+              id: true, status: true, checkedInAt: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          },
         },
       },
       _count: { select: { targets: true, shifts: true, attempts: true } },
@@ -43,24 +50,69 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Route not found" }, { status: 404 });
   }
 
-  // Compute target completion breakdown
-  const targetStats = await prisma.fieldTarget.groupBy({
-    by: ["status"],
-    where: { routeId, deletedAt: null },
-    _count: { _all: true },
-  });
+  const CONTACT_OUTCOMES = new Set([
+    "contacted", "supporter", "undecided", "volunteer_interest",
+    "donor_interest", "sign_requested", "follow_up",
+  ]);
+
+  // Compute target completion breakdown + outcome analytics + GPS trail in parallel
+  const [targetStatRows, outcomeRows, gpsAttempts] = await Promise.all([
+    prisma.fieldTarget.groupBy({
+      by: ["status"],
+      where: { routeId, deletedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.fieldAttempt.groupBy({
+      by: ["outcome"],
+      where: { routeId, campaignId },
+      _count: { _all: true },
+      orderBy: { _count: { _all: "desc" } },
+    }),
+    prisma.fieldAttempt.findMany({
+      where: { routeId, campaignId, latitude: { not: null }, longitude: { not: null } },
+      select: {
+        latitude: true, longitude: true, attemptedAt: true,
+        attemptedBy: { select: { id: true, name: true } },
+      },
+      orderBy: { attemptedAt: "asc" },
+      take: 500,
+    }),
+  ]);
 
   const stats: Record<string, number> = {};
-  for (const s of targetStats) stats[s.status] = s._count._all;
+  for (const s of targetStatRows) stats[s.status] = s._count._all;
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
   const done = (stats["contacted"] ?? 0) + (stats["refused"] ?? 0) +
     (stats["moved"] ?? 0) + (stats["inaccessible"] ?? 0) + (stats["complete"] ?? 0);
 
+  const outcomeBreakdown = outcomeRows.map((r) => ({
+    outcome: r.outcome,
+    count: r._count._all,
+    isContact: CONTACT_OUTCOMES.has(r.outcome),
+  }));
+
+  const gpsTrail = gpsAttempts
+    .filter((a): a is typeof a & { latitude: number; longitude: number } =>
+      a.latitude != null && a.longitude != null)
+    .map((a) => ({
+      lat: a.latitude,
+      lng: a.longitude,
+      attemptedAt: a.attemptedAt.toISOString(),
+      canvasserId: a.attemptedBy.id,
+      canvasserName: a.attemptedBy.name ?? "Unknown",
+    }));
+
   return NextResponse.json({
     data: {
       ...route,
+      shifts: route.shifts.map((s) => ({
+        ...s,
+        scheduledDate: s.scheduledDate.toISOString(),
+      })),
       targetStats: stats,
       completionPct: total > 0 ? Math.round((done / total) * 100) : 0,
+      outcomeBreakdown,
+      gpsTrail,
     },
   });
 }
