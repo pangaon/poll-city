@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       by: ["outcome"],
       where: { routeId, campaignId },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { outcome: "desc" } },
     }),
     prisma.fieldAttempt.findMany({
       where: { routeId, campaignId, latitude: { not: null }, longitude: { not: null } },
