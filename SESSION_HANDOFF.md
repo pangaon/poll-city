@@ -26,7 +26,34 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Finance Sprint 2 gap close + build fixes)
+## LAST SESSION (2026-04-17 — Site-wide input intelligence: write assist, spellcheck, address autocomplete)
+
+**What shipped — commit 8f8dd18:**
+
+### New infrastructure
+- **`/api/adoni/enhance`** — new Haiku-powered text enhancement endpoint. Context-aware prompts for `email-body`, `email-subject`, `sms`, `note`, `social-post`, `general`. Sanitized, rate-limited, graceful fallback if no Anthropic key.
+- **`WriteAssistTextarea` component** (`src/components/ui/write-assist-textarea.tsx`) — drop-in replacement for any `<Textarea>` on writing fields. Shows ✨ Enhance button below the field; calls enhance API; supports single-step undo. Exported from `@/components/ui` for all future use.
+- **Base `Textarea` now defaults `spellCheck={true}`** — every existing and future `<Textarea>` on the platform gets browser spellcheck automatically. No per-field changes needed.
+
+### Write assist wired into
+- Email compose body (`email-client.tsx`) + `spellCheck` on subject input
+- SMS compose body (`sms-client.tsx`)
+- Social post compose (`social-manager-client.tsx`)
+- Contact edit notes (`contact-detail-client.tsx` line 326)
+- Contact CRM note composer (`contact-detail-client.tsx` line 541)
+- Log Interaction modal notes — switched from `register()` to `Controller` for proper react-hook-form integration
+
+### Address autocomplete wired into
+- Add Contact modal (`contacts-client.tsx`) — "Address search" field above address grid; selects auto-fills streetNumber, address1, city, province, postalCode via `setValue`
+
+### Sniff notes
+- No new DB models, no schema changes, no CONNECTIONS.md entries needed — purely UI/AI layer
+- Build: `npm run build` exits 0, TypeScript clean (exit 0)
+- **Untracked RCAE files present** (`src/app/api/reputation/`, `src/lib/reputation/`) — session that claimed RCAE built but didn't commit. That session should push its work.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Finance Sprint 2 gap close + build fixes)
 
 **What shipped — commit 1901656:**
 

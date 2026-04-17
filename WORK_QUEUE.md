@@ -195,6 +195,14 @@ No session may start a task already marked CLAIMED or DONE.
 
 ---
 
+## MODULE: INPUT INTELLIGENCE
+
+| Task | Status | Notes |
+|---|---|---|
+| Site-wide write assist + spellcheck + address autocomplete | DONE — 8f8dd18 | WriteAssistTextarea component, /api/adoni/enhance (Haiku), spellCheck on base Textarea, AddressAutocomplete in Add Contact modal |
+
+---
+
 ## MODULE: PLATFORM HARDENING
 
 | Task | Status | Notes |
