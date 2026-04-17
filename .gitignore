@@ -1,5 +1,6 @@
-# Claude Code worktrees
+# Claude Code worktrees and runtime files
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 
 # Dependencies
 node_modules/
