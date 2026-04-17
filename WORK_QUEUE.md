@@ -124,7 +124,7 @@ No session may start a task already marked CLAIMED or DONE.
 | Phase 4b — Email open + click tracking (tracking pixel) | DONE — db33dc0 | 1x1 GIF pixel route + click redirect route + NotificationLog openedCount/clickCount fields + EmailTrackingEvent model — pixel embedded in every email blast |
 | Phase 5 — Unified Inbox (backend + rebuild UI) | DONE — 3be7d35 | InboxThread, InboxMessage, /api/inbox, two-panel UI, Twilio + Resend webhook wiring |
 | Phase 6 — Analytics (delivery funnel, attribution) | DONE — see this session | /api/communications/analytics (funnel+trend+per-blast), AnalyticsTab in communications-client.tsx |
-| Phase 7 — Automation Engine (triggers, steps, enrollment cron) | PENDING | |
+| Phase 7 — Automation Engine (triggers, steps, enrollment cron) | DONE — 8572d00 | 4 schema models, 3 enums, automation-engine.ts, hourly cron, 6 API routes, AutomationsTab UI |
 | Phase 8 — Social Publishing (real API calls to Facebook/X/LinkedIn) | PENDING | |
 | Phase 9 — Consent Management (CASL engine) | PENDING | |
 | Phase 10 — Fatigue Guard | PENDING | |
@@ -424,7 +424,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | Phase 4b — Email open + click tracking pixel | DONE — db33dc0 | 1x1 GIF route, click redirect, NotificationLog fields, EmailTrackingEvent model |
 | Phase 5 — Unified inbox backend + UI rebuild | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
-| Phase 7 — Automation Engine | CLAIMED 2026-04-17 | Triggers, steps, enrollment cron |
+| Phase 7 — Automation Engine | DONE — 8572d00 | Triggers, steps, enrollment cron |
 | Phase 8 — Social publishing (real API calls) | PENDING | Facebook/X/LinkedIn |
 | Phase 9 — Consent management (CASL) | PENDING | |
 | Phase 10 — Fatigue guard | PENDING | |
@@ -445,7 +445,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| QR Capture + Geo-Triggered Prospect Funnel — full enterprise build | CLAIMED 2026-04-17 | Schema extension, public landing flow, intent/capture APIs, admin QR hub, analytics, prospect/opportunity center, teaser layer, seed data |
+| QR Capture + Geo-Triggered Prospect Funnel — full enterprise build | DONE — 5ee6469 | Schema extension, public landing flow, intent/capture APIs, admin QR hub, analytics, prospect/opportunity center, teaser layer, seed data |
 
 ---
 

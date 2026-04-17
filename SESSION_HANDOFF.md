@@ -45,7 +45,41 @@ If you are a session that was interrupted by George's system shutdown: your work
 
 ---
 
-## LAST SESSION (2026-04-17 — BUILD RECOVERY: 5 red Vercel deployments diagnosed and fixed)
+## LAST SESSION (2026-04-17 — Comms Phase 7: Automation Engine + WORK_QUEUE housekeeping)
+
+**What shipped — commit 8572d00:**
+
+### Communications Phase 7 — Automation Engine — DONE
+
+**Schema additions** (prisma/schema.prisma):
+- 3 new enums: `AutomationTrigger`, `AutomationStepType`, `AutomationEnrollmentStatus`
+- 4 new models: `AutomationRule`, `AutomationStep`, `AutomationEnrollment`, `AutomationStepCompletion`
+- Back-relations on User, Campaign, Contact
+
+**Engine** (`src/lib/automation/automation-engine.ts`):
+- `triggerAutomation()` — finds active rules for trigger, checks filter match, enrolls contact
+- `processAutomationEnrollments()` — hourly cron batch processor (cap 100), advances step-by-step
+- `executeStep()` — send_email/send_sms (ScheduledMessage), add_tag/remove_tag (Contact.tags), wait_days (no-op timer)
+- `computeNextDue()` / `matchesFilter()`
+
+**API routes:**
+- `GET/POST /api/comms/automations` — list + create
+- `GET/PATCH/DELETE /api/comms/automations/[ruleId]` — detail + update + delete
+- `PUT /api/comms/automations/[ruleId]/steps` — atomic step replace (requires inactive rule)
+- `POST /api/comms/automations/[ruleId]/enroll` — manual enrollment
+- `GET /api/cron/automation-enrollments` — hourly cron (CRON_SECRET protected)
+
+**UI:** AutomationsTab in communications-client.tsx replaced with live API-connected rule list, create modal, active toggle, step viewer.
+
+**GEORGE_TODO item 66 added:** `npx prisma db push` for 4 new automation tables.
+
+**Build:** `npm run build` exit 0, `tsc --noEmit` exit 0.
+
+**WORK_QUEUE housekeeping (this session):** Phase 7 marked DONE in both WORK_QUEUE entries. QR Capture CLAIMED → DONE (5ee6469 — committed by build recovery session).
+
+---
+
+## PREV LAST SESSION (2026-04-17 — BUILD RECOVERY: 5 red Vercel deployments diagnosed and fixed)
 
 **What happened:** George's system shut down mid-session with multiple agents running. 5 commits had been pushed with no `npm run build` verification. Platform was red.
 
