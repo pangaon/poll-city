@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: WORK_QUEUE hardened + build trace crash permanently fixed)
+**Updated by:** Claude Sonnet 4.6 (session: nav cleanup — sidebar + mobile nav consolidated)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -12,12 +12,13 @@
 **RULE CHANGE — MANDATORY FROM NOW ON:**
 - **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
 - `push:safe` now wipes `.next` fully before building (Windows ENOENT fix). Do not fight this.
-- The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
+- The sidebar has been redesigned and CLEANED UP. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
+- `.claude/scheduled_tasks.lock` is now in `.gitignore` — no more dirty tree on push.
 
-**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (275bad7 + b64242b — DONE). Build trace crash permanently fixed (e9746ed).
+**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (DONE), **nav cleanup** (14c5e67 + b421ab6 — DONE).
 
-**Working tree:** Clean. All files committed and pushed.
+**Working tree:** `src/lib/qr/capture.ts` has uncommitted WIP (QR contact-enrichment + email hooks from prior session — NOT committed, review before committing).
 
 **Stashes:** None.
 
@@ -42,6 +43,18 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — Nav cleanup: sidebar + mobile nav consolidated)
+
+**What shipped (commits `14c5e67`, `b421ab6`):**
+- **Sidebar** (`src/components/layout/sidebar.tsx`): removed 4 Field sub-pages (/field/programs, /field/turf, /field/mobile, /field/materials — they're accessible *within* /field-ops command center, not top-level); trimmed Intelligence from 5 → 3 items (removed /reports, /election-night); added Voter Outreach (/notifications) to Outreach section; cleaned dead imports (Smartphone, Package, Zap → Bell). Total nav items down from ~33 to ~24.
+- **Mobile nav** (`src/components/layout/mobile-nav.tsx`): replaced stale MORE_GROUPS (had months-old routes that no longer exist) with 9 correctly organised groups covering all current platform features.
+- **`.gitignore`**: added `.claude/scheduled_tasks.lock` to prevent it from triggering push:safe's clean tree check.
+- **WIP alert**: `src/lib/qr/capture.ts` has 400+ lines of uncommitted changes (contact enrichment, email hooks, support-level + funnel-stage logic). This was in the working tree before this session. Do NOT commit blindly — review for completeness first.
+
+**Next session opener:** Nav is clean. Working tree has `src/lib/qr/capture.ts` WIP — decide whether to commit or discard it. Next Sprint 4 tasks: `/print/templates` (PENDING), `/print/packs` (PENDING), forms suite. Check WORK_QUEUE.md, claim a task, build, push via `npm run push:safe`.
 
 ---
 
