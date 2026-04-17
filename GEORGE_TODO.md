@@ -11,7 +11,7 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 ## 🔴 CRITICAL — Platform is broken without these
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
-- [ ] **2. Run QR Capture migration on Railway** — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
+- [x] **2. Run QR Capture migration on Railway** ✓ DONE 2026-04-17 — covered by prisma db push — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
   1. Open Railway → Poll City service → Connect tab → copy the `DATABASE_URL`
   2. In this repo: `DATABASE_URL="<paste>" npx prisma migrate dev --name qr-capture --skip-seed`
   3. OR if you want non-destructive: `DATABASE_URL="<paste>" npx prisma db push`
@@ -484,7 +484,7 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
-- [ ] **62. Run `npx prisma db push` — CRITICAL, do this before anything else** — covers CIE + RCAE + Finance Phase 8 schema in one shot
+- [x] **62. Run `npx prisma db push` — CRITICAL, do this before anything else** — covers CIE + RCAE + Finance Phase 8 schema in one shot ✓ DONE 2026-04-17
 
   **Why only you:** AI agents can write code but cannot connect to your Railway PostgreSQL instance. The DATABASE_URL contains your DB password — it lives in your `.env` which is gitignored. Without running this, `/intel`, `/reputation`, and Finance role-gating will all 500 in production.
 
@@ -548,7 +548,7 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
-- [ ] **66. Run `npx prisma db push` for Automation Engine tables** — do this after item 62 if you haven't already, OR re-run item 62 which covers everything
+- [x] **66. Run `npx prisma db push` for Automation Engine tables** — do this after item 62 if you haven't already, OR re-run item 62 which covers everything ✓ DONE 2026-04-17
 
   **Why only you:** The automation engine (Communications Phase 7) added 4 new tables and 3 new enums to the schema. AI agents can write the schema file but can't connect to your Railway PostgreSQL database (the `DATABASE_URL` with the password is in `.env.local` which is gitignored).
 
