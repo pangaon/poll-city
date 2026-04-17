@@ -553,6 +553,398 @@ function SwipeResults({ results }: { results: { id: string; text: string; order:
   );
 }
 
+/* ── NPS Vote UI ──────────────────────────────────────────────── */
+
+function NpsVote({ onVote, disabled }: { onVote: (value: number) => void; disabled: boolean }) {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  function getColor(n: number) {
+    if (selected === n) {
+      if (n <= 6) return "bg-red-500 text-white border-red-500";
+      if (n <= 8) return "bg-amber-500 text-white border-amber-500";
+      return "bg-emerald-500 text-white border-emerald-500";
+    }
+    if (n <= 6) return "border-red-200 text-red-600 hover:bg-red-50";
+    if (n <= 8) return "border-amber-200 text-amber-600 hover:bg-amber-50";
+    return "border-emerald-200 text-emerald-600 hover:bg-emerald-50";
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500 text-center">0 = Not at all likely · 10 = Extremely likely</p>
+      <div className="grid grid-cols-11 gap-1">
+        {Array.from({ length: 11 }, (_, i) => (
+          <motion.button
+            key={i}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            disabled={disabled}
+            onClick={() => setSelected(i)}
+            className={`aspect-square rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center min-h-[40px] ${getColor(i)}`}
+          >
+            {i}
+          </motion.button>
+        ))}
+      </div>
+      <div className="flex justify-between text-xs text-gray-400 px-1">
+        <span>Detractors (0–6)</span>
+        <span>Passives (7–8)</span>
+        <span>Promoters (9–10)</span>
+      </div>
+      {selected !== null && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <Button onClick={() => onVote(selected)} disabled={disabled} className="w-full min-h-[44px]" style={{ backgroundColor: GREEN }}>
+            <Check className="w-4 h-4" /> Submit Score: {selected}
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/* ── Word Cloud Vote UI ───────────────────────────────────────── */
+
+function WordCloudVote({ onVote, disabled }: { onVote: (words: string[]) => void; disabled: boolean }) {
+  const [input, setInput] = useState("");
+  const [words, setWords] = useState<string[]>([]);
+
+  function addWord() {
+    const w = input.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (w.length >= 2 && words.length < 3 && !words.includes(w)) {
+      setWords([...words, w]);
+      setInput("");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">Add up to 3 words that come to mind.</p>
+      <div className="flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addWord()}
+          placeholder="Type a word…"
+          maxLength={30}
+          disabled={disabled || words.length >= 3}
+          className="flex-1"
+        />
+        <Button onClick={addWord} disabled={disabled || !input.trim() || words.length >= 3} variant="outline" size="sm">
+          Add
+        </Button>
+      </div>
+      {words.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {words.map((w) => (
+            <span key={w} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-200">
+              {w}
+              <button onClick={() => setWords(words.filter((x) => x !== w))} className="text-emerald-400 hover:text-emerald-700">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {words.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <Button onClick={() => onVote(words)} disabled={disabled} className="w-full min-h-[44px]" style={{ backgroundColor: GREEN }}>
+            <Check className="w-4 h-4" /> Submit {words.length} word{words.length > 1 ? "s" : ""}
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/* ── Emoji React Vote UI ─────────────────────────────────────── */
+
+function EmojiReactVote({ options, onVote, disabled }: { options: PollOption[]; onVote: (optionId: string) => void; disabled: boolean }) {
+  const [selected, setSelected] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        {options.map((opt) => {
+          const parts = opt.text.split(" ");
+          const emoji = parts[0];
+          const label = parts.slice(1).join(" ");
+          return (
+            <motion.button
+              key={opt.id}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              disabled={disabled}
+              onClick={() => setSelected(opt.id)}
+              className={`p-4 rounded-2xl border-2 text-center transition-all min-h-[80px] flex flex-col items-center justify-center gap-1 ${
+                selected === opt.id ? "border-[#1D9E75] bg-emerald-50" : "border-gray-200 bg-white hover:border-gray-300"
+              }`}
+            >
+              <span className="text-3xl">{emoji}</span>
+              {label && <span className="text-xs text-gray-600 font-medium">{label}</span>}
+            </motion.button>
+          );
+        })}
+      </div>
+      {selected && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <Button onClick={() => onVote(selected)} disabled={disabled} className="w-full min-h-[44px]" style={{ backgroundColor: GREEN }}>
+            <Check className="w-4 h-4" /> Submit Reaction
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/* ── Priority Rank Vote UI ───────────────────────────────────── */
+
+function PriorityRankVote({ options, onVote, disabled }: { options: PollOption[]; onVote: (ranked: { optionId: string; rank: number }[]) => void; disabled: boolean }) {
+  const [items, setItems] = useState(options.map((o) => ({ ...o })));
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-500 mb-2">Drag to set priorities (top = highest priority).</p>
+      <Reorder.Group axis="y" values={items} onReorder={setItems} className="space-y-2">
+        {items.map((item, i) => (
+          <Reorder.Item
+            key={item.id}
+            value={item}
+            className="flex items-center gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-200 cursor-grab active:cursor-grabbing shadow-sm min-h-[52px]"
+          >
+            <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <span
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+              style={{ backgroundColor: i === 0 ? "#EF9F27" : CHART_COLORS[i % CHART_COLORS.length] }}
+            >
+              {i === 0 ? "★" : i + 1}
+            </span>
+            <span className="font-medium text-gray-800 flex-1">{item.text}</span>
+          </Reorder.Item>
+        ))}
+      </Reorder.Group>
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}>
+        <Button
+          onClick={() => onVote(items.map((item, i) => ({ optionId: item.id, rank: i + 1 })))}
+          disabled={disabled}
+          className="w-full mt-2 min-h-[44px]"
+          style={{ backgroundColor: GREEN }}
+        >
+          <Check className="w-4 h-4" /> Submit Priorities
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ── Timeline Radar Vote UI ──────────────────────────────────── */
+
+function TimelineRadarVote({ options, onVote, disabled }: { options: PollOption[]; onVote: (ratings: { optionId: string; value: number }[]) => void; disabled: boolean }) {
+  const [ratings, setRatings] = useState<Record<string, number>>(
+    Object.fromEntries(options.map((o) => [o.id, 5]))
+  );
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-gray-500">Rate each dimension from 0 to 10.</p>
+      {options.map((opt) => {
+        const val = ratings[opt.id] ?? 5;
+        return (
+          <div key={opt.id} className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-800">{opt.text}</span>
+              <span className="text-lg font-black" style={{ color: NAVY }}>{val}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={val}
+              onChange={(e) => setRatings((r) => ({ ...r, [opt.id]: Number(e.target.value) }))}
+              disabled={disabled}
+              className="w-full h-2.5 rounded-full appearance-none cursor-pointer accent-[#1D9E75]"
+              style={{ background: `linear-gradient(to right, ${GREEN} ${val * 10}%, #e5e7eb ${val * 10}%)` }}
+            />
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>0</span><span>5</span><span>10</span>
+            </div>
+          </div>
+        );
+      })}
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} transition={spring}>
+        <Button
+          onClick={() => onVote(options.map((o) => ({ optionId: o.id, value: ratings[o.id] ?? 5 })))}
+          disabled={disabled}
+          className="w-full min-h-[44px]"
+          style={{ backgroundColor: GREEN }}
+        >
+          <Check className="w-4 h-4" /> Submit Ratings
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ── Results: NPS ─────────────────────────────────────────────── */
+
+function NpsResults({ results }: { results: { promoters: number; passives: number; detractors: number; npsScore: number; total: number } }) {
+  const { promoters, passives, detractors, npsScore, total } = results;
+  const pPct = total > 0 ? Math.round((promoters / total) * 100) : 0;
+  const paPct = total > 0 ? Math.round((passives / total) * 100) : 0;
+  const dPct = total > 0 ? Math.round((detractors / total) * 100) : 0;
+  const scoreColor = npsScore >= 50 ? "#1D9E75" : npsScore >= 0 ? "#EF9F27" : "#E24B4A";
+
+  return (
+    <div className="space-y-5">
+      <div className="text-center">
+        <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">NPS Score</p>
+        <p className="text-6xl font-black" style={{ color: scoreColor }}>
+          {npsScore > 0 ? "+" : ""}{npsScore}
+        </p>
+        <p className="text-sm text-gray-500 mt-1">{total} responses</p>
+      </div>
+      <div className="space-y-3">
+        {[
+          { label: "Promoters (9–10)", count: promoters, pct: pPct, color: "#1D9E75" },
+          { label: "Passives (7–8)", count: passives, pct: paPct, color: "#EF9F27" },
+          { label: "Detractors (0–6)", count: detractors, pct: dPct, color: "#E24B4A" },
+        ].map((r) => (
+          <div key={r.label} className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium text-gray-700">{r.label}</span>
+              <span className="font-bold" style={{ color: r.color }}>{r.pct}%</span>
+            </div>
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${r.pct}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="h-full rounded-full"
+                style={{ backgroundColor: r.color }}
+              />
+            </div>
+            <p className="text-xs text-gray-400">{r.count} responses</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Results: Word Cloud ──────────────────────────────────────── */
+
+function WordCloudResults({ results }: { results: { word: string; count: number }[] }) {
+  if (results.length === 0) return <p className="text-sm text-gray-400 text-center py-4">No words submitted yet.</p>;
+  const maxCount = Math.max(...results.map((r) => r.count), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 justify-center py-4 min-h-[120px] items-center">
+        {results.map((entry, i) => {
+          const size = 0.75 + (entry.count / maxCount) * 1.5;
+          return (
+            <motion.span
+              key={entry.word}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.03 }}
+              className="font-bold px-2 py-1 rounded-lg"
+              style={{
+                fontSize: `${size}rem`,
+                color: CHART_COLORS[i % CHART_COLORS.length],
+                backgroundColor: `${CHART_COLORS[i % CHART_COLORS.length]}18`,
+              }}
+            >
+              {entry.word}
+            </motion.span>
+          );
+        })}
+      </div>
+      <div className="space-y-1.5 pt-2 border-t border-gray-100">
+        {results.slice(0, 10).map((entry, i) => (
+          <div key={entry.word} className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+            <span className="flex-1 text-sm text-gray-700">{entry.word}</span>
+            <span className="text-xs text-gray-400">{entry.count}×</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Results: Emoji React ────────────────────────────────────── */
+
+function EmojiReactResults({ results }: { results: { id: string; text: string; count: number }[] }) {
+  const total = results.reduce((s, r) => s + r.count, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        {results.map((opt, i) => {
+          const pct = total > 0 ? Math.round((opt.count / total) * 100) : 0;
+          const emoji = opt.text.split(" ")[0];
+          return (
+            <div key={opt.id} className="text-center p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+              <span className="text-3xl block">{emoji}</span>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden mx-2">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                />
+              </div>
+              <p className="text-sm font-bold text-gray-900">{pct}%</p>
+              <p className="text-xs text-gray-400">{opt.count} votes</p>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-sm text-gray-500 text-center">{total} total reactions</p>
+    </div>
+  );
+}
+
+/* ── Results: Timeline Radar ─────────────────────────────────── */
+
+function TimelineRadarResults({ results }: { results: { id: string; text: string; avgValue: number | null; count: number }[] }) {
+  const chartData = results.map((r) => ({
+    name: r.text.length > 20 ? r.text.slice(0, 20) + "…" : r.text,
+    value: r.avgValue !== null ? parseFloat(r.avgValue.toFixed(1)) : 0,
+    count: r.count,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <ResponsiveContainer width="100%" height={Math.max(180, results.length * 44)}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+          <XAxis type="number" domain={[0, 10]} />
+          <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={(v) => [`${v}/10`, "Avg Rating"]} />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            {chartData.map((_, i) => (
+              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="space-y-2">
+        {results.map((r) => (
+          <div key={r.id} className="flex items-center justify-between text-sm">
+            <span className="text-gray-700 flex-1 truncate">{r.text}</span>
+            <div className="text-right ml-4 flex-shrink-0">
+              <span className="font-bold text-gray-900">{r.avgValue !== null ? r.avgValue.toFixed(1) : "—"}/10</span>
+              <span className="text-xs text-gray-400 ml-2">{r.count} votes</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Edit Modal ───────────────────────────────────────────────── */
 
 interface EditFormState {
@@ -897,6 +1289,26 @@ export default function PollDetailClient({ pollId, campaignId, isManager }: { po
     submitVote({ swipeResponses: responses });
   }
 
+  function handleNpsVote(value: number) {
+    submitVote({ value });
+  }
+
+  function handleWordCloudVote(words: string[]) {
+    submitVote({ words });
+  }
+
+  function handleEmojiVote(optionId: string) {
+    submitVote({ optionId });
+  }
+
+  function handlePriorityRankVote(ranked: { optionId: string; rank: number }[]) {
+    submitVote({ rankedResponses: ranked });
+  }
+
+  function handleTimelineRadarVote(ratings: { optionId: string; value: number }[]) {
+    submitVote({ ratings });
+  }
+
   // Type mapping: flash_poll maps to binary API type
   const effectiveType = poll?.type === "flash_poll" ? "binary" : poll?.type;
   const isEnded = poll ? getStatus(poll) === "ended" : false;
@@ -938,6 +1350,9 @@ export default function PollDetailClient({ pollId, campaignId, isManager }: { po
     flash_poll: "Flash Poll",
     emoji_react: "Emoji React",
     priority_rank: "Priority Rank",
+    nps: "NPS",
+    word_cloud: "Word Cloud",
+    timeline_radar: "Radar Rating",
   };
 
   return (
@@ -1084,6 +1499,21 @@ export default function PollDetailClient({ pollId, campaignId, isManager }: { po
             {effectiveType === "image_swipe" && (
               <ImageSwipeVote options={poll.options} onVote={handleSwipeVote} disabled={submitting} />
             )}
+            {effectiveType === "nps" && (
+              <NpsVote onVote={handleNpsVote} disabled={submitting} />
+            )}
+            {effectiveType === "word_cloud" && (
+              <WordCloudVote onVote={handleWordCloudVote} disabled={submitting} />
+            )}
+            {effectiveType === "emoji_react" && (
+              <EmojiReactVote options={poll.options} onVote={handleEmojiVote} disabled={submitting} />
+            )}
+            {effectiveType === "priority_rank" && poll.options.length > 0 && (
+              <PriorityRankVote options={poll.options} onVote={handlePriorityRankVote} disabled={submitting} />
+            )}
+            {effectiveType === "timeline_radar" && poll.options.length > 0 && (
+              <TimelineRadarVote options={poll.options} onVote={handleTimelineRadarVote} disabled={submitting} />
+            )}
           </CardContent>
         </Card>
       )}
@@ -1160,6 +1590,21 @@ export default function PollDetailClient({ pollId, campaignId, isManager }: { po
               )}
               {(effectiveType === "swipe" || effectiveType === "image_swipe") && (
                 <SwipeResults results={resultsData.results as { id: string; text: string; order: number; breakdown: { value: string | null; _count: number }[] }[]} />
+              )}
+              {effectiveType === "nps" && (
+                <NpsResults results={resultsData.results as { promoters: number; passives: number; detractors: number; npsScore: number; total: number }} />
+              )}
+              {effectiveType === "word_cloud" && (
+                <WordCloudResults results={resultsData.results as { word: string; count: number }[]} />
+              )}
+              {effectiveType === "emoji_react" && (
+                <EmojiReactResults results={resultsData.results as { id: string; text: string; count: number }[]} />
+              )}
+              {effectiveType === "priority_rank" && (
+                <RankedResults results={resultsData.results as { id: string; text: string; count: number; avgRank: number | null }[]} />
+              )}
+              {effectiveType === "timeline_radar" && (
+                <TimelineRadarResults results={resultsData.results as { id: string; text: string; avgValue: number | null; count: number }[]} />
               )}
             </CardContent>
           </Card>
