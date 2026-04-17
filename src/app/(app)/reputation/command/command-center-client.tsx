@@ -95,6 +95,10 @@ const ACTION_LABEL: Record<RepRecActionType, string> = {
   send_supporter_briefing: "Supporter Briefing",
   escalate:                "Escalate",
   suppress_outbound:       "Suppress Outbound",
+  send_sms:                "Send SMS",
+  send_email_blast:        "Send Email Blast",
+  post_social:             "Post Social",
+  create_task:             "Create Task",
 };
 
 const STATUS_COLOR: Record<RepIssueStatus, string> = {

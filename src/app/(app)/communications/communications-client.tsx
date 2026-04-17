@@ -2178,13 +2178,13 @@ function AutomationsTab({ campaignId }: { campaignId: string }) {
                             <span className="w-5 h-5 rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center shrink-0">{idx + 1}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold text-slate-700">{STEP_TYPE_LABELS[step.stepType]}</p>
-                              {step.stepType === "wait_days" && step.config.days && (
+                              {step.stepType === "wait_days" && !!step.config.days && (
                                 <p className="text-[10px] text-slate-500">Wait {String(step.config.days)} day{Number(step.config.days) !== 1 ? "s" : ""}</p>
                               )}
-                              {(step.stepType === "add_tag" || step.stepType === "remove_tag") && step.config.tagName && (
+                              {(step.stepType === "add_tag" || step.stepType === "remove_tag") && !!step.config.tagName && (
                                 <p className="text-[10px] text-slate-500">Tag: {String(step.config.tagName)}</p>
                               )}
-                              {(step.stepType === "send_email" || step.stepType === "send_sms") && step.config.templateId && (
+                              {(step.stepType === "send_email" || step.stepType === "send_sms") && !!step.config.templateId && (
                                 <p className="text-[10px] text-slate-500">Template ID: {String(step.config.templateId)}</p>
                               )}
                             </div>

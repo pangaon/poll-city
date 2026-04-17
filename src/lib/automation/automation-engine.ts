@@ -191,28 +191,27 @@ async function executeStep(
 
     case "add_tag": {
       if (!cfg.tagName) return { skipped: true, reason: "no tagName" };
-      const existing = await prisma.contact.findUnique({
-        where: { id: contact.id },
-        select: { tags: true },
+      const tag = await prisma.tag.upsert({
+        where: { name_campaignId: { name: String(cfg.tagName), campaignId: contact.campaignId } },
+        create: { name: String(cfg.tagName), campaignId: contact.campaignId },
+        update: {},
       });
-      const tags = (existing?.tags ?? []) as string[];
-      if (!tags.includes(String(cfg.tagName))) {
-        await prisma.contact.update({
-          where: { id: contact.id },
-          data: { tags: [...tags, String(cfg.tagName)] },
-        });
-      }
+      await prisma.contactTag.create({
+        data: { contactId: contact.id, tagId: tag.id },
+      }).catch(() => {}); // ignore duplicate
       return { tagged: cfg.tagName };
     }
 
     case "remove_tag": {
       if (!cfg.tagName) return { skipped: true, reason: "no tagName" };
-      const existing = await prisma.contact.findUnique({
-        where: { id: contact.id },
-        select: { tags: true },
+      const tag = await prisma.tag.findUnique({
+        where: { name_campaignId: { name: String(cfg.tagName), campaignId: contact.campaignId } },
       });
-      const tags = ((existing?.tags ?? []) as string[]).filter((t) => t !== cfg.tagName);
-      await prisma.contact.update({ where: { id: contact.id }, data: { tags } });
+      if (tag) {
+        await prisma.contactTag.deleteMany({
+          where: { contactId: contact.id, tagId: tag.id },
+        });
+      }
       return { untagged: cfg.tagName };
     }
 
