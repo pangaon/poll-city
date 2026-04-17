@@ -237,6 +237,9 @@ export default async function FieldOpsPage() {
     deletedAt: p.deletedAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+    contactedCount: 0,
+    supporterCount: 0,
+    completedRoutes: 0,
   }));
 
   const serializedShifts: ShiftRow[] = canvassShifts.map((s) => ({
