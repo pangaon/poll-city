@@ -707,6 +707,7 @@ model User {
   messageTemplatesAuthored  MessageTemplate[]      @relation("MessageTemplateAuthor")
   savedSegmentsAuthored     SavedSegment[]         @relation("SavedSegmentAuthor")
   scheduledMessagesAuthored ScheduledMessage[]     @relation("ScheduledMessageAuthor")
+  automationRulesAuthored   AutomationRule[]       @relation("AutomationRuleAuthor")
 
   // FuelOps
   foodRequestsMade  FoodRequest[] @relation("FoodRequestedBy")
@@ -976,6 +977,8 @@ model Campaign {
   scheduledMessages     ScheduledMessage[]
   emailTrackingEvents   EmailTrackingEvent[]
   inboxThreads          InboxThread[]
+  automationRules       AutomationRule[]
+  automationEnrollments AutomationEnrollment[]
 
   clientInviteTokens ClientInviteToken[]
 
@@ -1335,8 +1338,9 @@ model Contact {
   followUpActions FollowUpAction[]
 
   // Unified Inbox
-  inboxThreads        InboxThread[]
-  emailTrackingEvents EmailTrackingEvent[]
+  inboxThreads          InboxThread[]
+  emailTrackingEvents   EmailTrackingEvent[]
+  automationEnrollments AutomationEnrollment[]
 
   // RCAE
   ampParticipations AmplificationParticipation[]
@@ -2535,43 +2539,325 @@ model InboxMessage {
 // QR CODES
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// QR CAPTURE + GEO-TRIGGERED PROSPECT FUNNEL
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum QrCodeType {
-  contact // scan → open contact profile
-  volunteer // scan → volunteer sign-up form
-  sign_request // scan → sign request form
-  event // scan → event check-in
-  poll // scan → poll
+  contact        // scan → open contact profile (legacy)
+  volunteer      // scan → volunteer sign-up form (legacy)
+  sign_request   // scan → sign request form (legacy)
+  event          // scan → event check-in / booth capture
+  poll           // scan → poll
+  generic_social // broad engagement, not tied to a subscribed campaign
+  campaign       // directly tied to a campaign
+  location       // bus stop, crosswalk, storefront, transit shelter
+  lawn_sign      // placed on a sign — host-attributable
+  flyer_print    // literature, mail drops, posters, postcards
+  volunteer_capture // booth staff, canvass captains, clipboards
+  issue_petition // local issue or petition
+  candidate_teaser // captures activity even without active subscription
+  smart_dynamic  // same printed code, editable destination
+  event_booth    // time-bound event, high-volume
+}
+
+enum QrPlacementType {
+  bus_stop
+  crosswalk_pole
+  event_booth
+  festival
+  campaign_sign
+  lawn_sign
+  flyer
+  poster
+  storefront_partner
+  community_board
+  volunteer_clipboard
+  print_material
+  door_hanger
+  campaign_office
+  pop_up_booth
+  sponsorship_table
+  transit_shelter
+  public_handout
+  branded_merchandise
+  other
+}
+
+enum QrFunnelType {
+  supporter_capture
+  volunteer_signup
+  sign_request
+  event_rsvp
+  issue_pulse
+  update_request
+  general_engagement
+  donation
+  petition
+  survey
+  candidate_intro
+  smart_redirect
+}
+
+enum QrIntent {
+  support
+  keep_updated
+  request_sign
+  volunteer
+  more_info
+  concern
+  live_nearby
+  help_at_location
+  interested_in_issue
+  just_browsing
+  attend_event
+  donate
+}
+
+enum QrConversionStage {
+  landed        // page loaded
+  engaged       // interacted with at least one element
+  intent_set    // selected intent
+  info_captured // provided name/email/phone
+  converted     // became contact/prospect
+  followed_up   // follow-up action taken
+}
+
+enum QrProspectType {
+  supporter
+  volunteer_lead
+  sign_request
+  update_subscriber
+  issue_responder
+  event_attendee
+  anonymous_engagement
+  donor_lead
+}
+
+enum QrProspectStatus {
+  new
+  contacted
+  converted
+  deferred
+  disqualified
+  archived
+}
+
+enum QrFollowUpType {
+  sms
+  email
+  task
+  notification
+  sign_team_alert
+  volunteer_callback
+  campaign_teaser_nudge
+}
+
+enum QrFollowUpStatus {
+  pending
+  sent
+  failed
+  cancelled
 }
 
 model QrCode {
-  id         String     @id @default(cuid())
-  campaignId String
-  type       QrCodeType
-  entityId   String? // contactId, eventId, pollId etc.
-  token      String     @unique @default(cuid())
-  label      String?
-  scanCount  Int        @default(0)
-  isActive   Boolean    @default(true)
-  createdAt  DateTime   @default(now())
+  id            String         @id @default(cuid())
+  campaignId    String?        // nullable — generic/social QR codes have no campaign
+  type          QrCodeType
+  placementType QrPlacementType?
+  funnelType    QrFunnelType   @default(general_engagement)
+  entityId      String?        // linked event/poll/sign entity id
+  token         String         @unique @default(cuid())
+  slug          String?        @unique // short human-readable slug (optional, e.g. "ward5-transit")
+  label         String?
+  description   String?
+  // Location metadata
+  locationName  String?        // e.g. "Finch & Yonge Bus Stop", "Bloor/Dufferin Transit Shelter"
+  locationAddress String?
+  lat           Float?
+  lng           Float?
+  radiusMetres  Int?           // geo-fence radius for proximity matching
+  wardId        String?        // ward linkage if available
+  // Landing page configuration (custom CTAs, intro copy, issue prompt)
+  landingConfig Json?          // { headline, subheadline, ctaLabels, introText, issuePrompt, thankYouText }
+  // Campaign branding override (fallback to campaign brand)
+  brandOverride Json?          // { primaryColor, logoUrl, candidateName }
+  // Lifecycle
+  status        String         @default("active") // active | inactive | archived | expired
+  isPublic      Boolean        @default(true)
+  allowAnonymous Boolean       @default(true)
+  scanCount     Int            @default(0)
+  startAt       DateTime?
+  endAt         DateTime?
+  // Teaser/unsubscribed support
+  teaserMode    Boolean        @default(false) // true when campaign not subscribed — stores leads but locks them
+  createdById   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   scans    QrScan[]
+  prospects    QrProspect[]
+  signOpportunities QrSignOpportunity[]
 
+  @@index([campaignId, status])
+  @@index([token])
+  @@index([lat, lng])
   @@map("qr_codes")
 }
 
 model QrScan {
-  id        String   @id @default(cuid())
-  qrCodeId  String
-  scannedBy String? // userId if logged in
-  ipAddress String?
-  userAgent String?
-  result    Json? // what happened as a result
-  createdAt DateTime @default(now())
+  id             String             @id @default(cuid())
+  qrCodeId       String
+  campaignId     String?            // denormalized from QrCode for fast analytics queries
+  // Identity — may be null for anonymous
+  contactId      String?            // set if scan resolves to a CRM contact
+  prospectId     String?            // set when prospect record is created from this scan
+  sessionToken   String?            // privacy-safe anonymous session identifier (client-generated UUID)
+  ipHash         String?            // sha256 of ip — never raw IP stored
+  userAgent      String?
+  deviceClass    String?            // "mobile" | "tablet" | "desktop"
+  // Intent and conversion
+  intent         QrIntent?
+  conversionStage QrConversionStage @default(landed)
+  // Geo
+  geoGranted     Boolean            @default(false)
+  lat            Float?
+  lng            Float?
+  // Capture state
+  capturedName   String?
+  capturedEmail  String?
+  capturedPhone  String?
+  capturedPostal String?
+  capturedAddress String?
+  capturedNote   String?
+  // Meta
+  isRepeat       Boolean            @default(false) // same sessionToken scanned this code before
+  referrer       String?            // HTTP Referer header
+  landingVariant String?            // A/B variant id if applicable
+  followUpQueued Boolean            @default(false)
+  notificationSurfaced Boolean      @default(false) // campaign was alerted about this scan
+  createdAt      DateTime           @default(now())
 
-  qrCode QrCode @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  qrCode   QrCode          @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  prospect QrProspect?     @relation(fields: [prospectId], references: [id])
+  followUps QrFollowUp[]
 
+  @@index([qrCodeId, createdAt])
+  @@index([campaignId, createdAt])
+  @@index([sessionToken])
+  @@index([contactId])
   @@map("qr_scans")
+}
+
+model QrProspect {
+  id              String            @id @default(cuid())
+  qrCodeId        String
+  campaignId      String?           // null for generic social prospects
+  contactId       String?           // set when prospect is merged into CRM
+  // Identity (may be masked for unsubscribed campaigns)
+  name            String?
+  email           String?
+  phone           String?
+  postalCode      String?
+  // Classification
+  prospectType    QrProspectType    @default(anonymous_engagement)
+  intent          QrIntent?
+  status          QrProspectStatus  @default(new)
+  // Location context
+  locationCluster String?           // e.g. "Finch & Yonge area"
+  approximateAddress String?
+  // Flags
+  signRequested   Boolean           @default(false)
+  volunteerInterest Boolean         @default(false)
+  // Scoring
+  score           Int               @default(0)  // 0-100 engagement score
+  // Access control for teaser mode
+  isLocked        Boolean           @default(false) // true when campaign not subscribed
+  unlockEligible  Boolean           @default(false) // can be unlocked when campaign subscribes
+  // Follow-up
+  followUpStatus  String            @default("pending") // pending | contacted | done
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  qrCode     QrCode      @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  scans      QrScan[]
+  signOpps   QrSignOpportunity[]
+  followUps  QrFollowUp[]
+
+  @@index([campaignId, status])
+  @@index([qrCodeId])
+  @@index([contactId])
+  @@map("qr_prospects")
+}
+
+model QrSignOpportunity {
+  id              String    @id @default(cuid())
+  qrCodeId        String
+  prospectId      String?
+  campaignId      String?
+  // Location
+  locationName    String?
+  approximateAddress String?
+  exactAddress    String?   // only if user explicitly submitted
+  city            String?
+  postalCode      String?
+  lat             Float?
+  lng             Float?
+  propertyType    String?   // residential | commercial | corner_lot | apartment | other
+  // Request details
+  signSize        String?   // standard | large | window | boulevard
+  notes           String?
+  requesterName   String?
+  requesterPhone  String?
+  requesterEmail  String?
+  // Workflow
+  status          SignStatus @default(requested) // reuses existing SignStatus enum
+  assignedUserId  String?
+  linkedSignId    String?   // set when converted to a real Sign record
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  qrCode   QrCode       @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  prospect QrProspect?  @relation(fields: [prospectId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([qrCodeId])
+  @@map("qr_sign_opportunities")
+}
+
+model QrFollowUp {
+  id           String          @id @default(cuid())
+  qrScanId     String?
+  prospectId   String?
+  campaignId   String?
+  type         QrFollowUpType
+  status       QrFollowUpStatus @default(pending)
+  // Recipient
+  toPhone      String?
+  toEmail      String?
+  toUserId     String?         // internal staff notification
+  // Content
+  subject      String?
+  body         String?
+  templateId   String?
+  // Delivery tracking
+  attempts     Int             @default(0)
+  sentAt       DateTime?
+  failedAt     DateTime?
+  failReason   String?
+  scheduledFor DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  scan      QrScan?     @relation(fields: [qrScanId], references: [id])
+  prospect  QrProspect? @relation(fields: [prospectId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([qrScanId])
+  @@index([prospectId])
+  @@map("qr_follow_ups")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7971,4 +8257,109 @@ model AmplificationParticipation {
   @@unique([amplificationActionId, contactId])
   @@index([amplificationActionId])
   @@map("amplification_participations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMS PHASE 7 — AUTOMATION ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AutomationTrigger {
+  contact_created
+  tag_added
+  segment_joined
+  donation_made
+  event_rsvped
+  form_submitted
+  manual
+}
+
+enum AutomationStepType {
+  send_email
+  send_sms
+  wait_days
+  add_tag
+  remove_tag
+  add_to_segment
+  remove_from_segment
+}
+
+enum AutomationEnrollmentStatus {
+  active
+  completed
+  cancelled
+  errored
+}
+
+model AutomationRule {
+  id              String             @id @default(cuid())
+  campaignId      String
+  name            String
+  description     String?
+  trigger         AutomationTrigger
+  triggerFilter   Json               @default("{}") // e.g. { tagName, segmentId, formId }
+  isActive        Boolean            @default(false)
+  enrollOnce      Boolean            @default(true)  // prevent re-enrollment
+  createdByUserId String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  campaign    Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User                   @relation("AutomationRuleAuthor", fields: [createdByUserId], references: [id])
+  steps       AutomationStep[]
+  enrollments AutomationEnrollment[]
+
+  @@index([campaignId, isActive])
+  @@map("automation_rules")
+}
+
+model AutomationStep {
+  id         String              @id @default(cuid())
+  ruleId     String
+  stepOrder  Int
+  stepType   AutomationStepType
+  config     Json                @default("{}") // { templateId, tagName, segmentId, days }
+  createdAt  DateTime            @default(now())
+
+  rule        AutomationRule          @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  completions AutomationStepCompletion[]
+
+  @@index([ruleId, stepOrder])
+  @@map("automation_steps")
+}
+
+model AutomationEnrollment {
+  id              String                       @id @default(cuid())
+  ruleId          String
+  contactId       String
+  campaignId      String
+  status          AutomationEnrollmentStatus   @default(active)
+  currentStepOrder Int                         @default(1)
+  nextDueAt       DateTime?
+  completedAt     DateTime?
+  errorMessage    String?
+  enrolledAt      DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  rule       AutomationRule             @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  contact    Contact                    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign   Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  completions AutomationStepCompletion[]
+
+  @@unique([ruleId, contactId])
+  @@index([campaignId, status, nextDueAt])
+  @@map("automation_enrollments")
+}
+
+model AutomationStepCompletion {
+  id           String   @id @default(cuid())
+  enrollmentId String
+  stepId       String
+  completedAt  DateTime @default(now())
+  result       Json     @default("{}") // { messagesSent, error }
+
+  enrollment AutomationEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  step       AutomationStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, stepId])
+  @@map("automation_step_completions")
 }

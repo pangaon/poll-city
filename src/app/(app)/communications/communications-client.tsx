@@ -146,6 +146,25 @@ interface MessageTemplate {
   createdBy?: { id: string; name: string | null };
 }
 
+interface AutomationStep {
+  id: string;
+  stepOrder: number;
+  stepType: "send_email" | "send_sms" | "wait_days" | "add_tag" | "remove_tag" | "add_to_segment" | "remove_from_segment";
+  config: Record<string, unknown>;
+}
+
+interface AutomationRule {
+  id: string;
+  name: string;
+  description?: string | null;
+  trigger: "contact_created" | "tag_added" | "segment_joined" | "donation_made" | "event_rsvped" | "form_submitted" | "manual";
+  isActive: boolean;
+  enrollOnce: boolean;
+  steps: AutomationStep[];
+  _count?: { enrollments: number };
+  createdAt: string;
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -1877,101 +1896,309 @@ function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campai
 // TAB: AUTOMATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const TRIGGER_LABELS: Record<AutomationRule["trigger"], string> = {
+  contact_created: "Contact Created",
+  tag_added: "Tag Added",
+  segment_joined: "Segment Joined",
+  donation_made: "Donation Made",
+  event_rsvped: "Event RSVP'd",
+  form_submitted: "Form Submitted",
+  manual: "Manual",
+};
+
+const STEP_TYPE_LABELS: Record<AutomationStep["stepType"], string> = {
+  send_email: "Send Email",
+  send_sms: "Send SMS",
+  wait_days: "Wait",
+  add_tag: "Add Tag",
+  remove_tag: "Remove Tag",
+  add_to_segment: "Add to Segment",
+  remove_from_segment: "Remove from Segment",
+};
+
 function AutomationsTab({ campaignId }: { campaignId: string }) {
-  const [activeAutomations, setActiveAutomations] = useState<Record<string, boolean>>({});
+  const [rules, setRules] = useState<AutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newTrigger, setNewTrigger] = useState<AutomationRule["trigger"]>("contact_created");
+  const [newDescription, setNewDescription] = useState("");
+  const [expandedRule, setExpandedRule] = useState<string | null>(null);
 
-  // Load saved automation states from campaign customization
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/campaigns/current");
-        if (res.ok) {
-          const data = await res.json();
-          const automations = data.data?.customization?.automations ?? data.customization?.automations ?? {};
-          setActiveAutomations(automations);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setLoading(false);
-    })();
-  }, []);
-
-  async function toggleAutomation(id: string) {
-    setToggling(id);
-    const newState = !activeAutomations[id];
-    const updated = { ...activeAutomations, [id]: newState };
-    setActiveAutomations(updated);
-
+  const fetchRules = useCallback(async () => {
+    setLoading(true);
     try {
-      await fetch("/api/campaigns/current", {
-        method: "POST",
+      const res = await fetch(`/api/comms/automations?campaignId=${campaignId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRules(data.rules ?? []);
+      }
+    } catch { /* graceful degradation */ }
+    setLoading(false);
+  }, [campaignId]);
+
+  useEffect(() => { fetchRules(); }, [fetchRules]);
+
+  async function toggleActive(rule: AutomationRule) {
+    setToggling(rule.id);
+    setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: !r.isActive } : r));
+    try {
+      const res = await fetch(`/api/comms/automations/${rule.id}`, {
+        method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ customization: { automations: updated } }),
+        body: JSON.stringify({ isActive: !rule.isActive }),
       });
-    } catch (e) { /* graceful degradation */ }
+      if (!res.ok) {
+        setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: rule.isActive } : r));
+      }
+    } catch {
+      setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: rule.isActive } : r));
+    }
     setToggling(null);
   }
 
+  async function deleteRule(id: string) {
+    if (!confirm("Delete this automation rule?")) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/comms/automations/${id}`, { method: "DELETE" });
+      if (res.ok) setRules((prev) => prev.filter((r) => r.id !== id));
+    } catch { /* graceful degradation */ }
+    setDeleting(null);
+  }
+
+  async function createRule() {
+    if (!newName.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/comms/automations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ campaignId, name: newName.trim(), trigger: newTrigger, description: newDescription.trim() || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRules((prev) => [data.rule, ...prev]);
+        setShowCreate(false);
+        setNewName("");
+        setNewDescription("");
+        setNewTrigger("contact_created");
+      }
+    } catch { /* graceful degradation */ }
+    setCreating(false);
+  }
+
+  const activeCount = rules.filter((r) => r.isActive).length;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Automation Workflows</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Triggered messages and tasks that run automatically when events occur</p>
+          <h3 className="text-base font-bold text-slate-900">Automation Rules</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Triggered sequences that run automatically when events occur</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {Object.values(activeAutomations).filter(Boolean).length} active</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" /> {AUTOMATION_PRESETS.length - Object.values(activeAutomations).filter(Boolean).length} inactive</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />{activeCount} active</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" />{rules.length - activeCount} inactive</span>
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A2342] text-white rounded-lg text-xs font-semibold hover:bg-[#0A2342]/90 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Rule
+          </button>
         </div>
       </div>
 
-      {/* How it works */}
+      {/* How it works banner */}
       <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 flex items-start gap-3">
         <Zap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-800">
+        <div className="text-xs text-blue-800 leading-relaxed">
           <p className="font-semibold">How automations work</p>
-          <p className="mt-1 leading-relaxed">Active automations run via the daily lifecycle cron job at 8am, plus real-time triggers on form submissions. When a trigger fires, the system creates tasks, sends notifications, and updates contact records automatically.</p>
+          <p className="mt-1">When a trigger fires, enrolled contacts advance through the step sequence automatically. Wait steps pause execution for N days. The hourly cron processes all due enrollments. Deactivate a rule before editing its steps.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {AUTOMATION_PRESETS.map((auto) => {
-          const isActive = activeAutomations[auto.id] ?? false;
-          const isToggling = toggling === auto.id;
-          return (
-            <div key={auto.id} className={`bg-white rounded-xl border p-4 transition-all ${isActive ? "border-green-200 shadow-sm" : "border-slate-200"}`}>
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-green-50" : "bg-slate-100"}`}>
-                  <Zap className={`w-5 h-5 ${isActive ? "text-green-600" : "text-slate-400"}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm text-slate-900">{auto.name}</p>
-                    {/* Toggle switch */}
-                    <button
-                      onClick={() => toggleAutomation(auto.id)}
-                      disabled={isToggling}
-                      className={`relative w-10 h-5.5 rounded-full transition-colors ${isActive ? "bg-green-500" : "bg-slate-300"}`}
-                    >
-                      <span className={`absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${isActive ? "left-[22px]" : "left-0.5"}`} />
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{auto.description}</p>
-                </div>
+      {/* Create modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h4 className="text-base font-bold text-slate-900 mb-4">New Automation Rule</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Name *</label>
+                <input
+                  autoFocus
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. New contact welcome series"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
               </div>
-              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Clock className="w-3 h-3" />
-                  <span>{auto.trigger}</span>
-                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-semibold uppercase">{auto.channel}</span>
-                </div>
-                {statusBadge(isActive ? "active" : "draft")}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Trigger</label>
+                <select
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={newTrigger}
+                  onChange={(e) => setNewTrigger(e.target.value as AutomationRule["trigger"])}
+                >
+                  {(Object.keys(TRIGGER_LABELS) as AutomationRule["trigger"][]).map((t) => (
+                    <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Description (optional)</label>
+                <input
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="What does this rule do?"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                />
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+              <button
+                onClick={createRule}
+                disabled={creating || !newName.trim()}
+                className="px-4 py-2 text-sm font-semibold bg-[#0A2342] text-white rounded-lg hover:bg-[#0A2342]/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Create Rule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && rules.length === 0 && (
+        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
+          <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-lg font-bold text-slate-700">No automation rules yet</p>
+          <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">Create a rule to automatically send messages, apply tags, or enroll contacts in sequences when events occur.</p>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#0A2342] text-white rounded-lg text-sm font-semibold hover:bg-[#0A2342]/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create your first rule
+          </button>
+        </div>
+      )}
+
+      {/* Rule list */}
+      {!loading && rules.length > 0 && (
+        <div className="space-y-3">
+          {rules.map((rule) => {
+            const isExpanded = expandedRule === rule.id;
+            return (
+              <div key={rule.id} className={`bg-white rounded-xl border transition-all ${rule.isActive ? "border-green-200 shadow-sm" : "border-slate-200"}`}>
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${rule.isActive ? "bg-green-50" : "bg-slate-100"}`}>
+                      <Zap className={`w-5 h-5 ${rule.isActive ? "text-green-600" : "text-slate-400"}`} />
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-slate-900 truncate">{rule.name}</p>
+                          {rule.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{rule.description}</p>}
+                        </div>
+                        {/* Active toggle */}
+                        <button
+                          onClick={() => toggleActive(rule)}
+                          disabled={toggling === rule.id}
+                          aria-label={rule.isActive ? "Deactivate" : "Activate"}
+                          className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${rule.isActive ? "bg-green-500" : "bg-slate-300"}`}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${rule.isActive ? "left-[18px]" : "left-0.5"}`} />
+                        </button>
+                      </div>
+                      {/* Meta row */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600">
+                          <Zap className="w-2.5 h-2.5" />
+                          {TRIGGER_LABELS[rule.trigger]}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{rule.steps.length} step{rule.steps.length !== 1 ? "s" : ""}</span>
+                        <span className="text-[10px] text-slate-400">{rule._count?.enrollments ?? 0} enrolled</span>
+                        {rule.enrollOnce && <span className="text-[10px] text-slate-400">enroll once</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions row */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => setExpandedRule(isExpanded ? null : rule.id)}
+                      className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      {isExpanded ? "Hide" : "View"} steps
+                    </button>
+                    <button
+                      onClick={() => deleteRule(rule.id)}
+                      disabled={deleting === rule.id}
+                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      {deleting === rule.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded steps view */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 border-t border-slate-100">
+                    {rule.steps.length === 0 ? (
+                      <p className="text-xs text-slate-500 mt-3 text-center py-4 border border-dashed border-slate-200 rounded-lg">
+                        No steps. Deactivate this rule, then use the API to add steps via PUT /api/comms/automations/{rule.id}/steps
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {rule.steps.map((step, idx) => (
+                          <div key={step.id} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                            <span className="w-5 h-5 rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center shrink-0">{idx + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-700">{STEP_TYPE_LABELS[step.stepType]}</p>
+                              {step.stepType === "wait_days" && step.config.days && (
+                                <p className="text-[10px] text-slate-500">Wait {String(step.config.days)} day{Number(step.config.days) !== 1 ? "s" : ""}</p>
+                              )}
+                              {(step.stepType === "add_tag" || step.stepType === "remove_tag") && step.config.tagName && (
+                                <p className="text-[10px] text-slate-500">Tag: {String(step.config.tagName)}</p>
+                              )}
+                              {(step.stepType === "send_email" || step.stepType === "send_sms") && step.config.templateId && (
+                                <p className="text-[10px] text-slate-500">Template ID: {String(step.config.templateId)}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

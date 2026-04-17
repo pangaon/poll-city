@@ -541,6 +541,31 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
+---
+
+- [ ] **66. Run `npx prisma db push` for Automation Engine tables** — do this after item 62 if you haven't already, OR re-run item 62 which covers everything
+
+  **Why only you:** The automation engine (Communications Phase 7) added 4 new tables and 3 new enums to the schema. AI agents can write the schema file but can't connect to your Railway PostgreSQL database (the `DATABASE_URL` with the password is in `.env.local` which is gitignored).
+
+  **Tables added:** `AutomationRule`, `AutomationStep`, `AutomationEnrollment`, `AutomationStepCompletion`
+
+  **Enums added:** `AutomationTrigger`, `AutomationStepType`, `AutomationEnrollmentStatus`
+
+  **What breaks without it:** The Automations tab in Communications will load but show empty. Any trigger calls (donation made, contact created, etc.) will throw Prisma errors.
+
+  **Steps:**
+  1. Make sure your `.env.local` has `DATABASE_URL` pointing to Railway
+  2. In your terminal at the project root:
+     ```bash
+     npx prisma db push
+     ```
+  3. You should see: "Your database is now in sync with your Prisma schema"
+  4. That's it — no seed needed for automations. Rules are created by campaign managers in the UI.
+
+  **Note:** If item 62 is already done and showed "database already in sync" it means the schema was already pushed — skip this item.
+
+---
+
 *This file is maintained by AI sessions. Last updated: 2026-04-17*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
