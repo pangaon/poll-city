@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Upload, FileText, AlertCircle, CheckCircle, History,
   Link2, FileSpreadsheet, Users, MapPin,
-  ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw,
+  ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw, Clock,
 } from "lucide-react";
 import { Card, CardHeader, CardContent, Select, Badge, EmptyState } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
@@ -202,6 +202,34 @@ function MButton({
       {loading && <Shimmer className="w-4 h-4 rounded-full" />}
       {children}
     </motion.button>
+  );
+}
+
+/* ── Import countdown timer ───────────────────────────────────────── */
+
+function ImportCountdown({ deadline }: { deadline: string }) {
+  const [ms, setMs] = useState(() => Math.max(0, new Date(deadline).getTime() - Date.now()));
+
+  useEffect(() => {
+    if (ms <= 0) return;
+    const id = setInterval(() => {
+      const remaining = Math.max(0, new Date(deadline).getTime() - Date.now());
+      setMs(remaining);
+      if (remaining <= 0) clearInterval(id);
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [deadline, ms]);
+
+  if (ms <= 0) return null;
+
+  const hours   = Math.floor(ms / 3_600_000);
+  const minutes = Math.floor((ms % 3_600_000) / 60_000);
+
+  return (
+    <span className="flex items-center gap-1 text-[11px] text-amber-600 font-semibold tabular-nums">
+      <Clock className="w-3 h-3 flex-shrink-0" />
+      {hours}h {minutes}m left
+    </span>
   );
 }
 
@@ -1618,14 +1646,19 @@ export default function ImportExportClient({ campaignId }: Props) {
                               <td className="px-3 py-2 text-gray-500">{new Date(item.createdAt).toLocaleString()}</td>
                               <td className="px-3 py-2">
                                 {canRollback ? (
-                                  <button
-                                    onClick={() => handleRollback(item.id, item.filename)}
-                                    disabled={rollingBack.has(item.id)}
-                                    className="flex items-center gap-1 text-amber-700 hover:text-amber-900 disabled:opacity-50 font-medium"
-                                  >
-                                    <RotateCcw className="w-3 h-3" />
-                                    {rollingBack.has(item.id) ? "Rolling back…" : "Rollback"}
-                                  </button>
+                                  <div className="flex flex-col gap-1">
+                                    <ImportCountdown deadline={item.rollbackDeadline!} />
+                                    <button
+                                      onClick={() => handleRollback(item.id, item.filename)}
+                                      disabled={rollingBack.has(item.id)}
+                                      className="flex items-center gap-1 text-amber-700 hover:text-amber-900 disabled:opacity-50 font-medium text-xs"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                      {rollingBack.has(item.id) ? "Rolling back…" : "Undo import"}
+                                    </button>
+                                  </div>
+                                ) : item.status === "rolled_back" ? (
+                                  <span className="text-xs text-gray-400 italic">Undone</span>
                                 ) : (
                                   <span className="text-gray-300">—</span>
                                 )}

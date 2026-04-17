@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Download, Users, MapPin, ClipboardList, Package, Heart,
   HandHelping, MessageSquare, DollarSign, History, SlidersHorizontal,
-  CheckCircle2, X, Filter,
+  CheckCircle2, X, Filter, Columns3,
 } from "lucide-react";
 import { Card, CardHeader, CardContent, EmptyState } from "@/components/ui";
 import { toast } from "sonner";
@@ -118,11 +118,33 @@ function hasActiveFilters(f: ExportFilters): boolean {
     f.supportLevel.length > 0 || f.hasPhone !== null || f.hasEmail !== null);
 }
 
+// Contact/walklist column selector — only relevant for row-based exports
+const CONTACT_FIELD_OPTIONS: { key: string; label: string; group: string }[] = [
+  { key: "firstName",       label: "First Name",       group: "Name" },
+  { key: "lastName",        label: "Last Name",        group: "Name" },
+  { key: "email",           label: "Email",            group: "Contact" },
+  { key: "phone",           label: "Phone",            group: "Contact" },
+  { key: "address1",        label: "Address",          group: "Address" },
+  { key: "city",            label: "City",             group: "Address" },
+  { key: "province",        label: "Province",         group: "Address" },
+  { key: "postalCode",      label: "Postal Code",      group: "Address" },
+  { key: "ward",            label: "Ward",             group: "Electoral" },
+  { key: "riding",          label: "Riding",           group: "Electoral" },
+  { key: "municipalPoll",   label: "Poll #",           group: "Electoral" },
+  { key: "supportLevel",    label: "Support Level",    group: "Campaign" },
+  { key: "issues",          label: "Issues",           group: "Campaign" },
+  { key: "doNotContact",    label: "Do Not Contact",   group: "Campaign" },
+  { key: "notes",           label: "Notes",            group: "Campaign" },
+  { key: "lastContactedAt", label: "Last Contacted",   group: "Campaign" },
+];
+
 /* ── Component ────────────────────────────────────────────────── */
 
 export default function ExportPanel({ campaignId }: Props) {
   const [exportType, setExportType]     = useState<ExportType>("contacts");
   const [filters, setFilters]           = useState<ExportFilters>(EMPTY_FILTERS);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [showFieldSelector, setShowFieldSelector] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewing, setPreviewing]     = useState(false);
   const [downloading, setDownloading]   = useState(false);
@@ -202,7 +224,7 @@ export default function ExportPanel({ campaignId }: Props) {
         body: JSON.stringify({
           type: exportType,
           filters: buildApiFilters(),
-          fields: EXPORT_TYPE_CONFIG[exportType].defaultFields,
+          fields: selectedFields.length > 0 ? selectedFields : EXPORT_TYPE_CONFIG[exportType].defaultFields,
           format: "csv",
           countOnly: false,
         }),
@@ -321,7 +343,7 @@ export default function ExportPanel({ campaignId }: Props) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                   transition={spring}
-                  onClick={() => { setExportType(type); setFilters(EMPTY_FILTERS); }}
+                  onClick={() => { setExportType(type); setFilters(EMPTY_FILTERS); setSelectedFields([]); setShowFieldSelector(false); }}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors min-h-[40px]",
                     active
@@ -466,6 +488,78 @@ export default function ExportPanel({ campaignId }: Props) {
               </div>
             )}
           </div>
+
+          {/* Column selector — contacts and walklist only */}
+          {(exportType === "contacts" || exportType === "walklist" || exportType === "gotv") && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowFieldSelector(v => !v)}
+                  className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Columns3 className="w-3 h-3" />
+                  Columns
+                  {selectedFields.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-white text-[10px]" style={{ backgroundColor: NAVY }}>
+                      {selectedFields.length}
+                    </span>
+                  )}
+                  <span className="text-gray-300 ml-1">{showFieldSelector ? "▲" : "▼"}</span>
+                </button>
+                {selectedFields.length > 0 && (
+                  <button
+                    onClick={() => setSelectedFields([])}
+                    className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                  >
+                    <X className="w-3 h-3" /> Reset to default
+                  </button>
+                )}
+              </div>
+              <AnimatePresence>
+                {showFieldSelector && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-1 flex flex-wrap gap-2">
+                      {CONTACT_FIELD_OPTIONS.map(f => {
+                        const isActive = selectedFields.includes(f.key) ||
+                          (selectedFields.length === 0 && EXPORT_TYPE_CONFIG[exportType].defaultFields.includes(f.key));
+                        return (
+                          <button
+                            key={f.key}
+                            onClick={() => {
+                              const defaults = EXPORT_TYPE_CONFIG[exportType].defaultFields;
+                              const base = selectedFields.length > 0 ? selectedFields : [...defaults];
+                              setSelectedFields(
+                                base.includes(f.key) ? base.filter(k => k !== f.key) : [...base, f.key]
+                              );
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-xs font-medium border transition-all min-h-[28px]",
+                              isActive
+                                ? "text-white border-transparent"
+                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                            )}
+                            style={isActive ? { backgroundColor: NAVY } : undefined}
+                          >
+                            {f.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      {selectedFields.length > 0
+                        ? `${selectedFields.length} column${selectedFields.length !== 1 ? "s" : ""} selected`
+                        : `Default: ${EXPORT_TYPE_CONFIG[exportType].defaultFields.length} columns`}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Download CTA */}
           <div className="flex items-center gap-3 flex-wrap">

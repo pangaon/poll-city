@@ -544,8 +544,28 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
     }
   };
 
+  const handleUndoDelete = async (ids: string[]) => {
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch("/api/contacts/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contactId: id }),
+          })
+        )
+      );
+      const restored = results.filter((r) => r.status === "fulfilled").length;
+      toast.success(`Restored ${restored} contact${restored !== 1 ? "s" : ""}`);
+      loadContacts();
+    } catch {
+      toast.error("Failed to undo — open Recycle Bin to restore manually");
+    }
+  };
+
   const handleBulkDelete = async () => {
     setBulkSubmitting(true);
+    const deletedIds = [...selectedContacts]; // capture before clearing
     try {
       const res = await fetch("/api/contacts/bulk", {
         method: "POST",
@@ -569,11 +589,26 @@ export default function ContactsClient({ campaignId, tags, userRole }: Props) {
         }),
       });
       if (!res.ok) throw new Error("Failed to delete contacts");
-      toast.success(`${selectAllPages ? "All matching" : selectedContacts.length} contact${selectedContacts.length !== 1 ? "s" : ""} moved to Recycle Bin`);
+
       setSelectedContacts([]);
       setSelectAllPages(false);
       setBulkActionModal(null);
       loadContacts();
+
+      if (!selectAllPages && deletedIds.length <= 500) {
+        toast.success(
+          `${deletedIds.length} contact${deletedIds.length !== 1 ? "s" : ""} moved to Recycle Bin`,
+          {
+            action: { label: "Undo", onClick: () => void handleUndoDelete(deletedIds) },
+            duration: 8000,
+          }
+        );
+      } else {
+        toast.success("Contacts moved to Recycle Bin", {
+          description: "Open Settings → Recycle Bin to restore.",
+          duration: 6000,
+        });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed");
     } finally {
