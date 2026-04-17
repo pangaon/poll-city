@@ -89,6 +89,14 @@ No session may start a task already marked CLAIMED or DONE.
 
 ---
 
+## MODULE: CANDIDATE INTELLIGENCE ENGINE (CIE)
+
+| Task | Status | Notes |
+|---|---|---|
+| CIE — full platform build (schema, ingestion, detection, scoring, review, enrichment, outreach, admin UI, seed, tests) | CLAIMED 2026-04-17 | 6 new models, /api/intel/*, /api/cron/intel-*, /app/(app)/intel/ command center |
+
+---
+
 ## MODULE: COMMUNICATIONS PLATFORM
 
 | Task | Status | Notes |
