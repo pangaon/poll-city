@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: /polls/[id]/live geographic breakdown)
+**Updated by:** Claude Sonnet 4.6 (session: FuelOps — campaign food & vendor logistics module)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -26,7 +26,33 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Candidate Intelligence Engine)
+## LAST SESSION (2026-04-17 — Polls full stack)
+
+**What shipped — commit d99a89c:**
+
+### Polls — all 12 poll types now fully wired
+
+**New vote components added to `poll-detail-client.tsx`:**
+- `NpsVote` — 0–10 button grid, colour-zoned (Detractors red / Passives amber / Promoters green)
+- `WordCloudVote` — add up to 3 words as chips, submits `words[]` array
+- `EmojiReactVote` — emoji option grid, single-pick
+- `PriorityRankVote` — drag-to-reorder, star badge on #1 priority
+- `TimelineRadarVote` — per-dimension 0–10 sliders, submits `ratings[]`
+
+**New results components:**
+- `NpsResults` — large NPS score + promoters/passives/detractors with animated bars
+- `WordCloudResults` — frequency-scaled word cloud + ranked list
+- `EmojiReactResults` — emoji grid with progress bars + vote counts
+- `TimelineRadarResults` — horizontal bar chart (avg/10) + dimension list
+- `PriorityRankResults` — reuses `RankedResults` (identical data shape)
+
+**Also confirmed:** `emoji_react` and `priority_rank` API handlers were already added by a parallel session (commit 27574b6). The public receipt verification page already existed at `/verify-vote`.
+
+**Note for next session:** `flash_poll` was removed from PollType enum by another session — it is not a valid poll type. Dead code in the UI is harmless but can be cleaned up.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Candidate Intelligence Engine)
 
 **What shipped:**
 

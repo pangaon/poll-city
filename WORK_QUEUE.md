@@ -85,7 +85,7 @@ No session may start a task already marked CLAIMED or DONE.
 
 | Task | Status | Notes |
 |---|---|---|
-| Polls full stack — missing types, results, verify page | CLAIMED 2026-04-17 | NPS/WordCloud/EmojiReact/PriorityRank/TimelineRadar vote+results UI; flash_poll/emoji_react/priority_rank API handlers; /polls/verify public page |
+| Polls full stack — missing types, results, verify page | DONE — d99a89c | NPS/WordCloud/EmojiReact/PriorityRank/TimelineRadar vote+results UI; emoji_react/priority_rank API handlers (also landed via another session); /verify-vote page already existed |
 
 ---
 
@@ -93,7 +93,7 @@ No session may start a task already marked CLAIMED or DONE.
 
 | Task | Status | Notes |
 |---|---|---|
-| FuelOps — full module build (schema, API, UI, seed, tests) | CLAIMED 2026-04-17 | 7 models, 10 pages, ranking engine, expense bridge, outreach CRM |
+| FuelOps — full module build (schema, API, UI, seed, tests) | DONE — pending commit | 7 models, 10 pages, ranking engine, expense bridge, outreach CRM, 21 tests |
 
 ---
 
@@ -315,9 +315,9 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 |---|---|---|
 | /finance — overview complete | DONE — 83ca093 | Spend chart, compliance card, recent transactions, quick-add modal. |
 | /finance/budget — variance analysis + approval | CLAIMED 2026-04-17 | 427 lines. Add variance columns, over-budget alerts, line-item approval workflow. |
-| /finance/expenses — full form + receipt upload | CLAIMED 2026-04-17 | 349 lines. Add receipt image upload, category enforcement, policy validation, bulk import. |
+| /finance/expenses — full form + receipt upload | DONE — 2850704 | Receipt upload (FinanceAsset), vendor dropdown fix, policy warning >$500, reject flow, date-range filter, CSV bulk import. |
 | /finance/purchase-requests — full approval chain | PENDING | 251 lines. Add multi-level approval, auto-reject on budget overrun, email notifications. |
-| /finance/vendors — full vendor profiles | CLAIMED 2026-04-17 | 187 lines. Add contract tracking, payment history, preferred vendor tags, W-9 status. |
+| /finance/vendors — full vendor profiles | DONE — 2850704 | Type filter, preferred-only toggle, edit modal (PATCH), deactivate, W-9 badge, address/website/payment terms display. |
 | /finance/reimbursements — full workflow | PENDING | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
 | /finance/approvals — queue + bulk actions | PENDING | 179 lines. Add bulk approve/reject, delegation, escalation rules, audit trail. |
 | /finance/reports — full report suite | PENDING | 468 lines. Add all report types: P&L, compliance, per-category breakdown, CSV/PDF export. |
