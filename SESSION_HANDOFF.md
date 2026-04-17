@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: Sprint 4 print/jobs DONE — WORK_QUEUE hardened)
+**Updated by:** Claude Sonnet 4.6 (session: WORK_QUEUE hardened + build trace crash permanently fixed)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -15,7 +15,7 @@
 - The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 
-**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (275bad7 + b64242b — jobs list, detail, new — DONE).
+**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups, **materials** — Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (275bad7 + b64242b — DONE). Build trace crash permanently fixed (e9746ed).
 
 **Working tree:** Clean. All files committed and pushed.
 
@@ -45,14 +45,17 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — WORK_QUEUE hardening: Sprint 4 print/jobs marked DONE)
+## LAST SESSION (2026-04-17 — WORK_QUEUE hardened + build trace crash permanently fixed)
 
-**What happened:**
-- WORK_QUEUE updated: `/print/jobs`, `/print/jobs/[id]`, `/print/jobs/new` — CLAIMED → DONE (275bad7 + b64242b)
-- SESSION_HANDOFF broadcast updated to reflect Sprint 4 print suite is live
-- No code written — coordination file fix only
+**What shipped (commits `ad886c4`, `e9746ed`):**
+- **WORK_QUEUE**: `/print/jobs`, `/print/jobs/[id]`, `/print/jobs/new` — CLAIMED → DONE (275bad7 + b64242b)
+- **Root cause found + fixed**: Agent worktree `.next` dirs (`.claude/worktrees/agent-ab93a1f4/.next`) were being scanned by `collect-build-traces`, causing `Unexpected end of JSON input` crash on every clean build
+  - Short-term: removed worktree's stale `.next` dir
+  - Permanent: added `outputFileTracingExcludes: { "*": [".claude/worktrees/**"] }` to `next.config.js`
+- **Parallel build rule enforced**: prior session had a background + foreground build running simultaneously — corrupted `.next/types/app/(app)/admin/page.ts` and caused TS compile failure. Diagnosed and cleared.
+- **Build: GREEN** — 454 pages, 137 tests pass, security gates 0 errors. Pushed to origin/main.
 
-**Next session opener:** Sprint 4 is partially done. Print/jobs suite is live. Next up: `/print/templates` (PENDING — 311 lines, template editor link + category filter + preview + usage stats), or start `/forms` (234 lines). Pick one, claim it, build it.
+**Next session opener:** Sprint 4 is partially done. Print/jobs suite live. Next up: `/print/templates` (PENDING — 311 lines, template editor link + category filter + preview + usage stats). Claim it in WORK_QUEUE, build it, push via `npm run push:safe`.
 
 ---
 
