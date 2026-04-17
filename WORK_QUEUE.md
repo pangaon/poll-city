@@ -263,7 +263,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
 | /notifications — voter outreach full build | DONE — see this session | Full push composer + phone preview + opt-in management table + device breakdown + delivery stats tabs |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
-| /eday — election day ops full build | PENDING | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
+| /eday — election day ops full build | CLAIMED 2026-04-16 | 519 lines, partial. Live poll tracker, voter contact dashboard, returns by poll, volunteer check-ins. |
 | /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |
 | /briefing — daily briefing full build | DONE — c110dc2 | Adoni morning summary card + health score + priorities + canvassing pace + red flags. |
 | /ai-assist — full Adoni in-app page | DONE — 108e504 | Full chat UI, 4 category groups, suggested prompts, localStorage history, copy button. |
