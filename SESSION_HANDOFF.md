@@ -409,24 +409,28 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Session close 2026-04-17. CIE + RCAE + Finance fully shipped. Build green (448 routes, exit 0). All pushed to origin/main.
+Session close 2026-04-17. Sprint 2 Finance complete. CIE + RCAE live. Build green. All pushed to origin/main.
 
-What's now live:
-- /intel — Candidate Intelligence Engine (6-tab command center, detection/scoring/verification/enrichment pipeline)
-- /reputation — Reputation Command & Alerts Engine (alerts dashboard, command center, issue workspace, response page editor)
-- /finance/reimbursements — full approval chain, bank info, batch processing
-- /finance/approvals — bulk approve/reject, delegation UI, audit trail
+Sprint 2 Finance DONE (8/9 sub-routes):
+- /finance/purchase-requests — partial approval, overrun warning, expandable rows (e900943)
+- /finance/reimbursements — ApproveModal, RejectModal, MarkPaidModal, isManager gating (db3f05a)
+- /finance/approvals — RejectModal replaces prompt(), bulk Approve All (db3f05a)
+- /finance/audit — actor filter, CSV export, date range (db3f05a)
+- /finance/reports, /finance/expenses, /finance/vendors, /finance/budget — all DONE in prior sessions
+Only remaining: Finance Phase 8 (role-based access) — PENDING
+
+RCAE live at /reputation (alerts, command center, issues, response pages)
+CIE live at /intel (candidate detection, scoring, outreach)
 
 GEORGE MUST DO (GEORGE_TODO.md items 62-64):
-1. npx prisma db push — creates CIE + RCAE tables in Railway (CRITICAL)
-2. POST /api/intel/seed — seeds 16 source registry entries
-3. Add NEWS_API_KEY to Railway (optional)
+1. npx prisma migrate dev --name cie-rcae — creates CIE + RCAE tables in Railway (CRITICAL — these pages 404 until this runs)
+2. POST /api/intel/seed — seeds source registry (after migrate)
+3. Add NEWS_API_KEY to Railway (optional for live news ingestion)
 
-Next recommended tasks (in priority order):
-1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron) — PENDING
-2. /finance/reports — spend by category, period comparison, export — PENDING
-3. CIE Phase 2 — wire Resend outreach email to verified candidates
-4. RCAE Phase 2 — wire Resend for alert notifications
+Next recommended tasks:
+1. Finance Phase 8 — role-based access (Finance role only, staff can't see salaries)
+2. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
+3. Sprint 3 — Field sub-modules depth
 
 Working tree is clean. Read WORK_QUEUE.md. Claim before building.
 ```
