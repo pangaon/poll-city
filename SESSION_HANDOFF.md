@@ -2,24 +2,22 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: BUILD RECOVERY + sidebar redesign + process hardening)
+**Updated by:** Claude Sonnet 4.6 (session: Sprint 3 close — field/mobile + lit-drops + build hardening)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
 
-**BUILD IS GREEN. Platform recovered from 5 red deployments.**
-
-If you are a session that was interrupted by George's system shutdown: your work may have been committed and pushed already. Run `git pull origin main` and check git log before rebuilding anything.
+**BUILD IS GREEN. push:safe now wipes .next before each build to prevent Windows race conditions.**
 
 **RULE CHANGE — MANDATORY FROM NOW ON:**
 - **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
-- `push:safe` runs `npm run build` → pushes only on exit 0. A direct `git push` is now a protocol violation.
-- The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries — it has been reorganized.
+- `push:safe` now wipes `.next` fully before building (Windows ENOENT fix). Do not fight this.
+- The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries.
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 
-**Currently committed and live:** QR Capture module, Comms Phase 7 (Automation Engine), CIE (Candidate Intel), RCAE (Reputation), Finance Phase 8, sidebar redesign with command palette (Ctrl+K search).
+**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, Sprint 3 field modules (programs, routes, mobile, lit-drops, teams, audit, follow-ups).
 
-**Still uncommitted (Sprint 3 field work):** `src/app/(app)/field/audit/`, `/field/follow-ups/`, `/field/teams/`, `prisma/seed.ts` — these are modified files from the interrupted Sprint 3 session. That session should commit and push them via `npm run push:safe`.
+**Working tree:** Clean. All Sprint 3 work committed and pushed.
 
 ---
 
@@ -42,6 +40,42 @@ If you are a session that was interrupted by George's system shutdown: your work
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — Sprint 3 close: field/mobile, lit-drops, build hardening)
+
+**What shipped:**
+
+Resumed after context compaction. Verified `/field/routes/[routeId]` was already DONE (commit `3d18018`). Found uncommitted work on `/field/mobile` and `/field/lit-drops` from the prior session. Committed both with build checks. Fixed two Windows-specific build failures in `push:safe`:
+
+1. **`.next/export` ENOENT**: Pre-creating only `.next/server/pages` was insufficient — Next.js also needs `.next/export/` to exist before the 500.html rename.
+2. **`build-manifest.json` ENOENT**: Stale `.next/` cache files caused read failures on the manifest. Fix: wipe `.next/` completely before each build in `push:safe`.
+
+Also fixed pre-existing TS errors in `lit-drops/route.ts` and `lit-drops/[litDropId]/route.ts` (`Record<string,unknown>` not assignable to `Prisma.InputJsonValue`, same pattern as April 17 incident rule #2).
+
+**Commits pushed (7):**
+- `7ee842b` — fix(scripts): pre-create .next/export in push-safe to fix Windows ENOENT
+- `83f4e33` — feat(field): Sprint 3 — /field/mobile GPS tracking, offline queue, battery mode
+- `797405d` — fix(build): cast materialsJson to Prisma.InputJsonValue in lit-drops routes
+- `d7d446f` — feat(field): lit-drops — structured materials list, expand view, completion flow
+- `300d58e` — fix(scripts): wipe stale .next before build to fix Windows race conditions
+- (plus prior 2 from routes session)
+
+**What's live at `/field/mobile`:**
+- GPS watchPosition hook: high/medium/low/denied accuracy states
+- Offline queue in localStorage with auto-flush when connectivity returns
+- Battery mode toggle: disables GPS + framer-motion animations for low-battery canvassing
+- Doors today counter (server-side: current user's attempts today)
+- Paper export download linked to `/api/field/paper-export`
+- Sidebar: "Mobile Entry" → `/field/mobile`
+
+**What's live at `/field/lit-drops`:**
+- Structured materials list (add/remove items with name + qty)
+- Per-run expand/collapse detail view
+- Completion flow: record used quantities + notes before marking complete
+
+**Build:** `npm run push:safe` exit 0. Build cleans `.next/` on every run — slower but reliable on Windows.
 
 ---
 
