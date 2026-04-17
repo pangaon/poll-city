@@ -26,7 +26,26 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Edge cases, UX gaps, compliance engine hardening)
+## LAST SESSION (2026-04-17 — /settings/security full build + Railway SSL fix)
+
+**What shipped (all confirmed in HEAD):**
+
+### /settings/security — Sprint 1 DONE
+- **2FA (TOTP)** — QR code setup, backup codes (10 single-use), disable flow. `src/lib/auth/totp.ts`
+- **WebAuthn / biometrics** — register + delete passkeys. `/api/auth/webauthn/register`
+- **Active sessions** — list all devices with last-seen, revoke individual or all others. `/api/auth/sessions`
+- **Login history** — last 20 events with IP + device + success/failure flag. `/api/auth/security-events`
+- **API keys** — generate (shown once), revoke, list with last-used. `/api/auth/api-keys`
+- **PIPEDA data export** — full JSON export of everything Prisma has on the user. `/api/auth/data-export`
+
+### Railway SSL fix
+- **`.env` updated** — `?sslmode=require` appended to `DATABASE_URL`. All Prisma commands now work from bash shell. Previous P1001 errors were SSL handshake failures, not network failures.
+- **DB migrated** — `prisma db push` applied `UserSession` + `ApiKey` models to Railway. Both tables live. Sessions + API Keys sections of /settings/security are now fully functional in prod.
+- **Schema models** — `user_sessions` and `api_keys` tables created. George's TODO item 61 closed.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Edge cases, UX gaps, compliance engine hardening)
 
 **What shipped (all confirmed in HEAD):**
 
@@ -143,16 +162,13 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Edge case + compliance hardening complete (2026-04-17). All confirmed in HEAD.
+/settings/security DONE (2026-04-17). Railway DB migrated — Sessions + API Keys tables live.
 Build command on Windows: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
+DATABASE_URL in .env now includes ?sslmode=require — all Prisma commands work from bash.
 
 What's live:
-- Email/SMS blast now shows skip count when contacts have no email/phone
-- Canvassing empty states have guidance text
-- Recurring failed plans have Contact + Cancel buttons
-- Receipts tab has filter bar + red badge for failed receipts
-- Compliance auto-initializes from election type on setup wizard completion
-- Legal framework banner in compliance tab (federal=$1,675, provincial=$3,425, municipal=$1,200)
+- /settings/security — 2FA (TOTP + QR), WebAuthn/biometrics, active sessions, login history, API keys, PIPEDA export
+- Railway DB has user_sessions + api_keys tables (prisma db push applied 2026-04-17)
 
 Read WORK_QUEUE.md. Next Sprint 1 priority:
 

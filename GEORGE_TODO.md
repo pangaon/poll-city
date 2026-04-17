@@ -471,14 +471,10 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
   ```
   Until this runs, campaigns of type nomination/leadership will fail to save.
 
-- [ ] **61. Run security schema migration when Railway DB is reachable**
-  Two new models added: `UserSession` (active session tracking) and `ApiKey` (API key management).
-  Prisma client regenerated locally but Railway DB has not been migrated.
-  Connect to Railway and run:
-  ```
-  npx prisma migrate dev --name security_sessions_apikeys --skip-seed
-  ```
-  Until this runs: the Active Sessions and API Keys sections of /settings/security will fail silently
+- [x] **61. Run security schema migration when Railway DB is reachable** ✓ DONE 2026-04-17
+  Ran `prisma db push --skip-generate` with `?sslmode=require` appended to DATABASE_URL.
+  Both `user_sessions` and `api_keys` tables created in Railway. Sessions + API Keys sections live.
+  `.env` updated to include `?sslmode=require` permanently — fixes all future Prisma commands.
   (writes to those tables will error). 2FA, WebAuthn, and login history work fine — they use existing models.
 
 ---
