@@ -122,33 +122,38 @@ export async function POST(req: NextRequest) {
 
   const slug = await generateQrSlug(data.slugPrefix);
 
-  const qrCode = await prisma.qrCode.create({
-    data: {
-      campaignId: data.campaignId,
-      type: data.type,
-      placementType: data.placementType,
-      funnelType: data.funnelType ?? "general_engagement",
-      label: data.label,
-      description: data.description,
-      locationName: data.locationName,
-      locationAddress: data.locationAddress,
-      lat: data.lat,
-      lng: data.lng,
-      wardId: data.wardId,
-      entityId: data.entityId,
-      landingConfig: (data.landingConfig ?? {}) as Prisma.InputJsonValue,
-      slug,
-      startAt: data.startAt ? new Date(data.startAt) : null,
-      endAt: data.endAt ? new Date(data.endAt) : null,
-      teaserMode: data.teaserMode ?? false,
-      createdById: session!.user.id,
-    },
-  });
+  try {
+    const qrCode = await prisma.qrCode.create({
+      data: {
+        campaignId: data.campaignId,
+        type: data.type,
+        placementType: data.placementType,
+        funnelType: data.funnelType ?? "general_engagement",
+        label: data.label,
+        description: data.description,
+        locationName: data.locationName,
+        locationAddress: data.locationAddress,
+        lat: data.lat,
+        lng: data.lng,
+        wardId: data.wardId,
+        entityId: data.entityId,
+        landingConfig: (data.landingConfig ?? {}) as Prisma.InputJsonValue,
+        slug,
+        startAt: data.startAt ? new Date(data.startAt) : null,
+        endAt: data.endAt ? new Date(data.endAt) : null,
+        teaserMode: data.teaserMode ?? false,
+        createdById: session!.user.id,
+      },
+    });
 
-  const baseUrl = process.env.NEXTAUTH_URL;
-  return NextResponse.json({
-    ...qrCode,
-    publicUrl: buildQrUrl(qrCode.token, baseUrl),
-    qrImageUrl: buildQrImageUrl(qrCode.token, 300, baseUrl),
-  }, { status: 201 });
+    const baseUrl = process.env.NEXTAUTH_URL;
+    return NextResponse.json({
+      ...qrCode,
+      publicUrl: buildQrUrl(qrCode.token, baseUrl),
+      qrImageUrl: buildQrImageUrl(qrCode.token, 300, baseUrl),
+    }, { status: 201 });
+  } catch (err) {
+    console.error("[POST /api/qr]", err);
+    return NextResponse.json({ error: "Failed to create QR code. The database migration may not have run yet." }, { status: 500 });
+  }
 }

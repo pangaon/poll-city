@@ -20,6 +20,9 @@ import {
   Unlock,
   Zap,
   PenSquare,
+  Layers,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import Link from "next/link";
 
