@@ -424,7 +424,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | Phase 4b — Email open + click tracking pixel | DONE — db33dc0 | 1x1 GIF route, click redirect, NotificationLog fields, EmailTrackingEvent model |
 | Phase 5 — Unified inbox backend + UI rebuild | PENDING | InboxThread, InboxMessage models |
 | Phase 6 — Analytics (delivery funnel, attribution) | PENDING | |
-| Phase 7 — Automation Engine | PENDING | Triggers, steps, enrollment cron |
+| Phase 7 — Automation Engine | CLAIMED 2026-04-17 | Triggers, steps, enrollment cron |
 | Phase 8 — Social publishing (real API calls) | PENDING | Facebook/X/LinkedIn |
 | Phase 9 — Consent management (CASL) | PENDING | |
 | Phase 10 — Fatigue guard | PENDING | |
