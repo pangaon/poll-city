@@ -26,28 +26,30 @@
 
 ---
 
-## LAST SESSION (2026-04-16 — /eday full build)
+## LAST SESSION (2026-04-16 — Security settings + Import hardening)
 
-**What shipped — commit 3cd4b3f:**
+**What shipped — commits c5a4a51, ad628fb, b106236, 36a5414, 685f8c3:**
 
-`/eday` — full election day ops rebuild (role-aware)
+### /settings/security — DONE (Sprint 1 complete)
+- **2FA (TOTP)** — QR code setup, backup codes (10 single-use), disable flow. `src/lib/auth/totp.ts`
+- **WebAuthn / biometrics** — register + delete passkeys. `/api/auth/webauthn/register`
+- **Active sessions** — list all devices with last-seen, revoke individual or all others. `/api/auth/sessions`
+- **Login history** — last 20 events with IP + device + success/failure flag. `/api/auth/security-events`
+- **API keys** — generate (shown once), revoke, list with last-used. `/api/auth/api-keys`
+- **PIPEDA data export** — full JSON export of everything Prisma has on the user. `/api/auth/data-export`
 
-- **Campaign Managers** (ADMIN/CAMPAIGN_MANAGER/SUPER_ADMIN) now see a 4-tab election day command center:
-  - **Command tab** — The Gap hero number, voted count, hourly vote rate chart (last 6h), win threshold progress bar, projection to poll close, scrutineer quick-status, results pulse. 30s auto-refresh.
-  - **Strike-Off tab** — Top 25 P1 (strong support) contacts not yet voted. One-tap mark-voted with optimistic gap decrement. Click-to-call.
-  - **Rides tab** — Accessibility + ride-flagged supporters. Arrange Ride + Mark Voted in same card.
-  - **Polls tab** — Scrutineer deployment grid (credential status + submission status) + live results feed with running candidate totals.
+### Import hardening — all 4 items done
+- **Data Cleaning panel** (transforms) — collapsible Step 2 panel in Smart Import Wizard. Auto-clean toggles (trim, upper, title case, phone/postal format), split rules, merge-column rules, find-replace rules, before/after live preview. Pipeline in `src/lib/import/import-pipeline.ts`.
+- **Download failed rows as CSV** — `/api/import/failed-rows?importLogId=&campaignId=` returns attachment CSV with row_number + error + all raw columns. Import history table now shows count + download icon.
+- **Merge strategy enforcement** — previously a UI choice that was silently ignored. All 4 modes now enforced in `src/lib/import/background-processor.ts`: `skip` (no write), `update` (overwrite), `update_empty` (fill nulls only), `create_all` (always insert).
+- **Merge conflict preview** — Step 3 of wizard shows up to 10 field-by-field diffs between incoming row and existing contact, with amber badges for changed fields and green values for what will be updated.
 
-- **All other roles** — unchanged scrutineer OCR result-entry tool (byte-for-byte original).
+### Pre-existing Stripe SDK v22 type fixes
+- `subscription/route.ts` — `product_data` inline cast → `as unknown as Stripe.SubscriptionCreateParams["items"]`
+- `stripe/webhook/route.ts` — `SubWithPeriod` cast → `as unknown as SubWithPeriod`
 
-- **New API: `/api/eday/ops`** — single round-trip returning all four panels. Requires ADMIN|CAMPAIGN_MANAGER|SUPER_ADMIN. `no-store` cache. Pulls from: `getGotvSummaryMetrics`, `ScrutineerAssignment`, `LiveResult`, `Contact` (priority + rides).
-
-**Connection chain verified:**
-- Mark Voted → `POST /api/gotv/mark-voted` → `Contact.voted = true` + `ActivityLog` via `executeAction` → gap returned in response → UI updates optimistically
-- Arrange Ride → `POST /api/gotv/rides/[id]/arranged` → contact notes + `ActivityLog`
-
-**The session before this (2026-04-15):**
-Commit `5a13f4c` — Comms Analytics tab (funnel + trend + per-blast) + /notifications full rebuild (composer + subscribers + stats).
+**The session before this (2026-04-16 — /eday full build):**
+Commit `3cd4b3f` — /eday role-aware command center (CM: Command/Strike-Off/Rides/Polls tabs) + scrutineer OCR.
 
 ---
 
@@ -72,6 +74,8 @@ Commit `5a13f4c` — Comms Analytics tab (funnel + trend + per-blast) + /notific
 | /eday/hq — election night results | ✓ LIVE | 8d96160 |
 | /billing — Stripe integration | ✓ LIVE | 13965bc |
 | /settings — profile, campaign, integrations, danger zone | ✓ LIVE | 6eae5e2 |
+| /settings/security — 2FA, WebAuthn, sessions, API keys, PIPEDA export | ✓ LIVE | c5a4a51 |
+| Import hardening — transforms, failed-rows CSV, merge strategy, conflict preview | ✓ LIVE | c5a4a51 |
 | /briefing — daily AI briefing | ✓ LIVE | c110dc2 |
 | /ai-assist — Adoni in-app page | ✓ LIVE | 108e504 |
 | Demo + guided tour | ✓ LIVE | 7494b12 |
@@ -81,9 +85,9 @@ Commit `5a13f4c` — Comms Analytics tab (funnel + trend + per-blast) + /notific
 
 | Route | What's missing |
 |---|---|
-| `/settings/security` | 2FA management, active sessions, login history, API keys |
+| `/settings/security` | ✓ DONE — 2FA, WebAuthn, sessions, API keys, PIPEDA export |
 | `/settings/brand` | Full colour picker, logo upload, font selector, preview |
-| `/eday` | ✓ DONE this session |
+| `/eday` | ✓ DONE — CM command center + scrutineer OCR |
 | `/polls/[id]/live` | 99 lines only — real-time result stream, party breakdown |
 
 ### George's manual actions outstanding (full list in GEORGE_TODO.md)
@@ -101,23 +105,20 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Commit 3cd4b3f shipped: /eday full election day ops rebuild — role-aware CM command center
-(Command/Strike-Off/Rides/Polls tabs + GOTV gap, mark-voted, rides, scrutineer deployment)
-+ scrutineer OCR tool unchanged for non-manager roles.
+Recent commits: c5a4a51 shipped security settings (2FA/WebAuthn/sessions/API keys/PIPEDA) +
+import hardening (transforms panel, failed-rows CSV, merge strategy enforcement, conflict preview).
+ad628fb fixed Stripe SDK v22 type errors. All on main, build clean.
 
-Read WORK_QUEUE.md. Sprint 1 PENDING priority:
+Read WORK_QUEUE.md. Next Sprint 1 priority:
 
-1. /settings/security — 501 lines, incomplete. Add: 2FA enable/disable with QR code flow,
-   active sessions list (device + last seen + revoke button), login history (last 10 logins
-   with IP + device), API keys management (generate/revoke). Auth: apiAuth + membership guard.
-   This is customer-facing security — build it fully.
+1. /settings/brand — 377 lines, incomplete. Full colour picker (primary/secondary/accent),
+   logo upload (store URL), font selector (system fonts), live preview of campaign brand.
+   Writes to Campaign model fields. Auth: apiAuth + membership guard. Build it fully.
 
-2. /settings/brand — 377 lines, incomplete. Full colour picker (primary/secondary/accent),
-   logo upload (store URL), font selector (system fonts), live preview of how the campaign
-   brand looks. Writes to Campaign model fields.
+2. /polls/[id]/live — 99 lines only. Real-time result stream, party breakdown,
+   demographic splits, share controls. Claim it in WORK_QUEUE.md first.
 
-Pick one, claim it in WORK_QUEUE.md, build it fully. Run npm run build before pushing.
-Report what is live, what George needs to do, any risks.
+Pick one, claim it, run npm run build before pushing.
 ```
 
 ---
