@@ -31,6 +31,7 @@ import {
   Settings,
   Crown,
   Shield,
+  ScrollText,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -144,7 +145,9 @@ const FINANCE_SECTIONS: NavSection[] = [
       { href: "/finance/purchase-requests",  icon: FileText,   label: "Purchase Requests" },
       { href: "/finance/reimbursements",     icon: FileText,   label: "Reimbursements"    },
       { href: "/finance/approvals",          icon: CheckSquare, label: "Approvals"        },
+      { href: "/finance/vendors",            icon: FileText,   label: "Vendors"           },
       { href: "/finance/reports",            icon: BarChart3,  label: "Reports"           },
+      { href: "/finance/audit",              icon: ScrollText, label: "Audit Trail"       },
       { href: "/donations",                  icon: DollarSign, label: "Donations"         },
     ],
   },

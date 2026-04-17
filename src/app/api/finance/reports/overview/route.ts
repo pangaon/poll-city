@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!["SUPER_ADMIN", "ADMIN", "CAMPAIGN_MANAGER", "FINANCE"].includes(membership.role)) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
 
   const [
     budgets,
@@ -85,7 +88,11 @@ export async function GET(req: NextRequest) {
   ]);
 
   // ── Per-line variance table ───────────────────────────────────────────────
-  const allLines = budgets.flatMap((b) => b.budgetLines);
+  // FINANCE role cannot see staffing lines (salary privacy)
+  const allLinesRaw = budgets.flatMap((b) => b.budgetLines);
+  const allLines = membership.role === "FINANCE"
+    ? allLinesRaw.filter((l) => l.category !== "staffing")
+    : allLinesRaw;
   const varianceLines = allLines
     .filter((l) => Number(l.plannedAmount) > 0)
     .map((line) => {

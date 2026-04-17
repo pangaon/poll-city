@@ -52,8 +52,10 @@ export async function GET(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const staffingFilter = membership.role === "FINANCE" ? { category: { not: "staffing" as const } } : {};
+
   const lines = await prisma.budgetLine.findMany({
-    where: { ...where, isActive: true },
+    where: { ...where, isActive: true, ...staffingFilter },
     orderBy: [{ parentBudgetLineId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
     include: {
       _count: { select: { expenses: true, purchaseRequests: true } },
@@ -79,6 +81,9 @@ export async function POST(req: NextRequest) {
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+  if (membership.role === "FINANCE" && body.category === "staffing") {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 

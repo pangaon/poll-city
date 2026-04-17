@@ -145,6 +145,24 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Finance role: restrict to finance-relevant pages only
+  if (token.role === "FINANCE") {
+    const FINANCE_ALLOWED_PREFIXES = [
+      "/finance",
+      "/donations",
+      "/settings",
+      "/billing",
+      "/notifications",
+      "/api/",
+      "/briefing",
+      "/pcapp",
+    ];
+    const isAllowed = FINANCE_ALLOWED_PREFIXES.some((p) => path.startsWith(p));
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/finance", req.url));
+    }
+  }
+
   return NextResponse.next();
 }
 

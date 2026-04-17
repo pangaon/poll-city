@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     where: { userId_campaignId: { userId: session!.user.id, campaignId } },
   });
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!["SUPER_ADMIN", "ADMIN", "CAMPAIGN_MANAGER", "FINANCE"].includes(membership.role)) {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
 
   const entityType = p.get("entityType");
   const from = p.get("from");

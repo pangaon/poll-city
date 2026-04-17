@@ -32,6 +32,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN", "FINANCE"].includes(membership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
+  if (membership.role === "FINANCE" && line.category === "staffing") {
+    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
   if (line.isLocked && membership.role !== "SUPER_ADMIN" && membership.role !== "ADMIN") {
     return NextResponse.json({ error: "Budget line is locked" }, { status: 409 });
   }

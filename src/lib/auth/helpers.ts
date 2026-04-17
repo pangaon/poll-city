@@ -137,6 +137,14 @@ export function isManagerOrAbove(role: string): boolean {
   return ([Role.ADMIN, Role.SUPER_ADMIN, Role.CAMPAIGN_MANAGER] as Role[]).includes(role as Role);
 }
 
+export function isFinanceRole(role: string): boolean {
+  return role === Role.FINANCE;
+}
+
+export function canViewStaffingLines(role: string): boolean {
+  return ([Role.ADMIN, Role.SUPER_ADMIN, Role.CAMPAIGN_MANAGER] as Role[]).includes(role as Role);
+}
+
 /**
  * Permission strings follow the format `resource:action` where action is one of:
  * read, write, delete.
@@ -162,6 +170,13 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "budget:read", "budget:write",
     "tasks:read", "tasks:write",
     "events:read", "events:write",
+  ],
+  FINANCE: [
+    "budget:read",
+    "expenses:read", "expenses:write",
+    "reimbursements:read", "reimbursements:write",
+    "donations:read",
+    "export:read",
   ],
   VOLUNTEER_LEADER: [
     "contacts:read", "contacts:write",
