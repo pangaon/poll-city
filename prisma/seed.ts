@@ -2030,6 +2030,112 @@ async function main() {
 
   console.log(`✅ FuelOps: ${fuelVendors.length} Ontario vendors seeded across 10 cities`);
 
+  // ── QR Capture Seed ──────────────────────────────────────────────────────────
+  const qrSeedCodes = [
+    {
+      type: "campaign" as const,
+      placementType: "campaign_office" as const,
+      funnelType: "general_engagement" as const,
+      label: "Campaign HQ",
+      locationName: "Ward 12 Campaign Office",
+      locationAddress: "123 Danforth Ave, Toronto, ON",
+      landingConfig: {
+        headline: "Welcome to the Ward 12 Campaign",
+        subheadline: "Join Sam Rivera's team for a better Ward 12",
+        enabledIntents: ["support", "volunteer", "keep_updated", "request_sign", "more_info", "just_browsing"],
+        collectFields: ["name", "phone", "email", "postal"],
+        thankYouText: "Thank you! Sam's team will be in touch soon.",
+      },
+    },
+    {
+      type: "location" as const,
+      placementType: "bus_stop" as const,
+      funnelType: "supporter_capture" as const,
+      label: "Danforth & Pape Bus Stop",
+      locationName: "Danforth Ave & Pape Ave Transit Stop",
+      locationAddress: "Danforth Ave & Pape Ave, Toronto, ON",
+      lat: 43.6778,
+      lng: -79.3566,
+      landingConfig: {
+        headline: "Ward 12 Needs Your Voice",
+        subheadline: "Tap to connect with your local candidate",
+        enabledIntents: ["support", "keep_updated", "more_info", "just_browsing"],
+        collectFields: ["name", "phone", "postal"],
+      },
+    },
+    {
+      type: "lawn_sign" as const,
+      placementType: "lawn_sign" as const,
+      funnelType: "sign_request" as const,
+      label: "Lawn Sign QR",
+      locationName: "Lawn Sign Capture",
+      landingConfig: {
+        headline: "Spotted a Sam Rivera Sign?",
+        subheadline: "Join the movement — get your own sign or stay connected",
+        enabledIntents: ["request_sign", "support", "keep_updated", "volunteer"],
+        collectFields: ["name", "phone", "postal", "address"],
+        thankYouText: "Got it! We'll be in touch about your sign.",
+      },
+    },
+    {
+      type: "volunteer_capture" as const,
+      placementType: "volunteer_clipboard" as const,
+      funnelType: "volunteer_signup" as const,
+      label: "Volunteer Clipboard",
+      locationName: "Canvass Team Signup",
+      landingConfig: {
+        headline: "Join the Door-Knock Team",
+        subheadline: "We're canvassing every weekend until October",
+        enabledIntents: ["volunteer", "support", "keep_updated"],
+        collectFields: ["name", "phone", "email"],
+        thankYouText: "You're in! Someone will call you this week to schedule your first shift.",
+      },
+    },
+    {
+      type: "event_booth" as const,
+      placementType: "festival" as const,
+      funnelType: "event_rsvp" as const,
+      label: "Danforth Festival Booth",
+      locationName: "Taste of the Danforth Festival",
+      locationAddress: "Danforth Ave between Broadview and Jones, Toronto",
+      lat: 43.6774,
+      lng: -79.3528,
+      landingConfig: {
+        headline: "Say Hi at the Danforth Festival!",
+        subheadline: "Meet Sam Rivera and the team at Booth 14",
+        enabledIntents: ["support", "volunteer", "keep_updated", "request_sign", "attend_event"],
+        collectFields: ["name", "phone", "email"],
+      },
+    },
+  ];
+
+  for (const qr of qrSeedCodes) {
+    const slug = `seed-${qr.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 20)}`;
+    const existing = await prisma.qrCode.findFirst({
+      where: { campaignId: campaign.id, label: qr.label },
+    });
+    if (!existing) {
+      await prisma.qrCode.create({
+        data: {
+          campaignId: campaign.id,
+          type: qr.type,
+          placementType: qr.placementType,
+          funnelType: qr.funnelType,
+          label: qr.label,
+          locationName: qr.locationName,
+          locationAddress: qr.locationAddress ?? null,
+          lat: (qr as { lat?: number }).lat ?? null,
+          lng: (qr as { lng?: number }).lng ?? null,
+          landingConfig: qr.landingConfig,
+          slug,
+          status: "active",
+          scanCount: Math.floor(Math.random() * 40),
+        },
+      });
+    }
+  }
+  console.log(`✅ QR Capture: ${qrSeedCodes.length} demo QR codes seeded`);
+
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
   console.log("CAMPAIGN APP:  admin@pollcity.dev      / password123  (George Hatzis — SUPER_ADMIN)");

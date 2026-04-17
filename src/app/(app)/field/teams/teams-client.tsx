@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, X, Users, UserCheck, UserMinus, Search,
-  ChevronDown, ChevronUp, MapPin, Crown,
+  ChevronDown, ChevronUp, MapPin, Crown, Trophy,
+  BarChart2, Calendar, Star,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState,
@@ -47,20 +48,38 @@ interface Props {
   initialTeams: TeamRow[];
 }
 
+// ── Performance scoring ───────────────────────────────────────────────────────
+
+function computePerformanceScore(team: TeamRow): number {
+  let score = 0;
+  // Member count — up to 50 pts (5+ members = max)
+  score += Math.min((team._count.members / 5) * 50, 50);
+  // Lead assigned — 25 pts
+  if (team.leadUser) score += 25;
+  // Ward assigned — 25 pts
+  if (team.ward) score += 25;
+  return Math.round(score);
+}
+
+function performanceBadge(score: number): { label: string; color: string; bg: string } {
+  if (score >= 80) return { label: "Elite",    color: "text-[#1D9E75]", bg: "bg-[#1D9E75]/10" };
+  if (score >= 50) return { label: "Active",   color: "text-[#EF9F27]", bg: "bg-[#EF9F27]/10" };
+  return              { label: "Building", color: "text-muted-foreground", bg: "bg-muted/50" };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TeamsClient({ campaignId, campaignName, initialTeams }: Props) {
   const [teams, setTeams] = useState<TeamRow[]>(initialTeams);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"teams" | "leaderboard">("teams");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showDrawer, setShowDrawer] = useState(false);
   const [addMemberDrawer, setAddMemberDrawer] = useState<string | null>(null);
 
-  // Create team form
   const [form, setForm] = useState({ name: "", ward: "", leadUserId: "" });
   const [saving, setSaving] = useState(false);
 
-  // Add member form
   const [memberForm, setMemberForm] = useState({ userId: "", role: "member" as "member" | "leader" });
   const [addingMember, setAddingMember] = useState(false);
 
@@ -70,11 +89,27 @@ export default function TeamsClient({ campaignId, campaignName, initialTeams }: 
     (t.ward ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
+  const leaderboard = useMemo(
+    () =>
+      [...teams]
+        .map((t) => ({ ...t, score: computePerformanceScore(t) }))
+        .sort((a, b) => b.score - a.score || b._count.members - a._count.members),
+    [teams],
+  );
+
+  const globalStats = useMemo(() => ({
+    totalMembers: teams.reduce((s, t) => s + t._count.members, 0),
+    teamsWithLead: teams.filter((t) => t.leadUser).length,
+    teamsWithWard: teams.filter((t) => t.ward).length,
+    avgScore: teams.length
+      ? Math.round(teams.reduce((s, t) => s + computePerformanceScore(t), 0) / teams.length)
+      : 0,
+  }), [teams]);
+
   function toggleExpand(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
@@ -114,11 +149,7 @@ export default function TeamsClient({ campaignId, campaignName, initialTeams }: 
       const res = await fetch(`/api/field/teams/${teamId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          userId: memberForm.userId,
-          role: memberForm.role,
-        }),
+        body: JSON.stringify({ campaignId, userId: memberForm.userId, role: memberForm.role }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Failed to add member"); return; }
@@ -141,9 +172,7 @@ export default function TeamsClient({ campaignId, campaignName, initialTeams }: 
     const prev = teams;
     setTeams((t) => t.filter((team) => team.id !== teamId));
     try {
-      const res = await fetch(`/api/field/teams/${teamId}?campaignId=${campaignId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/field/teams/${teamId}?campaignId=${campaignId}`, { method: "DELETE" });
       if (!res.ok) {
         setTeams(prev);
         toast.error("Failed to deactivate team");
@@ -162,147 +191,269 @@ export default function TeamsClient({ campaignId, campaignName, initialTeams }: 
         title="Field Teams"
         description={`Manage volunteer teams for ${campaignName}`}
         actions={
-          <Button onClick={() => setShowDrawer(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Team
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant={view === "leaderboard" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView(view === "leaderboard" ? "teams" : "leaderboard")}
+            >
+              <Trophy className="h-4 w-4 mr-1.5" />
+              {view === "leaderboard" ? "Back to Teams" : "Leaderboard"}
+            </Button>
+            <Button onClick={() => setShowDrawer(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Team
+            </Button>
+          </div>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard label="Active Teams" value={teams.length} icon={<Users className="h-5 w-5" />} />
-        <StatCard
-          label="Total Members"
-          value={teams.reduce((sum, t) => sum + t._count.members, 0)}
-          icon={<UserCheck className="h-5 w-5" />}
-          color="blue"
-        />
-        <StatCard
-          label="Avg Team Size"
-          value={teams.length ? Math.round(teams.reduce((sum, t) => sum + t._count.members, 0) / teams.length) : 0}
-          icon={<Users className="h-5 w-5" />}
-        />
+      {/* Global stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Active Teams"   value={teams.length}               icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Total Members"  value={globalStats.totalMembers}    icon={<UserCheck className="h-5 w-5" />} color="blue" />
+        <StatCard label="Teams w/ Lead"  value={globalStats.teamsWithLead}   icon={<Crown className="h-5 w-5" />} color="green" />
+        <StatCard label="Avg Readiness"  value={`${globalStats.avgScore}%`}  icon={<BarChart2 className="h-5 w-5" />} />
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search teams..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      {/* Team list */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Users className="h-8 w-8" />}
-          title="No field teams"
-          description="Create your first team to organize volunteers for canvassing and lit drops."
-          action={<Button onClick={() => setShowDrawer(true)}><Plus className="h-4 w-4 mr-2" />New Team</Button>}
-        />
-      ) : (
+      {/* ── Leaderboard view ────────────────────────────────────────────────── */}
+      {view === "leaderboard" && (
         <div className="space-y-3">
-          {filtered.map((team) => {
-            const isExpanded = expanded.has(team.id);
-            return (
-              <motion.div key={team.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div
-                        className="flex-1 cursor-pointer"
-                        onClick={() => toggleExpand(team.id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{team.name}</span>
-                          {team.ward && (
-                            <Badge variant="default" className="flex items-center gap-1 text-xs">
-                              <MapPin className="h-3 w-3" />Ward {team.ward}
-                            </Badge>
-                          )}
-                          <Badge variant="info" className="text-xs">
-                            {team._count.members} member{team._count.members !== 1 ? "s" : ""}
-                          </Badge>
+          <p className="text-sm text-muted-foreground">
+            Teams ranked by readiness score (members, lead assignment, ward coverage)
+          </p>
+          {leaderboard.length === 0 ? (
+            <EmptyState
+              icon={<Trophy className="h-8 w-8" />}
+              title="No teams yet"
+              description="Create teams to see them on the leaderboard."
+              action={<Button onClick={() => setShowDrawer(true)}><Plus className="h-4 w-4 mr-2" />New Team</Button>}
+            />
+          ) : (
+            leaderboard.map((team, idx) => {
+              const badge = performanceBadge(team.score);
+              return (
+                <motion.div key={team.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        {/* Rank */}
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
+                          idx === 0 ? "bg-[#EF9F27]/20 text-[#EF9F27]" :
+                          idx === 1 ? "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300" :
+                          idx === 2 ? "bg-orange-100 text-orange-600" :
+                          "bg-muted text-muted-foreground"
+                        )}>
+                          {idx === 0 ? <Trophy className="h-4 w-4" /> : idx + 1}
                         </div>
-                        {team.leadUser && (
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <Crown className="h-3 w-3" />Lead: {team.leadUser.name}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => { setAddMemberDrawer(team.id); setMemberForm({ userId: "", role: "member" }); }}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />Add
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleExpand(team.id)}
-                        >
-                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
 
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-4 border-t pt-4 space-y-2">
-                            {team.members.length === 0 ? (
-                              <p className="text-xs text-muted-foreground">No members yet.</p>
-                            ) : (
-                              team.members.map((m) => (
-                                <div key={m.id} className="flex items-center justify-between py-1">
-                                  <div className="flex items-center gap-2">
-                                    <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="text-sm">{m.user?.name ?? m.userId ?? "Unknown"}</span>
-                                    {m.role === "leader" && (
-                                      <Badge variant="warning" className="text-xs">Leader</Badge>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-muted-foreground">
-                                    Joined {new Date(m.joinedAt).toLocaleDateString("en-CA")}
-                                  </span>
-                                </div>
-                              ))
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{team.name}</span>
+                            {team.ward && (
+                              <Badge variant="default" className="text-xs">
+                                <MapPin className="h-3 w-3 mr-0.5" />Ward {team.ward}
+                              </Badge>
                             )}
-                            <div className="pt-2 border-t">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => handleDeactivateTeam(team.id)}
-                              >
-                                <UserMinus className="h-3.5 w-3.5 mr-1" />
-                                Deactivate Team
-                              </Button>
-                            </div>
+                            <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", badge.color, badge.bg)}>
+                              {badge.label}
+                            </span>
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span>{team._count.members} member{team._count.members !== 1 ? "s" : ""}</span>
+                            {team.leadUser && (
+                              <span className="flex items-center gap-1">
+                                <Crown className="h-3 w-3" />{team.leadUser.name}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Score bar */}
+                          <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <motion.div
+                              className="h-full bg-[#1D9E75] rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${team.score}%` }}
+                              transition={{ delay: idx * 0.05, duration: 0.5 }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Score */}
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-[#0A2342] dark:text-white">{team.score}</p>
+                          <p className="text-[10px] text-muted-foreground">/ 100</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })
+          )}
         </div>
       )}
 
-      {/* ── Create Team Drawer ─────────────────────────────────────────── */}
+      {/* ── Teams list view ──────────────────────────────────────────────────── */}
+      {view === "teams" && (
+        <>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search teams..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-8 w-8" />}
+              title="No field teams"
+              description="Create your first team to organise volunteers for canvassing and lit drops."
+              action={<Button onClick={() => setShowDrawer(true)}><Plus className="h-4 w-4 mr-2" />New Team</Button>}
+            />
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((team) => {
+                const isExpanded = expanded.has(team.id);
+                const score = computePerformanceScore(team);
+                const badge = performanceBadge(score);
+
+                return (
+                  <motion.div key={team.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 cursor-pointer" onClick={() => toggleExpand(team.id)}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{team.name}</span>
+                              {team.ward && (
+                                <Badge variant="default" className="flex items-center gap-1 text-xs">
+                                  <MapPin className="h-3 w-3" />Ward {team.ward}
+                                </Badge>
+                              )}
+                              <Badge variant="info" className="text-xs">
+                                {team._count.members} member{team._count.members !== 1 ? "s" : ""}
+                              </Badge>
+                              <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", badge.color, badge.bg)}>
+                                {badge.label}
+                              </span>
+                            </div>
+                            {team.leadUser && (
+                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <Crown className="h-3 w-3" />Lead: {team.leadUser.name}
+                              </p>
+                            )}
+                            {/* Readiness bar */}
+                            <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden max-w-32">
+                              <div
+                                className="h-full bg-[#1D9E75] rounded-full"
+                                style={{ width: `${score}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground text-xs"
+                              title="Schedule Shift"
+                              onClick={() => {
+                                const url = `/field-ops?tab=runs&teamId=${team.id}`;
+                                window.location.href = url;
+                              }}
+                            >
+                              <Calendar className="h-3.5 w-3.5 mr-1" />
+                              Shift
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setAddMemberDrawer(team.id); setMemberForm({ userId: "", role: "member" }); }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />Add
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => toggleExpand(team.id)}>
+                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-4 border-t pt-4 space-y-2">
+                                {/* Performance breakdown */}
+                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                  <div className="text-center">
+                                    <p className="text-lg font-bold">{team._count.members}</p>
+                                    <p className="text-[10px] text-muted-foreground">Members</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-lg font-bold">{team.leadUser ? "✓" : "—"}</p>
+                                    <p className="text-[10px] text-muted-foreground">Lead</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-lg font-bold">{score}</p>
+                                    <p className="text-[10px] text-muted-foreground">Score</p>
+                                  </div>
+                                </div>
+
+                                {/* Member list */}
+                                {team.members.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground">No members yet.</p>
+                                ) : (
+                                  team.members.map((m) => (
+                                    <div key={m.id} className="flex items-center justify-between py-1">
+                                      <div className="flex items-center gap-2">
+                                        <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span className="text-sm">{m.user?.name ?? m.userId ?? "Unknown"}</span>
+                                        {m.role === "leader" && (
+                                          <Badge variant="warning" className="text-xs">Leader</Badge>
+                                        )}
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        Joined {new Date(m.joinedAt).toLocaleDateString("en-CA")}
+                                      </span>
+                                    </div>
+                                  ))
+                                )}
+                                <div className="pt-2 border-t">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => handleDeactivateTeam(team.id)}
+                                  >
+                                    <UserMinus className="h-3.5 w-3.5 mr-1" />
+                                    Deactivate Team
+                                  </Button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Create Team Drawer ─────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showDrawer && (
           <>
@@ -355,7 +506,7 @@ export default function TeamsClient({ campaignId, campaignName, initialTeams }: 
         )}
       </AnimatePresence>
 
-      {/* ── Add Member Drawer ──────────────────────────────────────────── */}
+      {/* ── Add Member Drawer ──────────────────────────────────────────────────── */}
       <AnimatePresence>
         {addMemberDrawer && (
           <>
