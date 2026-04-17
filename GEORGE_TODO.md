@@ -81,7 +81,20 @@ These power the pricing page and client subscription management.
 | `STRIPE_STARTER_PRICE_ID` | Stripe → Products → your Starter plan → Price ID (`price_...`) |
 | `STRIPE_PRO_PRICE_ID` | Stripe → Products → your Pro plan → Price ID (`price_...`) |
 
-- [ ] **6. Register platform webhook in Stripe**: URL `https://app.poll.city/api/stripe/webhook`
+- [ ] **6. Register platform webhook in Stripe**:
+  1. Go to [stripe.com](https://stripe.com) → Developers → Webhooks
+  2. Click **+ Add endpoint**
+  3. URL: `https://app.poll.city/api/stripe/webhook`
+  4. Select these events:
+     - `checkout.session.completed`
+     - `invoice.payment_succeeded`
+     - `invoice.payment_failed`
+     - `customer.subscription.deleted`
+     - `customer.subscription.updated`
+     - `payment_intent.succeeded` ← **required for print shop payments to advance to "in production"**
+     - `payment_intent.payment_failed` ← **required to reset print jobs on failed payment**
+  5. Click **Add endpoint**
+  6. Click **Reveal signing secret** → copy the `whsec_...` value → that's `STRIPE_WEBHOOK_SECRET`
 - [ ] **7. Add `STRIPE_WEBHOOK_SECRET` to Railway**
 - [ ] **8. Add `STRIPE_STARTER_PRICE_ID` to Railway**
 - [ ] **9. Add `STRIPE_PRO_PRICE_ID` to Railway`**
