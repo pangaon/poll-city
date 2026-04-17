@@ -26,7 +26,23 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — /polls/[id]/live geographic breakdown + Sprint 1 cleanup)
+## LAST SESSION (2026-04-17 — Finance Sprint 2 UI hardening)
+
+**What shipped — commit 83ca093:**
+
+### Finance — Sprint 2 DONE
+- **Monthly spend chart** — recharts AreaChart on overview page. Monthly buckets from API `monthlyBurn`.
+- **Recent expenses sidebar** — last 6 transactions with status badge + category + date. Fetched with overview.
+- **Compliance status card** — on-track / attention / over-budget, derived from atRiskLines. No extra API call.
+- **Interface bug fixed** — overview client was `categories: Record<>` but API returns `byCategory: Array<>`. Fixed.
+- **Variance % column** — budget table now shows per-line variance % (red/amber/green). Footer included.
+- **Over-budget banner** — red banner listing over-limit line names above budget table.
+- **Quick-add expense modal** — from overview page directly, no navigation needed.
+- **Railway SSL** — DATABASE_URL `?sslmode=require` added to `.env`. All Prisma commands work from bash.
+
+---
+
+## PREV LAST SESSION (2026-04-17 — /polls/[id]/live geographic breakdown + Sprint 1 cleanup)
 
 **What shipped — commit edc3316:**
 
@@ -159,20 +175,23 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Sprint 1 is complete (2026-04-17). All 9 customer-facing items DONE. Build green on Windows.
+Finance Sprint 2 DONE (2026-04-17). Spend chart, variance %, compliance card, quick-add modal all live.
 Build command: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 What's live:
-- /settings/brand — colour picker, logo upload, font selector, party presets, live preview
-- /polls/[id]/live — SSE stream + geographic breakdown (ward/riding bar charts) + 30-day trend
+- /finance overview — monthly burn chart, recent expenses, compliance status card, quick-add modal
+- /finance/budget — variance % column, over-budget banner
+- Railway DB — ?sslmode=require in .env, all Prisma commands work from bash
 
-Read WORK_QUEUE.md. Next priority is Sprint 2 — Finance UI hardening. Suggested first task:
+Read WORK_QUEUE.md. Next Sprint 2 priority:
 
-1. /finance — overview page (238 lines). Add live spend-vs-budget chart, compliance status,
-   recent transactions, quick-add expense button.
+1. Communications Phase 7 — Automation Engine. AutomationFlow model (triggers + steps + enrollment),
+   /api/comms/automations CRUD, enrollment cron (/api/cron/automation-enrollment),
+   AutomationTab in communications-client.tsx. Triggers: contact_created, donation_received,
+   event_registered, tag_added, date_based. Steps: send_email, send_sms, wait, add_tag.
 
-2. /finance/budget — variance analysis (427 lines). Add variance columns, over-budget alerts,
-   line-item approval workflow.
+2. Alternative: Finance approval workflow — add line-item budget change requests (CM submits,
+   Treasurer approves/rejects), stored in a BudgetChangeRequest model with approval audit trail.
 
 Pick one, claim it, run npm run build before pushing.
 ```
