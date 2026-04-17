@@ -81,6 +81,14 @@ No session may start a task already marked CLAIMED or DONE.
 
 ---
 
+## MODULE: POLLING — FULL STACK
+
+| Task | Status | Notes |
+|---|---|---|
+| Polls full stack — missing types, results, verify page | CLAIMED 2026-04-17 | NPS/WordCloud/EmojiReact/PriorityRank/TimelineRadar vote+results UI; flash_poll/emoji_react/priority_rank API handlers; /polls/verify public page |
+
+---
+
 ## MODULE: FUELOPS — CAMPAIGN FOOD & VENDOR LOGISTICS
 
 | Task | Status | Notes |
@@ -93,7 +101,7 @@ No session may start a task already marked CLAIMED or DONE.
 
 | Task | Status | Notes |
 |---|---|---|
-| CIE — full platform build (schema, ingestion, detection, scoring, review, enrichment, outreach, admin UI, seed, tests) | CLAIMED 2026-04-17 | 6 new models, /api/intel/*, /api/cron/intel-*, /app/(app)/intel/ command center |
+| CIE — full platform build (schema, ingestion, detection, scoring, review, enrichment, outreach, admin UI, seed, tests) | DONE — see commit | 6 new models, 16 source registry entries, /api/intel/*, /api/cron/intel-*, /app/(app)/intel/ 6-tab command center, 29 unit tests |
 
 ---
 
