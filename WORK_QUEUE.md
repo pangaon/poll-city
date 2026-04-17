@@ -273,11 +273,11 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /billing — complete Stripe payment integration | DONE — 13965bc | Invoice history, portal button, past-due banner, cancel-at-period-end warning, success/cancel URL toasts, animated plan selector. |
 | /settings — full settings page | DONE — 6eae5e2 | Profile, campaign profile, integration status dashboard (6 cards), danger zone (archive). |
 | /settings/security — complete security settings | DONE — ad628fb | 2FA (TOTP QR + backup codes + disable), WebAuthn biometrics, active sessions, login history, API keys, PIPEDA data export. All API routes wired. |
-| /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
+| /settings/brand — complete brand customization | DONE — already built | Full colour picker, logo upload, font selector, party presets, live preview (door hanger + email header). All API routes wired. Marked DONE 2026-04-17. |
 | /notifications — voter outreach full build | DONE — see this session | Full push composer + phone preview + opt-in management table + device breakdown + delivery stats tabs |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
 | /eday — election day ops full build | DONE — 3cd4b3f | Role-aware: CM gets 4-tab command center (GOTV gap, strike-off, rides, polls); scrutineers get OCR tool. /api/eday/ops aggregated endpoint. |
-| /polls/[id]/live — live results full build | PENDING | 99 lines only. Real-time result stream, party breakdown, demographic splits, share controls. |
+| /polls/[id]/live — live results full build | CLAIMED 2026-04-17 | Adding geographic breakdown (ward/riding), response trend chart. SSE stream + share controls already exist. |
 | /briefing — daily briefing full build | DONE — c110dc2 | Adoni morning summary card + health score + priorities + canvassing pace + red flags. |
 | /ai-assist — full Adoni in-app page | DONE — 108e504 | Full chat UI, 4 category groups, suggested prompts, localStorage history, copy button. |
 
