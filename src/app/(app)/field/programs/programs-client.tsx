@@ -26,6 +26,7 @@ interface ProgramCounts {
 
 export interface Program {
   id: string;
+  campaignId: string;
   name: string;
   programType: FieldProgramType;
   status: FieldProgramStatus;
@@ -43,6 +44,7 @@ export interface Program {
   createdBy: { id: string; name: string | null };
   contactedCount: number;
   supporterCount: number;
+  completedRoutes: number;
 }
 
 interface Turf {

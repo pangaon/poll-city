@@ -64,9 +64,27 @@ export async function GET(req: NextRequest) {
     analyticsMap.set(row.fieldProgramId, existing);
   }
 
+  // Route completion breakdown per program
+  const routeStatusCounts = programIds.length > 0
+    ? await prisma.route.groupBy({
+        by: ["fieldProgramId", "status"],
+        where: { campaignId, fieldProgramId: { in: programIds }, deletedAt: null },
+        _count: { _all: true },
+      })
+    : [];
+
+  const completionMap = new Map<string, { completedRoutes: number }>();
+  for (const row of routeStatusCounts) {
+    if (!row.fieldProgramId) continue;
+    const existing = completionMap.get(row.fieldProgramId) ?? { completedRoutes: 0 };
+    if (row.status === "completed") existing.completedRoutes += row._count._all;
+    completionMap.set(row.fieldProgramId, existing);
+  }
+
   const data = programs.map((p) => ({
     ...p,
     ...(analyticsMap.get(p.id) ?? { contactedCount: 0, supporterCount: 0 }),
+    completedRoutes: completionMap.get(p.id)?.completedRoutes ?? 0,
   }));
 
   return NextResponse.json({ data });
