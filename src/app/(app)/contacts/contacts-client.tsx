@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, Plus, Download, Upload, Filter, Phone, Mail, ChevronLeft, ChevronRight, CheckSquare, Bookmark, Save, Trash2, GripVertical, SlidersHorizontal, Route, Send, MessageSquare, ListChecks, X, Users, CheckCircle2, MailX, PhoneOff, ShieldX } from "lucide-react";
-import { Button, Input, Select, Card, PageHeader, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, MultiSelect, Spinner } from "@/components/ui";
+import { Button, Input, Select, Card, PageHeader, SupportLevelBadge, Modal, FormField, Textarea, Checkbox, MultiSelect, Spinner, AddressAutocomplete } from "@/components/ui";
 import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
 import { fullName, formatDate, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, COMMON_ISSUES, SupportLevel } from "@/types";
@@ -2005,10 +2005,11 @@ function BulkActionButton({
 }
 
 function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boolean; onClose: () => void; campaignId: string; onCreated: () => void }) {
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateContactInput>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<CreateContactInput>({
     resolver: zodResolver(createContactSchema),
     defaultValues: { campaignId, preferredLanguage: "en", issues: [] },
   });
+  const [addressSearch, setAddressSearch] = useState("");
 
   async function onSubmit(data: CreateContactInput) {
     const res = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
@@ -2036,6 +2037,20 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
             <Input {...register("email")} placeholder="jane@email.com" type="email" />
           </FormField>
         </div>
+        <FormField label="Address search">
+          <AddressAutocomplete
+            value={addressSearch}
+            onChange={setAddressSearch}
+            placeholder="Search to auto-fill address fields…"
+            onSelect={(r) => {
+              if (r.houseNumber) setValue("streetNumber", r.houseNumber);
+              if (r.street) setValue("address1", r.street);
+              if (r.city) setValue("city", r.city);
+              if (r.province) setValue("province", r.province ?? "ON");
+              if (r.postalCode) setValue("postalCode", r.postalCode);
+            }}
+          />
+        </FormField>
         <div className="grid grid-cols-3 gap-3">
           <FormField label="Street #">
             <Input {...register("streetNumber")} placeholder="302" />

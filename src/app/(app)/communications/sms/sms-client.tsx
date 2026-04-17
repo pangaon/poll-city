@@ -6,6 +6,7 @@ import {
   MessageSquare, Send, Users, Check, Loader2, History,
   AlertTriangle, Clock, X, FileText,
 } from "lucide-react";
+import { WriteAssistTextarea } from "@/components/ui";
 
 interface Props {
   campaignId: string;
@@ -289,12 +290,14 @@ export default function SmsClient({ campaignId, tags, wards }: Props) {
                     <span className="text-sm font-semibold text-slate-700">
                       Message <span className="text-red-500">*</span>
                     </span>
-                    <textarea
+                    <WriteAssistTextarea
                       rows={6}
                       value={body}
-                      onChange={(e) => setBody(e.target.value)}
+                      onChange={setBody}
+                      context="sms"
+                      campaignId={campaignId}
                       placeholder="Hi {{firstName}}, ..."
-                      className="mt-1.5 w-full px-3 py-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                      className="mt-1.5 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 min-h-[80px]"
                       maxLength={1000}
                     />
                     <div className="flex items-center justify-between mt-2">

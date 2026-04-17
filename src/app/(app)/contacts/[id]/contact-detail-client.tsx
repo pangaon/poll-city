@@ -2,12 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit2, Phone, Mail, MapPin, Flag, MessageSquare, CheckSquare, Sparkles, Save, X } from "lucide-react";
-import { Button, Card, CardHeader, CardContent, SupportLevelBadge, Badge, FormField, Input, Select, Textarea, Checkbox, Modal } from "@/components/ui";
+import { Button, Card, CardHeader, CardContent, SupportLevelBadge, Badge, FormField, Input, Select, Textarea, Checkbox, Modal, WriteAssistTextarea } from "@/components/ui";
 import { fullName, formatDate, formatDateTime, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, INTERACTION_TYPE_LABELS, TASK_STATUS_LABELS, TASK_PRIORITY_COLORS, COMMON_ISSUES, SupportLevel, InteractionType } from "@/types";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createInteractionSchema, CreateInteractionInput } from "@/lib/validators";
 
@@ -323,7 +323,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
                     </Select>
                   </FormField>
                   <FormField label="Notes">
-                    <Textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={4} />
+                    <WriteAssistTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} context="note" campaignId={campaignId} rows={4} />
                   </FormField>
                   <div className="space-y-2">
                     <Checkbox label="Follow-up needed" checked={editForm.followUpNeeded} onChange={(e) => setEditForm({ ...editForm, followUpNeeded: e.target.checked })} />
@@ -538,11 +538,13 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
           <div className="p-4 space-y-3">
             {/* Note composer */}
             <div className="space-y-2">
-              <textarea
+              <WriteAssistTextarea
                 value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
+                onChange={setNoteBody}
+                context="note"
+                campaignId={campaignId}
                 placeholder="Add a note about this contact…"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-200 min-h-[72px]"
                 rows={3}
               />
               <div className="flex items-center gap-2 flex-wrap">
@@ -835,7 +837,7 @@ function LogInteractionModal({ open, onClose, contactId, contactName, onLogged }
   open: boolean; onClose: () => void; contactId: string; contactName: string;
   onLogged: (i: any) => void;
 }) {
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<CreateInteractionInput>({
+  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<CreateInteractionInput>({
     resolver: zodResolver(createInteractionSchema),
     defaultValues: { contactId, type: InteractionType.note, issues: [] },
   });
@@ -861,7 +863,21 @@ function LogInteractionModal({ open, onClose, contactId, contactName, onLogged }
             {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </FormField>
-        <FormField label="Notes"><Textarea {...register("notes")} placeholder="What happened at the door / on the call…" rows={4} /></FormField>
+        <FormField label="Notes">
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => (
+              <WriteAssistTextarea
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                context="note"
+                rows={4}
+                placeholder="What happened at the door / on the call…"
+              />
+            )}
+          />
+        </FormField>
         <div className="grid grid-cols-2 gap-3">
           <Checkbox label="Sign requested" {...register("signRequested")} />
           <Checkbox label="Volunteer interest" {...register("volunteerInterest")} />

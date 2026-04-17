@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { WriteAssistTextarea } from "@/components/ui";
 import {
   Share2, Plus, Send, Clock, CheckCircle2, XCircle, AlertCircle,
   MessageCircle, Loader2, Globe, Trash2, ChevronDown,
@@ -457,13 +458,15 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
 
                     {/* content */}
                     <div>
-                      <textarea
-                        className="w-full min-h-[120px] px-3 py-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                      <WriteAssistTextarea
+                        className="border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 text-sm min-h-[120px]"
                         placeholder="Write your post..."
                         value={postForm.content}
-                        onChange={(e) =>
-                          setPostForm((c) => ({ ...c, content: e.target.value }))
+                        onChange={(v) =>
+                          setPostForm((c) => ({ ...c, content: v }))
                         }
+                        context="social-post"
+                        campaignId={campaignId}
                         maxLength={activeCharLimit}
                       />
                       <div className="flex items-center justify-between mt-1">

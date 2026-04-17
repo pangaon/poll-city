@@ -6,6 +6,7 @@ import {
   Mail, Send, Users, Check, Loader2, Eye, History,
   FileText, AlertTriangle, Clock, X,
 } from "lucide-react";
+import { WriteAssistTextarea } from "@/components/ui";
 
 interface Props {
   campaignId: string;
@@ -288,6 +289,7 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                       placeholder="e.g. Can you help us this Saturday?"
                       className="mt-1.5 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
                       maxLength={150}
+                      spellCheck={true}
                     />
                     <span className="text-xs text-slate-400 mt-1 block text-right tabular-nums">
                       {subject.length}/150
@@ -351,12 +353,14 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                       }}
                     />
                   ) : (
-                    <textarea
+                    <WriteAssistTextarea
                       rows={14}
                       value={body}
-                      onChange={(e) => setBody(e.target.value)}
+                      onChange={setBody}
+                      context="email-body"
+                      campaignId={campaignId}
                       placeholder="<p>Hi {{firstName}},</p><p>...</p>"
-                      className="w-full px-3 py-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none font-mono text-sm transition-colors"
+                      className="border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 font-mono text-sm min-h-[80px]"
                       maxLength={50_000}
                     />
                   )}
