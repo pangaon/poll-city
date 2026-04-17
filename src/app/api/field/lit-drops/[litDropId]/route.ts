@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
-import { FieldShiftStatus } from "@prisma/client";
+import { Prisma, FieldShiftStatus } from "@prisma/client";
 
 // ── GET /api/field/lit-drops/[litDropId] ────────────────────────────────────
 
@@ -74,6 +74,7 @@ export async function PATCH(
     turfId?: string;
     routeId?: string;
     fieldProgramId?: string;
+    materialsJson?: Record<string, unknown>;
   } | null;
 
   if (!body?.campaignId) {
@@ -92,25 +93,30 @@ export async function PATCH(
     return NextResponse.json({ error: "Lit drop run not found" }, { status: 404 });
   }
 
+  const data: Prisma.FieldShiftUncheckedUpdateInput = {
+    ...(body.name?.trim() ? { name: body.name.trim() } : {}),
+    ...(body.status && validStatuses.includes(body.status) ? { status: body.status } : {}),
+    ...(body.scheduledDate ? { scheduledDate: new Date(body.scheduledDate) } : {}),
+    ...(body.startTime ? { startTime: body.startTime } : {}),
+    ...(body.endTime ? { endTime: body.endTime } : {}),
+    ...(body.meetingPoint !== undefined ? { meetingPoint: body.meetingPoint?.trim() ?? null } : {}),
+    ...(body.meetingAddress !== undefined ? { meetingAddress: body.meetingAddress?.trim() ?? null } : {}),
+    ...(body.maxCapacity !== undefined ? { maxCapacity: body.maxCapacity } : {}),
+    ...(body.ward !== undefined ? { ward: body.ward?.trim() ?? null } : {}),
+    ...(body.pollNumber !== undefined ? { pollNumber: body.pollNumber?.trim() ?? null } : {}),
+    ...(body.leadUserId !== undefined ? { leadUserId: body.leadUserId ?? null } : {}),
+    ...(body.notes !== undefined ? { notes: body.notes?.trim() ?? null } : {}),
+    ...(body.turfId !== undefined ? { turfId: body.turfId ?? null } : {}),
+    ...(body.routeId !== undefined ? { routeId: body.routeId ?? null } : {}),
+    ...(body.fieldProgramId !== undefined ? { fieldProgramId: body.fieldProgramId ?? null } : {}),
+    ...(body.materialsJson !== undefined
+      ? { materialsJson: (body.materialsJson ?? Prisma.JsonNull) as Prisma.InputJsonValue }
+      : {}),
+  };
+
   const updated = await prisma.fieldShift.update({
     where: { id: params.litDropId },
-    data: {
-      ...(body.name?.trim() ? { name: body.name.trim() } : {}),
-      ...(body.status && validStatuses.includes(body.status) ? { status: body.status } : {}),
-      ...(body.scheduledDate ? { scheduledDate: new Date(body.scheduledDate) } : {}),
-      ...(body.startTime ? { startTime: body.startTime } : {}),
-      ...(body.endTime ? { endTime: body.endTime } : {}),
-      ...(body.meetingPoint !== undefined ? { meetingPoint: body.meetingPoint?.trim() ?? null } : {}),
-      ...(body.meetingAddress !== undefined ? { meetingAddress: body.meetingAddress?.trim() ?? null } : {}),
-      ...(body.maxCapacity !== undefined ? { maxCapacity: body.maxCapacity } : {}),
-      ...(body.ward !== undefined ? { ward: body.ward?.trim() ?? null } : {}),
-      ...(body.pollNumber !== undefined ? { pollNumber: body.pollNumber?.trim() ?? null } : {}),
-      ...(body.leadUserId !== undefined ? { leadUserId: body.leadUserId ?? null } : {}),
-      ...(body.notes !== undefined ? { notes: body.notes?.trim() ?? null } : {}),
-      ...(body.turfId !== undefined ? { turfId: body.turfId ?? null } : {}),
-      ...(body.routeId !== undefined ? { routeId: body.routeId ?? null } : {}),
-      ...(body.fieldProgramId !== undefined ? { fieldProgramId: body.fieldProgramId ?? null } : {}),
-    },
+    data,
     include: {
       _count: { select: { assignments: true, attempts: true } },
       leadUser: { select: { id: true, name: true } },

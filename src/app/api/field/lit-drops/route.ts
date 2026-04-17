@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
     leadUserId?: string;
     notes?: string;
     materialsDescription?: string;
+    materialsJson?: Record<string, unknown>;
   } | null;
 
   if (!body?.campaignId || !body?.name?.trim()) {
@@ -122,9 +124,8 @@ export async function POST(req: NextRequest) {
       pollNumber: body.pollNumber?.trim() ?? null,
       leadUserId: body.leadUserId ?? null,
       notes: body.notes?.trim() ?? null,
-      materialsJson: body.materialsDescription
-        ? { description: body.materialsDescription }
-        : undefined,
+      materialsJson: (body.materialsJson
+        ?? (body.materialsDescription ? { description: body.materialsDescription } : undefined)) as Prisma.InputJsonValue | undefined,
       status: "draft",
     },
     include: {
