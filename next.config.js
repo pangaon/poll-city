@@ -12,6 +12,10 @@ const nextConfig = {
     optimizePackageImports: ["lucide-react", "recharts"],
     workerThreads: false,
     cpus: 1,
+    // Exclude agent worktrees from build tracing — their stale .next dirs corrupt collect-build-traces
+    outputFileTracingExcludes: {
+      "*": [".claude/worktrees/**"],
+    },
   },
 
   // Pass VAPID key to client-side
