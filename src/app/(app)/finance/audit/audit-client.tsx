@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { ScrollText, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { ScrollText, ChevronLeft, ChevronRight, Filter, Download } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 interface AuditEntry {
   id: string;
@@ -31,6 +32,7 @@ const ACTION_COLORS: Record<string, string> = {
   updated: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   deleted: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  partially_approved: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
   rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   submitted: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   paid: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
@@ -40,7 +42,7 @@ function actionBadge(action: string) {
   const cls = ACTION_COLORS[action] ?? "bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300";
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
-      {action}
+      {action.replace(/_/g, " ")}
     </span>
   );
 }
@@ -55,11 +57,7 @@ function fmtDate(iso: string) {
 function JsonDiff({ old: oldVal, next }: { old: unknown; next: unknown }) {
   const format = (v: unknown) => {
     if (v === null || v === undefined) return null;
-    try {
-      return JSON.stringify(v, null, 2);
-    } catch {
-      return String(v);
-    }
+    try { return JSON.stringify(v, null, 2); } catch { return String(v); }
   };
   const o = format(oldVal);
   const n = format(next);
@@ -69,17 +67,13 @@ function JsonDiff({ old: oldVal, next }: { old: unknown; next: unknown }) {
       {o && (
         <div>
           <div className="text-xs text-gray-500 mb-1">Before</div>
-          <pre className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 p-2 rounded overflow-x-auto max-h-32 text-[11px]">
-            {o}
-          </pre>
+          <pre className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 p-2 rounded overflow-x-auto max-h-32 text-[11px]">{o}</pre>
         </div>
       )}
       {n && (
         <div>
           <div className="text-xs text-gray-500 mb-1">After</div>
-          <pre className="bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 p-2 rounded overflow-x-auto max-h-32 text-[11px]">
-            {n}
-          </pre>
+          <pre className="bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 p-2 rounded overflow-x-auto max-h-32 text-[11px]">{n}</pre>
         </div>
       )}
     </div>
@@ -94,6 +88,8 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
   const [entityType, setEntityType] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [actorSearch, setActorSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const limit = 50;
 
@@ -114,20 +110,62 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
 
   useEffect(() => { load(); }, [load]);
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ campaignId, limit: "1000", offset: "0" });
+      if (entityType) params.set("entityType", entityType);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const res = await fetch(`/api/finance/audit-trail?${params}`);
+      if (!res.ok) { toast.error("Export failed"); return; }
+      const json = await res.json();
+      const rows: AuditEntry[] = json.data ?? [];
+      const header = "Date,Actor,Action,Entity Type,Entity ID\n";
+      const csv = rows.map((r) =>
+        [fmtDate(r.createdAt), r.actorName, r.action, r.entityType.replace(/^Finance/, ""), r.entityId.slice(-8)]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(",")
+      ).join("\n");
+      const blob = new Blob([header + csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit-trail-${campaignId}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} entries`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const displayed = actorSearch.trim()
+    ? logs.filter((l) => l.actorName.toLowerCase().includes(actorSearch.toLowerCase()))
+    : logs;
+
   const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ScrollText className="w-5 h-5 text-[#0A2342]" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Finance Audit Trail</h2>
         </div>
-        <div className="text-sm text-gray-500">{total.toLocaleString()} entries</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm text-gray-500">{total.toLocaleString()} entries</div>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#0A2342] text-white rounded-lg hover:bg-[#0A2342]/90 disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {exporting ? "Exporting…" : "Export CSV"}
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 flex flex-wrap gap-3 items-end">
         <Filter className="w-4 h-4 text-gray-400 self-center" />
         <div>
@@ -141,6 +179,16 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Actor</label>
+          <input
+            type="text"
+            value={actorSearch}
+            onChange={(e) => setActorSearch(e.target.value)}
+            placeholder="Filter by name…"
+            className="text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-white w-36"
+          />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">From</label>
@@ -160,9 +208,9 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
             className="text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
           />
         </div>
-        {(entityType || from || to) && (
+        {(entityType || from || to || actorSearch) && (
           <button
-            onClick={() => { setEntityType(""); setFrom(""); setTo(""); setPage(0); }}
+            onClick={() => { setEntityType(""); setFrom(""); setTo(""); setActorSearch(""); setPage(0); }}
             className="text-sm text-gray-500 hover:text-gray-700 self-end pb-1.5"
           >
             Clear
@@ -170,15 +218,14 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
         )}
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : logs.length === 0 ? (
+        ) : displayed.length === 0 ? (
           <div className="p-8 text-center text-gray-400">No audit entries found.</div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-800">
-            {logs.map((entry) => (
+            {displayed.map((entry) => (
               <motion.div
                 key={entry.id}
                 initial={{ opacity: 0 }}
@@ -210,7 +257,6 @@ export default function AuditClient({ campaignId }: { campaignId: string }) {
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <button

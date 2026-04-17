@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Clock, Receipt, ShoppingCart, RotateCcw, AlertTriangle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Receipt, ShoppingCart, RotateCcw, X } from "lucide-react";
 
 interface QueueItem {
   type: "expense" | "purchase_request" | "reimbursement";
@@ -40,11 +40,83 @@ function cad(v: number) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
 }
 
+function rejectPath(item: QueueItem) {
+  if (item.type === "expense") return `/api/finance/expenses/${item.id}/reject`;
+  if (item.type === "purchase_request") return `/api/finance/purchase-requests/${item.id}/reject`;
+  return `/api/finance/reimbursements/${item.id}/reject`;
+}
+
+function approvePath(item: QueueItem) {
+  if (item.type === "expense") return `/api/finance/expenses/${item.id}/approve`;
+  if (item.type === "purchase_request") return `/api/finance/purchase-requests/${item.id}/approve`;
+  return `/api/finance/reimbursements/${item.id}/approve`;
+}
+
+function RejectModal({ item, onClose, onDone }: { item: QueueItem; onClose: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!reason.trim()) { toast.error("Rejection reason is required"); return; }
+    setSaving(true);
+    const res = await fetch(rejectPath(item), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    }).then((r) => r.json());
+    setSaving(false);
+    if (res.data) { toast.success("Rejected"); onDone(); onClose(); }
+    else toast.error(res.error ?? "Failed");
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+        className="bg-white dark:bg-slate-900 rounded-xl p-5 w-full max-w-md shadow-xl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-red-600">Reject {TYPE_CONFIG[item.type].label}</h2>
+          <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">{item.title} — {cad(item.amount)}</p>
+        <div>
+          <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Reason *</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="Why is this being rejected?"
+            className="mt-1 w-full px-3 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+          />
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-600 dark:text-slate-300">Cancel</button>
+          <button
+            onClick={submit}
+            disabled={saving || !reason.trim()}
+            className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {saving ? "Rejecting…" : "Reject"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function ApprovalsClient({ campaignId }: { campaignId: string }) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [summary, setSummary] = useState<QueueSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [rejectingItem, setRejectingItem] = useState<QueueItem | null>(null);
+  const [approvingAll, setApprovingAll] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,34 +129,28 @@ export default function ApprovalsClient({ campaignId }: { campaignId: string }) 
 
   async function approve(item: QueueItem) {
     setActing(item.id);
-    const path = item.type === "expense"
-      ? `/api/finance/expenses/${item.id}/approve`
-      : item.type === "purchase_request"
-        ? `/api/finance/purchase-requests/${item.id}/approve`
-        : `/api/finance/reimbursements/${item.id}/approve`;
-    const res = await fetch(path, { method: "POST" }).then((r) => r.json());
+    const res = await fetch(approvePath(item), { method: "POST" }).then((r) => r.json());
     setActing(null);
     if (res.data) { toast.success("Approved"); load(); }
     else toast.error(res.error ?? "Failed");
   }
 
-  async function reject(item: QueueItem) {
-    const reason = prompt("Rejection reason (required):");
-    if (!reason?.trim()) return;
-    setActing(item.id);
-    const path = item.type === "expense"
-      ? `/api/finance/expenses/${item.id}/reject`
-      : item.type === "purchase_request"
-        ? `/api/finance/purchase-requests/${item.id}/reject`
-        : `/api/finance/reimbursements/${item.id}/reject`;
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    }).then((r) => r.json());
-    setActing(null);
-    if (res.data) { toast.success("Rejected"); load(); }
-    else toast.error(res.error ?? "Failed");
+  async function approveAll() {
+    if (queue.length === 0) return;
+    setApprovingAll(true);
+    let ok = 0;
+    let fail = 0;
+    await Promise.all(
+      queue.map(async (item) => {
+        const res = await fetch(approvePath(item), { method: "POST" }).then((r) => r.json());
+        if (res.data) ok++;
+        else fail++;
+      })
+    );
+    setApprovingAll(false);
+    if (ok > 0) toast.success(`${ok} item${ok > 1 ? "s" : ""} approved`);
+    if (fail > 0) toast.error(`${fail} failed`);
+    load();
   }
 
   return (
@@ -98,6 +164,16 @@ export default function ApprovalsClient({ campaignId }: { campaignId: string }) 
             </p>
           )}
         </div>
+        {queue.length > 1 && (
+          <button
+            onClick={approveAll}
+            disabled={approvingAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {approvingAll ? "Approving…" : `Approve All (${queue.length})`}
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -133,7 +209,7 @@ export default function ApprovalsClient({ campaignId }: { campaignId: string }) 
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-gray-900 dark:text-white text-sm">{item.title}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${cfg.colour}`}>{cfg.label}</span>
-                      {item.urgency !== "normal" && (
+                      {item.urgency && item.urgency !== "normal" && (
                         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${URGENCY_STYLES[item.urgency] ?? ""}`}>
                           {item.urgency}
                         </span>
@@ -155,14 +231,14 @@ export default function ApprovalsClient({ campaignId }: { campaignId: string }) 
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => approve(item)}
-                      disabled={acting === item.id}
+                      disabled={acting === item.id || approvingAll}
                       className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                     </button>
                     <button
-                      onClick={() => reject(item)}
-                      disabled={acting === item.id}
+                      onClick={() => setRejectingItem(item)}
+                      disabled={acting === item.id || approvingAll}
                       className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
                     >
                       <XCircle className="w-3.5 h-3.5" /> Reject
@@ -174,6 +250,16 @@ export default function ApprovalsClient({ campaignId }: { campaignId: string }) 
           })}
         </div>
       )}
+
+      <AnimatePresence>
+        {rejectingItem && (
+          <RejectModal
+            item={rejectingItem}
+            onClose={() => setRejectingItem(null)}
+            onDone={load}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   ArrowUpDown,
   Settings,
   Crown,
+  Shield,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import { useSession } from "next-auth/react";
@@ -95,6 +96,7 @@ const INTELLIGENCE_SECTION: NavSection = {
   items: [
     { href: "/reports",        icon: FileText,  label: "Reports"       },
     { href: "/analytics",      icon: BarChart2, label: "Analytics"     },
+    { href: "/reputation",     icon: Shield,    label: "Reputation"    },
     { href: "/election-night", icon: Zap,       label: "Election Night" },
   ],
 };
