@@ -45,6 +45,26 @@ If you are a session that was interrupted by George's system shutdown: your work
 
 ---
 
+## LAST SESSION (2026-04-17 — Session resume: verify field/programs done, push 13 queued commits)
+
+**What shipped:**
+
+Context recovery session after context compaction. Discovered all field/programs work was already committed in prior background — 13 commits were queued and unpushed on `main`. Ran `npm run push:safe` (exit 0), all 13 pushed to origin.
+
+**Commits pushed (13 total — field/programs + QR + security fixes):**
+- `68c9d98`–`de42975` — /field/programs: analytics, goal bars, status toggle
+- `a4a163d`, `9ff2724` — /field/programs/[programId]: detail page with sparkline, roster
+- `cd87643` — WORK_QUEUE: mark programs DONE
+- `78a85ed` — field-ops serializer defaults
+- `87c5fdb` — security: dev fallback string rename
+- `14cffb2`, `fc36517` — QR fixes + GEORGE_TODO
+
+**What's live now:** /field/programs (list with analytics, goal bars, status toggle) + /field/programs/[programId] (detail with sparkline, canvasser roster, route heat map)
+
+**Build:** `npm run push:safe` exit 0.
+
+---
+
 ## LAST SESSION (2026-04-17 — Recovery session: clean working tree, fix TS errors, push all pending commits)
 
 **What shipped:**
