@@ -2,7 +2,26 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: BUILD RECOVERY — 5 red deployments fixed, platform restored to green)
+**Updated by:** Claude Sonnet 4.6 (session: BUILD RECOVERY + sidebar redesign + process hardening)
+
+---
+## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
+
+**BUILD IS GREEN. Platform recovered from 5 red deployments.**
+
+If you are a session that was interrupted by George's system shutdown: your work may have been committed and pushed already. Run `git pull origin main` and check git log before rebuilding anything.
+
+**RULE CHANGE — MANDATORY FROM NOW ON:**
+- **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
+- `push:safe` runs `npm run build` → pushes only on exit 0. A direct `git push` is now a protocol violation.
+- The sidebar has been redesigned. Check `src/components/layout/sidebar.tsx` before adding new nav entries — it has been reorganized.
+- Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
+
+**Currently committed and live:** QR Capture module, Comms Phase 7 (Automation Engine), CIE (Candidate Intel), RCAE (Reputation), Finance Phase 8, sidebar redesign with command palette (Ctrl+K search).
+
+**Still uncommitted (Sprint 3 field work):** `src/app/(app)/field/audit/`, `/field/follow-ups/`, `/field/teams/`, `prisma/seed.ts` — these are modified files from the interrupted Sprint 3 session. That session should commit and push them via `npm run push:safe`.
+
+---
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.

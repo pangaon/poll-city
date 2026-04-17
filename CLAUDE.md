@@ -53,7 +53,16 @@ The platform owner is George. His word is final.
 
 ## THE MOST IMPORTANT RULE
 
-**Run `npm run build` locally before every `git push`. Zero exceptions.**
+**Use `npm run push:safe` — NEVER run `git push` directly.**
+
+`npm run push:safe` is the ONLY authorized push command in this repo.
+It verifies a clean working tree, runs `npm run build`, then pushes.
+A raw `git push` bypasses the build check and is how 5 red deployments happened on April 17.
+
+```
+npm run push:safe          ← the ONLY way to push
+npm run push:safe:check    ← dry run: builds but does not push (use for verification)
+```
 
 `npx tsc --noEmit` is not enough. Next.js enforces routing rules that TypeScript
 does not check. A passing `tsc` with a failing build is a lie. We do not lie here.
@@ -66,11 +75,29 @@ Do not tell George something is live until the Vercel deployment is green.
 ## BUILD CHECKLIST (run before every commit)
 
 ```
-npm run build        ← must exit 0
-npx tsc --noEmit     ← must exit 0
+npm run push:safe:check    ← builds without pushing; must exit 0
 ```
 
-If either fails: stop, diagnose, fix, then re-run both.
+If it fails: stop, diagnose, fix, then re-run. Never push until it passes.
+
+---
+
+## FEATURE COMPLETION GATE — NON-NEGOTIABLE
+
+A feature is NOT done when the code is written. It is done when ALL of these are true:
+
+1. **`npm run push:safe` exits 0** — build passes with the feature included.
+2. **Sidebar entry exists** — the feature appears in `src/components/layout/sidebar.tsx` in the correct section, OR there is an explicit documented reason (e.g. "accessible from parent page only", noted in SESSION_HANDOFF).
+3. **User can reach it** — navigate from the sidebar to the feature and confirm the page loads. Not "it should work" — confirmed it loads.
+4. **Edge cases handled** — empty state, no data, loading state, error state all render without crash.
+5. **CONNECTIONS.md updated** — any new data connections documented.
+
+**If you built a feature and it is not in the sidebar and not reachable from the main nav, you have not shipped it. You have buried it.**
+
+Modules currently in the codebase but historically left disconnected:
+- Always check: does the new route appear in the sidebar?
+- Always check: can a user navigate there from a cold start?
+- If no to either: add the sidebar entry before closing the session.
 
 ---
 
