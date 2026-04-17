@@ -340,8 +340,8 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| /field/programs — full management | CLAIMED 2026-04-17 | 458 lines. Add program analytics, canvasser assignment, completion rate, door-knock heat map. |
-| /field/programs/[programId] — full detail | PENDING | 381 lines. Add turf map, team roster, daily run stats, completion timeline. |
+| /field/programs — full management | DONE — de42975 | Analytics cards, goal bars (doors/contacts/supporters), quick status toggle, contactedCount/supporterCount/completedRoutes. |
+| /field/programs/[programId] — full detail | DONE — PENDING_HASH | 642 lines. Goal bars, outcome breakdown, daily sparkline, canvasser roster with rank bars, route heat map, status actions. |
 | /field/routes/[routeId] — full route detail | PENDING | 458 lines. Add interactive map, stop-by-stop list, canvasser GPS trail, outcomes summary. |
 | /field/teams — full team management | DONE — 8235724 | Performance stats, shift scheduling, leaderboard, contact assignment. |
 | /field/follow-ups — full workflow | DONE — 8235724 | Assignment to canvasser, bulk re-assign, outcome tracking, Adoni scripts. |

@@ -42,9 +42,9 @@ export interface Program {
   createdAt: string;
   _count: ProgramCounts;
   createdBy: { id: string; name: string | null };
-  contactedCount: number;
-  supporterCount: number;
-  completedRoutes: number;
+  contactedCount?: number;
+  supporterCount?: number;
+  completedRoutes?: number;
 }
 
 interface Turf {
@@ -393,10 +393,16 @@ function ProgramCard({
                     <Users className="h-3.5 w-3.5" />
                     {program._count.shifts} shift{program._count.shifts !== 1 ? "s" : ""}
                   </span>
-                  {program.contactedCount > 0 && (
+                  {(program.contactedCount ?? 0) > 0 && (
                     <span className="flex items-center gap-1 text-emerald-600">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      {program.contactedCount.toLocaleString()} contacts
+                      {(program.contactedCount ?? 0).toLocaleString()} contacts
+                    </span>
+                  )}
+                  {(program.supporterCount ?? 0) > 0 && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <Target className="h-3.5 w-3.5" />
+                      {(program.supporterCount ?? 0).toLocaleString()} supporters
                     </span>
                   )}
                   {(program.startDate || program.endDate) && (
@@ -407,9 +413,17 @@ function ProgramCard({
                   )}
                 </div>
 
-                {/* Goal progress bars */}
-                {hasGoals && (
+                {/* Goal + completion bars */}
+                {(hasGoals || program._count.routes > 0) && (
                   <div className="mt-3 space-y-1.5">
+                    {program._count.routes > 0 && (
+                      <GoalBar
+                        label="Routes Complete"
+                        value={program.completedRoutes ?? 0}
+                        goal={program._count.routes}
+                        color="#6366f1"
+                      />
+                    )}
                     {program.goalDoors && (
                       <GoalBar
                         label="Doors"
@@ -421,7 +435,7 @@ function ProgramCard({
                     {program.goalContacts && (
                       <GoalBar
                         label="Contacts"
-                        value={program.contactedCount}
+                        value={program.contactedCount ?? 0}
                         goal={program.goalContacts}
                         color="#1D9E75"
                       />
@@ -429,7 +443,7 @@ function ProgramCard({
                     {program.goalSupporters && (
                       <GoalBar
                         label="Supporters"
-                        value={program.supporterCount}
+                        value={program.supporterCount ?? 0}
                         goal={program.goalSupporters}
                         color="#EF9F27"
                       />
@@ -496,7 +510,7 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
   const activeCount = programs.filter((p) => p.status === "active").length;
   const planningCount = programs.filter((p) => p.status === "planning").length;
   const totalDoors = programs.reduce((s, p) => s + p._count.attempts, 0);
-  const totalContacts = programs.reduce((s, p) => s + p.contactedCount, 0);
+  const totalContacts = programs.reduce((s, p) => s + (p.contactedCount ?? 0), 0);
   const contactRate = totalDoors > 0 ? Math.round((totalContacts / totalDoors) * 100) : 0;
 
   return (

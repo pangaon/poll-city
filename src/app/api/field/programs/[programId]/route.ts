@@ -58,7 +58,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       by: ["outcome"],
       where: { fieldProgramId: programId, campaignId },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { outcome: "desc" } },
     }),
     prisma.fieldAttempt.findMany({
       where: { fieldProgramId: programId, campaignId, attemptedAt: { gte: thirtyDaysAgo } },
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       by: ["attemptedById"],
       where: { fieldProgramId: programId, campaignId },
       _count: { _all: true },
-      orderBy: { _count: { _all: "desc" } },
+      orderBy: { _count: { attemptedById: "desc" } },
       take: 20,
     }),
     prisma.fieldAttempt.groupBy({
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const outcomeBreakdown = outcomeRows.map((r) => ({
     outcome: r.outcome,
-    count: r._count._all,
+    count: r._count?._all ?? 0,
     isContact: CONTACT_OUTCOMES.has(r.outcome),
   }));
 
@@ -107,10 +107,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     id: c.attemptedById,
     name: userMap.get(c.attemptedById)?.name ?? "Unknown",
     email: userMap.get(c.attemptedById)?.email ?? "",
-    attempts: c._count._all,
+    attempts: c._count?._all ?? 0,
   }));
 
-  return NextResponse.json({ data: { ...program, outcomeBreakdown, dailyStats, canvasserRoster } });
+  const routeAttemptCounts = routeAttemptGroups.map((g) => ({
+    routeId: g.routeId!, count: g._count?._all ?? 0,
+  }));
+
+  return NextResponse.json({ data: { ...program, outcomeBreakdown, dailyStats, canvasserRoster, routeAttemptCounts } });
 }
 
 // ── PATCH /api/field/programs/[programId] ────────────────────────────────────

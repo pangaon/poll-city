@@ -72,8 +72,9 @@ const FIELD_SECTION: NavSection = {
   id: "field",
   label: "Field",
   items: [
-    { href: "/field-ops",  icon: ClipboardList, label: "Field Ops"     },
-    { href: "/field/turf", icon: Map,           label: "Turf & Map"    },
+    { href: "/field-ops",      icon: ClipboardList, label: "Field Ops"     },
+    { href: "/field/programs", icon: ClipboardList, label: "Programs"      },
+    { href: "/field/turf",     icon: Map,           label: "Turf & Map"    },
     { href: "/gotv",       icon: Target,        label: "GOTV"          },
     { href: "/eday",       icon: Vote,          label: "Election Day"  },
     { href: "/signs",      icon: PenSquare,     label: "Signs"         },
