@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: nav cleanup — sidebar + mobile nav consolidated)
+**Updated by:** Claude Sonnet 4.6 (session: QR downstream wiring — full connection chain)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -16,9 +16,9 @@
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 - `.claude/scheduled_tasks.lock` is now in `.gitignore` — no more dirty tree on push.
 
-**Currently committed and live:** QR Capture, Comms Phase 7 (Automation Engine), CIE, RCAE, Finance Phase 8, sidebar redesign, ALL Sprint 3 field modules (Sprint 3 COMPLETE), **Sprint 4 print/jobs full suite** (DONE), **nav cleanup** (14c5e67 + b421ab6 — DONE).
+**Currently committed and live:** QR Capture full connection chain (21c0573 — DONE), QR UX hardening + batch creation, Comms Phase 7, Sprint 3 field modules COMPLETE, Sprint 4 print/jobs full suite, nav cleanup.
 
-**Working tree:** `src/lib/qr/capture.ts` has uncommitted WIP (QR contact-enrichment + email hooks from prior session — NOT committed, review before committing).
+**Working tree:** Clean.
 
 **Stashes:** None.
 
@@ -43,6 +43,33 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — QR downstream wiring — full connection chain)
+
+**What shipped (commit `21c0573`):**
+- **`src/lib/qr/capture.ts`** — `captureIdentity` fully wired:
+  - **Contact CREATE** when no email/phone match found + name provided (firstName/lastName parsed, importSource: qr_capture, supportLevel + funnelStage from intent)
+  - **Contact UPDATE** on match — lastContactedAt, signRequested, volunteerInterest, supportLevel, funnelStage (never downgrades)
+  - **Interaction record** (field_encounter, source: self) with geo coordinates + intent note
+  - **Sign record** in Signs module — `address1` required, uses "Address pending — QR capture" if no address provided
+  - **VolunteerProfile** — checks `contactId @unique` before creating, non-fatal
+  - **Thank-you email** via Resend — skips if doNotContact, no email, or no contact; campaign candidate name as fromName
+  - **QrFollowUp staff queue** — full context (intent, sign request, volunteer interest, contactId)
+  - **teaserMode hard stop** — prospect captured, all downstream skipped
+  - **ActivityLog intentionally skipped** — userId NOT nullable, QR captures have no authenticated user
+
+**Edge cases handled:**
+- doNotContact: skip email, still capture prospect + create contact
+- No name: skip Contact creation, still capture prospect
+- Duplicate volunteer profile: check @unique before create
+- Missing address on sign request: placeholder string
+- teaserMode: full stop after prospect create
+
+**Build:** GREEN — 454 pages, exit 0, pushed via push:safe.
+
+**Next session opener:** QR full connection chain is live. Next task: check WORK_QUEUE for PENDING Sprint 4 items (`/print/templates`, `/print/packs`, forms suite). Claim in WORK_QUEUE, build, push via `npm run push:safe`.
 
 ---
 
