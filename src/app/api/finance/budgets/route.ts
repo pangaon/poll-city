@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     where: { campaignId },
     include: {
       budgetLines: {
-        where: { isActive: true, parentBudgetLineId: null },
+        where: { isActive: true },
         select: {
           id: true,
           name: true,
@@ -42,7 +42,13 @@ export async function GET(req: NextRequest) {
           plannedAmount: true,
           committedAmount: true,
           actualAmount: true,
+          isLocked: true,
+          isActive: true,
+          warningThresholdPct: true,
+          parentBudgetLineId: true,
+          _count: { select: { expenses: true } },
         },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
       _count: { select: { budgetLines: true } },
     },

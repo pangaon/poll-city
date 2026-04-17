@@ -844,5 +844,48 @@ Every major user action. Every downstream effect. Honest status.
 
 ---
 
+---
+
+## CANDIDATE INTELLIGENCE ENGINE (CIE) — 2026-04-17
+
+Platform-level. Not campaign-scoped. All data is public/platform, not tenant-private.
+
+### News Article ingested
+| Effect | Status | Notes |
+|--------|--------|-------|
+| NewsArticle persisted (dedup by url) | ✓ CONNECTED | news-pipeline.ts |
+| NewsSignal created per detected phrase | ✓ CONNECTED | detectCandidateSignals() |
+| CandidateLead created or score updated | ✓ CONNECTED | resolveCandidate() + resolver.ts |
+| CandidateProfile auto-created on auto_verified | ✓ CONNECTED | news-pipeline.ts |
+| IntelSourceHealth record created per run | ✓ CONNECTED | processDataSource() |
+| DataSource.lastCheckedAt updated | ✓ CONNECTED | processDataSource() |
+| audit() logged | ✓ CONNECTED | /api/intel/leads POST, PATCH |
+
+### CandidateLead manually reviewed
+| Effect | Status | Notes |
+|--------|--------|-------|
+| verificationStatus updated (verify/reject/merge) | ✓ CONNECTED | PATCH /api/intel/leads/[id] |
+| CandidateProfile created on manual verify | ✓ CONNECTED | PATCH /api/intel/leads/[id] |
+| audit() logged on every review action | ✓ CONNECTED | PATCH /api/intel/leads/[id] |
+
+### Candidate outreach initiated
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Eligibility check (30-day cooldown) | ✓ CONNECTED | checkOutreachEligibility() |
+| CandidateOutreachAttempt created | ✓ CONNECTED | recordOutreachAttempt() |
+| audit() logged | ✓ CONNECTED | POST /api/intel/outreach |
+| Email actually sent | ✗ NOT CONNECTED | stubbed — needs Resend template wired in |
+| CandidateProfile.officialId set on conversion | ✗ NOT CONNECTED | manual step for now |
+| convertedToUser flag | ✗ NOT CONNECTED | needs hook from onboarding flow |
+
+### CIE → downstream systems
+| Effect | Status | Notes |
+|--------|--------|-------|
+| CandidateProfile → Official (on election) | ✗ NOT CONNECTED | manual promotion only |
+| CandidateProfile → onboarding pre-fill | ✗ NOT CONNECTED | future phase |
+| New lead → ops alerts | ✗ NOT CONNECTED | future: alert SUPER_ADMIN on high-confidence lead |
+
+---
+
 *This file is the truth. If code and this file disagree, fix the code.*
 *Updated every session. Never let it fall behind.*

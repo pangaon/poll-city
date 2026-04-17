@@ -302,16 +302,18 @@ function QuickAddModal({
 export default function FinanceOverviewClient({ campaignId }: { campaignId: string }) {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [rev, setRev] = useState(0);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     fetch(`/api/finance/reports/overview?campaignId=${campaignId}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((j: { data?: OverviewData }) => { if (j.data) setData(j.data); })
+      .catch(() => setError("Failed to load finance overview"))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId, rev]);
 
   if (loading) {
@@ -325,6 +327,15 @@ export default function FinanceOverviewClient({ campaignId }: { campaignId: stri
         </div>
         <div className="h-20 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
         <div className="h-40 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-700 dark:text-red-300">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span>{error}</span>
       </div>
     );
   }
@@ -451,7 +462,7 @@ export default function FinanceOverviewClient({ campaignId }: { campaignId: stri
                       <Link href="/finance/expenses" className="text-xs text-[#1D9E75] hover:underline font-medium">View all</Link>
                     </div>
                     <div className="divide-y divide-gray-50 dark:divide-slate-800">
-                      {data.recentExpenses.map((e) => (
+                      {(data.recentExpenses ?? []).map((e) => (
                         <div key={e.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">{e.description}</p>

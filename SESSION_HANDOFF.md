@@ -26,7 +26,69 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Finance Sprint 2 UI hardening)
+## LAST SESSION (2026-04-17 — Candidate Intelligence Engine)
+
+**What shipped:**
+
+### Candidate Intelligence Engine (CIE) — full platform build
+
+**Schema additions** (6 new models, DataSource extended):
+- `CandidateLead` — raw unverified detections from any source
+- `CandidateProfile` — verified canonical candidate records
+- `NewsArticle` — dedicated news ingestion store (dedup by URL)
+- `NewsSignal` — candidate announcement signals from articles
+- `CandidateOutreachAttempt` — rich outreach tracking with cooldown logic
+- `IntelSourceHealth` — per-source health check log
+- `DataSource` extended with: `municipality`, `entityTypes`, `priorityTier`, `authorityScore`, `automationStatus`, `parserStrategy`, `crawlAllowed`, `rssUrl`, `candidateDetectionEnabled`
+
+**Source Registry** (16 sources seeded via POST /api/intel/seed):
+- Elections Canada, Elections Ontario (both `candidateDetectionEnabled: false` — endpoints TBD)
+- Toronto Open Data (CKAN), City of Toronto News, Toronto City Council
+- Brampton, Mississauga, Vaughan, Markham, Ottawa (all manual_import, endpoints TBD)
+- OpenNorth Represent API, Statistics Canada boundaries
+- CBC News RSS, Toronto Star RSS, NewsAPI.org, Government of Canada News
+
+**Detection Engine** (`src/lib/intel/`):
+- `phrases.ts` — configurable phrase families (strong/moderate/weak), office/jurisdiction patterns
+- `detector.ts` — sentence-level candidate signal extraction
+- `scorer.ts` — 0-100 confidence score (authority × type multiplier + phrase strength + entity presence + recency + corroboration)
+- `resolver.ts` — Levenshtein fuzzy deduplication (85% threshold)
+- `verifier.ts` — auto-verify ≥70 + all fields, pending 40-69, reject <40
+- `enricher.ts` — crawl candidate website for email/phone/socials
+- `outreach.ts` — eligibility check, record/mark-sent/mark-failed
+- `news-pipeline.ts` — orchestrator: fetch → detect → score → resolve → persist
+- `seed-sources.ts` — CIE source registry seed (16 sources)
+
+**API Routes:**
+- `GET/POST /api/intel/sources` — source registry CRUD
+- `GET/POST /api/intel/leads` — candidate lead list + manual create
+- `GET/PATCH /api/intel/leads/[id]` — lead detail + verify/reject/merge/flag
+- `GET /api/intel/profiles` — verified candidate profiles
+- `GET /api/intel/news` — articles + signals views
+- `GET/POST /api/intel/outreach` — outreach tracking + initiate
+- `GET /api/intel/health` — source health overview
+- `POST /api/intel/seed` — seed CIE sources (SUPER_ADMIN only)
+- `GET /api/cron/intel-ingest` — scheduled ingestion (CRON_SECRET protected)
+- `GET /api/cron/intel-source-health` — HEAD-check all sources
+
+**Command Center UI** (`/app/(app)/intel/`):
+- 6 tabs: Live Feed, Candidates, Review Queue, Outreach, Sources, Health
+- Review Queue: Verify / Flag / Reject actions with optimistic UI
+- Health: 4-card status summary + per-source last-check table
+- Seed Sources + Run Ingest buttons
+
+**Tests:** 29 unit tests — scorer (8), phrases (14), verifier (7). All passing.
+
+**What's stubbed (intentionally):**
+- Outreach email send — eligibility + record created, actual Resend send call TBD
+- Elections Canada/Ontario/municipal official endpoints — base URLs confirmed, specific endpoints not confirmed, `candidateDetectionEnabled: false`
+- Social signal ingestion — architecture in place, adapter TBD when API keys available
+- CandidateProfile → Official promotion — manual for now
+- CIE alerts → ops command center — future phase
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Finance Sprint 2 UI hardening)
 
 **What shipped — commit 83ca093:**
 
@@ -175,25 +237,28 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Finance Sprint 2 DONE (2026-04-17). Spend chart, variance %, compliance card, quick-add modal all live.
+CIE (Candidate Intelligence Engine) DONE (2026-04-17). Full detection/scoring/review/outreach pipeline live.
 Build command: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 What's live:
-- /finance overview — monthly burn chart, recent expenses, compliance status card, quick-add modal
-- /finance/budget — variance % column, over-budget banner
-- Railway DB — ?sslmode=require in .env, all Prisma commands work from bash
+- /intel — 6-tab command center (SUPER_ADMIN only)
+- /api/intel/* — source registry, leads, profiles, news, outreach, health
+- /api/cron/intel-ingest — run with CRON_SECRET Bearer header to ingest all active CIE sources
+- POST /api/intel/seed — seed 16 sources into DataSource table (run once after db push)
 
-Read WORK_QUEUE.md. Next Sprint 2 priority:
+CRITICAL: db push still needed:
+  npx prisma db push
+  (6 new models: CandidateLead, CandidateProfile, NewsArticle, NewsSignal, CandidateOutreachAttempt, IntelSourceHealth)
+  (DataSource has 9 new fields)
 
-1. Communications Phase 7 — Automation Engine. AutomationFlow model (triggers + steps + enrollment),
-   /api/comms/automations CRUD, enrollment cron (/api/cron/automation-enrollment),
-   AutomationTab in communications-client.tsx. Triggers: contact_created, donation_received,
-   event_registered, tag_added, date_based. Steps: send_email, send_sms, wait, add_tag.
+GEORGE TODO: Add NEWS_API_KEY to Railway env vars to enable NewsAPI.org ingestion.
 
-2. Alternative: Finance approval workflow — add line-item budget change requests (CM submits,
-   Treasurer approves/rejects), stored in a BudgetChangeRequest model with approval audit trail.
+Next recommended tasks:
+1. Communications Phase 7 — Automation Engine (AutomationFlow, triggers, steps, enrollment cron)
+2. CIE Phase 2 — Wire outreach email (Resend template for "claim your profile" to verified candidates)
+3. Finance Phase 8 hardening (remaining Sprint 2 items)
 
-Pick one, claim it, run npm run build before pushing.
+Read WORK_QUEUE.md. Pick one, claim it, run npm run build before pushing.
 ```
 
 ---

@@ -423,5 +423,14 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 ---
 
+## MODULE: REPUTATION COMMAND + ALERTS ENGINE (RCAE)
+
+| Task | Status | Notes |
+|---|---|---|
+| RCAE — full platform build (schema, service layer, API, UI, tests) | CLAIMED 2026-04-17 | 8 new models, /api/reputation/*, /app/(app)/reputation/, alerts dashboard, command center, issue workspace, response page editor, onboarding, unit tests |
+
+---
+
+*Last updated: 2026-04-17 — RCAE module claimed. — Claude Sonnet 4.6*
 *Last updated: 2026-04-15 — Full platform route audit complete (115 routes). 46 FULL BUILD, 54 PARTIAL, 15 STUB. All gaps now tracked above. Sprints 1-5 + stub decisions added. — Claude Sonnet 4.6*
 *This file is the truth. Code and git are the proof. This file is the map.*

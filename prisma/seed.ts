@@ -1946,6 +1946,90 @@ async function main() {
   console.log("   Budget Transfer: 1 (Digital → Advertising, $200, approved)");
   console.log("   ~$16,500 committed/spent of $35,000 (~47% through budget)");
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // FUELOPS — Ontario Vendor Network (30 vendors, 10 cities)
+  // All records marked isSeeded=true — safe to identify and filter in demos.
+  // ──────────────────────────────────────────────────────────────────────────
+  const fuelVendors = [
+    // Toronto
+    { name: "Canteen Co.", city: "Toronto", email: "hello@canteenco.ca", phone: "416-555-0101", cuisineTypes: ["sandwiches","wraps","salads"], serviceTags: ["large_groups","same_day"], dietaryOptions: ["vegetarian","vegan","gluten_free"], sameDay: true, reliabilityScore: 88, partnershipTier: 2, pricePerHead: 11.50, leadTimeDays: 1 },
+    { name: "Forno Catering", city: "Toronto", email: "orders@fornocatering.com", phone: "416-555-0102", cuisineTypes: ["pizza","pasta","baked"], serviceTags: ["large_groups","bulk_orders"], dietaryOptions: ["vegetarian"], sameDay: false, reliabilityScore: 82, partnershipTier: 1, pricePerHead: 14.00, leadTimeDays: 2 },
+    { name: "Spice Route Events", city: "Toronto", email: "info@spiceroute.ca", phone: "416-555-0103", cuisineTypes: ["indian","middle_eastern","fusion"], serviceTags: ["dietary_accommodations","setup_included"], dietaryOptions: ["vegetarian","vegan","halal","gluten_free"], sameDay: false, reliabilityScore: 79, partnershipTier: 0, pricePerHead: 16.00, leadTimeDays: 2 },
+    // Mississauga
+    { name: "Meadowvale Deli", city: "Mississauga", email: "orders@meadowvale.ca", phone: "905-555-0201", cuisineTypes: ["deli","sandwiches","platters"], serviceTags: ["same_day","local_pickup"], dietaryOptions: ["gluten_free"], sameDay: true, reliabilityScore: 75, partnershipTier: 0, pricePerHead: 9.50, leadTimeDays: 1 },
+    { name: "Square One Eats", city: "Mississauga", email: "catering@sq1eats.ca", phone: "905-555-0202", cuisineTypes: ["burgers","wraps","bowls"], serviceTags: ["large_groups","delivery"], dietaryOptions: ["vegetarian","vegan"], sameDay: false, reliabilityScore: 72, partnershipTier: 0, pricePerHead: 13.00, leadTimeDays: 1 },
+    { name: "Lakeshore Catering", city: "Mississauga", email: "book@lakeshorecatering.ca", phone: "905-555-0203", cuisineTypes: ["italian","comfort","salads"], serviceTags: ["dietary_accommodations","setup_included"], dietaryOptions: ["vegetarian","gluten_free"], sameDay: false, reliabilityScore: 84, partnershipTier: 1, pricePerHead: 18.00, leadTimeDays: 3 },
+    // Brampton
+    { name: "Heartland Box Lunch", city: "Brampton", email: "hello@heartlandboxlunch.ca", phone: "905-555-0301", cuisineTypes: ["sandwiches","wraps","snacks"], serviceTags: ["same_day","bulk_orders"], dietaryOptions: ["vegetarian","halal"], sameDay: true, reliabilityScore: 80, partnershipTier: 0, pricePerHead: 8.75, leadTimeDays: 1 },
+    { name: "Peel Catering Group", city: "Brampton", email: "events@peelcatering.ca", phone: "905-555-0302", cuisineTypes: ["south_asian","fusion","comfort"], serviceTags: ["large_groups","dietary_accommodations"], dietaryOptions: ["vegetarian","vegan","halal","gluten_free"], sameDay: false, reliabilityScore: 77, partnershipTier: 0, pricePerHead: 15.00, leadTimeDays: 2 },
+    { name: "Mayfield Kitchen", city: "Brampton", email: "info@mayfieldkitchen.ca", phone: "905-555-0303", cuisineTypes: ["comfort","canadian","baked"], serviceTags: ["local_pickup","bulk_orders"], dietaryOptions: ["vegetarian"], sameDay: false, reliabilityScore: 68, partnershipTier: 0, pricePerHead: 12.00, leadTimeDays: 2 },
+    // Vaughan
+    { name: "Vaughan Fresh", city: "Vaughan", email: "catering@vaughanfresh.ca", phone: "905-555-0401", cuisineTypes: ["salads","wraps","bowls"], serviceTags: ["healthy","same_day"], dietaryOptions: ["vegetarian","vegan","gluten_free"], sameDay: true, reliabilityScore: 83, partnershipTier: 1, pricePerHead: 13.50, leadTimeDays: 1 },
+    { name: "Woodbridge Catering", city: "Vaughan", email: "book@woodbridgecatering.ca", phone: "905-555-0402", cuisineTypes: ["italian","mediterranean","platters"], serviceTags: ["large_groups","setup_included"], dietaryOptions: ["vegetarian"], sameDay: false, reliabilityScore: 74, partnershipTier: 0, pricePerHead: 17.50, leadTimeDays: 2 },
+    // Markham
+    { name: "Pacific Rim Catering", city: "Markham", email: "orders@pacificrimcatering.ca", phone: "905-555-0501", cuisineTypes: ["asian_fusion","sushi","rice_bowls"], serviceTags: ["dietary_accommodations","large_groups"], dietaryOptions: ["vegetarian","vegan","gluten_free"], sameDay: false, reliabilityScore: 86, partnershipTier: 1, pricePerHead: 16.50, leadTimeDays: 2 },
+    { name: "Markham Bistro Box", city: "Markham", email: "hello@markhambbistrobox.ca", phone: "905-555-0502", cuisineTypes: ["wraps","salads","snacks"], serviceTags: ["same_day","local_pickup"], dietaryOptions: ["vegetarian","halal"], sameDay: true, reliabilityScore: 71, partnershipTier: 0, pricePerHead: 10.00, leadTimeDays: 1 },
+    // Hamilton
+    { name: "Steel City Eats", city: "Hamilton", email: "catering@steelcityeats.ca", phone: "905-555-0601", cuisineTypes: ["bbq","comfort","sandwiches"], serviceTags: ["large_groups","delivery"], dietaryOptions: ["gluten_free"], sameDay: false, reliabilityScore: 78, partnershipTier: 0, pricePerHead: 12.50, leadTimeDays: 2 },
+    { name: "Hess Village Catering", city: "Hamilton", email: "events@hessvillagecatering.ca", phone: "905-555-0602", cuisineTypes: ["canadian","pub_fare","platters"], serviceTags: ["same_day","bulk_orders"], dietaryOptions: ["vegetarian"], sameDay: true, reliabilityScore: 70, partnershipTier: 0, pricePerHead: 11.00, leadTimeDays: 1 },
+    { name: "James Street Kitchen", city: "Hamilton", email: "book@jamesstreekitchen.ca", phone: "905-555-0603", cuisineTypes: ["artisan","salads","bakery"], serviceTags: ["dietary_accommodations","setup_included"], dietaryOptions: ["vegetarian","vegan","gluten_free","nut_free"], sameDay: false, reliabilityScore: 90, partnershipTier: 2, pricePerHead: 19.00, leadTimeDays: 2 },
+    // Ottawa
+    { name: "Capital Catering Co.", city: "Ottawa", email: "info@capitalcateringco.ca", phone: "613-555-0701", cuisineTypes: ["canadian","mediterranean","platters"], serviceTags: ["large_groups","setup_included","delivery"], dietaryOptions: ["vegetarian","vegan","halal","gluten_free"], sameDay: false, reliabilityScore: 92, partnershipTier: 2, pricePerHead: 20.00, leadTimeDays: 3 },
+    { name: "ByWard Lunch Box", city: "Ottawa", email: "orders@bywardlunchbox.ca", phone: "613-555-0702", cuisineTypes: ["wraps","salads","sandwiches"], serviceTags: ["same_day","local_pickup"], dietaryOptions: ["vegetarian","vegan"], sameDay: true, reliabilityScore: 81, partnershipTier: 1, pricePerHead: 10.50, leadTimeDays: 1 },
+    { name: "Glebe Provisions", city: "Ottawa", email: "catering@glebeprovisions.ca", phone: "613-555-0703", cuisineTypes: ["comfort","pastry","light_bites"], serviceTags: ["bulk_orders","same_day"], dietaryOptions: ["vegetarian","gluten_free"], sameDay: true, reliabilityScore: 76, partnershipTier: 0, pricePerHead: 9.00, leadTimeDays: 1 },
+    // London
+    { name: "Forest City Fare", city: "London", email: "hello@forestcityfare.ca", phone: "519-555-0801", cuisineTypes: ["comfort","canadian","platters"], serviceTags: ["large_groups","delivery"], dietaryOptions: ["vegetarian","gluten_free"], sameDay: false, reliabilityScore: 74, partnershipTier: 0, pricePerHead: 11.50, leadTimeDays: 2 },
+    { name: "Dundas Catering Works", city: "London", email: "orders@dundascateringworks.ca", phone: "519-555-0802", cuisineTypes: ["bbq","sandwiches","sides"], serviceTags: ["same_day","bulk_orders"], dietaryOptions: [], sameDay: true, reliabilityScore: 66, partnershipTier: 0, pricePerHead: 8.50, leadTimeDays: 1 },
+    { name: "Western Provisions", city: "London", email: "catering@westernprovisions.ca", phone: "519-555-0803", cuisineTypes: ["mediterranean","wraps","bowls"], serviceTags: ["dietary_accommodations","large_groups"], dietaryOptions: ["vegetarian","vegan","halal"], sameDay: false, reliabilityScore: 80, partnershipTier: 0, pricePerHead: 14.00, leadTimeDays: 2 },
+    // Kitchener-Waterloo
+    { name: "Tech Corridor Catering", city: "Kitchener", email: "book@techcatering.ca", phone: "519-555-0901", cuisineTypes: ["fusion","wraps","bowls"], serviceTags: ["same_day","dietary_accommodations"], dietaryOptions: ["vegetarian","vegan","gluten_free"], sameDay: true, reliabilityScore: 82, partnershipTier: 1, pricePerHead: 12.00, leadTimeDays: 1 },
+    { name: "Uptown Kitchen", city: "Kitchener", email: "info@uptownkitchen.ca", phone: "519-555-0902", cuisineTypes: ["comfort","sandwiches","salads"], serviceTags: ["local_pickup","bulk_orders"], dietaryOptions: ["vegetarian"], sameDay: false, reliabilityScore: 69, partnershipTier: 0, pricePerHead: 10.00, leadTimeDays: 1 },
+    { name: "Waterloo Eats Co.", city: "Kitchener", email: "catering@waterlooeats.ca", phone: "519-555-0903", cuisineTypes: ["wraps","grain_bowls","pastry"], serviceTags: ["healthy","same_day"], dietaryOptions: ["vegetarian","vegan","gluten_free","nut_free"], sameDay: true, reliabilityScore: 85, partnershipTier: 1, pricePerHead: 13.00, leadTimeDays: 1 },
+    // Windsor
+    { name: "Ambassador Bridge Catering", city: "Windsor", email: "events@abcatering.ca", phone: "519-555-1001", cuisineTypes: ["canadian","comfort","platters"], serviceTags: ["large_groups","delivery"], dietaryOptions: ["vegetarian","gluten_free"], sameDay: false, reliabilityScore: 73, partnershipTier: 0, pricePerHead: 11.00, leadTimeDays: 2 },
+    { name: "Riverside Lunch Co.", city: "Windsor", email: "orders@riversidelunch.ca", phone: "519-555-1002", cuisineTypes: ["sandwiches","wraps","snacks"], serviceTags: ["same_day","local_pickup"], dietaryOptions: ["vegetarian"], sameDay: true, reliabilityScore: 68, partnershipTier: 0, pricePerHead: 8.00, leadTimeDays: 1 },
+    { name: "Pillette Village Eats", city: "Windsor", email: "catering@pilletteeats.ca", phone: "519-555-1003", cuisineTypes: ["comfort","deli","italian"], serviceTags: ["bulk_orders","dietary_accommodations"], dietaryOptions: ["vegetarian","gluten_free","nut_free"], sameDay: false, reliabilityScore: 77, partnershipTier: 0, pricePerHead: 13.50, leadTimeDays: 2 },
+  ];
+
+  for (const v of fuelVendors) {
+    const vendor = await prisma.foodVendor.upsert({
+      where: { id: `seed-fv-${v.name.toLowerCase().replace(/\s+/g, "-")}` },
+      create: {
+        id: `seed-fv-${v.name.toLowerCase().replace(/\s+/g, "-")}`,
+        name: v.name,
+        city: v.city,
+        province: "ON",
+        email: v.email,
+        phone: v.phone,
+        cuisineTypes: v.cuisineTypes,
+        serviceTags: v.serviceTags,
+        dietaryOptions: v.dietaryOptions,
+        sameDay: v.sameDay,
+        reliabilityScore: v.reliabilityScore,
+        partnershipTier: v.partnershipTier,
+        isSeeded: true,
+        status: "active",
+      },
+      update: {},
+    });
+
+    // Add a single pricing tier if not already present
+    const existing = await prisma.foodVendorPricingTier.findFirst({ where: { vendorId: vendor.id } });
+    if (!existing) {
+      await prisma.foodVendorPricingTier.create({
+        data: {
+          vendorId: vendor.id,
+          name: "Standard",
+          pricePerHead: v.pricePerHead,
+          leadTimeDays: v.leadTimeDays,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  console.log(`✅ FuelOps: ${fuelVendors.length} Ontario vendors seeded across 10 cities`);
+
   console.log("════════════════════════════════════════════════════");
   console.log("🚀 Poll City ecosystem seed complete!\n");
   console.log("CAMPAIGN APP:  admin@pollcity.dev      / password123  (George Hatzis — SUPER_ADMIN)");

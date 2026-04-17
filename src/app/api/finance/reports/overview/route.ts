@@ -190,9 +190,8 @@ export async function GET(req: NextRequest) {
         commitPct: totalPlanned > 0 ? totalCommitted / totalPlanned : 0,
         utilizationPct: totalPlanned > 0 ? (totalActual + totalCommitted) / totalPlanned : 0,
       },
-      varianceLines,
       byCategory,
-      atRiskLines,
+      atRiskLines, // top 8 lines at or over warning threshold
       monthlyBurn,
       alerts: {
         pendingApprovals,

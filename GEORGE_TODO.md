@@ -479,6 +479,30 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
+- [ ] **62. Run `npx prisma db push` after CIE schema is merged** — CRITICAL
+  The Candidate Intelligence Engine added 6 new models and extended DataSource.
+  Run from the project root (Railway DB must be reachable):
+  ```
+  npx prisma db push
+  ```
+  Until this runs, the CIE will crash (tables don't exist). The build passes locally without DB access.
+
+- [ ] **63. Run POST /api/intel/seed once after db push**
+  Seeds 16 source registry entries into DataSource. Run from Railway console or curl:
+  ```
+  curl -X POST https://your-domain.vercel.app/api/intel/seed \
+    -H "Cookie: <your SUPER_ADMIN session cookie>"
+  ```
+  Or trigger from the /intel command center "Seed Sources" button when logged in as SUPER_ADMIN.
+
+- [ ] **64. Add NEWS_API_KEY to Railway environment variables** — optional (enables NewsAPI.org)
+  1. Go to Railway → your project → Variables
+  2. Add: `NEWS_API_KEY` = your NewsAPI.org API key (free tier: 100 req/day)
+  3. Get a key at https://newsapi.org/register
+  Without this, NewsAPI source ingestion will log an error and skip — RSS sources still work.
+
+---
+
 *This file is maintained by AI sessions. Last updated: 2026-04-17*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
