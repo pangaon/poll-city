@@ -1327,9 +1327,6 @@ model Contact {
   inboxThreads        InboxThread[]
   emailTrackingEvents EmailTrackingEvent[]
 
-  // Reputation Command + Alerts Engine (RCAE)
-  ampParticipations AmplificationParticipation[]
-
   @@index([campaignId])
   @@index([lastName, firstName])
   @@index([supportLevel])
