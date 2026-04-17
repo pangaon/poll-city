@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, Plus, X, Calendar, Target, Route, Users,
   ChevronRight, CheckCircle2, Pause, ArchiveIcon, Clock,
+  TrendingUp, PlayCircle, DoorOpen,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState,
@@ -40,6 +41,8 @@ export interface Program {
   createdAt: string;
   _count: ProgramCounts;
   createdBy: { id: string; name: string | null };
+  contactedCount: number;
+  supporterCount: number;
 }
 
 interface Turf {
@@ -76,6 +79,41 @@ const STATUS_CONFIG: Record<FieldProgramStatus, { label: string; variant: "defau
   completed: { label: "Completed", variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> },
   archived: { label: "Archived", variant: "default", icon: <ArchiveIcon className="h-3 w-3" /> },
 };
+
+// ── Goal Bar ──────────────────────────────────────────────────────────────────
+
+function GoalBar({
+  label,
+  value,
+  goal,
+  color,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  color: string;
+}) {
+  const pct = Math.min(100, goal > 0 ? Math.round((value / goal) * 100) : 0);
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <span>{label}</span>
+        <span className="font-medium" style={{ color }}>
+          {value.toLocaleString()} / {goal.toLocaleString()} ({pct}%)
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: color }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
+        />
+      </div>
+    </div>
+  );
+}
 
 // ── Create Drawer ──────────────────────────────────────────────────────────────
 

@@ -44,7 +44,68 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Program not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: program });
+  const CONTACT_OUTCOMES = new Set([
+    "contacted", "supporter", "undecided", "volunteer_interest",
+    "donor_interest", "sign_requested", "follow_up",
+  ]);
+
+  // Outcome breakdown, daily stats, canvasser roster — all in parallel
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [outcomeRows, dailyAttempts, canvasserGroups] = await Promise.all([
+    prisma.fieldAttempt.groupBy({
+      by: ["outcome"],
+      where: { fieldProgramId: programId, campaignId },
+      _count: { _all: true },
+      orderBy: { _count: { _all: "desc" } },
+    }),
+    prisma.fieldAttempt.findMany({
+      where: { fieldProgramId: programId, campaignId, attemptedAt: { gte: thirtyDaysAgo } },
+      select: { attemptedAt: true, outcome: true },
+      orderBy: { attemptedAt: "asc" },
+    }),
+    prisma.fieldAttempt.groupBy({
+      by: ["attemptedById"],
+      where: { fieldProgramId: programId, campaignId },
+      _count: { _all: true },
+      orderBy: { _count: { _all: "desc" } },
+      take: 20,
+    }),
+  ]);
+
+  const outcomeBreakdown = outcomeRows.map((r) => ({
+    outcome: r.outcome,
+    count: r._count._all,
+    isContact: CONTACT_OUTCOMES.has(r.outcome),
+  }));
+
+  const dailyMap = new Map<string, { attempts: number; contacts: number }>();
+  for (const a of dailyAttempts) {
+    const day = a.attemptedAt.toISOString().slice(0, 10);
+    const existing = dailyMap.get(day) ?? { attempts: 0, contacts: 0 };
+    existing.attempts++;
+    if (CONTACT_OUTCOMES.has(a.outcome)) existing.contacts++;
+    dailyMap.set(day, existing);
+  }
+  const dailyStats = Array.from(dailyMap.entries()).map(([date, v]) => ({ date, ...v }));
+
+  const canvasserIds = canvasserGroups.map((c) => c.attemptedById);
+  const canvasserUsers = canvasserIds.length > 0
+    ? await prisma.user.findMany({
+        where: { id: { in: canvasserIds } },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
+  const userMap = new Map(canvasserUsers.map((u) => [u.id, u]));
+  const canvasserRoster = canvasserGroups.map((c) => ({
+    id: c.attemptedById,
+    name: userMap.get(c.attemptedById)?.name ?? "Unknown",
+    email: userMap.get(c.attemptedById)?.email ?? "",
+    attempts: c._count._all,
+  }));
+
+  return NextResponse.json({ data: { ...program, outcomeBreakdown, dailyStats, canvasserRoster } });
 }
 
 // ── PATCH /api/field/programs/[programId] ────────────────────────────────────

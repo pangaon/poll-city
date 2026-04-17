@@ -40,7 +40,36 @@ export async function GET(req: NextRequest) {
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 
-  return NextResponse.json({ data: programs });
+  // Per-program outcome analytics
+  const programIds = programs.map((p) => p.id);
+  const outcomeCounts = programIds.length > 0
+    ? await prisma.fieldAttempt.groupBy({
+        by: ["fieldProgramId", "outcome"],
+        where: { campaignId, fieldProgramId: { in: programIds } },
+        _count: { _all: true },
+      })
+    : [];
+
+  const CONTACT_OUTCOMES = new Set([
+    "contacted", "supporter", "undecided", "volunteer_interest",
+    "donor_interest", "sign_requested", "follow_up",
+  ]);
+
+  const analyticsMap = new Map<string, { contactedCount: number; supporterCount: number }>();
+  for (const row of outcomeCounts) {
+    if (!row.fieldProgramId) continue;
+    const existing = analyticsMap.get(row.fieldProgramId) ?? { contactedCount: 0, supporterCount: 0 };
+    if (CONTACT_OUTCOMES.has(row.outcome)) existing.contactedCount += row._count._all;
+    if (row.outcome === "supporter") existing.supporterCount += row._count._all;
+    analyticsMap.set(row.fieldProgramId, existing);
+  }
+
+  const data = programs.map((p) => ({
+    ...p,
+    ...(analyticsMap.get(p.id) ?? { contactedCount: 0, supporterCount: 0 }),
+  }));
+
+  return NextResponse.json({ data });
 }
 
 // ── POST /api/field/programs ─────────────────────────────────────────────────
