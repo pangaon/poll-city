@@ -351,7 +351,7 @@ function ProgramCard({
       const res = await fetch(`/api/field/programs/${program.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId: program.createdBy.id ? undefined : undefined, status: nextStatus }),
+        body: JSON.stringify({ campaignId: program.campaignId, status: nextStatus }),
       });
       if (res.ok) onStatusChange(program.id, nextStatus);
       else toast.error("Could not update status");
@@ -481,7 +481,7 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   function handleCreated(p: Program) {
-    setPrograms((prev) => [{ ...p, contactedCount: 0, supporterCount: 0 }, ...prev]);
+    setPrograms((prev) => [{ ...p, contactedCount: 0, supporterCount: 0, completedRoutes: 0 }, ...prev]);
   }
 
   function handleStatusChange(id: string, status: FieldProgramStatus) {
