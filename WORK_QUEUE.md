@@ -297,11 +297,11 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| /finance — overview complete | CLAIMED 2026-04-17 | 238 lines. Add live spend-vs-budget chart, compliance status, recent transactions, quick-add expense. |
-| /finance/budget — variance analysis + approval | PENDING | 427 lines. Add variance columns, over-budget alerts, line-item approval workflow. |
-| /finance/expenses — full form + receipt upload | PENDING | 349 lines. Add receipt image upload, category enforcement, policy validation, bulk import. |
+| /finance — overview complete | DONE — 83ca093 | Spend chart, compliance card, recent transactions, quick-add modal. |
+| /finance/budget — variance analysis + approval | CLAIMED 2026-04-17 | 427 lines. Add variance columns, over-budget alerts, line-item approval workflow. |
+| /finance/expenses — full form + receipt upload | CLAIMED 2026-04-17 | 349 lines. Add receipt image upload, category enforcement, policy validation, bulk import. |
 | /finance/purchase-requests — full approval chain | PENDING | 251 lines. Add multi-level approval, auto-reject on budget overrun, email notifications. |
-| /finance/vendors — full vendor profiles | PENDING | 187 lines. Add contract tracking, payment history, preferred vendor tags, W-9 status. |
+| /finance/vendors — full vendor profiles | CLAIMED 2026-04-17 | 187 lines. Add contract tracking, payment history, preferred vendor tags, W-9 status. |
 | /finance/reimbursements — full workflow | PENDING | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
 | /finance/approvals — queue + bulk actions | PENDING | 179 lines. Add bulk approve/reject, delegation, escalation rules, audit trail. |
 | /finance/reports — full report suite | PENDING | 468 lines. Add all report types: P&L, compliance, per-category breakdown, CSV/PDF export. |
