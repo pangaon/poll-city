@@ -108,6 +108,8 @@ export const ELECTION_TYPE_LABELS: Record<ElectionType, string> = {
   provincial: "Provincial",
   federal: "Federal",
   by_election: "By-Election",
+  nomination: "Nomination Race",
+  leadership: "Leadership Race",
   other: "Other",
 };
 

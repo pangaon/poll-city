@@ -70,6 +70,8 @@ enum ElectionType {
   provincial
   federal
   by_election
+  nomination
+  leadership
   other
 }
 

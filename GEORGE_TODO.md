@@ -437,6 +437,29 @@ Map-based turf drawing is built but needs real geocoded contacts to work.
 
 ---
 
+## 🟡 ONBOARDING — Backfill existing campaigns
+
+The new onboarding wizard only triggers for campaigns created after 2026-04-16.
+Run this once on Railway to ensure existing campaigns aren't accidentally sent to the wizard.
+
+- [ ] **59. Backfill existing campaigns as onboarded**
+  1. SSH into Railway or run locally with prod DATABASE_URL set:
+     ```
+     npx ts-node --project tsconfig.json scripts/mark-campaigns-onboarded.ts
+     ```
+  2. Output will say `✓ Marked X existing campaign(s) as onboarding complete.`
+  3. Verify by opening /dashboard — it should not redirect to /onboarding.
+
+- [ ] **60. Run schema migration when Railway DB is reachable**
+  The `nomination` and `leadership` ElectionType enum values are in the schema but not yet in the DB.
+  Connect to Railway and run:
+  ```
+  npx prisma migrate dev --name add_nomination_leadership_election_types --skip-seed
+  ```
+  Until this runs, campaigns of type nomination/leadership will fail to save.
+
+---
+
 *This file is maintained by AI sessions. Last updated: 2026-04-16*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

@@ -31,6 +31,8 @@ const ELECTION_TYPES = [
   { value: "provincial", label: "Provincial" },
   { value: "federal", label: "Federal" },
   { value: "by_election", label: "By-Election" },
+  { value: "nomination", label: "Nomination Race" },
+  { value: "leadership", label: "Leadership Race" },
   { value: "other", label: "Other" },
 ];
 
@@ -266,8 +268,8 @@ export default function NewCampaignPage() {
             accentColor: setupColors.accent,
           }),
         });
-        toast.success("Campaign setup complete!");
-        router.push("/dashboard");
+        toast.success("Campaign configured — let's finish setup!");
+        router.push("/onboarding");
         router.refresh();
       }
     } catch {
@@ -281,7 +283,7 @@ export default function NewCampaignPage() {
     if (setupStep < 3) {
       setSetupStep((s) => (s + 1) as 1 | 2 | 3);
     } else {
-      router.push("/dashboard");
+      router.push("/onboarding");
       router.refresh();
     }
   }
@@ -339,6 +341,9 @@ export default function NewCampaignPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const isMunicipal = form.electionType === "municipal";
+  const isNomination = form.electionType === "nomination";
+  const isLeadership = form.electionType === "leadership";
+  const isPartyRace = isNomination || isLeadership;
 
   // ── Setup wizard (post-creation) ──────────────────────────────────────────
   if (setupStep > 0) {
@@ -606,6 +611,49 @@ export default function NewCampaignPage() {
             </FormField>
           </div>
 
+          {/* ── Party + riding flow for nomination / leadership races ── */}
+          {isPartyRace && (
+            <>
+              <FormField label="Party" required>
+                <Input
+                  value={form.partyName}
+                  onChange={(e) => set("partyName", e.target.value)}
+                  placeholder={isLeadership ? "e.g. Ontario Liberal Party" : "e.g. NDP, Liberal, Conservative…"}
+                />
+              </FormField>
+              {isNomination && (
+                <FormField label="Province" required>
+                  <Select
+                    value={selectedProvince}
+                    onChange={(e) => {
+                      setSelectedProvince(e.target.value);
+                      set("jurisdiction", e.target.value);
+                    }}
+                  >
+                    <option value="">Select a province…</option>
+                    {PROVINCES.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </Select>
+                </FormField>
+              )}
+              <FormField label={isLeadership ? "Level" : "Riding / Constituency"}>
+                <Input
+                  value={isLeadership ? selectedProvince : selectedWard}
+                  onChange={(e) => {
+                    if (isLeadership) {
+                      setSelectedProvince(e.target.value);
+                    } else {
+                      setSelectedWard(e.target.value);
+                      set("jurisdiction", e.target.value);
+                    }
+                  }}
+                  placeholder={isLeadership ? "e.g. Federal, Ontario…" : "e.g. Riding 42 — Parkdale–High Park"}
+                />
+              </FormField>
+            </>
+          )}
+
           {/* ── Geo flow for municipal elections ── */}
           {isMunicipal && (
             <>
@@ -723,14 +771,16 @@ export default function NewCampaignPage() {
             </div>
           </FormField>
 
-          {/* Party */}
-          <FormField label="Party or Organisation">
-            <Input
-              value={form.partyName}
-              onChange={(e) => set("partyName", e.target.value)}
-              placeholder="Independent / Liberal / NDP…"
-            />
-          </FormField>
+          {/* Party — only show when not already captured above in the party-race flow */}
+          {!isPartyRace && (
+            <FormField label="Party or Organisation">
+              <Input
+                value={form.partyName}
+                onChange={(e) => set("partyName", e.target.value)}
+                placeholder="Independent / Liberal / NDP…"
+              />
+            </FormField>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2 border-t border-gray-100">
