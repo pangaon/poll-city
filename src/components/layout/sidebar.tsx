@@ -23,7 +23,6 @@ import {
   CreditCard,
   FileText,
   BarChart2,
-  Zap,
   Mic2,
   Landmark,
   Printer,
@@ -38,8 +37,7 @@ import {
   Truck,
   Brain,
   Search,
-  Smartphone,
-  Package,
+  Bell,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -74,17 +72,13 @@ const FIELD_SECTION: NavSection = {
   id: "field",
   label: "Field",
   items: [
-    { href: "/field-ops",      icon: ClipboardList, label: "Field Ops"     },
-    { href: "/field/programs", icon: ClipboardList, label: "Programs"      },
-    { href: "/field/turf",     icon: Map,           label: "Turf & Map"    },
-    { href: "/field/mobile",     icon: Smartphone,    label: "Mobile Entry"  },
-    { href: "/field/materials",  icon: Package,       label: "Materials"     },
-    { href: "/gotv",       icon: Target,        label: "GOTV"          },
-    { href: "/eday",       icon: Vote,          label: "Election Day"  },
-    { href: "/signs",      icon: PenSquare,     label: "Signs"         },
-    { href: "/events",     icon: CalendarDays,  label: "Events"        },
-    { href: "/qr",         icon: QrCode,        label: "QR Capture"    },
-    { href: "/fuel",       icon: Truck,         label: "Logistics"     },
+    { href: "/field-ops", icon: ClipboardList, label: "Field Ops"    },
+    { href: "/gotv",      icon: Target,        label: "GOTV"         },
+    { href: "/eday",      icon: Vote,          label: "Election Day" },
+    { href: "/signs",     icon: PenSquare,     label: "Signs"        },
+    { href: "/events",    icon: CalendarDays,  label: "Events"       },
+    { href: "/qr",        icon: QrCode,        label: "QR Capture"   },
+    { href: "/fuel",      icon: Truck,         label: "Logistics"    },
   ],
 };
 
@@ -96,6 +90,7 @@ const OUTREACH_SECTION: NavSection = {
     { href: "/calendar",       icon: Calendar,  label: "Calendar"       },
     { href: "/polls",          icon: BarChart3, label: "Polls"          },
     { href: "/forms",          icon: FileText,  label: "Forms"          },
+    { href: "/notifications",  icon: Bell,      label: "Voter Outreach" },
   ],
 };
 
@@ -112,11 +107,9 @@ const INTELLIGENCE_SECTION: NavSection = {
   id: "intelligence",
   label: "Intelligence",
   items: [
-    { href: "/reports",        icon: FileText,  label: "Reports"          },
-    { href: "/analytics",      icon: BarChart2, label: "Analytics"        },
-    { href: "/intel",          icon: Brain,     label: "Candidate Intel"  },
-    { href: "/reputation",     icon: Shield,    label: "Reputation"       },
-    { href: "/election-night", icon: Zap,       label: "Election Night"   },
+    { href: "/analytics",  icon: BarChart2, label: "Analytics"       },
+    { href: "/intel",      icon: Brain,     label: "Candidate Intel" },
+    { href: "/reputation", icon: Shield,    label: "Reputation"      },
   ],
 };
 
