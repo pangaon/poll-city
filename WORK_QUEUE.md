@@ -277,7 +277,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /notifications — voter outreach full build | DONE — see this session | Full push composer + phone preview + opt-in management table + device breakdown + delivery stats tabs |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
 | /eday — election day ops full build | DONE — 3cd4b3f | Role-aware: CM gets 4-tab command center (GOTV gap, strike-off, rides, polls); scrutineers get OCR tool. /api/eday/ops aggregated endpoint. |
-| /polls/[id]/live — live results full build | CLAIMED 2026-04-17 | Adding geographic breakdown (ward/riding), response trend chart. SSE stream + share controls already exist. |
+| /polls/[id]/live — live results full build | DONE — edc3316 | SSE stream + share controls were already built. Added: /api/polls/[id]/demographics (ward/riding groupBy + 30-day trend), DemographicsPanel client component with animated bar charts + trend line. |
 | /briefing — daily briefing full build | DONE — c110dc2 | Adoni morning summary card + health score + priorities + canvassing pace + red flags. |
 | /ai-assist — full Adoni in-app page | DONE — 108e504 | Full chat UI, 4 category groups, suggested prompts, localStorage history, copy button. |
 

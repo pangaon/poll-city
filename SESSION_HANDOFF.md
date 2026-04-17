@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: platform isolation audit + fixes)
+**Updated by:** Claude Sonnet 4.6 (session: /polls/[id]/live geographic breakdown)
 
 > Every session reads this file. Every session updates it at the end.
 > This is not optional. This is how one army stays coordinated.
@@ -26,22 +26,19 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — /settings/security full build + Railway SSL fix)
+## LAST SESSION (2026-04-17 — /polls/[id]/live geographic breakdown + Sprint 1 cleanup)
 
-**What shipped (all confirmed in HEAD):**
+**What shipped — commit edc3316:**
 
-### /settings/security — Sprint 1 DONE
-- **2FA (TOTP)** — QR code setup, backup codes (10 single-use), disable flow. `src/lib/auth/totp.ts`
-- **WebAuthn / biometrics** — register + delete passkeys. `/api/auth/webauthn/register`
-- **Active sessions** — list all devices with last-seen, revoke individual or all others. `/api/auth/sessions`
-- **Login history** — last 20 events with IP + device + success/failure flag. `/api/auth/security-events`
-- **API keys** — generate (shown once), revoke, list with last-used. `/api/auth/api-keys`
-- **PIPEDA data export** — full JSON export of everything Prisma has on the user. `/api/auth/data-export`
+### /polls/[id]/live — Sprint 1 DONE
+- **`/api/polls/[id]/demographics`** — new GET endpoint. Returns `byWard` (up to 12 wards, desc), `byRiding` (up to 12 ridings), and `trend` (30-day daily response buckets). Auth: public/unlisted polls open; campaign_only requires membership.
+- **`demographics-panel.tsx`** — lazy-loaded client component. Fetches demographics on mount (no server-side wait). Shows ward breakdown (horizontal bar), riding breakdown (horizontal bar), response trend line chart. Hidden entirely if no geographic data exists (clean no-op for polls without ward/riding on responses).
+- **`page.tsx`** — DemographicsPanel injected between LiveResultsStream and LivePageActions.
 
-### Railway SSL fix
-- **`.env` updated** — `?sslmode=require` appended to `DATABASE_URL`. All Prisma commands now work from bash shell. Previous P1001 errors were SSL handshake failures, not network failures.
-- **DB migrated** — `prisma db push` applied `UserSession` + `ApiKey` models to Railway. Both tables live. Sessions + API Keys sections of /settings/security are now fully functional in prod.
-- **Schema models** — `user_sessions` and `api_keys` tables created. George's TODO item 61 closed.
+### /settings/brand — already built (WORK_QUEUE corrected)
+- Audited brand page: `brand-client.tsx` (377 lines), `/api/campaigns/brand` PATCH route, `src/lib/brand/brand-kit.ts`, `/api/upload/logo` — all fully wired. WORK_QUEUE was outdated. Marked DONE without code changes.
+
+**Sprint 1 is now fully complete.** All 9 items DONE.
 
 ---
 
@@ -138,14 +135,14 @@ Commit `3cd4b3f` — /eday role-aware command center (CM: Command/Strike-Off/Rid
 | Demo + guided tour | ✓ LIVE | 7494b12 |
 | /coalitions | ✓ LIVE | 7ee982f |
 
-### Sprint 1 — still PENDING (customer-facing, do these first)
+### Sprint 1 — ALL DONE ✓
 
-| Route | What's missing |
+| Route | Status |
 |---|---|
 | `/settings/security` | ✓ DONE — 2FA, WebAuthn, sessions, API keys, PIPEDA export |
-| `/settings/brand` | Full colour picker, logo upload, font selector, preview |
+| `/settings/brand` | ✓ DONE — colour picker, logo upload, font selector, live preview, party presets |
 | `/eday` | ✓ DONE — CM command center + scrutineer OCR |
-| `/polls/[id]/live` | 99 lines only — real-time result stream, party breakdown |
+| `/polls/[id]/live` | ✓ DONE — SSE stream, geographic breakdown (ward/riding), trend chart, share controls |
 
 ### George's manual actions outstanding (full list in GEORGE_TODO.md)
 
@@ -162,22 +159,20 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-/settings/security DONE (2026-04-17). Railway DB migrated — Sessions + API Keys tables live.
-Build command on Windows: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
-DATABASE_URL in .env now includes ?sslmode=require — all Prisma commands work from bash.
+Sprint 1 is complete (2026-04-17). All 9 customer-facing items DONE. Build green on Windows.
+Build command: mkdir -p .next/server/pages && NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 What's live:
-- /settings/security — 2FA (TOTP + QR), WebAuthn/biometrics, active sessions, login history, API keys, PIPEDA export
-- Railway DB has user_sessions + api_keys tables (prisma db push applied 2026-04-17)
+- /settings/brand — colour picker, logo upload, font selector, party presets, live preview
+- /polls/[id]/live — SSE stream + geographic breakdown (ward/riding bar charts) + 30-day trend
 
-Read WORK_QUEUE.md. Next Sprint 1 priority:
+Read WORK_QUEUE.md. Next priority is Sprint 2 — Finance UI hardening. Suggested first task:
 
-1. /settings/brand — 377 lines, incomplete. Full colour picker (primary/secondary/accent),
-   logo upload (store URL), font selector (system fonts), live preview of campaign brand.
-   Writes to Campaign model fields. Auth: apiAuth + membership guard. Build it fully.
+1. /finance — overview page (238 lines). Add live spend-vs-budget chart, compliance status,
+   recent transactions, quick-add expense button.
 
-2. /polls/[id]/live — 99 lines only. Real-time result stream, party breakdown,
-   demographic splits, share controls. Claim it in WORK_QUEUE.md first.
+2. /finance/budget — variance analysis (427 lines). Add variance columns, over-budget alerts,
+   line-item approval workflow.
 
 Pick one, claim it, run npm run build before pushing.
 ```
