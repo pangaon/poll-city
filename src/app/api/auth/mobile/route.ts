@@ -14,7 +14,7 @@ import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET ?? "dev-secret-only-for-local-development",
+  process.env.NEXTAUTH_SECRET ?? "local-placeholder-do-not-use-in-production",
 );
 
 const ACCESS_TOKEN_TTL = 60 * 60 * 24; // 24 hours in seconds

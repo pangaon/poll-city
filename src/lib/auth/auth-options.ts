@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
     if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
       throw new Error("NEXTAUTH_SECRET is required in production");
     }
-    return "dev-secret-only-for-local-development";
+    return "local-placeholder-do-not-use-in-production";
   })(),
   session: {
     strategy: "jwt",
