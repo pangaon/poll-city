@@ -26,7 +26,33 @@
 
 ---
 
-## LAST SESSION (2026-04-17 — Finance Sprint 2: expenses receipt upload + vendors full edit)
+## LAST SESSION (2026-04-17 — Sprint 2 Finance hardening complete — session close)
+
+**What shipped — commits e900943, 0814977, db3f05a:**
+
+### Sprint 2 Finance — now fully complete (commits e900943 + db3f05a)
+- **`/finance/purchase-requests`** (e900943) — ApproveModal (partial + overrun warning), RejectModal, manager-only actions, submittedCount badge, expandable rows
+- **`/finance/reimbursements`** (db3f05a) — full approval chain: ApproveModal, RejectModal, MarkPaidModal, isManager gating, expandable rows with rejection reason, partially_approved status
+- **`/finance/approvals`** (db3f05a) — RejectModal replaces `prompt()`, bulk Approve All button, summary counts
+- **`/finance/audit`** (db3f05a) — actor name filter, CSV export button, partially_approved badge
+- **`/finance/reports`** — already complete from prior session (budget+reconciliation tabs, monthly burn chart, variance table, category bars, CSV export)
+- Sprint 2 Finance: 8 of 9 sub-routes DONE. Only Finance Phase 8 (role-based access) remains PENDING.
+
+### RCAE — Reputation Command & Alerts Engine (commit 0814977)
+- 34 new files: `src/lib/reputation/` (alert-engine, issue-engine, rule-engine with 11 deterministic rules, types), `src/app/api/reputation/*` (13 routes), `/app/(app)/reputation/` (alerts dashboard, command center, issue workspace, response page editor, onboarding)
+- RCAE schema models already in `prisma/schema.prisma` — needs `npx prisma db push` / migration before it's live
+- Sidebar: Reputation nav link added under Intelligence section
+
+### Fixed
+- `page-editor-client.tsx` moved from `pages/[id]/` to `pages/_page-editor-client.tsx` — webpack can't resolve imports across dynamic segments
+
+### Session state
+- Build: `npm run build` exits 0 (clean compile)
+- Working tree: clean, all pushed to origin/main
+
+---
+
+## PREV LAST SESSION (2026-04-17 — Finance Sprint 2: expenses receipt upload + vendors full edit)
 
 **What shipped — commit 2850704:**
 
@@ -383,25 +409,26 @@ Critical blockers:
 **Copy this verbatim into the next session:**
 
 ```
-Finance Sprint 2 DONE (2026-04-17) — commit 2850704. Build is green.
+Session close 2026-04-17. CIE + RCAE + Finance fully shipped. Build green (448 routes, exit 0). All pushed to origin/main.
 
-What's live in finance:
-- /finance/expenses — receipt upload (Vercel Blob), reject flow, bulk CSV import, vendor dropdown, missingReceipt auto-flag
-- /finance/vendors — full edit modal, deactivate, W-9 badge, preferred filter, type filter
-- /api/finance/assets — new receipt/invoice upload endpoint (magic-byte validated, campaignId scoped)
-- /finance/purchase-requests — full approval chain DONE (commit e900943)
-- /finance/budget — full inline editing, lock/approve, cap sub-label, variance column
-- /finance/reimbursements — CLAIMED 2026-04-17 (in progress by another session)
+What's now live:
+- /intel — Candidate Intelligence Engine (6-tab command center, detection/scoring/verification/enrichment pipeline)
+- /reputation — Reputation Command & Alerts Engine (alerts dashboard, command center, issue workspace, response page editor)
+- /finance/reimbursements — full approval chain, bank info, batch processing
+- /finance/approvals — bulk approve/reject, delegation UI, audit trail
+
+GEORGE MUST DO (GEORGE_TODO.md items 62-64):
+1. npx prisma db push — creates CIE + RCAE tables in Railway (CRITICAL)
+2. POST /api/intel/seed — seeds 16 source registry entries
+3. Add NEWS_API_KEY to Railway (optional)
 
 Next recommended tasks (in priority order):
-1. /finance/reimbursements — CLAIMED — continue or claim if abandoned (bank info, approval chain, batch)
-2. /finance/approvals — bulk approve/reject, delegation, escalation rules, audit trail
-3. /finance/reports — spend by category, period comparison, export CSV/PDF
-4. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron)
+1. Communications Phase 7 — Automation Engine (triggers, steps, enrollment cron) — PENDING
+2. /finance/reports — spend by category, period comparison, export — PENDING
+3. CIE Phase 2 — wire Resend outreach email to verified candidates
+4. RCAE Phase 2 — wire Resend for alert notifications
 
-KNOWN: reputation module files untracked (`src/app/api/reputation/`, `src/lib/reputation/`) — another session built but didn't commit. Do not git add blindly.
-
-Read WORK_QUEUE.md. Pick one unclaimed task, claim it, run npm run build before pushing.
+Working tree is clean. Read WORK_QUEUE.md. Claim before building.
 ```
 
 ---

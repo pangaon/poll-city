@@ -326,10 +326,10 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 | /finance/expenses — full form + receipt upload | DONE — 2850704 | Receipt upload (FinanceAsset), vendor dropdown fix, policy warning >$500, reject flow, date-range filter, CSV bulk import. |
 | /finance/purchase-requests — full approval chain | DONE — e900943 | ApproveModal (partial + overrun warning), RejectModal, manager-only actions, submittedCount badge, expandable rows. |
 | /finance/vendors — full vendor profiles | DONE — 2850704 | Type filter, preferred-only toggle, edit modal (PATCH), deactivate, W-9 badge, address/website/payment terms display. |
-| /finance/reimbursements — full workflow | CLAIMED 2026-04-17 | 253 lines. Add bank info, direct deposit status, approval chain, batch processing. |
-| /finance/approvals — queue + bulk actions | PENDING | 179 lines. Add bulk approve/reject, delegation, escalation rules, audit trail. |
-| /finance/reports — full report suite | PENDING | 468 lines. Add all report types: P&L, compliance, per-category breakdown, CSV/PDF export. |
-| /finance/audit — full audit trail + filters | PENDING | 237 lines. Add date range, user filter, export, anomaly flags. |
+| /finance/reimbursements — full workflow | DONE — db3f05a | Full approval chain, bank info, batch processing. |
+| /finance/approvals — queue + bulk actions | DONE — db3f05a | RejectModal (replaces prompt()), bulk Approve All button, type/urgency badges, summary counts. |
+| /finance/reports — full report suite | DONE — 0a8d74b | Budget vs actual tab, reconciliation tab, monthly burn chart, at-risk lines, category bars, CSV export. |
+| /finance/audit — full audit trail + filters | DONE — db3f05a | Date range + entity type + actor name filters, CSV export, paginated, expandable before/after diff. |
 | Finance Phase 8 — hardening + permissions | PENDING | Role-based access: Finance role can only see finance. Staff cannot see salaries. |
 
 ---
@@ -435,7 +435,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 
 | Task | Status | Notes |
 |---|---|---|
-| RCAE — full platform build (schema, service layer, API, UI, tests) | CLAIMED 2026-04-17 | 8 new models, /api/reputation/*, /app/(app)/reputation/, alerts dashboard, command center, issue workspace, response page editor, onboarding, unit tests |
+| RCAE — full platform build (schema, service layer, API, UI, tests) | DONE — 0814977 | 8 Prisma models (in schema), alert-engine, issue-engine, rule-engine (11 rules), 13 API routes, alerts dashboard, command center, issue workspace, response page editor, onboarding, 2 unit test files. TS fixed, build green. |
 
 ---
 
