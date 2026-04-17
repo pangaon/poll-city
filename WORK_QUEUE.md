@@ -272,7 +272,7 @@ George has a Figma Make prototype at https://valley-revise-45442235.figma.site t
 |---|---|---|
 | /billing — complete Stripe payment integration | DONE — 13965bc | Invoice history, portal button, past-due banner, cancel-at-period-end warning, success/cancel URL toasts, animated plan selector. |
 | /settings — full settings page | DONE — 6eae5e2 | Profile, campaign profile, integration status dashboard (6 cards), danger zone (archive). |
-| /settings/security — complete security settings | CLAIMED 2026-04-16 | 501 lines but incomplete. Add 2FA management, active sessions, login history, API keys. |
+| /settings/security — complete security settings | DONE — ad628fb | 2FA (TOTP QR + backup codes + disable), WebAuthn biometrics, active sessions, login history, API keys, PIPEDA data export. All API routes wired. |
 | /settings/brand — complete brand customization | PENDING | 377 lines, incomplete. Full colour picker, logo upload, font selector, preview. |
 | /notifications — voter outreach full build | DONE — see this session | Full push composer + phone preview + opt-in management table + device breakdown + delivery stats tabs |
 | /eday/hq — Campaign Manager election night command center | DONE — 8d96160 | Live vote totals, scrutineer roster, 30s auto-refresh, animated vote bars |
