@@ -84,7 +84,7 @@ Everything below is built, pushed, and accessible in the app.
 |---|---|---|
 | Quick Capture System — full election results capture (advance vote + election day) | CLAIMED 2026-04-17 | Schema + API + admin setup + mobile capture + war room + review/export. Full enterprise build. |
 | Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | DONE — commit 0e5ff04 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
-| Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | CLAIMED 2026-04-17 | Rebuild settings/public-page from settings-form to Squarespace-level builder; 4 layout variants in candidates/[slug]; template gallery picker; LivePreview overhaul |
+| Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | DONE — commit b805fc4 | Rebuilt settings/public-page: InlineGallery (24 templates), 4 distinct LivePreview heroes, showGallery state wired. 4 layout variants in candidates/[slug] and candidate-page-client.tsx. |
 
 ---
 
@@ -105,7 +105,7 @@ These are coherence failures — things that should connect but don't.
 | Gap | Status | What's missing | User impact |
 |---|---|---|---|
 | Brand Kit → applied to outputs | PENDING | `/settings/brand` saves colours/logo/fonts but they are NOT applied to email templates, print designs, or the candidate public page. Settings page that sets nothing. | Every campaign looks generic |
-| Social → Campaign consent bridge | CLAIMED 2026-04-17 | Voters on Poll City Social who follow/vote can't consent to being contacted by a specific campaign. The link between the two platforms is missing. | Key monetization gap |
+| Social → Campaign consent bridge | DONE a17a74f | Voters on Poll City Social who follow/vote can't consent to being contacted by a specific campaign. The link between the two platforms is missing. | Key monetization gap |
 | Candidate Q&A responses | PENDING | Voters ask questions on /candidates/[slug] but candidates cannot reply publicly from within the platform | Engagement dead end |
 | Volunteer reimbursement → payment | PENDING | Approval chain is complete but actual payment (Stripe or bank transfer) is not automated | Finance officers manually process outside the platform |
 | Voter file import → enrichment | PENDING | Smart import handles general CSVs but does NOT parse ward/poll/riding/household from voter files. Every campaign starts with a voter file. | Campaign setup requires manual data work |

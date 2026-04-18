@@ -46,6 +46,33 @@
 
 ---
 
+## LAST SESSION (2026-04-17 — Social → Campaign consent bridge + Windows build hardening)
+
+**What shipped:**
+
+**Consent bridge** (`a17a74f`) — follow signal now reaches campaign CRM:
+- `POST /api/social/officials/[id]/follow` enhanced: queries `Campaign.findMany({ officialId, isActive: true })`, fires bridge per campaign — idempotent ConsentLog upsert + Contact find/create by `externalId = "social_user_{userId}"` + SupportSignal + ActivityLog. Returns `{ bridgeFired, campaignsLinked }`.
+- `GET /api/social/politicians/[id]` enriched: returns `campaignConsents[]` for logged-in user (campaignId, consentId, isActive).
+- `politician-profile-client.tsx`: consent card UI per linked campaign — green Heart card, "Support" → "✓ Supporting [name]" + revoke X. Follow toast now mentions "campaign team notified" when bridge fires.
+
+**Build hardening** (multiple commits, `5f8e4aa` → `57b44ff`):
+- `scripts/push-safe.mjs`: heap 4096 → 8192MB, `windowsPreBuild()` pre-creates all `.next` manifest stubs + type dirs.
+- `next.config.js`: `cleanDistDir: false` — prevents Next.js from wiping `.next` stubs before webpack runs (Windows NTFS race). Safe on Vercel (Linux starts fresh).
+- `next.config.js`: removed `workerThreads: false` + `cpus: 1` — these caused Windows manifest write race.
+- `war-room/route.ts`: `Array.from(Map.values())` for TS es2015 target compat.
+
+**Build:** GREEN — 465 pages, exit 0, pushed `9c92234..b3f45ef  main → main`.
+
+**Stash:** Clean (stash@{0} capture-files-pre-existing dropped — changes already in HEAD from P0 hardening).
+
+**Risks:**
+- `cleanDistDir: false` means stale `.next` from a previous failed build can cause "Cannot find module" on re-run. `windowsPreBuild()` mitigates this with full `.next` wipe. If build fails mid-run, manually `rm -rf .next` before retrying.
+- Vercel: unaffected (Linux, fresh container per deploy).
+
+**Next session opener:** Social → Campaign consent bridge is live (`a17a74f`). When a voter follows a politician on Poll City Social, the follow signal reaches the campaign CRM as a lead (Contact record + SupportSignal + ConsentLog). Next priorities: (1) Social Phase 2 — civic groups depth, Q&A response flow from official side, election countdown widget. (2) Brand Kit → applied to outputs (PENDING, key gap). Claim in WORK_QUEUE, build, push via `npm run push:safe`.
+
+---
+
 ## LAST SESSION (2026-04-17 — Poll City Social Phase 1 rebuild)
 
 **What shipped (commits `be60b21`, `a7fce32`, `1768127`, `0e5ff04`):**
