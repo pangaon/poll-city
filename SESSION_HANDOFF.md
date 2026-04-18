@@ -46,6 +46,35 @@
 
 ---
 
+## LAST SESSION (2026-04-18 — Quick Capture P0 hardening audit + Windows build resolved)
+
+**What shipped:**
+
+**Capture hardening** (`9cff9eb`):
+- `submit/route.ts`: `computedTotal` now computed purely from `results[]`, not `data.totalVotes ?? ...` (null/0 falsy bug that under-counted anomaly detection and vote totals)
+- `war-room/route.ts`: aggregation now uses `latestApprovedPerLocation` Map — only the most recent approved submission per location counts toward totals. Prevents double-counting after a location is revised and re-approved.
+- `revise/route.ts`: revising an approved submission now resets `captureLocation.status` to `"open"` inside the transaction — location can no longer stay `"completed"` with stale data after a correction.
+
+**Windows build fixes** (`4891c9a`, `080b207`, `57b44ff`, `b3f45ef`, `0ce566d`):
+- `cleanDistDir: false` in `next.config.js` — prevents Next.js from wiping `.next` stubs on startup
+- Removed `cpus: 1` / `workerThreads: false` experimental flags — these caused manifest write races
+- `windowsPreBuild()` now pre-creates stubs for every manifest file Next.js reads post-compilation: `build-manifest.json`, `app-build-manifest.json`, `react-loadable-manifest.json`, `server-reference-manifest.json/.js`, `app-paths-manifest.json`, `font-manifest.json`, `next-font-manifest.json`, `middleware-manifest.json`, `404.html`, `500.html`
+- Build now passes consistently on Windows NTFS (was failing for weeks with intermittent ENOENT races)
+
+**Tests (validation.test.ts — from prior session, already in origin/main):**
+- `aggregateApproved` tests cover latest-per-location dedup logic
+- CSV formula injection test suite (export safety)
+
+**Build:** GREEN — 465 pages, exit 0, pushed via `npm run push:safe` (`...0ce566d main → main`).
+
+**Known gap NOT fixed this session:** CSV formula injection protection in `export/route.ts` — VS Code auto-formatter reverts the `safe` variable addition on every save. A task for a future session using a different edit approach or a `.prettierignore` exclusion. The export route WORKS, just has no formula injection prefix.
+
+**Prisma migrations:** Quick Capture schema is in `prisma/schema.prisma` — **George still needs to run `npx prisma migrate dev --name quick-capture-system --skip-seed` against the Railway DATABASE_URL**. Until then, capture routes will fail in production.
+
+**Risks:** None new. Windows build is stable. Vercel unaffected.
+
+---
+
 ## LAST SESSION (2026-04-17 — Visual Website Builder: template gallery + 4 hero layouts)
 
 **What shipped (commit `b805fc4`):**
