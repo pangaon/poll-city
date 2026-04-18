@@ -58,6 +58,7 @@ interface Props {
   initialEvents: CaptureEvent[];
   campaign: {
     candidateName: string;
+    candidateTitle: string;
     jurisdiction: string;
     electionDate: string | null;
     advanceVoteStart: string | null;
@@ -86,6 +87,14 @@ function StatusBadge({ status }: { status: string }) {
 
 /* ─── Create / Edit Event Modal ──────────────────────────────────────────── */
 
+function buildAutoName(type: string, campaign: Props["campaign"]): string {
+  const date = type === "advance_vote" ? campaign.advanceVoteStart : campaign.electionDate;
+  const label = type === "election_day" ? "Election Day" : type === "advance_vote" ? "Advance Vote" : "";
+  if (!date || !label) return label;
+  const fmt = new Date(date).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+  return `${label} — ${fmt}`;
+}
+
 function EventModal({
   open,
   onClose,
@@ -101,12 +110,13 @@ function EventModal({
   campaign: Props["campaign"];
   existing?: CaptureEvent;
 }) {
+  const [nameEdited, setNameEdited] = useState(false);
   const [form, setForm] = useState({
-    name: existing?.name ?? "",
+    name: existing?.name ?? buildAutoName("election_day", campaign),
     eventType: existing?.eventType ?? "election_day" as const,
-    office: existing?.office ?? "Mayor",
+    office: existing?.office ?? campaign.candidateTitle,
     ward: existing?.ward ?? "",
-    municipality: existing?.municipality ?? "",
+    municipality: existing?.municipality ?? campaign.jurisdiction,
     province: existing?.province ?? "ON",
     requireDoubleEntry: existing?.requireDoubleEntry ?? true,
     allowPartialSubmit: existing?.allowPartialSubmit ?? true,
@@ -115,16 +125,22 @@ function EventModal({
   });
   const [saving, setSaving] = useState(false);
 
+  const handleTypeChange = (type: typeof form.eventType) => {
+    setForm((prev) => ({
+      ...prev,
+      eventType: type,
+      name: nameEdited ? prev.name : buildAutoName(type, campaign),
+    }));
+  };
+
   const save = async () => {
-    if (!form.name.trim() || !form.office.trim()) {
-      toast.error("Name and office are required");
+    if (!form.name.trim()) {
+      toast.error("Event name is required");
       return;
     }
     setSaving(true);
     try {
-      const url = existing
-        ? `/api/capture/events/${existing.id}`
-        : "/api/capture/events";
+      const url = existing ? `/api/capture/events/${existing.id}` : "/api/capture/events";
       const res = await fetch(url, {
         method: existing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,6 +148,14 @@ function EventModal({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to save");
+      // Auto-seed our own candidate so the user only adds opponents
+      if (!existing && campaign.candidateName) {
+        await fetch(`/api/capture/events/${json.data.id}/candidates`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: campaign.candidateName, ballotOrder: 0 }),
+        }).catch(() => { /* non-fatal */ });
+      }
       onSave(json.data);
       toast.success(existing ? "Event updated" : "Event created");
       onClose();
@@ -143,6 +167,15 @@ function EventModal({
   };
 
   if (!open) return null;
+
+  const profileFields = [
+    campaign.candidateTitle && { label: "Office", value: campaign.candidateTitle },
+    campaign.jurisdiction && { label: "Jurisdiction", value: campaign.jurisdiction },
+    campaign.electionDate && {
+      label: "Election date",
+      value: new Date(campaign.electionDate).toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric" }),
+    },
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
@@ -156,66 +189,48 @@ function EventModal({
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">
-              {existing ? "Edit Event" : "Create Capture Event"}
+              {existing ? "Edit Capture Event" : "New Capture Event"}
             </h2>
             <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100">
               <X className="w-5 h-5 text-slate-500" />
             </button>
           </div>
 
+          {/* Campaign profile context — read-only */}
+          {profileFields.length > 0 && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 space-y-1">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">From your campaign profile</p>
+              {profileFields.map(({ label, value }) => (
+                <p key={label} className="text-sm text-slate-700">
+                  <span className="text-slate-400">{label}:</span> {value}
+                </p>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-3">
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Event Type</span>
+              <select
+                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={form.eventType}
+                onChange={(e) => handleTypeChange(e.target.value as typeof form.eventType)}
+              >
+                <option value="election_day">Election Day</option>
+                <option value="advance_vote">Advance Vote</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+
             <label className="block">
               <span className="text-sm font-medium text-slate-700">Event Name</span>
               <input
                 className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 placeholder="Election Day — Oct 28, 2026"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => { setNameEdited(true); setForm({ ...form, name: e.target.value }); }}
               />
             </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Event Type</span>
-              <select
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={form.eventType}
-                onChange={(e) => setForm({ ...form, eventType: e.target.value as typeof form.eventType })}
-              >
-                <option value="advance_vote">Advance Vote</option>
-                <option value="election_day">Election Day</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Office / Race</span>
-              <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Mayor, Ward 3 Councillor…"
-                value={form.office}
-                onChange={(e) => setForm({ ...form, office: e.target.value })}
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Municipality</span>
-                <input
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
-                  value={form.municipality}
-                  onChange={(e) => setForm({ ...form, municipality: e.target.value })}
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Ward</span>
-                <input
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
-                  placeholder="Ward 3"
-                  value={form.ward}
-                  onChange={(e) => setForm({ ...form, ward: e.target.value })}
-                />
-              </label>
-            </div>
 
             <div className="rounded-xl bg-slate-50 p-3 space-y-2">
               <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Submission Settings</p>
@@ -248,6 +263,12 @@ function EventModal({
               </label>
             </div>
           </div>
+
+          {!existing && campaign.candidateName && (
+            <p className="text-xs text-slate-400">
+              <span className="font-medium text-slate-600">{campaign.candidateName}</span> will be added automatically — just add your opponents after.
+            </p>
+          )}
 
           <div className="flex gap-2 pt-2">
             <button

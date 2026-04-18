@@ -34,6 +34,7 @@ export default async function CaptureSetupPage() {
     where: { id: campaignId },
     select: {
       candidateName: true,
+      candidateTitle: true,
       jurisdiction: true,
       electionDate: true,
       advanceVoteStart: true,
@@ -54,6 +55,7 @@ export default async function CaptureSetupPage() {
       }))}
       campaign={{
         candidateName: campaign?.candidateName ?? "",
+        candidateTitle: campaign?.candidateTitle ?? "",
         jurisdiction: campaign?.jurisdiction ?? "",
         electionDate: campaign?.electionDate?.toISOString() ?? null,
         advanceVoteStart: campaign?.advanceVoteStart?.toISOString() ?? null,
