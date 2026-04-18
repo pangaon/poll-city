@@ -2,10 +2,23 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-18
-**Updated by:** Claude Sonnet 4.6 (session: QR downstream wiring — full connection chain + staff notifications)
+**Updated by:** Claude Sonnet 4.6 (session: infrastructure setup + intel fixes)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
+
+**CRITICAL INFRASTRUCTURE FACT — burned 1 hour on 2026-04-18 ignoring this:**
+- **App runs on VERCEL. Railway is DATABASE ONLY.**
+- ALL environment variables go in Vercel → Project Settings → Environment Variables
+- Railway Variables tab is for the PostgreSQL service only — never add app env vars there
+- This is not obvious from the codebase. Read this line before giving George any infrastructure instructions.
+
+**UX DIRECTIVE — hardcoded 2026-04-18:**
+- George has mandated Stripe-quality UX for all user-facing flows
+- Every step must tell the user what it does, why it matters, and what comes next
+- No dead ends. No confusion. No "figure it out yourself."
+- This applies to: onboarding, settings, integrations, fundraising setup, every guided flow
+- Before shipping any new flow: ask "would a first-time candidate understand this without help?"
 
 **BUILD IS GREEN. push:safe now wipes .next before each build to prevent Windows race conditions.**
 
@@ -43,6 +56,24 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-18 — Infrastructure setup + intel fixes)
+
+**What shipped:**
+- Fixed `Run Ingest` button on `/intel` — no longer requires CRON_SECRET prompt, uses SUPER_ADMIN session auth. POST endpoint added to `/api/cron/intel-ingest/route.ts`.
+- Fixed settings page: all "Add to Railway" labels corrected to "Vercel". Archive section is now conditional — only appears after election date has passed, with clear explanation and two paths (update date if running again, or archive if done).
+- `app.poll.city` domain connected — GoDaddy CNAME `app → cname.vercel-dns.com` was already in place. Added domain to Vercel. Site is live.
+- Vercel env vars added: `GUEST_TOKEN_SECRET`, `DATABASE_ENCRYPTION_KEY`, `HEALTH_CHECK_SECRET`, `DEBUG_SECRET_KEY`, `NEXT_PUBLIC_DEBUG_SECRET_KEY`, `GEORGE_USER_ID`.
+- GEORGE_TODO.md cleaned up: all Railway→Vercel labels fixed, completed items marked done.
+- Confirmed: Railway daily backups already running (5 days of history). CIE sources already seeded (19 sources). VAPID keys already in Vercel.
+
+**Key lesson burned into broadcast above:** Session started without reading SESSION_HANDOFF.md. Caused ~1 hour of wrong Railway instructions. Reading this file at session start is non-negotiable.
+
+**Still pending for George:** Stripe setup (#2–9), Resend (#10–16), Twilio (#17–21), NewsAPI key, onboarding backfill script (#59).
+
+**Build:** GREEN.
 
 ---
 

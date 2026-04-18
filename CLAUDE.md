@@ -25,6 +25,33 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 ---
 
+## INFRASTRUCTURE — READ THIS BEFORE GIVING GEORGE ANY SETUP INSTRUCTIONS
+
+**The app runs on VERCEL. Railway is the database only.**
+- ALL environment variables → Vercel → Project Settings → Environment Variables
+- Railway Variables tab → PostgreSQL service only. Never send George there for app config.
+- This burned 1 hour on 2026-04-18. Do not repeat it.
+
+---
+
+## UX STANDARD — STRIPE QUALITY. NON-NEGOTIABLE.
+
+George has mandated that every user-facing flow must meet Stripe's standard of guided UX.
+
+**What that means for every flow you build:**
+1. Every step tells the user exactly what it does and why it matters
+2. Every step tells them what comes next
+3. No dead ends — always a clear next action
+4. No jargon — write for a first-time candidate, not a developer
+5. Empty states are never blank — they explain what goes here and how to add it
+6. Errors tell the user what to do, not just what went wrong
+
+**Before shipping any new flow:** ask "would a first-time candidate running for city council understand this without any help?" If no — rewrite it.
+
+This applies to: onboarding, settings, integrations, fundraising setup, any guided multi-step flow.
+
+---
+
 ## GEORGE'S MANUAL ACTION FILE
 
 `GEORGE_TODO.md` in the repo root is George's personal checklist of steps only he can do
