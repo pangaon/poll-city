@@ -84,6 +84,8 @@ export type CandidatePageCustomization = {
   issues: CandidateIssue[];
   endorsements: CandidateEndorsement[];
   faqs: CandidateFaq[];
+  layout?: "professional" | "modern" | "bold" | "minimal";
+  theme?: string;
 };
 
 export type CandidateEvent = {
@@ -690,6 +692,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
   const heroPhoto = campaign.customization.candidatePhotoUrl || campaign.logoUrl;
   const aboutPhoto = campaign.customization.candidatePhotoUrl2 || heroPhoto;
   const candidateTagline = campaign.tagline || `Fighting for ${municipalityLabel(campaign)} residents in ${electionYear(campaign)}.`;
+  const layout = campaign.customization.layout || "professional";
 
   const platformItems = useMemo(() => {
     if (campaign.customization.issues.length > 0) {
@@ -956,101 +959,342 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
   const btnPrimary = "rounded-lg text-white px-6 py-3 font-semibold min-h-[44px] transition-all hover:opacity-90 disabled:opacity-60";
   const btnSecondary = "rounded-lg border border-slate-200 px-6 py-3 font-semibold min-h-[44px] transition-all hover:bg-slate-50 text-slate-700";
 
+  const pageFontStyle: React.CSSProperties = layout === "minimal"
+    ? { fontFamily: "Georgia, 'Times New Roman', serif" }
+    : { fontFamily: "'Inter', system-ui, -apple-system, sans-serif" };
+
   return (
-    <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
+    <div className="min-h-screen bg-white text-slate-900" style={pageFontStyle}>
 
       <CandidateNav campaign={campaign} scrolled={scrolled} activeSection={activeSection} onAction={openInlineForm} primary={primary} accent={accent} />
 
       {/* ============================================================ */}
-      {/*  HERO                                                         */}
+      {/*  HERO — 4 layout variants                                     */}
       {/* ============================================================ */}
-      <section
-        id="hero"
-        className="relative min-h-[90vh] md:min-h-screen flex items-center overflow-hidden"
-        style={{
-          background: campaign.customization.backgroundImageUrl
-            ? `linear-gradient(to right, ${primary}ee 0%, ${primary}cc 50%, transparent 100%), url(${campaign.customization.backgroundImageUrl}) center/cover`
-            : primary,
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full relative z-10 grid md:grid-cols-2 gap-12 items-center py-24">
+
+      {/* ── PROFESSIONAL: photo left, text right, traditional grid ── */}
+      {layout === "professional" && (
+        <section
+          id="hero"
+          className="relative min-h-[90vh] md:min-h-screen flex items-center overflow-hidden"
+          style={{
+            background: campaign.customization.backgroundImageUrl
+              ? `linear-gradient(to right, ${primary}ee 0%, ${primary}cc 50%, transparent 100%), url(${campaign.customization.backgroundImageUrl}) center/cover`
+              : primary,
+          }}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full relative z-10 grid md:grid-cols-[2fr_3fr] gap-12 items-center py-24">
+            {/* Photo LEFT */}
+            {heroPhoto ? (
+              <motion.div
+                initial={{ opacity: 0, x: -32 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="hidden md:block"
+              >
+                <MediaAvatar
+                  name={campaign.candidateName}
+                  imageUrl={heroPhoto}
+                  className="h-[540px] w-full rounded-3xl"
+                  bg={`linear-gradient(180deg, ${primary}, ${primary}dd)`}
+                  textClassName="text-white text-7xl font-black tracking-tight"
+                />
+              </motion.div>
+            ) : <div className="hidden md:block" />}
+
+            {/* Text RIGHT */}
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+              className="text-white"
+            >
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <p className="text-sm font-medium uppercase tracking-[0.15em] text-white/60">
+                  {officeLabel(campaign)} &middot; {municipalityLabel(campaign)} &middot; {electionYear(campaign)}
+                </p>
+                {campaign.isVerified ? <VerifiedBadge /> : null}
+              </div>
+              <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95]">
+                {campaign.candidateName}
+              </h1>
+              <p className="mt-6 text-xl text-white/75 max-w-xl leading-relaxed">
+                {candidateTagline}
+              </p>
+              {countdown ? (
+                <div className="mt-6 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white/80">
+                  <Clock3 size={16} />{countdown} until election day
+                </div>
+              ) : null}
+              {socialLinks.length > 0 ? (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {socialLinks.map((link) => (
+                    <SocialButton key={link.label} href={link.href} label={link.label} icon={link.icon} />
+                  ))}
+                </div>
+              ) : null}
+              <div className="mt-10 flex flex-wrap gap-4">
+                <button onClick={() => openInlineForm("support")} className="rounded-full bg-white text-slate-900 font-semibold px-8 py-4 text-base hover:shadow-xl transition-shadow">
+                  Support {campaign.candidateName.split(" ")[0]}
+                </button>
+                <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
+                  Donate
+                </button>
+                <button onClick={() => openInlineForm("volunteer")} className="rounded-full border border-white/25 text-white font-semibold px-8 py-4 text-base hover:bg-white/10 transition-all">
+                  Volunteer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* ── MODERN: full-width immersive, centered circular photo, floating card ── */}
+      {layout === "modern" && (
+        <section
+          id="hero"
+          className="relative min-h-screen flex flex-col overflow-hidden"
+          style={{
+            background: campaign.customization.heroBannerUrl
+              ? `linear-gradient(to bottom, ${primary}55 0%, ${primary}ee 65%), url(${campaign.customization.heroBannerUrl}) center/cover`
+              : `radial-gradient(ellipse 120% 80% at 50% 0%, ${hexToTint(primary, 0.6)} 0%, ${primary} 55%)`,
+          }}
+        >
+          {/* Centered photo upper area */}
+          <div className="flex-1 flex items-center justify-center pt-36 pb-12">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="flex flex-col items-center text-center text-white gap-6"
+            >
+              <div className="relative w-36 h-36 md:w-52 md:h-52 rounded-full overflow-hidden border-4 border-white/30 shadow-2xl">
+                {heroPhoto ? (
+                  <Image src={heroPhoto} alt={campaign.candidateName} fill sizes="208px" className="object-cover object-top" unoptimized={heroPhoto.startsWith("http")} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl font-black" style={{ background: "rgba(255,255,255,0.15)" }}>
+                    {initialsFromName(campaign.candidateName)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/60">
+                    {officeLabel(campaign)} &middot; {municipalityLabel(campaign)} &middot; {electionYear(campaign)}
+                  </p>
+                  {campaign.isVerified ? <VerifiedBadge /> : null}
+                </div>
+                <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] text-white">
+                  {campaign.candidateName}
+                </h1>
+                <p className="mt-5 text-lg md:text-xl text-white/70 max-w-2xl leading-relaxed">
+                  {candidateTagline}
+                </p>
+                {countdown ? (
+                  <div className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white/80">
+                    <Clock3 size={16} />{countdown} until election day
+                  </div>
+                ) : null}
+                {socialLinks.length > 0 ? (
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
+                    {socialLinks.map((link) => (
+                      <SocialButton key={link.label} href={link.href} label={link.label} icon={link.icon} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Frosted bottom card with CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-white"
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="border-t border-white/15 bg-white/10 backdrop-blur-md px-4 sm:px-6 py-8"
           >
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-              <p className="text-sm font-medium uppercase tracking-[0.15em] text-white/60">
-                {officeLabel(campaign)} &middot; {municipalityLabel(campaign)} &middot; {electionYear(campaign)}
-              </p>
-              {campaign.isVerified ? <VerifiedBadge /> : null}
-            </div>
-
-            <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[0.95]">
-              {campaign.candidateName}
-            </h1>
-
-            <p className="mt-6 text-xl md:text-2xl text-white/75 max-w-xl leading-relaxed font-normal">
-              {candidateTagline}
-            </p>
-
-            {countdown ? (
-              <div className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white/80">
-                <Clock3 size={16} />
-                {countdown} until election day
-              </div>
-            ) : null}
-
-            {socialLinks.length > 0 ? (
-              <div className="mt-6 flex flex-wrap gap-2">
-                {socialLinks.map((link) => (
-                  <SocialButton key={link.label} href={link.href} label={link.label} icon={link.icon} />
-                ))}
-              </div>
-            ) : null}
-
-            <div className="mt-10 flex flex-wrap gap-4">
-              <button
-                onClick={() => openInlineForm("support")}
-                className="rounded-full bg-white text-slate-900 font-semibold px-8 py-4 text-base hover:shadow-xl transition-shadow"
-              >
+            <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-center gap-4">
+              <button onClick={() => openInlineForm("support")} className="rounded-full bg-white text-slate-900 font-semibold px-8 py-4 text-base hover:shadow-xl transition-shadow">
                 Support {campaign.candidateName.split(" ")[0]}
               </button>
-              <button
-                onClick={() => openInlineForm("donate")}
-                className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90"
-                style={{ backgroundColor: accent }}
-              >
+              <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
                 Donate
               </button>
-              <button
-                onClick={() => openInlineForm("volunteer")}
-                className="rounded-full border border-white/25 text-white font-semibold px-8 py-4 text-base hover:bg-white/10 transition-all"
-              >
+              <button onClick={() => openInlineForm("volunteer")} className="rounded-full border border-white/30 text-white font-semibold px-8 py-4 text-base hover:bg-white/10 transition-all">
                 Volunteer
               </button>
             </div>
           </motion.div>
+        </section>
+      )}
 
-          {heroPhoto ? (
+      {/* ── BOLD: manifesto style, massive type, high contrast, no photo in hero ── */}
+      {layout === "bold" && (
+        <section
+          id="hero"
+          className="relative min-h-screen flex flex-col justify-center overflow-hidden"
+          style={{ backgroundColor: primary }}
+        >
+          {/* Vertical accent stripe */}
+          <div className="absolute right-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: accent }} />
+          <div className="absolute right-6 top-0 bottom-0 w-px" style={{ backgroundColor: `${accent}40` }} />
+
+          <div className="max-w-6xl mx-auto px-4 sm:px-8 w-full py-28 relative z-10">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-              className="hidden md:block"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.9 }}
             >
-              <MediaAvatar
-                name={campaign.candidateName}
-                imageUrl={heroPhoto}
-                className="h-[520px] w-full rounded-3xl"
-                bg={`linear-gradient(180deg, ${primary}, ${primary}dd)`}
-                textClassName="text-white text-7xl font-black tracking-tight"
-              />
+              {/* Office label */}
+              <p className="text-xs font-bold uppercase tracking-[0.35em] mb-8" style={{ color: accent }}>
+                {officeLabel(campaign)} &middot; {municipalityLabel(campaign)} &middot; {electionYear(campaign)}
+                {campaign.isVerified ? " ✓" : ""}
+              </p>
+
+              {/* Massive name — each word on its own line */}
+              <h1 className="text-white font-black leading-none tracking-tight" style={{ fontSize: "clamp(3.5rem, 13vw, 9.5rem)" }}>
+                {campaign.candidateName.split(" ").map((word, i) => (
+                  <span key={i} className="block">{word}</span>
+                ))}
+              </h1>
+
+              {/* Horizontal rule */}
+              <div className="mt-10 mb-8 h-px w-28" style={{ backgroundColor: accent }} />
+
+              {/* Tagline */}
+              <p className="text-white/55 text-xl md:text-2xl max-w-2xl leading-relaxed font-normal">
+                {candidateTagline}
+              </p>
+
+              {countdown ? (
+                <p className="mt-5 text-sm font-medium text-white/40 uppercase tracking-widest">
+                  {countdown} until election day
+                </p>
+              ) : null}
+
+              {socialLinks.length > 0 ? (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {socialLinks.map((link) => (
+                    <SocialButton key={link.label} href={link.href} label={link.label} icon={link.icon} />
+                  ))}
+                </div>
+              ) : null}
+
+              {/* Square CTAs — no rounded corners, more editorial */}
+              <div className="mt-12 flex flex-wrap gap-4">
+                <button onClick={() => openInlineForm("support")} className="border-2 border-white text-white font-bold px-10 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-slate-900 transition-all">
+                  Support
+                </button>
+                <button onClick={() => openInlineForm("donate")} className="font-bold px-10 py-4 text-sm uppercase tracking-widest text-white transition-all hover:opacity-80 border-2" style={{ backgroundColor: accent, borderColor: accent }}>
+                  Donate
+                </button>
+                <button onClick={() => openInlineForm("volunteer")} className="border border-white/20 text-white/70 font-semibold px-10 py-4 text-sm uppercase tracking-widest hover:border-white/50 hover:text-white transition-all">
+                  Volunteer
+                </button>
+              </div>
             </motion.div>
-          ) : null}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
+
+      {/* ── MINIMAL: editorial whitespace, serif, newspaper-like ── */}
+      {layout === "minimal" && (
+        <section
+          id="hero"
+          className="relative min-h-screen flex items-center overflow-hidden"
+          style={{ backgroundColor: hexToTint(primary, 0.04), fontFamily: "Georgia, 'Times New Roman', serif" }}
+        >
+          {/* Thin top border in primary color */}
+          <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: primary }} />
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-8 w-full py-32">
+            <div className="grid md:grid-cols-[1fr_auto] gap-16 items-start">
+              {/* Text LEFT */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+              >
+                {campaign.isVerified ? (
+                  <div className="flex items-center gap-2 mb-6">
+                    <CheckCircle2 size={14} style={{ color: primary }} />
+                    <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: primary }}>Verified Official</span>
+                  </div>
+                ) : null}
+
+                {/* Meta line */}
+                <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-10 font-sans">
+                  {officeLabel(campaign)} &middot; {municipalityLabel(campaign)} &middot; {electionYear(campaign)}
+                </p>
+
+                {/* Name in elegant large serif */}
+                <h1 className="font-bold tracking-tight text-slate-900 leading-[1.05]" style={{ fontSize: "clamp(2.8rem, 8vw, 5.5rem)", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+                  {campaign.candidateName}
+                </h1>
+
+                {/* Rule */}
+                <div className="mt-8 mb-8 w-20 h-px" style={{ backgroundColor: primary }} />
+
+                {/* Tagline in italic serif */}
+                <p className="text-slate-600 text-xl leading-relaxed max-w-lg italic">
+                  &ldquo;{candidateTagline}&rdquo;
+                </p>
+
+                {countdown ? (
+                  <div className="mt-6 inline-flex items-center gap-2 text-sm text-slate-400 font-sans">
+                    <Clock3 size={14} />{countdown} until election day
+                  </div>
+                ) : null}
+
+                {socialLinks.length > 0 ? (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {socialLinks.map((link) => ({
+                      ...link,
+                      // Restyle social buttons for minimal layout
+                    })).map((link) => (
+                      <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={link.label}
+                        className="inline-flex items-center justify-center h-9 w-9 rounded-full border text-slate-400 hover:text-slate-700 hover:border-slate-400 transition-all font-sans"
+                        style={{ borderColor: "currentColor" }}>
+                        {link.icon}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Subdued CTAs */}
+                <div className="mt-10 flex flex-wrap gap-3 font-sans">
+                  <button onClick={() => openInlineForm("support")} className="px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: primary }}>
+                    Support the Campaign
+                  </button>
+                  <button onClick={() => openInlineForm("donate")} className="px-8 py-3 text-sm font-semibold border hover:bg-gray-50 transition-colors" style={{ color: primary, borderColor: primary }}>
+                    Donate
+                  </button>
+                  <button onClick={() => openInlineForm("volunteer")} className="px-8 py-3 text-sm font-semibold text-slate-500 border border-slate-300 hover:bg-gray-50 transition-colors">
+                    Volunteer
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* Photo RIGHT — tall editorial portrait */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.15 }}
+                className="hidden md:block"
+              >
+                <MediaAvatar
+                  name={campaign.candidateName}
+                  imageUrl={heroPhoto}
+                  className="w-56 h-80 rounded-none"
+                  bg={primary}
+                  textClassName="text-white text-5xl font-black"
+                />
+                <div className="mt-2 w-full h-0.5" style={{ backgroundColor: primary }} />
+              </motion.div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/*  Inline form anchor + sticky tabs                             */}

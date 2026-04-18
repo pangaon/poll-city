@@ -90,6 +90,10 @@ function mapCustomization(raw: unknown): CandidatePageCustomization {
           }))
           .filter((x) => x.url)
       : [],
+    layout: (["professional", "modern", "bold", "minimal"].includes(cx.layout as string)
+      ? cx.layout
+      : "professional") as "professional" | "modern" | "bold" | "minimal",
+    theme: typeof cx.theme === "string" ? cx.theme : "classic-blue",
     issues,
     endorsements,
     faqs,
