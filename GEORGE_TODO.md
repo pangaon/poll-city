@@ -19,22 +19,36 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 
 ---
 
-## 🟠 STRIPE — Fundraising donations won't process without these
+## 🟠 STRIPE — Platform API credentials (NOT where money lands)
 
-**ARCHITECTURE NOTE (2026-04-16):** Stripe Connect is now fully wired.
-Each campaign connects their own Stripe Express account. Donations flow directly
-to the campaign's bank. Poll City automatically takes 1.5% of each donation.
-Print shop marketplace fee is 15% (unchanged). Your SaaS subscriptions go direct to you.
+**READ THIS FIRST — CRITICAL:**
+`STRIPE_SECRET_KEY` is Poll City's platform API credential. It is used to make
+Stripe API calls. It is NOT the account that receives campaign donations.
+
+Money flow with Stripe Connect (already wired in code):
+  Donor pays $100
+  → Stripe API called using George's platform key (just a credential)
+  → $98.50 sent to CAMPAIGN's Express account (their bank, not George's)
+  → $1.50 (1.5% platform fee) sent to George's Stripe balance
+  → Stripe processing fee (~2.9% + $0.30) deducted from campaign's side
+
+George's key is required so the server can make Stripe API calls at all.
+Without it, campaigns can't even start their own Express onboarding.
+George never touches the donation principal — only the 1.5% fee.
+
+**Each campaign connects their own Stripe Express account separately.**
+They do that from Fundraising → Settings inside the app.
+Until they do, the donate button is hidden from their public page automatically.
 
 ### Step A — Add env vars to Railway
 
 Go to Railway → Poll City service → Variables tab. Add each one:
 
-| Variable | Where to get it |
+| Variable | What it does |
 |---|---|
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys → Secret key (`sk_live_...`) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API keys → Publishable key (`pk_live_...`) |
-| `STRIPE_FUNDRAISING_WEBHOOK_SECRET` | See Step B below — get this AFTER registering the webhook |
+| `STRIPE_SECRET_KEY` | Platform API credential — lets the server talk to Stripe. Does NOT receive donations. |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client-side key for Stripe Elements (payment form UI) |
+| `STRIPE_FUNDRAISING_WEBHOOK_SECRET` | Verifies incoming Stripe event webhooks are authentic |
 
 - [ ] **2. Add `STRIPE_SECRET_KEY` to Railway**
 - [ ] **3. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Railway**
