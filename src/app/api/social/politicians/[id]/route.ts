@@ -65,9 +65,11 @@ export async function GET(
       // Live approval rating
       approvalRating: {
         select: {
-          approvalPct: true,
-          disapprovalPct: true,
-          neutralPct: true,
+          score: true,
+          netScore: true,
+          positiveCount: true,
+          negativeCount: true,
+          neutralCount: true,
           totalSignals: true,
           updatedAt: true,
         },
