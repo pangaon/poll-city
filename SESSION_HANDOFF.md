@@ -46,6 +46,27 @@
 
 ---
 
+## LAST SESSION (2026-04-17 — Visual Website Builder: template gallery + 4 hero layouts)
+
+**What shipped (commit `b805fc4`):**
+
+**`settings/public-page/page.tsx`** rebuilt (1089 → 1339 lines):
+- `InlineGallery` component: 24-template visual picker (6 themes × 4 layouts), CSS-only `TemplateThumb` previews — no new dependencies.
+- `showGallery` state toggles between settings panel and gallery panel.
+- "Choose Template" button at top of settings panel — gradient blue, badge showing "24".
+- `handleTemplateSelect(layout, theme, primary)` — atomic update of layout + theme + primaryColor, closes gallery.
+- `LivePreview` hero replaced with 4 genuinely distinct layout variants: **Professional** (portrait left/text right), **Modern** (centered circle, frosted CTA bar), **Bold** (massive type split by word, accent stripe), **Minimal** (serif, light bg, photo right).
+- Desktop + mobile renders updated: `{showGallery ? galleryPanel : settingsPanel}`.
+- All 26 original feature toggles + tier gating preserved.
+
+**Build:** GREEN — pushed via `npm run push:safe`.
+
+**Note:** OneDrive sync on Windows Documents folder deletes new files during background builds. All gallery code inlined into existing `page.tsx` to prevent this. Do not extract to a separate file.
+
+**Risks:** None new. OneDrive workaround is stable.
+
+---
+
 ## LAST SESSION (2026-04-17 — Social → Campaign consent bridge + Windows build hardening)
 
 **What shipped:**
@@ -69,7 +90,7 @@
 - `cleanDistDir: false` means stale `.next` from a previous failed build can cause "Cannot find module" on re-run. `windowsPreBuild()` mitigates this with full `.next` wipe. If build fails mid-run, manually `rm -rf .next` before retrying.
 - Vercel: unaffected (Linux, fresh container per deploy).
 
-**Next session opener:** Social → Campaign consent bridge is live (`a17a74f`). When a voter follows a politician on Poll City Social, the follow signal reaches the campaign CRM as a lead (Contact record + SupportSignal + ConsentLog). Next priorities: (1) Social Phase 2 — civic groups depth, Q&A response flow from official side, election countdown widget. (2) Brand Kit → applied to outputs (PENDING, key gap). Claim in WORK_QUEUE, build, push via `npm run push:safe`.
+**Next session opener:** Visual Website Builder is live (`b805fc4`). Settings → Public Page now has a 24-template gallery picker (6 themes × 4 layouts). Social → Campaign consent bridge is live (`a17a74f`). Quick Capture System is CLAIMED 2026-04-17 (schema + API + admin + mobile capture + war room + review/export). Next priorities: (1) Continue Quick Capture System — full election results capture (advance vote + election day). (2) Brand Kit → applied to outputs (PENDING P1, high value). Read WORK_QUEUE.md, claim your task, build, push via `npm run push:safe`.
 
 ---
 
