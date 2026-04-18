@@ -83,6 +83,7 @@ Everything below is built, pushed, and accessible in the app.
 | Task | Status | Notes |
 |---|---|---|
 | Quick Capture System — full election results capture (advance vote + election day) | CLAIMED 2026-04-17 | Schema + API + admin setup + mobile capture + war room + review/export. Full enterprise build. |
+| Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | CLAIMED 2026-04-17 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
 
 ---
 
