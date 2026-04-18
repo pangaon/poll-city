@@ -1,0 +1,53 @@
+appId: com.pollcity.app
+productName: Poll City
+copyright: "Copyright © 2026 Poll City"
+
+directories:
+  output: dist
+
+files:
+  - main.js
+  - preload.js
+  - offline.html
+  - assets/**/*
+  - package.json
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+mac:
+  category: public.app-category.business
+  icon: assets/icon.icns
+  # Hardened runtime required for notarization
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+
+dmg:
+  title: "Poll City"
+
+# ─── Windows ─────────────────────────────────────────────────────────────────
+win:
+  icon: assets/icon.ico
+  # CSC_LINK / CSC_KEY_PASSWORD env vars supply the code signing cert
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "Poll City"
+
+# ─── Auto-update: GitHub Releases ────────────────────────────────────────────
+publish:
+  provider: github
+  owner: pangaon
+  repo: poll-city
+  releaseType: release

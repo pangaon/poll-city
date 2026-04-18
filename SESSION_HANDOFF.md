@@ -46,6 +46,22 @@
 
 ---
 
+## LAST SESSION (2026-04-18 — Electron desktop app shipped)
+
+**What shipped:**
+
+**Poll City Desktop App** (`desktop/`):
+- `desktop/main.js` — Electron main process: BrowserWindow loads `app.poll.city`, system tray (Mac + Windows), auto-updater (checks GitHub releases), deep link protocol `pollcity://`, single-instance lock, window state persistence, offline fallback page.
+- `desktop/preload.js` — Context-isolated bridge, no Node.js leakage to renderer.
+- `desktop/electron-builder.yml` — Build config: Mac `.dmg` (x64 + arm64), Windows NSIS installer (x64), GitHub Releases auto-update channel (`pangaon/poll-city`).
+- `desktop/assets/entitlements.mac.plist` — Hardened runtime entitlements for macOS notarization.
+- `desktop/offline.html` — Native offline error page with Poll City branding.
+- `GEORGE_TODO.md` items 67–73 added — icon files, cert setup, build steps, GitHub release process.
+
+**George's next actions:** Items 67–73 in GEORGE_TODO.md. Start with 67 (add icon files) and 68 (npm install + test locally). Signing certs are needed before distributing to clients.
+
+---
+
 ## LAST SESSION (2026-04-18 — Windows push:safe permanently fixed + 5 commits pushed)
 
 **What shipped:**

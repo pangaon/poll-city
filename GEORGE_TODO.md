@@ -585,6 +585,101 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
 
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-17*
+---
+
+## 🖥️ DESKTOP APP — Poll City for Mac + Windows
+
+Electron app lives in `desktop/`. It loads `app.poll.city` in a native window with dock icon, auto-updates, system tray, and deep links.
+
+### Step 1 — Add icon files (required before building the installer)
+
+Place these files in `desktop/assets/`:
+
+| File | Size | Format | Use |
+|---|---|---|---|
+| `icon.icns` | 512×512 | Apple Icon | Mac app icon (dock, Finder, installer) |
+| `icon.ico` | 256×256 | Windows Icon | Windows app icon (taskbar, Start menu) |
+| `icon.png` | 512×512 | PNG | Linux + system tray fallback |
+| `tray-icon.png` | 32×32 | PNG | System tray (top bar on Mac, taskbar on Windows) |
+| `dmg-background.png` | 540×380 | PNG | Optional — Mac DMG installer background |
+
+**Quickest path:** Export your Poll City logo from Figma as a 512×512 PNG, then:
+- Mac `.icns`: use [iconutil](https://developer.apple.com/library/archive/documentation/GraphicsImaging/Conceptual/OpenWithURLs/OpenWithURLs.html) or online converter
+- Windows `.ico`: use [icoconvert.com](https://icoconvert.com)
+
+### Step 2 — Install Electron dependencies
+
+```bash
+cd desktop
+npm install
+```
+
+### Step 3 — Test locally before signing
+
+```bash
+cd desktop
+npm start
+```
+
+Poll City should open in a native window loading `app.poll.city`.
+
+### Step 4 — Code signing (required for distribution — no "unknown publisher" warning)
+
+**Mac:** Requires Apple Developer Program membership ($99 USD/yr)
+1. Go to [developer.apple.com](https://developer.apple.com) → Certificates → create a **Developer ID Application** certificate
+2. Download and install it in Keychain Access
+3. `electron-builder` will pick it up automatically via `CSC_NAME` env var:
+   ```bash
+   export CSC_NAME="Developer ID Application: Your Name (TEAMID)"
+   npm run build:mac
+   ```
+
+**Windows:** Requires a code signing certificate (~$200 USD/yr from DigiCert or Sectigo)
+1. Purchase and download your `.pfx` certificate file
+2. Build with:
+   ```bash
+   export CSC_LINK="/path/to/your-cert.pfx"
+   export CSC_KEY_PASSWORD="your-cert-password"
+   npm run build:win
+   ```
+
+### Step 5 — Build the installer
+
+```bash
+# Mac only (from a Mac)
+cd desktop && npm run build:mac
+# Output: desktop/dist/Poll City-1.0.0.dmg  (Intel)
+#         desktop/dist/Poll City-1.0.0-arm64.dmg  (Apple Silicon)
+
+# Windows only (from Windows or CI)
+cd desktop && npm run build:win
+# Output: desktop/dist/Poll City Setup 1.0.0.exe
+```
+
+### Step 6 — Auto-updates via GitHub Releases
+
+`electron-updater` is configured to check `github.com/pangaon/poll-city` releases.
+When you want to ship a new desktop version:
+1. Bump the version in `desktop/package.json`
+2. Build the installer (Step 5)
+3. Create a GitHub release tagged `v1.x.x`
+4. Upload the `.dmg` and `.exe` files to the release
+5. All installed apps will auto-update within 30 seconds of next launch
+
+### Step 7 — Add download links to the marketing site
+
+Once `desktop/dist/` has your signed installers, add download buttons to the marketing landing page pointing to your GitHub release assets.
+
+- [ ] **67. Add icon files to `desktop/assets/`** (see Step 1 above)
+- [ ] **68. Run `cd desktop && npm install && npm start`** — verify the app opens locally
+- [ ] **69. Purchase Apple Developer membership** (if not already — $99/yr at developer.apple.com)
+- [ ] **70. Create Developer ID Application certificate** and install in Keychain
+- [ ] **71. Purchase Windows code signing cert** (~$200/yr — DigiCert recommended)
+- [ ] **72. Run `npm run build:mac` and `npm run build:win`** to produce signed installers
+- [ ] **73. Create GitHub release and upload installers** — auto-updates go live automatically
+
+---
+
+*This file is maintained by AI sessions. Last updated: 2026-04-18*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

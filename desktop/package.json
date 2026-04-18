@@ -1,0 +1,22 @@
+{
+  "name": "poll-city-desktop",
+  "version": "1.0.0",
+  "description": "Poll City — Enterprise Campaign Platform",
+  "main": "main.js",
+  "author": "Poll City <hello@poll.city>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --mac --win"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
