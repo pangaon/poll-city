@@ -8,6 +8,7 @@ import {
   MessageSquare, Globe, Mail, Phone, ThumbsUp, ThumbsDown,
   Megaphone, FileText, Building2, TrendingUp, Twitter,
   Facebook, Instagram, ChevronDown, ChevronUp, Star,
+  Heart, X,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -59,6 +60,13 @@ interface Campaign {
   logoUrl: string | null;
 }
 
+interface CampaignConsent {
+  campaignId: string;
+  consentId: string;
+  signalType: string;
+  isActive: boolean;
+}
+
 interface Politician {
   id: string;
   name: string;
@@ -80,6 +88,7 @@ interface Politician {
   province: string | null;
   _count: { follows: number; questions: number; politicianPosts: number };
   campaigns: Campaign[];
+  campaignConsents: CampaignConsent[];
   approvalRating: ApprovalRating | null;
   politicianPosts: Post[];
   questions: Question[];
@@ -134,6 +143,9 @@ export default function PoliticianProfileClient() {
   const [askQuestion, setAskQuestion] = useState("");
   const [askSubmitting, setAskSubmitting] = useState(false);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  // campaignId → consentId (present = active consent, undefined = not consented)
+  const [consentMap, setConsentMap] = useState<Record<string, string>>({});
+  const [consentLoading, setConsentLoading] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -143,6 +155,12 @@ export default function PoliticianProfileClient() {
       const data = await res.json();
       setPolitician(data.data);
       setFollowing(data.data.isFollowing);
+      // Seed consent map from API response
+      const map: Record<string, string> = {};
+      for (const c of (data.data.campaignConsents ?? []) as CampaignConsent[]) {
+        if (c.isActive) map[c.campaignId] = c.consentId;
+      }
+      setConsentMap(map);
     } finally {
       setLoading(false);
     }
@@ -160,6 +178,7 @@ export default function PoliticianProfileClient() {
       const method = following ? "DELETE" : "POST";
       const res = await fetch(`/api/social/officials/${id}/follow`, { method });
       if (!res.ok) throw new Error();
+      const json = await res.json();
       setFollowing(!following);
       if (politician) {
         setPolitician({
@@ -170,11 +189,60 @@ export default function PoliticianProfileClient() {
           },
         });
       }
-      toast.success(following ? "Unfollowed" : "Following — you will be notified of new posts");
+      if (!following && json.data?.bridgeFired) {
+        toast.success("Following — campaign team has been notified of your support");
+      } else {
+        toast.success(following ? "Unfollowed" : "Following — you will be notified of new posts");
+      }
     } catch {
       toast.error("Failed to update follow status");
     } finally {
       setFollowLoading(false);
+    }
+  }
+
+  async function sendCampaignConsent(campaign: Campaign) {
+    if (!session?.user) { toast.error("Sign in to support this campaign"); return; }
+    setConsentLoading((prev) => ({ ...prev, [campaign.id]: true }));
+    try {
+      const res = await fetch("/api/social/signal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          officialId: id,
+          campaignSlug: campaign.slug,
+          type: "general_support",
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      const consentId = json.data?.consentId as string | undefined;
+      if (consentId) {
+        setConsentMap((prev) => ({ ...prev, [campaign.id]: consentId }));
+      }
+      toast.success(`You're supporting ${campaign.candidateName ?? campaign.name}`);
+    } catch {
+      toast.error("Failed to send support signal");
+    } finally {
+      setConsentLoading((prev) => ({ ...prev, [campaign.id]: false }));
+    }
+  }
+
+  async function revokeCampaignConsent(campaignId: string, consentId: string) {
+    setConsentLoading((prev) => ({ ...prev, [campaignId]: true }));
+    try {
+      const res = await fetch(`/api/social/consent/${consentId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setConsentMap((prev) => {
+        const next = { ...prev };
+        delete next[campaignId];
+        return next;
+      });
+      toast.success("Consent revoked");
+    } catch {
+      toast.error("Failed to revoke consent");
+    } finally {
+      setConsentLoading((prev) => ({ ...prev, [campaignId]: false }));
     }
   }
 
@@ -315,6 +383,60 @@ export default function PoliticianProfileClient() {
       </div>
 
       <div className="px-4 py-4 space-y-4 max-w-2xl mx-auto">
+        {/* Campaign consent cards — shown when official has active campaigns */}
+        {p.campaigns.length > 0 && session?.user && p.campaigns.map((campaign) => {
+          const hasConsent = !!consentMap[campaign.id];
+          const isLoading = !!consentLoading[campaign.id];
+          return (
+            <motion.div
+              key={campaign.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={spring}
+              className="rounded-2xl border p-4 shadow-sm"
+              style={{ borderColor: GREEN, background: hasConsent ? "#f0fdf7" : "white" }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: hasConsent ? GREEN : "#e5f7ef" }}>
+                  <Heart className="w-4 h-4" style={{ color: hasConsent ? "white" : GREEN }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {hasConsent
+                      ? `Supporting ${campaign.candidateName ?? campaign.name}`
+                      : `${campaign.candidateName ?? p.name} is running`}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {hasConsent
+                      ? "The campaign team has been notified of your support."
+                      : "Allow this campaign to keep you informed about their efforts."}
+                  </p>
+                </div>
+                {hasConsent ? (
+                  <button
+                    onClick={() => revokeCampaignConsent(campaign.id, consentMap[campaign.id])}
+                    disabled={isLoading}
+                    className="flex-shrink-0 p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    title="Revoke consent"
+                  >
+                    <X className="w-4 h-4 text-red-400" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => sendCampaignConsent(campaign)}
+                    disabled={isLoading}
+                    className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-white rounded-lg transition-opacity disabled:opacity-50 min-h-[36px]"
+                    style={{ background: GREEN }}
+                  >
+                    {isLoading ? "…" : "Support"}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+
         {/* Approval rating */}
         {p.approvalRating && p.approvalRating.totalSignals > 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring}

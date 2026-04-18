@@ -122,14 +122,38 @@ export async function GET(
   // Is the current user following this official?
   let isFollowing = false;
   let notificationPreference: string | null = null;
+  let campaignConsents: {
+    campaignId: string;
+    consentId: string;
+    signalType: string;
+    isActive: boolean;
+  }[] = [];
+
   if (userId) {
-    const follow = await prisma.officialFollow.findUnique({
-      where: { userId_officialId: { userId, officialId: params.id } },
-    });
+    const [follow, consents] = await Promise.all([
+      prisma.officialFollow.findUnique({
+        where: { userId_officialId: { userId, officialId: params.id } },
+      }),
+      official.campaigns.length > 0
+        ? prisma.consentLog.findMany({
+            where: {
+              userId,
+              campaignId: { in: official.campaigns.map((c) => c.id) },
+              revokedAt: null,
+            },
+            select: { id: true, campaignId: true, signalType: true, revokedAt: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
     isFollowing = !!follow;
-    // notificationPreference stored on OfficialFollow — not currently in schema,
-    // default to "all" if following
     notificationPreference = isFollowing ? "all" : null;
+    campaignConsents = consents.map((c) => ({
+      campaignId: c.campaignId,
+      consentId: c.id,
+      signalType: c.signalType,
+      isActive: c.revokedAt === null,
+    }));
   }
 
   return NextResponse.json({
@@ -137,6 +161,7 @@ export async function GET(
       ...official,
       isFollowing,
       notificationPreference,
+      campaignConsents,
     },
   });
 }
