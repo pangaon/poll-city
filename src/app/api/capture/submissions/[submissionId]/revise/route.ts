@@ -53,6 +53,7 @@ export async function POST(
   }));
   const newValues: Prisma.InputJsonValue = parsed.data.results;
   const newTotal = parsed.data.results.reduce((s, r) => s + r.votes, 0);
+  const wasApproved = sub.status === "approved";
 
   await prisma.$transaction(async (tx) => {
     // Write revision record for audit trail
@@ -88,6 +89,12 @@ export async function POST(
         notes: parsed.data.notes !== undefined ? (parsed.data.notes ?? null) : sub.notes,
       },
     });
+    if (wasApproved) {
+      await tx.captureLocation.update({
+        where: { id: sub.locationId },
+        data: { status: "open" },
+      });
+    }
   });
 
   const updated = await prisma.captureSubmission.findUnique({

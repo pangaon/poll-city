@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
   }
 
   // Compute totalVotes from results if not provided
-  const computedTotal = data.totalVotes ?? data.results.reduce((sum, r) => sum + r.votes, 0);
+  const computedTotal = data.results.reduce((sum, r) => sum + r.votes, 0);
 
   const submissionStatus = data.isDraft
     ? ("draft" as const)
