@@ -38,12 +38,18 @@ function findPageDirs(dir, base) {
 
 function windowsPreBuild() {
   try { fs.rmSync(".next", { recursive: true, force: true }); } catch {}
-  [".next/server/pages", ".next/export", ".next/types"].forEach(d => fs.mkdirSync(d, { recursive: true }));
+  [".next/server/pages", ".next/export", ".next/types", ".next/static/chunks"].forEach(d => fs.mkdirSync(d, { recursive: true }));
   fs.writeFileSync(".next/package.json", JSON.stringify({ type: "commonjs" }));
+  // Stub manifests that Next.js reads during "Collecting page data" — webpack overwrites them with real content
+  const buildManifestStub = JSON.stringify({ polyfillFiles: [], devFiles: [], ampDevFiles: [], lowPriorityFiles: [], rootMainFiles: [], pages: {}, ampFirstPages: [] });
+  fs.writeFileSync(".next/build-manifest.json", buildManifestStub);
+  fs.writeFileSync(".next/app-build-manifest.json", JSON.stringify({ pages: {} }));
+  fs.writeFileSync(".next/react-loadable-manifest.json", "{}");
   fs.writeFileSync(".next/server/pages-manifest.json", "{}");
+  fs.writeFileSync(".next/server/middleware-manifest.json", JSON.stringify({ sortedMiddleware: [], middleware: {}, functions: {}, version: 2 }));
   const pageDirs = findPageDirs("src/app", "app");
   for (const d of pageDirs) fs.mkdirSync(path.join(".next/types", d), { recursive: true });
-  console.log(`Windows pre-build: pre-created ${pageDirs.size} type directories`);
+  console.log(`Windows pre-build: pre-created ${pageDirs.size} type directories + manifest stubs`);
 }
 
 try {
