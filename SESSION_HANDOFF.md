@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: Poll City Social — Phase 1 rebuild)
+**Last updated:** 2026-04-18
+**Updated by:** Claude Sonnet 4.6 (session: QR downstream wiring — full connection chain + staff notifications)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -43,6 +43,51 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-18 — QR capture full downstream chain + staff notifications)
+
+**What shipped (commits `21c0573`, `5ef7c79`):**
+
+**`src/lib/qr/capture.ts`** — Full downstream wiring added to `captureIdentity`:
+- Contact match (email/phone) OR create (parse firstName/lastName from `opts.name`) with `importSource: "qr_capture"`.
+- Contact flags updated: `signRequested`, `volunteerInterest`, `supportLevel` (intent → level, never downgrade), `funnelStage` (intent → stage, never downgrade), `lastContactedAt`.
+- Interaction record written (`type: field_encounter`, `source: self`) with intent note.
+- Sign record created in Signs module on `signRequested: true` (`address1` placeholder if no address, prevents NOT NULL violation).
+- VolunteerProfile created on `volunteerInterest: true` — @unique guard against existing profile.
+- Thank-you email via Resend (skipped if `doNotContact`).
+- QrFollowUp queued (`sign_team_alert` | `volunteer_callback` | `notification`).
+- Inline fire-and-forget `notifyQrCaptureStaff()` call immediately on capture.
+- Edge cases: `teaserMode` stops all downstream, `doNotContact` skips email only, `ActivityLog` skipped (no userId in QR context), `campaignId` null guard.
+
+**`src/lib/qr/notify.ts`** (NEW) — Staff notification helper:
+- Resolves recipients via `resolveNotificationRecipients` (ADMIN + CAMPAIGN_MANAGER by default).
+- Sends HTML staff email per recipient via `sendEmail` (Resend).
+- Sends web push via `sendPushBatch` if VAPID configured.
+- Marks QrFollowUp `sent` + `sentAt` + `attempts++`.
+- Never throws — all operations non-fatal.
+
+**`src/lib/notifications/routing.ts`** — Added `qr_sign_request` + `qr_volunteer_signup` alert types.
+
+**`src/app/api/cron/qr-followups/route.ts`** (NEW) — Cron fallback worker, fires every 5 min, picks up `pending` QrFollowUp entries older than 2 minutes (grace window for inline handler).
+
+**`vercel.json`** — Added `/api/cron/qr-followups` cron entry (`*/5 * * * *`).
+
+**Build:** GREEN — pushed via `npm run push:safe`.
+
+**Full chain now live:**
+1. QR scan → prospect (existing)
+2. Contact match OR create (new)
+3. Contact flags updated (new)
+4. Interaction written (new)
+5. Sign record in Signs module (new)
+6. VolunteerProfile created (new)
+7. Thank-you email (new)
+8. Staff notified via email + web push inline (new)
+9. Cron fallback worker as reliability net (new)
+
+**Risks:** None new. teaserMode unlock flow still not built (prospect captured, never unlocked — separate feature).
 
 ---
 
