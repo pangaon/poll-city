@@ -46,9 +46,14 @@
 
 ---
 
-## LAST SESSION (2026-04-18 — Quick Capture P0 hardening audit + Windows build resolved)
+## LAST SESSION (2026-04-18 — Windows push:safe permanently fixed + 5 commits pushed)
 
 **What shipped:**
+
+**push:safe Windows fix** (`9c92234`):
+- `windowsPreBuild()` in `scripts/push-safe.mjs` now pre-creates all 220 `.next/types/app/...` directories by scanning `src/app`. Fixes intermittent TypeScript type-gen ENOENT race on Windows NTFS that was breaking every push. `push:safe` is now reliably green.
+- Also fixed: `export/route.ts` CSV escape syntax error (unterminated string literal + bad regex) — George had already committed the fix but this session diagnosed and cleared it.
+- 5 commits pushed: consent bridge, visual website builder, heap fix, war-room MapIterator fix, push-safe types fix. All via `npm run push:safe` → exit 0.
 
 **Capture hardening** (`9cff9eb`):
 - `submit/route.ts`: `computedTotal` now computed purely from `results[]`, not `data.totalVotes ?? ...` (null/0 falsy bug that under-counted anomaly detection and vote totals)
