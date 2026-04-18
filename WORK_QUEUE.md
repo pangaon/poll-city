@@ -78,46 +78,87 @@ Everything below is built, pushed, and accessible in the app.
 
 ## REMAINING WORK
 
+### ACTIVE BUILD (2026-04-17)
+
+| Task | Status | Notes |
+|---|---|---|
+| Quick Capture System — full election results capture (advance vote + election day) | CLAIMED 2026-04-17 | Schema + API + admin setup + mobile capture + war room + review/export. Full enterprise build. |
+
+---
+
 ### P0 — CRITICAL: Blocks First Real Customer
 
 | Task | Status | Notes |
 |---|---|---|
-| Migration baseline | PENDING | Run `npx prisma migrate dev --name initial_baseline` before first real customer. GAP-003. Without this, any schema change in production could lose data. George's action. |
+| Migration baseline | PENDING | Run `npx prisma migrate dev --name initial_baseline` before first real customer. GAP-003. Without this, any schema change could corrupt production data. George's action. |
+| CASL consent management | PENDING | Canadian anti-spam law. No consent ledger, no legal basis tracking. Cannot legally send mass email to cold lists. Must be built before any real campaign uses Communications for outreach. |
+| Print vendor portal | PENDING | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
 
 ---
 
-### P1 — Feature Gaps (pages exist, specific user actions are incomplete)
+### P1 — Connection Gaps (platforms exist but don't talk to each other)
 
-These pages work and are accessible. The gap is a specific user journey that isn't fully wired.
+These are coherence failures — things that should connect but don't.
 
-| Task | Status | What a user can do TODAY | What's missing | User impact |
-|---|---|---|---|---|
-| `/print/shops` — depth pass | PENDING | Browse shops, search by name, see basic info | Distance filter, capacity/turnaround display, direct contact/quote button | Campaign manager can't efficiently find the right vendor for a deadline |
-| `/forms/[id]/results` — analytics | PENDING | See all submissions in a table, scroll through raw responses | Aggregated charts per field (bar chart for select, average for number), CSV export | Campaign manager can't see "how many people said X" at a glance |
-| Marketing site content | PENDING | Landing page exists | Needs full content pass — copy, social proof, pricing clarity, CTAs | Affects conversion of new campaigns signing up |
-| Adoni per-tool rate limit | PENDING | Adoni works | No per-tool rate limiting — a runaway call could drain API budget | Low risk now, required before high-traffic production |
+| Gap | Status | What's missing | User impact |
+|---|---|---|---|
+| Brand Kit → applied to outputs | PENDING | `/settings/brand` saves colours/logo/fonts but they are NOT applied to email templates, print designs, or the candidate public page. Settings page that sets nothing. | Every campaign looks generic |
+| Social → Campaign consent bridge | PENDING | Voters on Poll City Social who follow/vote can't consent to being contacted by a specific campaign. The link between the two platforms is missing. | Key monetization gap |
+| Candidate Q&A responses | PENDING | Voters ask questions on /candidates/[slug] but candidates cannot reply publicly from within the platform | Engagement dead end |
+| Volunteer reimbursement → payment | PENDING | Approval chain is complete but actual payment (Stripe or bank transfer) is not automated | Finance officers manually process outside the platform |
+| Voter file import → enrichment | PENDING | Smart import handles general CSVs but does NOT parse ward/poll/riding/household from voter files. Every campaign starts with a voter file. | Campaign setup requires manual data work |
 
 ---
 
-### P2 — Planned Phases (won't block campaigns, build when ready)
+### P2 — Feature Gaps (pages work, specific actions are incomplete)
+
+| Task | Status | What a user can do TODAY | What's missing |
+|---|---|---|---|
+| Geographic maps (CNN-level) | PENDING | None | Leaflet choropleth — support by poll, door knock completion, sign density, heat maps. Campaign strategy depends on geography. |
+| Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
+| `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
+| `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
+| Social feed | PENDING | Discover officials, vote on polls | Activity feed — no reason for a voter to return to /social |
+| Weather integration | PENDING | None | Simple weather API for canvassing day planning |
+| Marketing site content | PENDING | Landing page shell exists | Full content pass — copy, social proof, pricing, CTAs |
+| Adoni per-tool rate limit | PENDING | Adoni works | Per-tool rate limiting to prevent runaway API cost |
+
+---
+
+### P2 — Planned Phases (comms, calendar, social)
 
 | Task | Status | Notes |
 |---|---|---|
-| Comms Phase 8 — Social publishing | PENDING | Real Facebook/X/LinkedIn API calls. UI is built, API stubs exist. Needs real OAuth tokens + post API calls. |
-| Comms Phase 9 — CASL consent management | PENDING | Canadian anti-spam law engine. Track consent basis, consent date, withdrawal. Required before mass email to cold lists. |
-| Comms Phase 10 — Fatigue guard | PENDING | Prevent over-messaging. Max contact frequency rules across channels. |
-| Calendar Phase 6 — Google/Outlook OAuth sync | PENDING | Real two-way sync. Stub exists at `/api/campaign-calendar/sync`. Needs Google/Outlook OAuth app registration. |
-| Figma UI matching | BLOCKED | Waiting on George to copy 3 spec files from Figma Make project into `docs/`. See GEORGE_TODO item 58. Once files are there: rebuild screens one by one starting with Dashboard. |
+| Comms Phase 8 — Social publishing | PENDING | Real Facebook/X/LinkedIn API calls. UI built, API stubs exist. Needs OAuth registration. |
+| Comms Phase 10 — Fatigue guard | PENDING | Max contact frequency enforcement across channels. |
+| Calendar Phase 6 — Google/Outlook OAuth | PENDING | Real two-way sync. Stub at `/api/campaign-calendar/sync`. Needs Google/Outlook OAuth registration. |
+| Figma UI matching | BLOCKED | Waiting on George to copy 3 spec files from Figma Make project into `docs/`. See GEORGE_TODO item 58. |
 
 ---
 
-### P3 — Deferred (decided not to build now)
+### P3 — Future Product Surfaces (separate builds, not sprints)
 
-| Feature | Decision | Reason |
+These are entire products. Each is a substantial build. George decides when.
+
+| Product | What it is | Status |
 |---|---|---|
-| `/dashboard/widget` popout | DEFERRED | Works as dashboard-studio delegate. No user need identified. |
-| `/widgets/[widgetId]` public embed | DEFERRED | Public campaign website widgets — future product feature, not sprint priority. |
-| Phone banking (`/call-list`) full build | DEFERRED | Page works as a CandidateCallList component. Full phone banking dialer is a V2 feature. |
+| **Print Vendor Portal** | Dedicated login + job board + production status updates for print vendors | ❌ Not started |
+| **Campaign Services Network** | "Uber for campaign services" — book on-demand canvassers, sign teams, lit-drop crews with ratings + marketplace pricing | ❌ Not started |
+| **Poll City Marketplace** | Campaign merch stores — multi-product, multi-vendor, revenue splits | ❌ Not started |
+| **George's Brain (CampaignWisdom)** | George's 35 years of political expertise extracted into a knowledge base, integrated into Adoni | ❌ Not started |
+| **TV Mode** | 7 election night display modes for press room (Chromecast/AirPlay) | ❌ Not started |
+| **Mobile App (App Store)** | React Native app in `mobile/` is built and API-connected — needs publishing. May 2026 deadline. | ⚠️ Built, not published |
+| **Poll City Social (full)** | Activity feed, notification engine, civic engagement beyond polls + officials, consent bridge | ⚠️ Foundation built |
+| **Simulation Engine** | Real-time campaign activity simulator for demos and training | ❌ Not started |
+
+---
+
+### Deferred
+
+| Feature | Reason |
+|---|---|
+| Phone banking full dialer | `/call-list` works as CandidateCallList component. Full dialer is V2. |
+| Dashboard widget popout | Works as dashboard-studio delegate. No identified user need. |
 
 ---
 
