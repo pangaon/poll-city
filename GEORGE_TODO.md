@@ -50,9 +50,8 @@ Go to Railway → Poll City service → Variables tab. Add each one:
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client-side key for Stripe Elements (payment form UI) |
 | `STRIPE_FUNDRAISING_WEBHOOK_SECRET` | Verifies incoming Stripe event webhooks are authentic |
 
-- [ ] **2. Add `STRIPE_SECRET_KEY` to Railway**
-- [ ] **3. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Railway**
-- [ ] **3b. Also add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel** (the public donation page `/donate/[slug]` runs on Vercel — `NEXT_PUBLIC_` vars are baked into the build and MUST be set in Vercel Project Settings, not just Railway)
+- [ ] **2. Add `STRIPE_SECRET_KEY` to Vercel**
+- [ ] **3. Add `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to Vercel**
 
 ### Step A2 — Enable Stripe Connect on YOUR Stripe account
 
@@ -88,7 +87,7 @@ This is a one-time platform-level setting. Campaigns cannot connect until you do
   5. Click **Add endpoint**
   6. Click **Reveal signing secret** → copy the `whsec_...` value
 
-- [ ] **5. Add `STRIPE_FUNDRAISING_WEBHOOK_SECRET` to Railway** (value from Step B)
+- [ ] **5. Add `STRIPE_FUNDRAISING_WEBHOOK_SECRET` to Vercel** (value from Step B)
 
 ### Step C — Platform billing Stripe (Poll City subscriptions)
 
@@ -114,9 +113,9 @@ These power the pricing page and client subscription management.
      - `payment_intent.payment_failed` ← **required to reset print jobs on failed payment**
   5. Click **Add endpoint**
   6. Click **Reveal signing secret** → copy the `whsec_...` value → that's `STRIPE_WEBHOOK_SECRET`
-- [ ] **7. Add `STRIPE_WEBHOOK_SECRET` to Railway**
-- [ ] **8. Add `STRIPE_STARTER_PRICE_ID` to Railway**
-- [ ] **9. Add `STRIPE_PRO_PRICE_ID` to Railway`**
+- [ ] **7. Add `STRIPE_WEBHOOK_SECRET` to Vercel**
+- [ ] **8. Add `STRIPE_STARTER_PRICE_ID` to Vercel**
+- [ ] **9. Add `STRIPE_PRO_PRICE_ID` to Vercel**
 
 ### Step D — How campaigns connect their Stripe (your clients do this, not you)
 
@@ -147,9 +146,9 @@ Email (Resend) powers: donation receipt emails, event reminders, volunteer invit
 | `RESEND_FROM_EMAIL` | `Poll City <noreply@poll.city>` |
 | `RESEND_REPLY_TO` | `support@poll.city` |
 
-- [ ] **14. Add `RESEND_API_KEY` to Railway**
-- [ ] **15. Add `RESEND_FROM_EMAIL` to Railway** (value: `Poll City <noreply@poll.city>`)
-- [ ] **16. Add `RESEND_REPLY_TO` to Railway** (value: `support@poll.city`)
+- [ ] **14. Add `RESEND_API_KEY` to Vercel**
+- [ ] **15. Add `RESEND_FROM_EMAIL` to Vercel** (value: `Poll City <noreply@poll.city>`)
+- [ ] **16. Add `RESEND_REPLY_TO` to Vercel** (value: `support@poll.city`)
 
 ### Unified Inbox — receive email replies from contacts
 
@@ -177,9 +176,9 @@ The Unified Inbox (built Session 3, April 15) shows inbound SMS automatically vi
 | `TWILIO_AUTH_TOKEN` | Auth token from Twilio console |
 | `TWILIO_PHONE_NUMBER` | Your Twilio number in E.164 format (e.g. `+16135551234`) |
 
-- [ ] **19. Add `TWILIO_ACCOUNT_SID` to Railway**
-- [ ] **20. Add `TWILIO_AUTH_TOKEN` to Railway**
-- [ ] **21. Add `TWILIO_PHONE_NUMBER` to Railway**
+- [ ] **19. Add `TWILIO_ACCOUNT_SID` to Vercel**
+- [ ] **20. Add `TWILIO_AUTH_TOKEN` to Vercel**
+- [ ] **21. Add `TWILIO_PHONE_NUMBER` to Vercel**
 - [ ] **21b. Wire Twilio inbound webhook** (needed for STOP/START to work):
   1. Go to [console.twilio.com](https://console.twilio.com) → Phone Numbers → Manage → your number
   2. Under "Messaging" → "A message comes in" → set to **Webhook**
@@ -230,25 +229,14 @@ Without Upstash, rate limiting falls back to in-memory (not safe under load, res
 | `UPSTASH_REDIS_REST_URL` | Upstash dashboard → your database → REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash dashboard → your database → REST Token |
 
-- [ ] **33. Add `UPSTASH_REDIS_REST_URL` to Railway**
-- [ ] **34. Add `UPSTASH_REDIS_REST_TOKEN` to Railway**
+- [ ] **33. Add `UPSTASH_REDIS_REST_URL` to Vercel**
+- [ ] **34. Add `UPSTASH_REDIS_REST_TOKEN` to Vercel**
 
 ---
 
 ## 🔵 PUSH NOTIFICATIONS — Browser push for alerts
 
-- [ ] **35. Generate VAPID keys**:
-  ```
-  npx web-push generate-vapid-keys
-  ```
-  This outputs a public and private key pair.
-- [ ] **36. Add to Railway**:
-
-| Variable | Value |
-|---|---|
-| `VAPID_PUBLIC_KEY` | The public key from the command above |
-| `VAPID_PRIVATE_KEY` | The private key from the command above |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Same as `VAPID_PUBLIC_KEY` |
+- [x] **35/36. VAPID keys** ✓ Done — already in Vercel (NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
 
 ---
 
@@ -279,11 +267,7 @@ These activate your personal debug toolbar when you're logged in as yourself.
   2. Go to `https://app.poll.city/api/auth/session` in the same browser
   3. You'll see JSON — find the `"id"` field inside `"user"` and copy it
 - [x] **42. Add `GEORGE_USER_ID` to Vercel** ✓ Done 2026-04-18 (the ID you found in step 41)
-- [ ] **43. Activate your debug suite**:
-  1. Log in to [app.poll.city](https://app.poll.city)
-  2. Go to `https://app.poll.city/debug-access?key=pollcity2026george`
-  3. You should see a confirmation screen
-  4. Debug toolbar now appears when you are logged in
+- [x] **43. Activate your debug suite** ✓ Done 2026-04-18
 
 ---
 
@@ -316,7 +300,7 @@ These activate your personal debug toolbar when you're logged in as yourself.
   2. APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
   3. Application type: Web application
   4. Authorized redirect URIs: `https://app.poll.city/api/auth/callback/google`
-- [ ] **48. Add to Railway**:
+- [ ] **48. Add to Vercel**:
 
 | Variable | Value |
 |---|---|
@@ -327,7 +311,7 @@ These activate your personal debug toolbar when you're logged in as yourself.
 
 ## 🔵 INFRASTRUCTURE — Required before first real customer
 
-- [ ] **49. Enable Railway daily backups**:
+- [x] **49. Enable Railway daily backups** ✓ Already running — daily schedule confirmed, 5 days of history:
   1. Go to [railway.app](https://railway.app)
   2. Click your database project
   3. Click Settings
@@ -362,16 +346,7 @@ These activate your personal debug toolbar when you're logged in as yourself.
 The goal: AI sessions will rebuild the Next.js app screens to match your Figma design exactly.
 Two steps: wire up the prototype viewer, then get the design specs into this repo.
 
-- [ ] **57. Activate the Figma prototype viewer inside the app**
-  1. Go to [vercel.com](https://vercel.com) → click your Poll City project
-  2. Click **Settings** (top nav)
-  3. Click **Environment Variables** (left sidebar)
-  4. Click **Add New**
-  5. Name: `NEXT_PUBLIC_FIGMA_APP_URL`
-  6. Value: `https://valley-revise-45442235.figma.site`
-  7. Click **Save**
-  8. Go to **Deployments** tab → click **Redeploy** on the latest deployment
-  9. Done — you can now visit `app.poll.city/pcapp` to see your Figma prototype inside the app
+- [x] **57. Figma prototype viewer** ✓ Done — NEXT_PUBLIC_FIGMA_APP_URL already in Vercel
 
 - [x] **58. SKIP — spec files do not exist in Figma Make project** (confirmed April 16)
   Those 3 files (`poll-city-design-spec.md` etc.) were never created. AI sessions build
