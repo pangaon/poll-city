@@ -189,6 +189,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [stripeNotConnected, setStripeNotConnected] = useState(false);
+
+  // Fetch Stripe onboarding status once on mount for the amber badge
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/campaigns/current")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && !data.stripeOnboarded && !data.isDemo) setStripeNotConnected(true);
+      })
+      .catch(() => undefined);
+  }, [session]);
 
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const roleName = (session?.user?.role ?? "").toString().toUpperCase();
@@ -272,6 +284,7 @@ export default function Sidebar() {
             <div className="space-y-px">
               {section.items.map(({ href, icon: Icon, label }) => {
                 const active = pathname === href || (pathname ?? "").startsWith(`${href}/`);
+                const showStripeDot = stripeNotConnected && href === "/fundraising";
                 return (
                   <Link
                     key={href}
@@ -284,7 +297,10 @@ export default function Sidebar() {
                     )}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{label}</span>
+                    <span className="truncate flex-1">{label}</span>
+                    {showStripeDot && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Stripe not connected" />
+                    )}
                   </Link>
                 );
               })}

@@ -183,7 +183,21 @@ const LEGAL_FRAMEWORK: Record<string, {
   other:       { law: "Consult your jurisdiction's election authority",   donorLimit: 1200,  anonCap: 25,  corporate: false, union: false, notes: "Rules not auto-applied. Configure limits manually and verify with your local election authority." },
 };
 
-export default function FundraisingClient({ campaignId, electionType = "municipal", jurisdiction }: { campaignId: string; electionType?: string; jurisdiction?: string | null }) {
+export default function FundraisingClient({
+  campaignId,
+  electionType = "municipal",
+  jurisdiction,
+  stripeOnboarded = false,
+  stripeConnectedAccountId = null,
+  isDemo = false,
+}: {
+  campaignId: string;
+  electionType?: string;
+  jurisdiction?: string | null;
+  stripeOnboarded?: boolean;
+  stripeConnectedAccountId?: string | null;
+  isDemo?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("overview");
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -539,6 +553,24 @@ export default function FundraisingClient({ campaignId, electionType = "municipa
     [donations],
   );
 
+  /* ─── stripe connect ─────────────────────────────────────────────────── */
+
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeBannerDismissed, setStripeBannerDismissed] = useState(false);
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/stripe/onboard`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to start Stripe onboarding");
+      const { url } = await res.json() as { url: string };
+      window.location.href = url;
+    } catch {
+      toast.error("Could not start Stripe onboarding. Try again.");
+      setStripeConnecting(false);
+    }
+  };
+
   /* ─── tab nav ────────────────────────────────────────────────────────── */
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [
@@ -557,6 +589,52 @@ export default function FundraisingClient({ campaignId, electionType = "municipa
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+
+      {/* ── Stripe not connected banner ── */}
+      <AnimatePresence>
+        {!stripeOnboarded && !isDemo && !stripeBannerDismissed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={SPRING}
+            className="overflow-hidden"
+          >
+            <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+              <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Online donations are disabled</p>
+                    <p className="text-xs text-amber-700">Connect Stripe to accept credit card donations on your public donation page.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                    onClick={handleConnectStripe}
+                    disabled={stripeConnecting}
+                    className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5 disabled:opacity-60"
+                    style={{ backgroundColor: AMBER }}
+                  >
+                    {stripeConnecting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                    {stripeConnectedAccountId ? "Resume Stripe setup" : "Connect Stripe"}
+                  </motion.button>
+                  <button
+                    onClick={() => setStripeBannerDismissed(true)}
+                    className="text-amber-500 hover:text-amber-700 text-xs underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── header ── */}
       <div style={{ backgroundColor: NAVY }} className="px-6 py-4">
         <div className="max-w-7xl mx-auto">
@@ -565,14 +643,27 @@ export default function FundraisingClient({ campaignId, electionType = "municipa
               <h1 className="text-2xl font-bold text-white">Fundraising</h1>
               <p className="text-blue-200 text-sm mt-0.5">Revenue operating system for your campaign</p>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              onClick={() => setShowAddDonation(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-              style={{ backgroundColor: GREEN, color: "white" }}
-            >
-              <Plus className="w-4 h-4" /> Record Donation
-            </motion.button>
+            <div className="flex items-center gap-2">
+              {!stripeOnboarded && !isDemo && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleConnectStripe}
+                  disabled={stripeConnecting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-amber-400 text-amber-300 hover:bg-amber-400/10 disabled:opacity-60"
+                >
+                  {stripeConnecting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                  {stripeConnectedAccountId ? "Resume Stripe" : "Connect Stripe"}
+                </motion.button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setShowAddDonation(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: GREEN, color: "white" }}
+              >
+                <Plus className="w-4 h-4" /> Record Donation
+              </motion.button>
+            </div>
           </div>
 
           {/* KPI strip */}

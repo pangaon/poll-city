@@ -139,6 +139,19 @@ export default function OnboardingWizard({
   const currentIndex = STEPS.findIndex((s) => s.id === currentStep);
 
   function advance() {
+    // When skipping the Stripe step without connecting, create a reminder task
+    if (currentStep === "stripe" && !stripeOnboarded) {
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          title: "Connect Stripe to accept online donations",
+          description: "Visit Fundraising → Connect Stripe to enable your donation page. Donors cannot give online until this is complete.",
+          priority: "high",
+        }),
+      }).catch(() => undefined); // fire-and-forget; don't block navigation
+    }
     const next = STEPS[currentIndex + 1];
     if (next) setCurrentStep(next.id);
   }
