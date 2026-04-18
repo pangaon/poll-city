@@ -8,7 +8,8 @@ Complete map of every doc file in this project and when to use it.
 
 | File | Purpose | Read when |
 |---|---|---|
-| FIGMA.md | Master context — tech stack, routes, design system, sidebar | Always first |
+| PLATFORM_VISION.md | **What Poll City actually is** — 3 products, Social as "Facebook for politics", full pricing, critical bugs, facts agents get wrong. Read this first. | Every session — start here |
+| FIGMA.md | Master context — tech stack, routes, design system, sidebar | Always before touching code |
 | CLAUDE.md | Agent standing orders, quality gates, build cycle | Every session — non-negotiable |
 | QUICK_START.md | Fast orientation, commands, active build queue | Starting a new task |
 
