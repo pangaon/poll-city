@@ -638,6 +638,13 @@ model User {
   newsletterCampaignsAuthored NewsletterCampaign[]   @relation("NewsletterAuthor")
   scrutineerAssignments       ScrutineerAssignment[] @relation("ScrutineerUser")
   scrutineerAssignedBy        ScrutineerAssignment[] @relation("ScrutineerAssigner")
+  captureAssignments          CaptureAssignment[]    @relation("CaptureAssignee")
+  captureAssignmentsCreated   CaptureAssignment[]    @relation("CaptureAssigner")
+  captureSubmissions          CaptureSubmission[]
+  captureRevisions            CaptureSubmissionRevision[]
+  captureIssuesReported       CaptureIssueReport[]   @relation("CaptureIssueReporter")
+  captureIssuesResolved       CaptureIssueReport[]   @relation("CaptureIssueResolver")
+  captureEventsCreated        CaptureEvent[]
   printInventoryLogs          PrintInventoryLog[]
 
   // Field operations
@@ -726,6 +733,10 @@ model User {
 
   // RCAE
   repIssuesOwned ReputationIssue[] @relation("rep_issue_owner")
+
+  // Poll City Social feed
+  socialNotifications  SocialNotification[]
+  civicGroupMemberships CivicGroupMember[]
 
   @@map("users")
 }
@@ -997,6 +1008,15 @@ model Campaign {
   reputationResponsePages   ReputationResponsePage[]
   amplificationActions      AmplificationAction[]
 
+  // Quick Capture
+  captureEvents      CaptureEvent[]
+  captureSubmissions CaptureSubmission[]
+  captureAssignments CaptureAssignment[]
+  captureIssues      CaptureIssueReport[]
+
+  // Poll City Social feed
+  politicianPosts PoliticianPost[]
+
   @@unique([customDomain])
   @@index([slug])
   @@index([isPublic, isActive])
@@ -1151,6 +1171,8 @@ model Official {
   caseFiles             ConstituentCaseFile[]
   newsletterSubscribers NewsletterSubscriber[]
   newsletterCampaigns   NewsletterCampaign[]
+  politicianPosts       PoliticianPost[]
+  socialNotifications   SocialNotification[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -1598,6 +1620,7 @@ model Poll {
   campaign         Campaign?        @relation(fields: [campaignId], references: [id])
   official         Official?        @relation(fields: [officialId], references: [id])
   wordCloudEntries WordCloudEntry[]
+  politicianPosts  PoliticianPost[]
 
   @@index([targetRegion])
   @@index([isActive, isFeatured])
@@ -8362,4 +8385,382 @@ model AutomationStepCompletion {
 
   @@unique([enrollmentId, stepId])
   @@map("automation_step_completions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUICK CAPTURE SYSTEM — election results capture for advance vote & election day
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CaptureEventType {
+  advance_vote
+  election_day
+  custom
+}
+
+enum CaptureEventStatus {
+  setup     // being configured — no submissions allowed
+  active    // open for submissions
+  locked    // closed for new submissions, results final
+  archived  // historical record only
+}
+
+enum CaptureSubmissionStatus {
+  draft            // saved locally, not yet submitted
+  pending_review   // submitted, awaiting approval
+  approved         // approved by a manager
+  rejected         // rejected, requires correction
+  flagged          // anomaly detected, needs human review
+}
+
+enum CaptureIssueType {
+  missing_scrutineer
+  access_denied
+  equipment_failure
+  intimidation
+  suspicious_activity
+  ballot_irregularity
+  long_lineup
+  other
+}
+
+enum CaptureIssueSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum CaptureAssignmentRole {
+  lead      // primary submitter for this location
+  backup    // can submit if lead unavailable
+  observer  // read-only war room access
+}
+
+// CaptureEvent — one per election event (advance vote period OR election day)
+model CaptureEvent {
+  id         String             @id @default(cuid())
+  campaignId String
+  name       String             // e.g. "Advance Vote — Oct 4-7" or "Election Day Oct 28"
+  eventType  CaptureEventType   @default(election_day)
+  status     CaptureEventStatus @default(setup)
+
+  // Geography / race being captured
+  office       String  // "Mayor" | "Ward 3 Councillor" etc.
+  ward         String?
+  district     String?
+  municipality String
+  province     String  @default("ON")
+
+  // Timing
+  startDate DateTime?
+  endDate   DateTime?
+
+  // Submission configuration
+  requireDoubleEntry   Boolean @default(true)  // require two separate users to confirm votes
+  allowPartialSubmit   Boolean @default(true)  // allow < 100% reporting
+  lockAfterApproval    Boolean @default(true)  // freeze record after manager approves
+  allowCorrections     Boolean @default(true)  // allow authorized corrections after lock
+  anomalyThreshold     Float?                  // flag if any candidate % deviates >X% from expected
+
+  // Audit
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  campaign    Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  candidates  CaptureCandidate[]
+  locations   CaptureLocation[]
+  assignments CaptureAssignment[]
+  submissions CaptureSubmission[]
+  issues      CaptureIssueReport[]
+
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@index([campaignId, eventType])
+  @@map("capture_events")
+}
+
+// CaptureCandidate — ordered candidate roster for a CaptureEvent
+model CaptureCandidate {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  party       String?
+  ballotOrder Int      @default(0)
+  isWithdrawn Boolean  @default(false) // candidate withdrew after setup
+  isWriteIn   Boolean  @default(false) // write-in / other bucket
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event   CaptureEvent              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  results CaptureSubmissionResult[]
+
+  @@index([eventId])
+  @@map("capture_candidates")
+}
+
+// CaptureLocation — polling station or advance vote location for a CaptureEvent
+model CaptureLocation {
+  id           String   @id @default(cuid())
+  eventId      String
+  campaignId   String
+  name         String   // "Poll 42-A — Ward 3"
+  address      String?
+  municipality String?
+  ward         String?
+  district     String?
+  pollNumber   String?  // official poll number from elections authority
+  expectedTurnout Int?  // for anomaly threshold calculation
+
+  status    String   @default("active") // active | closed | problem | completed
+  notes     String?
+  importedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  event       CaptureEvent         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignments CaptureAssignment[]
+  submissions CaptureSubmission[]
+  issues      CaptureIssueReport[] @relation("IssueLocation")
+
+  @@index([eventId])
+  @@index([campaignId])
+  @@map("capture_locations")
+}
+
+// CaptureAssignment — assigns a user to cover a specific location
+model CaptureAssignment {
+  id         String                @id @default(cuid())
+  eventId    String
+  locationId String
+  userId     String
+  campaignId String
+  role       CaptureAssignmentRole @default(lead)
+  assignedById String
+  notes      String?
+  assignedAt DateTime              @default(now())
+
+  event      CaptureEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location   CaptureLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user       User            @relation("CaptureAssignee", fields: [userId], references: [id])
+  assignedBy User            @relation("CaptureAssigner", fields: [assignedById], references: [id])
+  campaign   Campaign        @relation(fields: [campaignId], references: [id])
+
+  @@unique([eventId, locationId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("capture_assignments")
+}
+
+// CaptureSubmission — a field user's result submission for one location
+model CaptureSubmission {
+  id         String                  @id @default(cuid())
+  eventId    String
+  locationId String
+  campaignId String
+  submittedById String
+
+  status      CaptureSubmissionStatus @default(pending_review)
+  captureMode String                  @default("manual") // manual | ocr | import
+  notes       String?
+  issueFlag   Boolean                 @default(false)
+
+  // Double-entry workflow — if requireDoubleEntry, a second submission paired here is required
+  isFirstEntry       Boolean @default(true)
+  pairedSubmissionId String? // FK to the other entry for this location (set on second entry)
+
+  // Aggregate fields (denormalized for fast war room queries)
+  totalVotes       Int?
+  rejectedBallots  Int?
+  percentReporting Float   @default(100)
+
+  // Timestamps
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  reviewedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event       CaptureEvent              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location    CaptureLocation           @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  campaign    Campaign                  @relation(fields: [campaignId], references: [id])
+  submittedBy User                      @relation(fields: [submittedById], references: [id])
+  results     CaptureSubmissionResult[]
+  revisions   CaptureSubmissionRevision[]
+  issues      CaptureIssueReport[]      @relation("IssueSubmission")
+
+  @@index([eventId])
+  @@index([locationId])
+  @@index([campaignId])
+  @@index([campaignId, status])
+  @@map("capture_submissions")
+}
+
+// CaptureSubmissionResult — per-candidate vote count within a submission
+model CaptureSubmissionResult {
+  id           String @id @default(cuid())
+  submissionId String
+  candidateId  String
+  votes        Int    @default(0)
+
+  submission CaptureSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  candidate  CaptureCandidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, candidateId])
+  @@index([submissionId])
+  @@map("capture_submission_results")
+}
+
+// CaptureSubmissionRevision — full audit trail for every edit to a submission
+model CaptureSubmissionRevision {
+  id           String   @id @default(cuid())
+  submissionId String
+  revisedById  String
+  reason       String
+  previousValues Json   // snapshot of CaptureSubmissionResult[] before change
+  newValues      Json   // snapshot after change
+  createdAt    DateTime @default(now())
+
+  submission CaptureSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  revisedBy  User              @relation(fields: [revisedById], references: [id])
+
+  @@index([submissionId])
+  @@map("capture_submission_revisions")
+}
+
+// CaptureIssueReport — field incident report linked to a location or submission
+model CaptureIssueReport {
+  id           String               @id @default(cuid())
+  eventId      String
+  locationId   String?
+  submissionId String?
+  campaignId   String
+  reportedById String
+
+  issueType   CaptureIssueType     @default(other)
+  severity    CaptureIssueSeverity @default(medium)
+  description String
+  resolvedAt  DateTime?
+  resolvedById String?
+  resolution  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event        CaptureEvent               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location     CaptureLocation?           @relation("IssueLocation", fields: [locationId], references: [id])
+  submission   CaptureSubmission?         @relation("IssueSubmission", fields: [submissionId], references: [id])
+  campaign     Campaign                   @relation(fields: [campaignId], references: [id])
+  reportedBy   User                       @relation("CaptureIssueReporter", fields: [reportedById], references: [id])
+  resolvedBy   User?                      @relation("CaptureIssueResolver", fields: [resolvedById], references: [id])
+
+  @@index([eventId])
+  @@index([campaignId])
+  @@index([locationId])
+  @@map("capture_issue_reports")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLL CITY SOCIAL — FEED ENGINE (Phase 1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PoliticianPostType {
+  poll
+  announcement
+  civic_update
+  bill_update
+  project_update
+}
+
+enum CivicGroupTopic {
+  housing
+  transit
+  parks
+  safety
+  environment
+  budget
+  general
+}
+
+/// A post made by an elected official or campaign on Poll City Social.
+/// officialId OR campaignId must be set (not both required, but at least one).
+model PoliticianPost {
+  id             String              @id @default(cuid())
+  officialId     String?
+  campaignId     String?
+  authorName     String              // denormalized display name
+  postType       PoliticianPostType
+  title          String
+  body           String              @db.Text
+  pollId         String?             // link to existing Poll if postType = poll
+  imageUrl       String?
+  municipalScope String?             // "toronto" | "brampton" etc. for feed filtering
+  isPublished    Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  official      Official?          @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  campaign      Campaign?          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  poll          Poll?              @relation(fields: [pollId], references: [id], onDelete: SetNull)
+  notifications SocialNotification[]
+
+  @@index([officialId, createdAt])
+  @@index([campaignId, createdAt])
+  @@index([municipalScope, createdAt])
+  @@index([isPublished, createdAt])
+  @@map("politician_posts")
+}
+
+/// Notification for a social user — created when a followed official posts.
+model SocialNotification {
+  id         String   @id @default(cuid())
+  userId     String
+  postId     String?
+  officialId String?
+  type       String   // "new_post" | "new_poll" | "announcement" | "civic_update"
+  title      String
+  body       String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post     PoliticianPost? @relation(fields: [postId], references: [id], onDelete: SetNull)
+  official Official?       @relation(fields: [officialId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, createdAt])
+  @@map("social_notifications")
+}
+
+/// Civic interest group — residents join, politicians post to them.
+model CivicInterestGroup {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  topic        CivicGroupTopic
+  municipality String?         // "toronto" | "brampton" etc.
+  memberCount  Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  members CivicGroupMember[]
+
+  @@index([topic])
+  @@index([municipality])
+  @@map("civic_interest_groups")
+}
+
+/// Join table: User ↔ CivicInterestGroup
+model CivicGroupMember {
+  userId   String
+  groupId  String
+  joinedAt DateTime @default(now())
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group CivicInterestGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+  @@map("civic_group_members")
 }

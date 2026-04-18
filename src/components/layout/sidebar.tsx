@@ -38,6 +38,8 @@ import {
   Brain,
   Search,
   Bell,
+  Radio,
+  MonitorPlay,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -72,13 +74,15 @@ const FIELD_SECTION: NavSection = {
   id: "field",
   label: "Field",
   items: [
-    { href: "/field-ops", icon: ClipboardList, label: "Field Ops"    },
-    { href: "/gotv",      icon: Target,        label: "GOTV"         },
-    { href: "/eday",      icon: Vote,          label: "Election Day" },
-    { href: "/signs",     icon: PenSquare,     label: "Signs"        },
-    { href: "/events",    icon: CalendarDays,  label: "Events"       },
-    { href: "/qr",        icon: QrCode,        label: "QR Capture"   },
-    { href: "/fuel",      icon: Truck,         label: "Logistics"    },
+    { href: "/field-ops",              icon: ClipboardList, label: "Field Ops"       },
+    { href: "/gotv",                   icon: Target,        label: "GOTV"            },
+    { href: "/eday",                   icon: Vote,          label: "Election Day"    },
+    { href: "/eday/capture",           icon: Radio,         label: "Quick Capture"   },
+    { href: "/eday/capture/war-room",  icon: MonitorPlay,   label: "War Room"        },
+    { href: "/signs",                  icon: PenSquare,     label: "Signs"           },
+    { href: "/events",                 icon: CalendarDays,  label: "Events"          },
+    { href: "/qr",                     icon: QrCode,        label: "QR Capture"      },
+    { href: "/fuel",                   icon: Truck,         label: "Logistics"       },
   ],
 };
 
