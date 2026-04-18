@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/social/feed
@@ -28,12 +29,10 @@ export async function GET(req: NextRequest) {
 
   const userId = session?.user?.id ?? null;
 
-  // Build the where clause
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const whereConditions: any[] = [{ isPublished: true }];
+  const orConditions: Prisma.PoliticianPostWhereInput[] = [];
 
   if (userId) {
-    // Get followed official IDs
+    // Posts from followed officials
     const follows = await prisma.officialFollow.findMany({
       where: { userId },
       select: { officialId: true },
@@ -41,30 +40,30 @@ export async function GET(req: NextRequest) {
     const followedOfficialIds = follows.map((f) => f.officialId);
 
     if (followedOfficialIds.length > 0) {
-      whereConditions.push({ officialId: { in: followedOfficialIds } });
+      orConditions.push({ officialId: { in: followedOfficialIds } });
     }
 
-    // Also include posts matching user's municipality (derived from postal code)
+    // Posts matching user's municipality (postal code prefix as proxy)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { postalCode: true },
     });
     if (user?.postalCode) {
-      // Use first 3 chars of postal code as municipality proxy until we have full geo
       const postalPrefix = user.postalCode.replace(/\s/g, "").slice(0, 3).toUpperCase();
-      whereConditions.push({ municipalScope: { contains: postalPrefix, mode: "insensitive" as const } });
+      orConditions.push({
+        municipalScope: { contains: postalPrefix, mode: "insensitive" },
+      });
     }
   }
 
-  const where =
-    whereConditions.length === 1
-      ? whereConditions[0]
-      : { AND: [{ isPublished: true }], OR: whereConditions.slice(1) };
-
-  const cursorWhere = cursor ? { createdAt: { lt: new Date(cursor) } } : {};
+  const where: Prisma.PoliticianPostWhereInput = {
+    isPublished: true,
+    ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+    ...(orConditions.length > 0 ? { OR: orConditions } : {}),
+  };
 
   const posts = await prisma.politicianPost.findMany({
-    where: { ...where, ...cursorWhere },
+    where,
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
@@ -114,7 +113,7 @@ export async function GET(req: NextRequest) {
   const nextCursor =
     posts.length === limit ? posts[posts.length - 1].createdAt.toISOString() : null;
 
-  // Indicate whether this is a discovery feed (no follows) so UI can show CTA
+  // Discovery mode when user has no follows
   const isDiscovery = userId
     ? (await prisma.officialFollow.count({ where: { userId } })) === 0
     : true;

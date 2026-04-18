@@ -12,7 +12,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const rateLimitResponse = rateLimit(req, "api");
+  const rateLimitResponse = rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { session, error } = await apiAuth(req);
@@ -48,7 +48,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const rateLimitResponse = rateLimit(req, "api");
+  const rateLimitResponse = rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { session, error } = await apiAuth(req);

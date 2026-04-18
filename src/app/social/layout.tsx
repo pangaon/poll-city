@@ -27,11 +27,17 @@ export default function SocialLayout({ children }: { children: React.ReactNode }
           <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-white shadow-sm">
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
               <nav className="px-4 py-3 flex items-center justify-between gap-2 text-sm font-medium text-gray-700 overflow-x-auto">
+                <Link href="/social" className="whitespace-nowrap font-bold text-blue-700 hover:text-blue-800 transition-colors">
+                  Poll City
+                </Link>
                 <Link href="/social/officials" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  Find Officials
+                  Officials
                 </Link>
                 <Link href="/social/polls" className="whitespace-nowrap hover:text-blue-700 transition-colors">
                   Polls
+                </Link>
+                <Link href="/social/groups" className="whitespace-nowrap hover:text-blue-700 transition-colors">
+                  Groups
                 </Link>
                 <Link href="/social/profile" className="whitespace-nowrap hover:text-blue-700 transition-colors">
                   My Profile

@@ -21,7 +21,7 @@ const CreatePostSchema = z.object({
  * Returns published posts, optionally filtered by officialId or campaignId.
  */
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req, "api");
+  const rateLimitResponse = rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { searchParams } = new URL(req.url);

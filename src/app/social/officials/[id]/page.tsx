@@ -1,11 +1,9 @@
-import type { Metadata } from "next";
-import OfficialDetailPage from "./official-detail-client";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Official Profile — Poll City Social",
-  description: "View this official's approval rating, promises, and civic engagement.",
-};
-
-export default function Page() {
-  return <OfficialDetailPage />;
+/**
+ * Redirect legacy /social/officials/[id] to the unified politician profile.
+ * Preserves backward compatibility for any existing links.
+ */
+export default function Page({ params }: { params: { id: string } }) {
+  redirect(`/social/politicians/${params.id}`);
 }
