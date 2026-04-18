@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   compress: true,
+  // Windows NTFS race: windowsPreBuild() in push-safe.mjs cleans .next manually; skip Next.js's own clean so stubs survive
+  cleanDistDir: false,
 
   images: {
     domains: [],
