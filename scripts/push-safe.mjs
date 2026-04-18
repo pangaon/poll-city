@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 function run(command, options = {}) {
   return execSync(command, { stdio: "pipe", encoding: "utf8", ...options }).trim();
@@ -19,6 +21,30 @@ function fail(message) {
 }
 
 const shouldPush = !process.argv.includes("--no-push");
+
+function findPageDirs(dir, base) {
+  const dirs = new Set();
+  let hasPage = false;
+  for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (item.isDirectory()) {
+      findPageDirs(path.join(dir, item.name), path.join(base, item.name)).forEach(d => dirs.add(d));
+    } else if (item.name === "page.tsx" || item.name === "layout.tsx") {
+      hasPage = true;
+    }
+  }
+  if (hasPage) dirs.add(base);
+  return dirs;
+}
+
+function windowsPreBuild() {
+  try { fs.rmSync(".next", { recursive: true, force: true }); } catch {}
+  [".next/server/pages", ".next/export", ".next/types"].forEach(d => fs.mkdirSync(d, { recursive: true }));
+  fs.writeFileSync(".next/package.json", JSON.stringify({ type: "commonjs" }));
+  fs.writeFileSync(".next/server/pages-manifest.json", "{}");
+  const pageDirs = findPageDirs("src/app", "app");
+  for (const d of pageDirs) fs.mkdirSync(path.join(".next/types", d), { recursive: true });
+  console.log(`Windows pre-build: pre-created ${pageDirs.size} type directories`);
+}
 
 try {
   run("git rev-parse --is-inside-work-tree");
@@ -61,8 +87,8 @@ if (behind > 0) {
 runLogged("npm run security:gates");
 runLogged("npm run test:contracts");
 runLogged("npm run test");
-// Windows ENOENT race: wipe stale .next, pre-create dirs + stub files Next.js reads before writing
-run("node -e \"const fs=require('fs');try{fs.rmSync('.next',{recursive:true,force:true})}catch{}; ['.next/server/pages','.next/export'].forEach(d=>fs.mkdirSync(d,{recursive:true})); fs.writeFileSync('.next/package.json',JSON.stringify({type:'commonjs'})); fs.writeFileSync('.next/server/pages-manifest.json','{}');\"");
+// Windows ENOENT race: wipe stale .next, pre-create ALL dirs Next.js renames/writes into
+windowsPreBuild();
 runLogged("npm run build");
 
 if (shouldPush) {
