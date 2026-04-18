@@ -128,6 +128,8 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
       isPublic: true,
       gaId: true,
       metaPixelId: true,
+      stripeOnboarded: true,
+      isDemo: true,
       officialId: true,
       official: {
         select: {
@@ -275,6 +277,7 @@ async function getCandidatePageData(slug: string): Promise<CandidatePageData | n
     customization,
     gaId: campaign.gaId ?? null,
     metaPixelId: campaign.metaPixelId ?? null,
+    donationsEnabled: campaign.stripeOnboarded || campaign.isDemo,
   };
 }
 

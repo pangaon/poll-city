@@ -155,6 +155,8 @@ export type CandidatePageData = {
   // Per-campaign tracking
   gaId?: string | null;
   metaPixelId?: string | null;
+  // true when campaign has completed Stripe onboarding OR is a demo campaign
+  donationsEnabled: boolean;
 };
 
 interface CandidatePageClientProps {
@@ -498,13 +500,15 @@ function CandidateNav({
                 >
                   Support
                 </button>
-                <button
-                  onClick={() => { onAction("donate"); setMobileOpen(false); }}
-                  className="flex-1 rounded-full text-white py-2.5 text-sm font-semibold"
-                  style={{ backgroundColor: accent }}
-                >
-                  Donate
-                </button>
+                {campaign.donationsEnabled && (
+                  <button
+                    onClick={() => { onAction("donate"); setMobileOpen(false); }}
+                    className="flex-1 rounded-full text-white py-2.5 text-sm font-semibold"
+                    style={{ backgroundColor: accent }}
+                  >
+                    Donate
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -951,7 +955,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
     { key: "sign", label: "Lawn Sign", icon: ClipboardList },
     { key: "question", label: "Ask a Question", icon: MessageSquare },
     { key: "events", label: "RSVP", icon: Calendar },
-    { key: "donate", label: "Donate", icon: DollarSign },
+    ...(campaign.donationsEnabled ? [{ key: "donate" as EngagementTab, label: "Donate", icon: DollarSign }] : []),
   ];
 
   const inputClass = "w-full border border-slate-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all min-h-[44px]";
@@ -1037,9 +1041,11 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                 <button onClick={() => openInlineForm("support")} className="rounded-full bg-white text-slate-900 font-semibold px-8 py-4 text-base hover:shadow-xl transition-shadow">
                   Support {campaign.candidateName.split(" ")[0]}
                 </button>
-                <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
-                  Donate
-                </button>
+                {campaign.donationsEnabled && (
+                  <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
+                    Donate
+                  </button>
+                )}
                 <button onClick={() => openInlineForm("volunteer")} className="rounded-full border border-white/25 text-white font-semibold px-8 py-4 text-base hover:bg-white/10 transition-all">
                   Volunteer
                 </button>
@@ -1117,9 +1123,11 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
               <button onClick={() => openInlineForm("support")} className="rounded-full bg-white text-slate-900 font-semibold px-8 py-4 text-base hover:shadow-xl transition-shadow">
                 Support {campaign.candidateName.split(" ")[0]}
               </button>
-              <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
-                Donate
-              </button>
+              {campaign.donationsEnabled && (
+                <button onClick={() => openInlineForm("donate")} className="rounded-full font-semibold px-8 py-4 text-base text-white transition-all hover:opacity-90" style={{ backgroundColor: accent }}>
+                  Donate
+                </button>
+              )}
               <button onClick={() => openInlineForm("volunteer")} className="rounded-full border border-white/30 text-white font-semibold px-8 py-4 text-base hover:bg-white/10 transition-all">
                 Volunteer
               </button>
@@ -1185,9 +1193,11 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                 <button onClick={() => openInlineForm("support")} className="border-2 border-white text-white font-bold px-10 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-slate-900 transition-all">
                   Support
                 </button>
-                <button onClick={() => openInlineForm("donate")} className="font-bold px-10 py-4 text-sm uppercase tracking-widest text-white transition-all hover:opacity-80 border-2" style={{ backgroundColor: accent, borderColor: accent }}>
-                  Donate
-                </button>
+                {campaign.donationsEnabled && (
+                  <button onClick={() => openInlineForm("donate")} className="font-bold px-10 py-4 text-sm uppercase tracking-widest text-white transition-all hover:opacity-80 border-2" style={{ backgroundColor: accent, borderColor: accent }}>
+                    Donate
+                  </button>
+                )}
                 <button onClick={() => openInlineForm("volunteer")} className="border border-white/20 text-white/70 font-semibold px-10 py-4 text-sm uppercase tracking-widest hover:border-white/50 hover:text-white transition-all">
                   Volunteer
                 </button>
@@ -1266,9 +1276,11 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                   <button onClick={() => openInlineForm("support")} className="px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: primary }}>
                     Support the Campaign
                   </button>
-                  <button onClick={() => openInlineForm("donate")} className="px-8 py-3 text-sm font-semibold border hover:bg-gray-50 transition-colors" style={{ color: primary, borderColor: primary }}>
-                    Donate
-                  </button>
+                  {campaign.donationsEnabled && (
+                    <button onClick={() => openInlineForm("donate")} className="px-8 py-3 text-sm font-semibold border hover:bg-gray-50 transition-colors" style={{ color: primary, borderColor: primary }}>
+                      Donate
+                    </button>
+                  )}
                   <button onClick={() => openInlineForm("volunteer")} className="px-8 py-3 text-sm font-semibold text-slate-500 border border-slate-300 hover:bg-gray-50 transition-colors">
                     Volunteer
                   </button>
@@ -1305,7 +1317,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
             <div className="flex items-center justify-center gap-1">
               <button onClick={() => openInlineForm("support")} className="rounded-full py-2 px-5 font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 min-h-[40px] transition-colors">Support</button>
               <button onClick={() => openInlineForm("volunteer")} className="rounded-full py-2 px-5 font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 min-h-[40px] transition-colors">Volunteer</button>
-              <button onClick={() => openInlineForm("donate")} className="rounded-full py-2 px-5 font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 min-h-[40px] transition-colors">Donate</button>
+              {campaign.donationsEnabled && <button onClick={() => openInlineForm("donate")} className="rounded-full py-2 px-5 font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 min-h-[40px] transition-colors">Donate</button>}
               <button onClick={() => openInlineForm("subscribe")} className="rounded-full py-2 px-5 font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 min-h-[40px] transition-colors">Subscribe</button>
             </div>
           </div>
@@ -1990,7 +2002,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
               <a href="#platform" className="hover:text-white transition-colors">Platform</a>
               <a href="#about" className="hover:text-white transition-colors">About</a>
               <a href="#events" className="hover:text-white transition-colors">Events</a>
-              <button onClick={() => openInlineForm("donate")} className="hover:text-white transition-colors">Donate</button>
+              {campaign.donationsEnabled && <button onClick={() => openInlineForm("donate")} className="hover:text-white transition-colors">Donate</button>}
               <button onClick={() => openInlineForm("volunteer")} className="hover:text-white transition-colors">Volunteer</button>
             </div>
           </div>
@@ -2037,10 +2049,12 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
           <Handshake size={18} style={{ color: primary }} />
           Volunteer
         </button>
-        <button onClick={() => openInlineForm("donate")} className="flex flex-col items-center justify-center text-[11px] font-medium text-slate-600 min-h-[44px] gap-0.5">
-          <DollarSign size={18} style={{ color: accent }} />
-          Donate
-        </button>
+        {campaign.donationsEnabled && (
+          <button onClick={() => openInlineForm("donate")} className="flex flex-col items-center justify-center text-[11px] font-medium text-slate-600 min-h-[44px] gap-0.5">
+            <DollarSign size={18} style={{ color: accent }} />
+            Donate
+          </button>
+        )}
         <button onClick={() => { shareCampaign(); }} className="flex flex-col items-center justify-center text-[11px] font-medium text-slate-600 min-h-[44px] gap-0.5">
           <Share2 size={18} style={{ color: primary }} />
           Share
