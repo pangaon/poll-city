@@ -27,7 +27,9 @@ export type AlertType =
   | "milestone"
   | "suspension"
   | "sign_deployed"
-  | "gotv_milestone";
+  | "gotv_milestone"
+  | "qr_sign_request"
+  | "qr_volunteer_signup";
 
 interface RouteConfig {
   mode: "roles" | "users" | "all";
@@ -45,6 +47,8 @@ const DEFAULT_ROLES: Record<AlertType, string[]> = {
   suspension: ["ADMIN", "CAMPAIGN_MANAGER"],
   sign_deployed: ["ADMIN", "CAMPAIGN_MANAGER"],
   gotv_milestone: ["ADMIN", "CAMPAIGN_MANAGER"],
+  qr_sign_request: ["ADMIN", "CAMPAIGN_MANAGER"],
+  qr_volunteer_signup: ["ADMIN", "CAMPAIGN_MANAGER"],
 };
 
 /**

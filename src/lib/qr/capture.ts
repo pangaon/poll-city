@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import prisma from "@/lib/db/prisma";
 import { sendEmail } from "@/lib/email";
+import { notifyQrCaptureStaff } from "./notify";
 import type { QrIntent, QrProspectType, SupportLevel, FunnelStage } from "@prisma/client";
 import type { QrScanResult } from "./types";
 
@@ -436,8 +437,8 @@ export async function captureIdentity(
     }).catch(() => {});
   }
 
-  // QrFollowUp staff notification queue
-  const followUpParts = [
+  // QrFollowUp staff notification — create queue entry then fire inline notification
+  const followUpBody = [
     "New QR prospect: " + (opts.name ?? "Anonymous"),
     scan.intent ? "Intent: " + scan.intent : null,
     opts.signRequested ? "Sign requested" : null,
@@ -447,20 +448,50 @@ export async function captureIdentity(
       : opts.name
         ? "New contact created"
         : "No contact",
-  ].filter(Boolean) as string[];
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-  await prisma.qrFollowUp
-    .create({
+  // Determine follow-up type: sign alerts take priority, then volunteer, then general
+  const followUpType =
+    opts.signRequested ? "sign_team_alert" : opts.volunteerInterest ? "volunteer_callback" : "notification";
+
+  let followUpId: string | null = null;
+  try {
+    const followUp = await prisma.qrFollowUp.create({
       data: {
         qrScanId: opts.scanId,
         prospectId: prospect.id,
         campaignId,
-        type: "notification",
+        type: followUpType,
         status: "pending",
-        body: followUpParts.join(" · "),
+        body: followUpBody,
       },
-    })
-    .catch(() => {});
+    });
+    followUpId = followUp.id;
+  } catch {
+    // Non-fatal — continue without follow-up record
+  }
+
+  // Inline staff notification — fire and forget; cron worker catches failures
+  if (followUpId && (opts.signRequested || opts.volunteerInterest)) {
+    notifyQrCaptureStaff({
+      campaignId,
+      prospectId: prospect.id,
+      scanId: opts.scanId,
+      followUpId,
+      name: opts.name,
+      email: opts.email,
+      phone: opts.phone,
+      signRequested: opts.signRequested ?? false,
+      volunteerInterest: opts.volunteerInterest ?? false,
+      intent: scan.intent,
+      locationName: scan.qrCode?.locationName,
+      address: opts.address,
+      score,
+      contactId,
+    }).catch(() => {});
+  }
 
   return { prospectId: prospect.id, contactId };
 }
