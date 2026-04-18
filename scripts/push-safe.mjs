@@ -37,7 +37,9 @@ function findPageDirs(dir, base) {
 }
 
 function windowsPreBuild() {
-  try { fs.rmSync(".next", { recursive: true, force: true }); } catch {}
+  // Do NOT delete .next — Next.js cleans server/ internally and then re-creates
+  // pages-manifest.json during webpack. Wiping .next causes a race where Next.js
+  // also deletes the stub we create, leaving nothing for readManifest to open.
   [".next/server/pages", ".next/export", ".next/types", ".next/static/chunks"].forEach(d => fs.mkdirSync(d, { recursive: true }));
   fs.writeFileSync(".next/package.json", JSON.stringify({ type: "commonjs" }));
   // Stub manifests that Next.js reads during "Collecting page data" — webpack overwrites them with real content
