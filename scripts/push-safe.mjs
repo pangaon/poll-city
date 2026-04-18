@@ -47,6 +47,9 @@ function windowsPreBuild() {
   fs.writeFileSync(".next/react-loadable-manifest.json", "{}");
   fs.writeFileSync(".next/server/pages-manifest.json", "{}");
   fs.writeFileSync(".next/server/middleware-manifest.json", JSON.stringify({ sortedMiddleware: [], middleware: {}, functions: {}, version: 2 }));
+  // Stub error pages that Next.js renames from export/ to server/pages/ — prevents ENOENT on the rename
+  const errorPageStub = "<!DOCTYPE html><html><body></body></html>";
+  ["404.html", "500.html"].forEach(f => fs.writeFileSync(`.next/export/${f}`, errorPageStub));
   const pageDirs = findPageDirs("src/app", "app");
   for (const d of pageDirs) fs.mkdirSync(path.join(".next/types", d), { recursive: true });
   console.log(`Windows pre-build: pre-created ${pageDirs.size} type directories + manifest stubs`);
