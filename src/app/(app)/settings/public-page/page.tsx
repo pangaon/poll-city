@@ -224,53 +224,122 @@ function LivePreview({ c, candidateName, candidateTitle, jurisdiction, logoUrl }
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-200 text-xs" style={{ fontFamily: font.body }}>
-      {/* Hero */}
-      <div
-        className="relative px-4 py-5 text-white"
-        style={{
-          background: c.heroBannerUrl
-            ? `linear-gradient(135deg, ${primary}dd, ${primary}99), url(${c.heroBannerUrl}) center/cover`
-            : `linear-gradient(135deg, ${primary} 0%, ${primary}cc 100%)`,
-        }}
-      >
-        <div className={`flex ${c.layout === "professional" ? "flex-row items-center gap-3" : "flex-col items-center text-center gap-2"}`}>
-          {/* Avatar */}
-          <div
-            className="w-12 h-12 rounded-full border-2 border-white shadow flex items-center justify-center flex-shrink-0 overflow-hidden font-bold text-sm"
-            style={{ background: "rgba(255,255,255,0.2)" }}
-          >
-            {logoUrl ? (
-              <Image src={logoUrl} alt="" width={48} height={48} className="object-cover w-full h-full" unoptimized />
-            ) : (
-              (candidateName || "C").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
-            )}
+      {/* Hero — Professional: photo left, text right */}
+      {c.layout === "professional" && (
+        <div
+          className="relative flex items-start gap-2.5 px-3 py-3 text-white"
+          style={{
+            background: c.heroBannerUrl
+              ? `linear-gradient(135deg, ${primary}ee, ${primary}aa), url(${c.heroBannerUrl}) center/cover`
+              : primary,
+          }}
+        >
+          <div className="w-10 h-14 rounded-md flex-shrink-0 overflow-hidden border border-white/30" style={{ background: "rgba(255,255,255,0.2)" }}>
+            {logoUrl && <Image src={logoUrl} alt="" width={40} height={56} className="object-cover w-full h-full" unoptimized />}
           </div>
-          <div className={c.layout !== "professional" ? "text-center" : ""}>
-            <div className="font-black text-base leading-tight" style={{ fontFamily: font.headline }}>
-              {candidateName || "Your Name"}
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-sm leading-tight truncate" style={{ fontFamily: font.headline }}>{candidateName || "Your Name"}</div>
+            <div className="text-white/70 text-[10px]">{candidateTitle || "Candidate"}</div>
+            <div className="text-white/50 text-[9px]">{jurisdiction || "Ward / City"}</div>
+            <div className="flex gap-1 mt-1.5 flex-wrap">
+              <div className="h-5 px-2 rounded-full bg-white text-[9px] font-bold flex items-center" style={{ color: primary }}>Volunteer</div>
+              <div className="h-5 px-2 rounded-full border border-white/40 text-[9px] text-white flex items-center">Support</div>
             </div>
-            <div className="text-white/80 text-xs">{candidateTitle || "Candidate Title"}</div>
-            <div className="text-white/60 text-[10px] mt-0.5">{jurisdiction || "Ward / City"}</div>
+          </div>
+          {c.showSocialProof && (
+            <div className="absolute bottom-1 left-3 right-3 flex gap-2 text-[8px] text-white/70">
+              <span>👥 142</span><span>🙋 12</span><span>🪧 38</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hero — Modern: centered circle photo, frosted CTA bar */}
+      {c.layout === "modern" && (
+        <div
+          className="flex flex-col items-center text-center py-4 px-3 text-white relative"
+          style={{
+            background: c.heroBannerUrl
+              ? `linear-gradient(160deg, ${primary}ee, ${primary}bb), url(${c.heroBannerUrl}) center/cover`
+              : `linear-gradient(160deg, ${primary} 0%, ${primary}cc 100%)`,
+          }}
+        >
+          <div className="w-12 h-12 rounded-full border-2 border-white/50 mb-1.5 overflow-hidden flex items-center justify-center font-bold text-sm" style={{ background: "rgba(255,255,255,0.2)" }}>
+            {logoUrl
+              ? <Image src={logoUrl} alt="" width={48} height={48} className="object-cover w-full h-full" unoptimized />
+              : (candidateName || "C").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+            }
+          </div>
+          <div className="font-black text-sm leading-tight" style={{ fontFamily: font.headline }}>{candidateName || "Your Name"}</div>
+          <div className="text-white/70 text-[10px] mb-0.5">{candidateTitle || "Candidate"}</div>
+          <div className="text-white/50 text-[9px] mb-2">{jurisdiction || "Ward / City"}</div>
+          {c.showSocialProof && (
+            <div className="flex gap-2 text-[8px] text-white/70 mb-2">
+              <span>👥 142</span><span>🙋 12</span><span>🪧 38</span>
+            </div>
+          )}
+          <div className="w-full flex gap-1 justify-center bg-white/10 backdrop-blur-sm py-1.5 rounded-lg">
+            <div className="h-5 px-2 rounded-full bg-white text-[9px] font-bold flex items-center" style={{ color: primary }}>Volunteer</div>
+            <div className="h-5 px-2 rounded-full border border-white/40 text-[9px] text-white flex items-center">Support</div>
           </div>
         </div>
+      )}
 
-        {/* Social proof bar */}
-        {c.showSocialProof && (
-          <div className="flex gap-3 mt-3 text-[10px] text-white/80">
-            <span>👥 142 supporters</span>
-            <span>🪧 38 sign requests</span>
-            <span>🙋 12 volunteers</span>
+      {/* Hero — Bold: massive type, accent stripe, manifesto */}
+      {c.layout === "bold" && (
+        <div
+          className="relative px-3 pt-3 pb-4 text-white overflow-hidden"
+          style={{ background: primary }}
+        >
+          <div className="absolute right-3 top-0 bottom-0 w-px" style={{ background: "rgba(255,255,255,0.25)" }} />
+          <div className="text-[8px] tracking-widest uppercase text-white/40 mb-1">{jurisdiction || "Ward / City"}</div>
+          <div className="font-black leading-none text-[2rem]" style={{ fontFamily: font.headline, lineHeight: 0.9 }}>
+            {(candidateName || "Your Name").split(" ").map((word: string, i: number) => (
+              <div key={i} style={{ opacity: i === 0 ? 1 : 0.55 }}>{word}</div>
+            ))}
           </div>
-        )}
-
-        {/* Countdown */}
-        {c.showCountdown && (
-          <div className="mt-2 inline-flex items-center gap-1.5 bg-white/15 text-white/90 text-[10px] px-2 py-1 rounded-full border border-white/20">
-            <Clock className="w-2.5 h-2.5" /> 204 days until election
+          <div className="h-px w-8 mt-2 mb-1" style={{ background: "rgba(255,255,255,0.4)" }} />
+          <div className="text-[10px] text-white/60">{candidateTitle || "Candidate"}</div>
+          <div className="flex gap-1 mt-2">
+            <div className="h-5 px-2 border border-white text-[8px] font-bold text-white flex items-center tracking-wider">VOLUNTEER</div>
+            <div className="h-5 px-2 border border-white/30 text-[8px] text-white/60 flex items-center tracking-wider">SUPPORT</div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* Hero — Minimal: editorial whitespace, serif, photo right */}
+      {c.layout === "minimal" && (
+        <div
+          className="px-3 py-3 flex gap-2 items-start"
+          style={{ background: "#f8fafc", borderTop: `3px solid ${primary}` }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-[8px] tracking-widest uppercase mb-1" style={{ color: primary }}>{jurisdiction || "Ward / City"}</div>
+            <div className="font-black text-sm leading-tight text-gray-900" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>{candidateName || "Your Name"}</div>
+            <div className="text-[10px] text-gray-500 italic mb-2">{candidateTitle || "Candidate"}</div>
+            {c.showSocialProof && (
+              <div className="flex gap-2 text-[8px] text-gray-400 mb-2">
+                <span>142 supporters</span><span>·</span><span>12 volunteers</span>
+              </div>
+            )}
+            <div className="flex gap-1">
+              <div className="h-5 px-2 text-[9px] font-bold text-white flex items-center" style={{ background: primary }}>Volunteer</div>
+              <div className="h-5 px-2 border text-[9px] flex items-center" style={{ borderColor: primary, color: primary }}>Support</div>
+            </div>
+          </div>
+          <div className="w-9 h-16 flex-shrink-0 overflow-hidden" style={{ background: `${primary}20` }}>
+            {logoUrl && <Image src={logoUrl} alt="" width={36} height={64} className="object-cover w-full h-full" unoptimized />}
+          </div>
+        </div>
+      )}
+
+      {/* Countdown */}
+      {c.showCountdown && (
+        <div className="flex items-center gap-1.5 text-white/90 text-[9px] px-3 py-1.5 border-b border-white/10"
+          style={{ background: `${primary}dd` }}>
+          <Clock className="w-2.5 h-2.5 flex-shrink-0" /> 204 days until election
+        </div>
+      )}
       {/* Body */}
       <div className="bg-white px-4 py-3 space-y-3">
         {/* Endorsements */}
@@ -361,6 +430,160 @@ function LivePreview({ c, candidateName, candidateTitle, jurisdiction, logoUrl }
   );
 }
 
+/* ── Template Gallery (inline) ──────────────────────────────────────────── */
+const GALLERY_THEMES_DATA: { id: Theme; label: string; primary: string; bg: string; text: string }[] = [
+  { id: "classic-blue",   label: "Classic Blue",   primary: "#1e3a8a", bg: "#eff6ff", text: "#1e3a8a" },
+  { id: "bold-red",       label: "Bold Red",        primary: "#dc2626", bg: "#fef2f2", text: "#991b1b" },
+  { id: "modern-dark",    label: "Modern Dark",     primary: "#111827", bg: "#f9fafb", text: "#d97706" },
+  { id: "clean-white",    label: "Clean White",     primary: "#2563eb", bg: "#ffffff", text: "#1d4ed8" },
+  { id: "campaign-green", label: "Campaign Green",  primary: "#15803d", bg: "#f0fdf4", text: "#166534" },
+  { id: "royal-purple",   label: "Royal Purple",    primary: "#7c3aed", bg: "#faf5ff", text: "#6d28d9" },
+];
+
+const GALLERY_LAYOUTS_DATA: { id: PageLayout; label: string; desc: string }[] = [
+  { id: "professional", label: "Professional", desc: "Headshot left, traditional column grid" },
+  { id: "modern",       label: "Modern",       desc: "Full-width hero, floating name card" },
+  { id: "bold",         label: "Bold",         desc: "Massive type, high contrast, manifesto-style" },
+  { id: "minimal",      label: "Minimal",      desc: "Editorial whitespace, almost newspaper-like" },
+];
+
+function TemplateThumb({
+  layout, theme, isSelected, onSelect,
+}: {
+  layout: PageLayout;
+  theme: typeof GALLERY_THEMES_DATA[number];
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`relative rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+        isSelected ? "border-blue-500 shadow-lg shadow-blue-200 scale-[1.04]" : "border-gray-200 hover:border-gray-400 hover:scale-[1.01]"
+      }`}
+      style={{ width: "130px", height: "170px" }}
+    >
+      {layout === "professional" && (
+        <div className="h-[60%] relative overflow-hidden" style={{ background: theme.primary }}>
+          <div className="flex gap-2 px-3 pt-4 pb-2 items-start h-full">
+            <div className="w-10 h-[85%] rounded-lg flex-shrink-0" style={{ background: "rgba(255,255,255,0.22)" }} />
+            <div className="flex-1 pt-1 space-y-1.5">
+              <div className="h-2 rounded w-full" style={{ background: "rgba(255,255,255,0.9)" }} />
+              <div className="h-1.5 rounded w-3/4" style={{ background: "rgba(255,255,255,0.5)" }} />
+              <div className="flex gap-1 mt-2">
+                <div className="h-3 w-12 rounded-full" style={{ background: "rgba(255,255,255,0.9)" }} />
+                <div className="h-3 w-9 rounded-full" style={{ background: "rgba(255,255,255,0.2)" }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {layout === "modern" && (
+        <div className="h-[60%] flex flex-col items-center justify-center gap-2 relative" style={{ background: `linear-gradient(160deg, ${theme.primary} 0%, ${theme.primary}bb 100%)` }}>
+          <div className="w-10 h-10 rounded-full border-2" style={{ background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.4)" }} />
+          <div className="h-2 rounded w-2/3" style={{ background: "rgba(255,255,255,0.9)" }} />
+          <div className="h-1.5 rounded w-1/2" style={{ background: "rgba(255,255,255,0.5)" }} />
+          <div className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-center gap-1.5" style={{ background: "rgba(255,255,255,0.12)" }}>
+            <div className="h-2.5 w-12 rounded-full" style={{ background: "rgba(255,255,255,0.85)" }} />
+            <div className="h-2.5 w-9 rounded-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+          </div>
+        </div>
+      )}
+      {layout === "bold" && (
+        <div className="h-[60%] px-3 pt-4 relative" style={{ background: theme.primary }}>
+          <div className="absolute right-2 top-0 bottom-0 w-0.5" style={{ background: theme.text }} />
+          <div className="h-1 rounded w-1/3 mb-2.5" style={{ background: theme.text + "80" }} />
+          <div className="h-5 w-full mb-1" style={{ background: "rgba(255,255,255,0.9)" }} />
+          <div className="h-5 w-3/4" style={{ background: "rgba(255,255,255,0.65)" }} />
+          <div className="mt-2 h-px w-10" style={{ background: theme.text }} />
+          <div className="mt-2 h-1.5 rounded w-3/4" style={{ background: "rgba(255,255,255,0.3)" }} />
+        </div>
+      )}
+      {layout === "minimal" && (
+        <div className="h-[60%] px-3 pt-4 flex gap-2 items-start" style={{ background: theme.bg || "#f8fafc" }}>
+          <div className="flex-1 space-y-1.5">
+            <div className="h-px w-6 mb-3" style={{ background: theme.primary }} />
+            <div className="h-1 rounded w-1/2" style={{ background: "rgba(0,0,0,0.35)" }} />
+            <div className="h-3.5 rounded w-full mt-0.5" style={{ background: "rgba(0,0,0,0.75)" }} />
+            <div className="h-px w-6 mt-1.5" style={{ background: theme.primary }} />
+            <div className="h-1.5 rounded w-3/4" style={{ background: "rgba(0,0,0,0.35)" }} />
+            <div className="flex gap-1 mt-2">
+              <div className="h-3 w-12 rounded" style={{ background: theme.primary }} />
+              <div className="h-3 w-9 rounded border" style={{ borderColor: theme.primary }} />
+            </div>
+          </div>
+          <div className="w-8 h-14 flex-shrink-0 mt-1" style={{ background: theme.primary + "40" }} />
+        </div>
+      )}
+      <div className="h-[40%] bg-white px-3 pt-2 space-y-1.5">
+        <div className="h-1 rounded w-2/3" style={{ background: "#e5e7eb" }} />
+        <div className="h-1 rounded w-full" style={{ background: "#f3f4f6" }} />
+        <div className="h-1 rounded w-3/4" style={{ background: "#f3f4f6" }} />
+        <div className="flex gap-1 mt-1.5">
+          <div className="h-2.5 w-10 rounded" style={{ background: theme.primary + "50" }} />
+          <div className="h-2.5 w-8 rounded" style={{ background: "#f3f4f6" }} />
+        </div>
+      </div>
+      {isSelected && (
+        <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+          <Check className="w-3 h-3 text-white" />
+        </div>
+      )}
+    </button>
+  );
+}
+
+function InlineGallery({
+  selectedLayout, selectedTheme, onSelect, onClose,
+}: {
+  selectedLayout: string;
+  selectedTheme: string;
+  onSelect: (layout: PageLayout, theme: Theme, primary: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Star className="w-5 h-5 text-blue-500" /> Choose Your Template
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">Pick a layout and colour scheme. You can change this anytime.</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0 ml-4">
+          <ChevronDown className="w-5 h-5" />
+        </button>
+      </div>
+      {GALLERY_LAYOUTS_DATA.map((layout) => (
+        <div key={layout.id} className="space-y-3">
+          <div>
+            <p className="font-semibold text-sm text-gray-800">{layout.label}</p>
+            <p className="text-xs text-gray-400">{layout.desc}</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {GALLERY_THEMES_DATA.map((theme) => (
+              <div key={theme.id} className="flex flex-col items-center gap-1.5">
+                <TemplateThumb
+                  layout={layout.id}
+                  theme={theme}
+                  isSelected={selectedLayout === layout.id && selectedTheme === theme.id}
+                  onSelect={() => onSelect(layout.id, theme.id, theme.primary)}
+                />
+                <span className="text-[10px] text-gray-500 font-medium text-center max-w-[130px] leading-tight">{theme.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 pt-3 pb-3">
+        <button onClick={onClose} className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+          Continue Editing
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── QR Code display ─────────────────────────────────────────────────────── */
 function QrCodeDisplay({ url, label, size }: { url: string; label: string; size: "small" | "medium" | "large" }) {
   const px = size === "small" ? 120 : size === "large" ? 240 : 180;
@@ -410,6 +633,7 @@ export default function PublicPageSettings() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [c, setC] = useState<PageCustomization>(DEFAULT);
+  const [showGallery, setShowGallery] = useState(false);
 
   // Derived
   const userPlan: Plan = (campaign?.plan ?? "pro") as Plan;
@@ -588,8 +812,34 @@ export default function PublicPageSettings() {
     </div>
   ) : null;
 
+  function handleTemplateSelect(layout: PageLayout, theme: Theme, primary: string) {
+    up("layout", layout);
+    up("theme", theme);
+    up("primaryColor", primary);
+    setShowGallery(false);
+  }
+
+  const galleryPanel = (
+    <InlineGallery
+      selectedLayout={c.layout}
+      selectedTheme={c.theme}
+      onSelect={handleTemplateSelect}
+      onClose={() => setShowGallery(false)}
+    />
+  );
+
   const settingsPanel = (
     <div className="space-y-3">
+      {/* Template picker trigger */}
+      <button
+        onClick={() => setShowGallery(true)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-semibold text-sm hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm"
+      >
+        <Layout className="w-4 h-4" />
+        Choose Template
+        <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs font-bold">24</span>
+      </button>
+
       {/* Page live toggle */}
       <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-200">
         <div>
@@ -1065,7 +1315,7 @@ export default function PublicPageSettings() {
 
       {/* Desktop: two-column */}
       <div className="hidden lg:grid lg:grid-cols-[1fr_380px] gap-6 items-start">
-        <div>{settingsPanel}</div>
+        <div>{showGallery ? galleryPanel : settingsPanel}</div>
         <div>{previewPanel}</div>
       </div>
 
@@ -1082,7 +1332,7 @@ export default function PublicPageSettings() {
             </button>
           ))}
         </div>
-        {mobileTab === "edit" ? settingsPanel : previewPanel}
+        {mobileTab === "edit" ? (showGallery ? galleryPanel : settingsPanel) : previewPanel}
       </div>
     </div>
   );
