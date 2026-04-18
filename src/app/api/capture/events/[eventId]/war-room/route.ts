@@ -65,7 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     const prev = latestApprovedPerLocation.get(sub.locationId);
     if (!prev || sub.createdAt > prev.createdAt) latestApprovedPerLocation.set(sub.locationId, sub);
   }
-  for (const sub of latestApprovedPerLocation.values()) {
+  for (const sub of Array.from(latestApprovedPerLocation.values())) {
     for (const r of sub.results) {
       if (candidateTotals[r.candidate.id]) {
         candidateTotals[r.candidate.id].votes += r.votes;
