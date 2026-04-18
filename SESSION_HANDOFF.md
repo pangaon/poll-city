@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-17
-**Updated by:** Claude Sonnet 4.6 (session: QR downstream wiring — full connection chain)
+**Updated by:** Claude Sonnet 4.6 (session: Poll City Social — Phase 1 rebuild)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -16,7 +16,7 @@
 - Every new feature MUST have a sidebar entry before handoff. See FEATURE COMPLETION GATE in CLAUDE.md.
 - `.claude/scheduled_tasks.lock` is now in `.gitignore` — no more dirty tree on push.
 
-**Currently committed and live:** QR Capture full connection chain (21c0573 — DONE), QR UX hardening + batch creation, Comms Phase 7, Sprint 3 field modules COMPLETE, Sprint 4 print/jobs full suite, nav cleanup.
+**Currently committed and live:** Poll City Social Phase 1 (0e5ff04 — DONE), QR Capture full connection chain, Comms Phase 7, Sprint 3 + Sprint 4 field/print suites, nav cleanup.
 
 **Working tree:** Clean.
 
@@ -43,6 +43,45 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-17 — Poll City Social Phase 1 rebuild)
+
+**What shipped (commits `be60b21`, `a7fce32`, `1768127`, `0e5ff04`):**
+
+**Schema** (`prisma/schema.prisma`): 4 new models + 2 enums pushed to Railway via `prisma db push`:
+- `PoliticianPost` — content by officials/campaigns (types: poll/announcement/civic_update/bill_update/project_update)
+- `SocialNotification` — fan-out notifications per follower on post publish
+- `CivicInterestGroup` — 6 default groups (housing/transit/parks/safety/environment/budget) with auto-seed
+- `CivicGroupMember` — composite PK join table with memberCount maintained via `$transaction`
+
+**API routes created** (7 new routes under `/api/social/`):
+- `GET /api/social/feed` — cursored activity feed: followed officials + postal-code municipality scope; `isDiscovery=true` when no follows
+- `GET /api/social/notifications` + `POST` mark-read — unread count returned for bell badge
+- `GET /api/social/politicians/[id]` — unified profile: bio, approval rating, posts, Q&A, campaigns, `isFollowing`
+- `POST/DELETE /api/social/officials/[id]/follow` — follow/unfollow toggle via `OfficialFollow.upsert`
+- `GET/POST /api/social/posts` — post list + creation with fire-and-forget `fanOutNotifications()`
+- `GET /api/social/groups` + `POST /api/social/groups/[id]/join` + `DELETE` join — group listing with auto-seed + member count maintenance
+
+**UI pages created/replaced** (4 new pages):
+- `/social` — replaced discover page; now renders `SocialFeed` with `IntersectionObserver` infinite scroll, `FeedCard` with post-type icons, discovery CTA, election countdown teaser
+- `/social/politicians/[id]` — unified politician profile; follow/unfollow optimistic UI, approval rating bar, posts/Q&A tab switcher with `AnimatePresence`, question submission
+- `/social/groups` — interest groups browser; TOPIC_CONFIG emoji/color map, joined/available split, optimistic join toggle
+- `/social/notifications` — notification list; unread badge, mark-all-read, click-to-read, links to politician profiles
+
+**Nav updated:**
+- `social-nav.tsx`: 4 → 6 tabs (Feed/Officials/Polls/Groups/Alerts/Profile), unread count badge on Alerts
+- `layout.tsx`: Groups link added; first link renamed "Poll City"
+- `/social/officials/[id]/page.tsx`: now `redirect()` to `/social/politicians/[id]`
+
+**Build:** GREEN — pushed via `npm run push:safe`, `f69e242..0e5ff04  main -> main`.
+
+**Risks:**
+- Windows ENOENT (`collect-build-traces` / `.next/package.json`) is a known race condition — does NOT affect Vercel. Build passed.
+- `prisma db push` used (not `migrate dev`) — development-only approach. Migration baseline (GAP-003) still needed before first real customer.
+
+**Next session opener:** Poll City Social Phase 1 is live. The `/social` app is now a real feed product, not just a poll discovery page. Next priorities: (1) Wire the Social → Campaign consent bridge (voter follows politician → campaign gets a lead signal) — this is the key monetization gap in WORK_QUEUE P1. (2) Phase 2 Social: election countdown widget, civic groups depth, Q&A response flow from the official side. Claim in WORK_QUEUE, build, push via `npm run push:safe`.
 
 ---
 

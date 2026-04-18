@@ -83,7 +83,7 @@ Everything below is built, pushed, and accessible in the app.
 | Task | Status | Notes |
 |---|---|---|
 | Quick Capture System — full election results capture (advance vote + election day) | CLAIMED 2026-04-17 | Schema + API + admin setup + mobile capture + war room + review/export. Full enterprise build. |
-| Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | CLAIMED 2026-04-17 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
+| Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | DONE — commit 0e5ff04 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
 | Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | CLAIMED 2026-04-17 | Rebuild settings/public-page from settings-form to Squarespace-level builder; 4 layout variants in candidates/[slug]; template gallery picker; LivePreview overhaul |
 
 ---
@@ -120,7 +120,7 @@ These are coherence failures — things that should connect but don't.
 | Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
 | `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
 | `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
-| Social feed | PENDING | Discover officials, vote on polls | Activity feed — no reason for a voter to return to /social |
+| Social feed | DONE — commit 0e5ff04 | Discover officials, vote on polls | Phase 1 live: home feed, politician profiles, groups, notifications, fan-out engine |
 | Weather integration | PENDING | None | Simple weather API for canvassing day planning |
 | Marketing site content | PENDING | Landing page shell exists | Full content pass — copy, social proof, pricing, CTAs |
 | Adoni per-tool rate limit | PENDING | Adoni works | Per-tool rate limiting to prevent runaway API cost |
