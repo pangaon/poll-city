@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import { processDataSource } from "@/lib/intel/news-pipeline";
 
@@ -51,5 +53,39 @@ export async function GET(req: NextRequest) {
       leads: r.leadsCreated,
       errors: r.errors,
     })),
+  });
+}
+
+// SUPER_ADMIN manual trigger — no secret needed, uses session auth
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const user = session.user as typeof session.user & { role?: string };
+  if (user?.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const sources = await prisma.dataSource.findMany({
+    where: { isActive: true, candidateDetectionEnabled: true },
+    select: { id: true, name: true },
+  });
+
+  if (sources.length === 0) {
+    return NextResponse.json({ message: "No active CIE sources", processed: 0, articlesIngested: 0, signalsDetected: 0, leadsCreated: 0 });
+  }
+
+  const results = [];
+  for (const source of sources) {
+    const result = await processDataSource(source.id);
+    results.push(result);
+  }
+
+  const totalArticles = results.reduce((s, r) => s + r.articlesIngested, 0);
+  const totalSignals = results.reduce((s, r) => s + r.signalsDetected, 0);
+  const totalLeads = results.reduce((s, r) => s + r.leadsCreated, 0);
+
+  return NextResponse.json({
+    processed: sources.length,
+    articlesIngested: totalArticles,
+    signalsDetected: totalSignals,
+    leadsCreated: totalLeads,
   });
 }

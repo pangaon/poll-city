@@ -227,10 +227,8 @@ export default function IntelClient() {
 
   async function runIngest() {
     setIngestRunning(true);
-    const cronSecret = prompt("Enter CRON_SECRET to trigger ingest:");
-    if (!cronSecret) { setIngestRunning(false); return; }
     try {
-      const res = await fetch("/api/cron/intel-ingest", { headers: { authorization: `Bearer ${cronSecret}` } });
+      const res = await fetch("/api/cron/intel-ingest", { method: "POST" });
       const d = await res.json() as Record<string, unknown>;
       alert(`Ingest complete: ${d["articlesIngested"] ?? 0} articles, ${d["signalsDetected"] ?? 0} signals, ${d["leadsCreated"] ?? 0} leads`);
       void fetchLeads();
