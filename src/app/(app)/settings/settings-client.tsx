@@ -295,11 +295,11 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([
-              { key: "stripe" as const, label: "Stripe", description: "Donations + subscriptions", icon: CreditCard, setupNote: "Add STRIPE_SECRET_KEY to Railway" },
-              { key: "resend" as const, label: "Email (Resend)", description: "Email blasts + receipts", icon: Mail, setupNote: "Add RESEND_API_KEY to Railway" },
-              { key: "twilio" as const, label: "SMS (Twilio)", description: "SMS blasts + opt-outs", icon: MessageSquare, setupNote: "Add TWILIO_ACCOUNT_SID to Railway" },
-              { key: "anthropic" as const, label: "Adoni AI", description: "Campaign intelligence", icon: Sparkles, setupNote: "Add ANTHROPIC_API_KEY to Railway" },
-              { key: "upstash" as const, label: "Rate Limiting", description: "Redis-backed rate limits", icon: Database, setupNote: "Add UPSTASH_REDIS_REST_URL to Railway" },
+              { key: "stripe" as const, label: "Stripe", description: "Donations + subscriptions", icon: CreditCard, setupNote: "Add STRIPE_SECRET_KEY to Vercel" },
+              { key: "resend" as const, label: "Email (Resend)", description: "Email blasts + receipts", icon: Mail, setupNote: "Add RESEND_API_KEY to Vercel" },
+              { key: "twilio" as const, label: "SMS (Twilio)", description: "SMS blasts + opt-outs", icon: MessageSquare, setupNote: "Add TWILIO_ACCOUNT_SID to Vercel" },
+              { key: "anthropic" as const, label: "Adoni AI", description: "Campaign intelligence", icon: Sparkles, setupNote: "Add ANTHROPIC_API_KEY to Vercel" },
+              { key: "upstash" as const, label: "Rate Limiting", description: "Redis-backed rate limits", icon: Database, setupNote: "Add UPSTASH_REDIS_REST_URL to Vercel" },
               { key: "vapid" as const, label: "Push Notifications", description: "Browser push alerts", icon: Bell, setupNote: "Run npx web-push generate-vapid-keys" },
             ] as const).map(({ key, label, description, icon: Icon, setupNote }) => {
               const isActive = integrations[key];
@@ -333,34 +333,44 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
         </CardContent>
       </Card>
 
-      {/* Danger Zone — ADMIN only */}
-      {canEditCampaign && (
-        <Card className="border-red-200">
+      {/* End of Campaign — only shown after election date has passed */}
+      {canEditCampaign && campaign.electionDate && new Date(campaign.electionDate) < new Date() && (
+        <Card className="border-amber-200 mt-8">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              <h3 className="font-semibold text-red-800">Danger Zone</h3>
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <h3 className="font-semibold text-amber-800">Your election has passed</h3>
             </div>
+            <p className="text-sm text-amber-700 mt-1">
+              Your election date was {new Date(campaign.electionDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}. If you are running again or for something else, update your election date in the profile section above and this notice will disappear.
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <p className="text-sm font-medium text-red-900">Archive this campaign</p>
-              <p className="text-xs text-red-700 mt-1">
-                Archiving will hide this campaign from all team members. Your data is preserved and can be restored.
-                This action cannot be undone without contacting support.
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-medium text-amber-900">Ready to wrap up this campaign?</p>
+              <p className="text-sm text-amber-800 mt-2">
+                Archiving closes out this campaign. Here is what happens:
+              </p>
+              <ul className="text-sm text-amber-800 mt-2 space-y-1 list-disc list-inside">
+                <li>Your team loses access immediately</li>
+                <li>All your data — contacts, donations, canvassing records — is fully preserved</li>
+                <li>Nothing is deleted. It can be restored any time by contacting support</li>
+              </ul>
+              <p className="text-xs text-amber-700 mt-3">
+                Not running again? Archive it. Running again or for something else? Update your election date above instead.
               </p>
               <button
-                className="mt-3 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+                className="mt-4 rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
                 onClick={() => {
                   const confirmed = window.confirm(
-                    `Archive "${campaign.name}"? This will hide the campaign from all team members. Contact support to restore.`
+                    `Archive "${campaign.name}"?\n\nYour team will lose access immediately. All data is preserved.\n\nTo restore, email support@poll.city.`
                   );
                   if (confirmed) {
-                    toast.error("Campaign archiving requires contacting support. Email support@poll.city with your campaign name.");
+                    toast.info("To archive this campaign, email support@poll.city with your campaign name. We will confirm with you before archiving.");
                   }
                 }}
               >
-                Archive Campaign
+                Archive this campaign
               </button>
             </div>
           </CardContent>

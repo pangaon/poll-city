@@ -11,7 +11,7 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 ## 🔴 CRITICAL — Platform is broken without these
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
-- [ ] **2. Run QR Capture migration on Railway** — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
+- [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync" — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
   1. Open Railway → Poll City service → Connect tab → copy the `DATABASE_URL`
   2. In this repo: `DATABASE_URL="<paste>" npx prisma migrate dev --name qr-capture --skip-seed`
   3. OR if you want non-destructive: `DATABASE_URL="<paste>" npx prisma db push`
@@ -196,7 +196,7 @@ Without this key, the following degrade to static fallback text (they still work
 - `/resources/ai-creator` — all 7 content types
 - `/ai-assist` — full Adoni chat
 
-- [ ] **22. Add `ANTHROPIC_API_KEY` to Railway**
+- [x] **22. Add `ANTHROPIC_API_KEY` to Vercel** ✓ Done (was already set Apr 5)
   - Get from [console.anthropic.com](https://console.anthropic.com) → API Keys
   - Value: `sk-ant-...`
 
@@ -207,22 +207,12 @@ Without this key, the following degrade to static fallback text (they still work
 Without these, anonymous voting and guest civic passports are broken in production.
 Generate each with: `openssl rand -base64 32`
 
-- [ ] **23. Add `IP_HASH_SALT` to Railway** (`openssl rand -base64 32`)
-- [ ] **24. Add `POLL_ANONYMITY_SALT` to Railway** (`openssl rand -base64 32`)
-- [ ] **25. Add `GUEST_TOKEN_SECRET` to Railway** (`openssl rand -base64 32`)
-- [ ] **26. Add `CRON_SECRET` to Vercel** (NOT Railway — your app runs on Vercel, not Railway)
-  1. Run in terminal: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-  2. Copy the output
-  3. Go to Vercel → your project → Settings → Environment Variables
-  4. Add: `CRON_SECRET` = the value you copied
-  5. Save — Vercel will redeploy automatically
-- [ ] **27. Generate `DATABASE_ENCRYPTION_KEY`**: run `openssl rand -hex 32` in your terminal
-  - This activates at-rest encryption for sensitive database fields
-  - Without it the platform still works, but sensitive data is stored unencrypted
-- [ ] **28. Add `DATABASE_ENCRYPTION_KEY` to Railway** (the 64-char hex string from step 27)
-- [ ] **29. Generate `HEALTH_CHECK_SECRET`**: run `openssl rand -base64 32` in your terminal
-  - Used to authenticate requests to `/api/health` for detailed system status
-- [ ] **30. Add `HEALTH_CHECK_SECRET` to Railway**
+- [x] **23. Add `IP_HASH_SALT` to Vercel** ✓ Done 2026-04-18
+- [x] **24. Add `POLL_ANONYMITY_SALT` to Vercel** ✓ Done 2026-04-18
+- [x] **25. Add `GUEST_TOKEN_SECRET` to Vercel** ✓ Done 2026-04-18
+- [x] **26. Add `CRON_SECRET` to Vercel** ✓ Done (was already set Apr 9)
+- [x] **27/28. Add `DATABASE_ENCRYPTION_KEY` to Vercel** ✓ Done 2026-04-18
+- [x] **29/30. Add `HEALTH_CHECK_SECRET` to Vercel** ✓ Done 2026-04-18
 
 ---
 
@@ -282,13 +272,13 @@ Protects public forms from bot submissions.
 
 These activate your personal debug toolbar when you're logged in as yourself.
 
-- [ ] **39. Add `DEBUG_SECRET_KEY` to Railway** (value: `pollcity2026george`)
-- [ ] **40. Add `NEXT_PUBLIC_DEBUG_SECRET_KEY` to Railway** (value: `pollcity2026george`)
-- [ ] **41. Find your `GEORGE_USER_ID`**:
+- [x] **39. Add `DEBUG_SECRET_KEY` to Vercel** ✓ Done 2026-04-18
+- [x] **40. Add `NEXT_PUBLIC_DEBUG_SECRET_KEY` to Vercel** ✓ Done 2026-04-18
+- [x] **41. Find your `GEORGE_USER_ID`**: ✓ Done 2026-04-18
   1. Log in to [app.poll.city](https://app.poll.city) as yourself
   2. Go to `https://app.poll.city/api/auth/session` in the same browser
   3. You'll see JSON — find the `"id"` field inside `"user"` and copy it
-- [ ] **42. Add `GEORGE_USER_ID` to Railway** (the ID you found in step 41)
+- [x] **42. Add `GEORGE_USER_ID` to Vercel** ✓ Done 2026-04-18 (the ID you found in step 41)
 - [ ] **43. Activate your debug suite**:
   1. Log in to [app.poll.city](https://app.poll.city)
   2. Go to `https://app.poll.city/debug-access?key=pollcity2026george`
