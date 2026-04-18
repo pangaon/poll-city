@@ -61,8 +61,8 @@ if (behind > 0) {
 runLogged("npm run security:gates");
 runLogged("npm run test:contracts");
 runLogged("npm run test");
-// Windows ENOENT race: wipe stale .next then pre-create dirs Next.js renames into
-run("node -e \"const fs=require('fs');try{fs.rmSync('.next',{recursive:true,force:true})}catch{}; ['.next/server/pages','.next/export'].forEach(d=>fs.mkdirSync(d,{recursive:true}))\"");
+// Windows ENOENT race: wipe stale .next, pre-create dirs + stub files Next.js reads before writing
+run("node -e \"const fs=require('fs');try{fs.rmSync('.next',{recursive:true,force:true})}catch{}; ['.next/server/pages','.next/export'].forEach(d=>fs.mkdirSync(d,{recursive:true})); fs.writeFileSync('.next/package.json',JSON.stringify({type:'commonjs'})); fs.writeFileSync('.next/server/pages-manifest.json','{}');\"");
 runLogged("npm run build");
 
 if (shouldPush) {
