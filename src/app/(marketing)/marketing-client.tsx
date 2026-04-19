@@ -338,6 +338,88 @@ export default function MarketingClient() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
+         3b. ADONI — The AI campaign manager
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-xs font-bold text-pink-600 uppercase tracking-widest mb-3">No competitor has this</p>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                Meet Adoni.
+                <span className="block text-pink-600">Your AI campaign manager.</span>
+              </h2>
+              <p className="mt-4 text-slate-600 leading-relaxed">
+                Adoni knows your campaign data — your contacts, your canvassing pace, your fundraising gap, your polling numbers.
+                Ask him anything. He answers like a senior campaign manager, not a search engine.
+              </p>
+              <div className="mt-6 space-y-3">
+                {[
+                  "Write my next fundraising email based on what worked last time",
+                  "Which ward is most at risk? Where should I canvass today?",
+                  "Draft a social post announcing my transit platform",
+                  "How many doors do we need to knock to close the gap?",
+                ].map((ex) => (
+                  <div key={ex} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <Bot className="w-4 h-4 text-pink-500 shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-700 italic">&ldquo;{ex}&rdquo;</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-xs text-slate-400">Powered by Claude. Trained on your campaign data. Canadian English.</p>
+            </div>
+
+            {/* Adoni chat mockup */}
+            <div className="rounded-2xl border border-slate-200 shadow-xl overflow-hidden bg-white">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3 bg-slate-950">
+                <div className="w-8 h-8 rounded-full bg-pink-600 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Adoni</p>
+                  <p className="text-[10px] text-slate-400">Your AI Campaign Manager · Online</p>
+                </div>
+              </div>
+              <div className="p-4 space-y-3 bg-slate-950 min-h-[280px]">
+                <div className="flex justify-end">
+                  <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[80%]">
+                    How close are we to the gap? What should the team focus on today?
+                  </div>
+                </div>
+                <div className="flex gap-2 items-start">
+                  <div className="w-6 h-6 rounded-full bg-pink-600 shrink-0 flex items-center justify-center mt-0.5">
+                    <Bot className="w-3 h-3 text-white" />
+                  </div>
+                  <div className="bg-slate-800 text-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-[85%] leading-relaxed">
+                    You need 312 more committed supporters to close the gap. At your current canvassing pace of 142 doors per day you will hit that number in 17 days. Ward 8 is underperforming — only 48% of targets contacted versus 71% in Ward 12. Send your strongest canvassers to Ward 8 today. Also: you have a $4,200 fundraising shortfall this week. Your last email to lapsed donors got a 34% open rate — worth sending again.
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-[80%]">
+                    Draft that donor email for me
+                  </div>
+                </div>
+                <div className="flex gap-2 items-start">
+                  <div className="w-6 h-6 rounded-full bg-pink-600 shrink-0 flex items-center justify-center mt-0.5">
+                    <Bot className="w-3 h-3 text-white" />
+                  </div>
+                  <div className="bg-slate-800 text-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-[85%] leading-relaxed">
+                    <span className="text-pink-400 font-semibold">Draft ready.</span> Subject: &ldquo;Quick update from the campaign&rdquo; — I&apos;ve written it in your voice, referenced the Ward 8 push, and included a $50 suggested donation amount based on your average gift. Want me to adjust the tone or schedule it for Tuesday morning?
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3 border-t border-slate-800 bg-slate-950 flex items-center gap-2">
+                <input readOnly className="flex-1 bg-slate-800 rounded-lg px-3 py-2 text-sm text-slate-500 outline-none" placeholder="Ask Adoni anything about your campaign…" />
+                <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center shrink-0">
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
          4. HOW CAMPAIGNS ACTUALLY RUN — System walkthrough
          ══════════════════════════════════════════════════════════════════ */}
       <section id="system" className="py-20">
