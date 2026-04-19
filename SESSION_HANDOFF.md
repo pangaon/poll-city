@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-18
-**Updated by:** Claude Sonnet 4.6 (session: infrastructure setup + intel fixes)
+**Updated by:** Claude Sonnet 4.6 (session: politician profile full rebuild)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -56,6 +56,43 @@
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-18 — Politician profile: full councillor-website standard)
+
+**What shipped (commits `19a595f`, `3da35fc`, `c390f5a` — all on origin/main):**
+
+**`src/app/api/social/politicians/[id]/route.ts`** — expanded to full profile data source:
+- Added `termStart`, `termEnd`, `districtCode` to official select
+- Added `websiteUrl`, `electionDate` to campaigns select
+- Added `OfficialPromise` query (up to 5, ordered by madeAt desc) with tracker counts
+- Added upcoming public events query from official's linked campaigns (next 5, `isPublic: true`)
+- Added newsletter subscription check via `NewsletterSubscriber` model
+- **Fixed approval rating mismatch**: API stores `positiveCount/negativeCount/neutralCount` (raw counts), client expected `approvalPct/disapprovalPct/neutralPct` (percentages). Now computed in handler using `Math.round(count / total * 100)`.
+- All `DateTime` fields serialized to ISO strings before returning
+
+**`src/app/api/social/officials/[id]/newsletter/route.ts`** (NEW):
+- `POST` — subscribe logged-in user to official newsletter (upsert, handles re-activation)
+- `DELETE` — unsubscribe (soft delete via `status: "unsubscribed"`)
+- Auth: requires session email; rate-limited
+
+**`src/app/social/politicians/[id]/politician-profile-client.tsx`** — rebuilt from 654 → 750 lines:
+1. **Claim profile CTA** — amber dashed card for unclaimed officials, links to /pricing
+2. **Upcoming events** — pulls public/townhall events from linked campaigns, shows date/location/virtual link
+3. **Promises tracker** — status badges (kept/in_progress/pending/broken), evidence notes, tracker count
+4. **Ward/Office Details section** — district, districtCode, province, termStart, termEnd
+5. **Newsletter subscribe/unsubscribe button** — card with status-aware copy
+6. **Campaign site link** — on consent cards when campaign has `websiteUrl`
+7. **Share button** — Web Share API + clipboard fallback, in top nav and hero
+8. **Empty state improved** — posts empty state now hints to claim profile
+9. **Approval rating fix** — renders correctly now that API returns percentages
+
+**Also fixed (bonus):** CSV formula injection protection in `/api/capture/events/[eventId]/export/route.ts` — cells starting with `=+-@|%` now prefixed with `'` (was being auto-reverted by formatter; this commit preserves it).
+
+**Build:** TypeScript passes (0 errors, security gates green) on every attempt. Intermittent Windows NTFS `/_document` PageNotFoundError in "Collecting page data" phase — pre-existing race condition, NOT caused by this session's code. All commits on `origin/main` via another agent's rebase merge (`eb49bf3`).
+
+**Risks:** None from this session's code. Windows build race is pre-existing.
 
 ---
 
