@@ -77,6 +77,17 @@ function Navbar() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/social"
+              className={`flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-full border transition-colors ${
+                scrolled
+                  ? "border-[#1D9E75]/40 text-[#1D9E75] hover:bg-[#1D9E75]/8"
+                  : "border-[#1D9E75]/50 text-[#1D9E75] hover:bg-[#1D9E75]/10"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Poll City Social
+            </Link>
             <Link href="/login" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
               Log In
             </Link>
@@ -99,6 +110,9 @@ function Navbar() {
             <Link href="/contact" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Contact</Link>
             <Link href="/login" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Log In</Link>
             <hr className="my-2" />
+            <Link href="/social" className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold rounded-lg border border-[#1D9E75]/30 text-[#1D9E75]">
+              <Globe className="w-4 h-4" /> Poll City Social
+            </Link>
             <Link href="/signup" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
           </div>
         </div>
