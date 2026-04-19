@@ -65,6 +65,22 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — DB cleanup: officials + campaign wipe)
+
+**What was done (no new code commits — DB operations only):**
+
+- **Officials cleanup** — 4,038+ non-Toronto officials (BC MLAs, federal MPs, Represent API garbage) deactivated via `updateMany` where `externalSource != "toronto_city_council_2024"`. 26 Toronto City Council members remain active.
+- **Empty campaign shells wiped** — 1,563 auto-generated "Official Profile" campaigns (0 members, 0 contacts) deleted via batch deleteMany.
+- **Ward 12 campaign wiped** — George explicitly authorized; 58,505 contacts deleted in 500-record batches, finance expense splits cleared, campaign deleted.
+- **Memory updated** — `project_client_status.md` created: zero real clients as of 2026-04-19. Only 2 campaigns remain: `Demo Campaign 2026` (isDemo=true) + `Toronto Mayoral Campaign 2026`.
+- **PCS Social Hub wired** — `/communications/qa` rebuilt as 2-tab hub (Q&A + Post Update), `/ops/social` SUPER_ADMIN officials management panel created, sidebar entries updated.
+
+**DB state:** 2 campaigns. 26 active officials. No garbage data.
+
+**Build:** No new code pushed this session — prior commit `ebfbaf0` is still the latest. Green.
+
+---
+
 ## LAST SESSION (2026-04-19 — Poll City Social consolidation)
 
 **What shipped (commit ebfbaf0):**
