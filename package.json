@@ -26,6 +26,7 @@
     "db:seed:ward20": "tsx prisma/seeds/ward20-demo.ts",
     "db:seed:calendar": "tsx prisma/seeds/calendar-demo.ts",
     "db:seed:election-results": "tsx prisma/seeds/ingest-election-results.ts",
+    "db:seed:toronto-council": "tsx prisma/seeds/toronto-city-council.ts",
     "db:seed:officials": "tsx prisma/seeds/ingest-representatives.ts",
     "db:seed:mps": "tsx prisma/seeds/import-federal-mps.ts",
     "db:seed:mpps": "tsx prisma/seeds/import-ontario-mpps.ts",
