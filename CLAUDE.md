@@ -123,15 +123,25 @@ A feature is NOT done when the code is written. It is done when ALL of these are
 
 **If you built a feature and it is not in the sidebar and not reachable from the main nav, you have not shipped it. You have buried it.**
 
-**THE NAVIGATION AUDIT RULE (added 2026-04-19 after George found 8 buried features):**
+**THE BROWSER TEST — MANDATORY BEFORE MARKING ANYTHING DONE (added 2026-04-19):**
+
+You must be able to answer YES to ALL of these before a feature is DONE:
+
+1. Did you navigate to it from the sidebar with no direct URL typing?
+2. Does the page load with data (or a proper empty state)?
+3. Can you click into a detail view from the list?
+4. Does every button on the page do something visible?
+5. Does the empty state render without crash?
+
+If any answer is NO — the feature is not done. Fix it first. This is not optional. George has been finding broken list pages, unclickable cards, and buried features for 48 hours because agents marked things done without opening a browser. That ends now.
+
+**THE NAVIGATION AUDIT — RUN BEFORE EVERY SESSION CLOSE:**
 
 Before closing ANY session, run this check:
 ```
 grep -r "href=\"/" src/app --include="page.tsx" -l
 ```
-For every route that exists, ask: can George find it from the sidebar in 3 clicks? If not, add the sidebar entry OR document why it's intentionally hidden (admin-only, sub-page of parent, etc.). There is no third option.
-
-The cost of burying a feature is higher than the cost of adding a sidebar entry. Always wire the navigation.
+For every route that exists: can George find it from the sidebar in 3 clicks? If not, add the sidebar entry OR document why it's intentionally hidden. There is no third option.
 
 ---
 
