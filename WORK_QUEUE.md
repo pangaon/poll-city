@@ -123,7 +123,7 @@ These are coherence failures — things that should connect but don't.
 | `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
 | Social feed | DONE — commit 0e5ff04 | Discover officials, vote on polls | Phase 1 live: home feed, politician profiles, groups, notifications, fan-out engine |
 | Weather integration | PENDING | None | Simple weather API for canvassing day planning |
-| Marketing site content | PENDING | Landing page shell exists | Full content pass — copy, social proof, pricing, CTAs |
+| Marketing site content | CLAIMED 2026-04-18 | Landing page shell exists | Full content pass — copy, social proof, pricing, CTAs |
 | Adoni per-tool rate limit | PENDING | Adoni works | Per-tool rate limiting to prevent runaway API cost |
 
 ---
