@@ -123,11 +123,11 @@ export default function MarketingClient() {
               One platform replaces your CRM, your website builder, your email tool, your canvassing app, and your spreadsheets. Everything connected. Ready from day one.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/login" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
-                Start Your Campaign <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+              <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
                 <Play className="w-4 h-4" /> Explore the Platform
+              </Link>
+              <Link href="/login" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+                Start Your Campaign <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
