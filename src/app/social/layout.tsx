@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: { default: "Poll City Social", template: "%s | Poll City Social" },
   description: "Civic engagement, live polling, and your local representatives — all in one place.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Poll City" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Poll City Social" },
 };
 
 export const viewport: Viewport = {
