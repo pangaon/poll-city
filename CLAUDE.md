@@ -130,8 +130,9 @@ You must be able to answer YES to ALL of these before a feature is DONE:
 1. Did you navigate to it from the sidebar with no direct URL typing?
 2. Does the page load with data (or a proper empty state)?
 3. Can you click into a detail view from the list?
-4. Does every button on the page do something visible?
+4. Does every button on the page do what it was built to do — not just respond visually, but actually complete the action (save to DB, send the message, update the record, fire the API call)?
 5. Does the empty state render without crash?
+6. Is every action connected end-to-end — from the button click to the database write to the confirmation back to the user?
 
 If any answer is NO — the feature is not done. Fix it first. This is not optional. George has been finding broken list pages, unclickable cards, and buried features for 48 hours because agents marked things done without opening a browser. That ends now.
 
