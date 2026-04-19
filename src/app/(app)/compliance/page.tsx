@@ -17,7 +17,7 @@ export default async function CompliancePage() {
       status: "active",
       role: { in: ["ADMIN", "CAMPAIGN_MANAGER", "SUPER_ADMIN"] },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { joinedAt: "asc" },
     select: { campaignId: true, role: true },
   });
 

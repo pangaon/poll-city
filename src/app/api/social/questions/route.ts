@@ -10,7 +10,7 @@ import { rateLimit } from "@/lib/rate-limit";
  * Accepts ?answered=true|false to filter.
  */
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = await rateLimit(req, "api");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { session, error } = await apiAuth(req);
