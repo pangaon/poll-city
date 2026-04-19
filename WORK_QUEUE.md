@@ -82,7 +82,7 @@ Everything below is built, pushed, and accessible in the app.
 
 | Task | Status | Notes |
 |---|---|---|
-| Municipal Election Scraper — Phase 1 (Ontario): municipality discovery, Toronto CKAN scraper, raw data storage, GET /api/scraper/municipalities + /candidates | CLAIMED 2026-04-18 | New task. Playwright + Prisma new models. No normalization, no boundary logic. |
+| Municipal Election Scraper — Phase 1 (Ontario): municipality discovery, Toronto CKAN scraper, raw data storage, GET /api/scraper/municipalities + /candidates | DONE — commit 20f8e22 | MuniScrapeRun + RawMuniCandidate schema, Toronto CKAN scraper (Playwright), CLI runner, 2 API routes, 19 unit tests. George must run `npx prisma migrate dev --name municipal_scraper_phase1` + `npm run scrape:install-browsers` + `npm run scrape:toronto:dry`. |
 | Quick Capture System — full election results capture (advance vote + election day) | DONE — commit 9cff9eb | Schema (7 models), 18 API routes, admin setup, mobile capture, war room, review/export. P0 hardening: atomic double-entry, dedup totals, location reset on revision. George must run `npx prisma migrate dev --name quick-capture-system` against Railway. |
 | Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | DONE — commit 0e5ff04 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
 | Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | DONE — commit b805fc4 | Rebuilt settings/public-page: InlineGallery (24 templates), 4 distinct LivePreview heroes, showGallery state wired. 4 layout variants in candidates/[slug] and candidate-page-client.tsx. |
