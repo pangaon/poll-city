@@ -67,6 +67,7 @@ function Navbar() {
               { label: "How It Works", href: "#system" },
               { label: "Pricing", href: "/pricing" },
               { label: "Demo", href: "/demo" },
+              { label: "About", href: "/about" },
             ].map((link) => (
               <Link key={link.label} href={link.href} className={`text-sm font-medium transition-colors ${scrolled ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>
                 {link.label}
@@ -830,6 +831,7 @@ export default function MarketingClient() {
                 <Link href="/pricing" className="block hover:text-white transition-colors">Pricing</Link>
                 <Link href="/demo" className="block hover:text-white transition-colors">Demo</Link>
                 <Link href="/candidates/demo-campaign-2026" className="block hover:text-white transition-colors">Campaign Website</Link>
+                <Link href="/about" className="block hover:text-white transition-colors">About</Link>
               </div>
             </div>
             <div>
