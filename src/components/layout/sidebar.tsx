@@ -34,6 +34,7 @@ import {
   QrCode,
   Network,
   Vote,
+  Globe,
   Truck,
   Brain,
   Search,
