@@ -65,6 +65,36 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Poll City Social consolidation)
+
+**What shipped (commit ebfbaf0):**
+
+- **DB cleanup** — 4,038 non-Toronto officials (Represent API, BC MLAs, federal MPs) deactivated via script. 26 Toronto City Council members remain active (Mayor Chow + 25 councillors). Script deleted after run.
+- **`/api/officials/route.ts`** — added `questions: true` to `_count` select (was missing, caused TS mismatch in client).
+- **`/api/officials/[id]/questions`** — GET made public (removed `apiAuth` requirement); voters can now see questions without login.
+- **`/social/social-feed-client.tsx`** — removed `Math.random()` fake engagement numbers from feed cards.
+- **`/communications/qa` → PCS Social Hub** — expanded from Q&A-only to a 2-tab hub:
+  - Stats header: live follower count, question count, post count per official
+  - Tab 1 (Q&A): existing answer flow unchanged
+  - Tab 2 (Post Update): campaign managers publish announcements/civic updates/project updates/bill updates directly to their official's public PCS profile. Fan-out notifications fire to all followers on publish.
+  - Sidebar label updated from "Q&A Inbox" to "PCS Social Hub"
+- **`/ops/social`** (SUPER_ADMIN only) — George's officials management panel:
+  - All 26 Toronto councillors: followers, questions, posts per row
+  - Paying flag: which officials have an active linked campaign (= paying customer)
+  - Controls: Verify / Mark Claimed / Activate / Deactivate per official
+  - Filter: All / Active / Inactive / Claimed / Linked ($$)
+  - Sidebar entry "Social Officials" added for SUPER_ADMIN
+- **`/api/ops/social/officials`** — GET (full list with linked campaign) + PATCH (isActive, subscriptionStatus, isClaimed). SUPER_ADMIN only.
+
+**Build:** GREEN — `ebfbaf0` pushed via `npm run push:safe`.
+
+**3-click paths:**
+- Voter: `/social` → `/social/officials` → `/social/politicians/[id]` → Q&A / Follow / Newsletter
+- Campaign manager: sidebar → PCS Social Hub → Post Update tab → Publish
+- George: sidebar → Social Officials (SUPER_ADMIN) → full management panel
+
+---
+
 ## LAST SESSION (2026-04-19 — Candidate Q&A response flow)
 
 **What shipped (commit 04349eb):**
