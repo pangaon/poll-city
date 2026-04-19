@@ -102,12 +102,13 @@ const OUTREACH_SECTION: NavSection = {
   id: "outreach",
   label: "Outreach",
   items: [
-    { href: "/communications",    icon: Mail,         label: "Communications"  },
-    { href: "/communications/qa", icon: MessageSquare, label: "Q&A Inbox",    isNew: true },
-    { href: "/calendar",          icon: Calendar,     label: "Calendar"        },
-    { href: "/polls",             icon: BarChart3,    label: "Polls"           },
-    { href: "/forms",             icon: FileText,     label: "Forms"           },
-    { href: "/notifications",     icon: Bell,         label: "Voter Outreach"  },
+    { href: "/communications",    icon: Mail,          label: "Communications"   },
+    { href: "/communications/qa", icon: MessageSquare, label: "Q&A Inbox",       isNew: true },
+    { href: "/calendar",          icon: Calendar,      label: "Calendar"         },
+    { href: "/polls",             icon: BarChart3,     label: "Polls"            },
+    { href: "/forms",             icon: FileText,      label: "Forms"            },
+    { href: "/notifications",     icon: Bell,          label: "Voter Outreach"   },
+    { href: "/compliance",        icon: ScrollText,    label: "CASL Compliance", isNew: true },
   ],
 };
 
