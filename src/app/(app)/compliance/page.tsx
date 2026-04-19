@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
+import { authOptions } from "@/lib/auth/auth-options";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db/prisma";
 import ComplianceClient from "./compliance-client";
