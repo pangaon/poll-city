@@ -127,7 +127,7 @@ export async function GET(
   // Compute approval percentages from raw counts (fix: client expects pct, API stores counts)
   const approvalRating = official.approvalRating
     ? (() => {
-        const { positiveCount, negativeCount, neutralCount, totalSignals, score, netScore, updatedAt } =
+        const { positiveCount, negativeCount, totalSignals, score, netScore, updatedAt } =
           official.approvalRating;
         const approvalPct =
           totalSignals > 0 ? Math.round((positiveCount / totalSignals) * 100) : 0;
@@ -163,33 +163,47 @@ export async function GET(
 
   // Upcoming public events from official's linked campaigns
   const campaignIds = official.campaigns.map((c) => c.id);
-  const events =
-    campaignIds.length > 0
-      ? await prisma.event.findMany({
-          where: {
-            campaignId: { in: campaignIds },
-            isPublic: true,
-            eventDate: { gte: new Date() },
-            deletedAt: null,
-          },
-          orderBy: { eventDate: "asc" },
-          take: 5,
-          select: {
-            id: true,
-            name: true,
-            eventDate: true,
-            location: true,
-            city: true,
-            description: true,
-            eventType: true,
-            isTownhall: true,
-            isVirtual: true,
-            virtualUrl: true,
-            allowPublicRsvp: true,
-            campaign: { select: { slug: true } },
-          },
-        })
-      : [];
+  type EventRow = {
+    id: string;
+    name: string;
+    eventDate: Date;
+    location: string;
+    city: string | null;
+    description: string | null;
+    eventType: string | null;
+    isTownhall: boolean;
+    isVirtual: boolean;
+    virtualUrl: string | null;
+    allowPublicRsvp: boolean;
+    campaign: { slug: string | null };
+  };
+  let rawEvents: EventRow[] = [];
+  if (campaignIds.length > 0) {
+    rawEvents = await prisma.event.findMany({
+      where: {
+        campaignId: { in: campaignIds },
+        isPublic: true,
+        eventDate: { gte: new Date() },
+        deletedAt: null,
+      },
+      orderBy: { eventDate: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        name: true,
+        eventDate: true,
+        location: true,
+        city: true,
+        description: true,
+        eventType: true,
+        isTownhall: true,
+        isVirtual: true,
+        virtualUrl: true,
+        allowPublicRsvp: true,
+        campaign: { select: { slug: true } },
+      },
+    });
+  }
 
   // Is the current user following this official?
   let isFollowing = false;
@@ -237,14 +251,33 @@ export async function GET(
   return NextResponse.json({
     data: {
       ...official,
+      termStart: official.termStart ? official.termStart.toISOString() : null,
+      termEnd: official.termEnd ? official.termEnd.toISOString() : null,
+      campaigns: official.campaigns.map((c) => ({
+        ...c,
+        electionDate: c.electionDate ? c.electionDate.toISOString() : null,
+      })),
       approvalRating,
-      events: events.map((e) => ({
-        ...e,
+      events: rawEvents.map((e) => ({
+        id: e.id,
+        name: e.name,
         eventDate: e.eventDate.toISOString(),
+        location: e.location,
+        city: e.city,
+        description: e.description,
+        eventType: e.eventType,
+        isTownhall: e.isTownhall,
+        isVirtual: e.isVirtual,
+        virtualUrl: e.virtualUrl,
+        allowPublicRsvp: e.allowPublicRsvp,
+        campaignSlug: e.campaign.slug,
       })),
       promises: promises.map((p) => ({
-        ...p,
+        id: p.id,
+        promise: p.promise,
         madeAt: p.madeAt.toISOString(),
+        status: p.status,
+        evidence: p.evidence,
         trackerCount: p._count.trackers,
       })),
       isFollowing,
