@@ -106,7 +106,7 @@ These are coherence failures — things that should connect but don't.
 
 | Gap | Status | What's missing | User impact |
 |---|---|---|---|
-| Brand Kit → applied to outputs | CLAIMED 2026-04-19 | `/settings/brand` saves colours/logo/fonts but they are NOT applied to email templates, print designs, or the candidate public page. Settings page that sets nothing. | Every campaign looks generic |
+| Brand Kit → applied to outputs | DONE — commits a20d6b0, a29022c | Email blasts + scheduled emails now use branded HTML (logo header, primary colour bar, brand font). Sidebar shows amber badge when brand kit incomplete. Print/candidate page/receipts were already wired. | Every campaign looks generic |
 | Social → Campaign consent bridge | DONE a17a74f | Voters on Poll City Social who follow/vote can't consent to being contacted by a specific campaign. The link between the two platforms is missing. | Key monetization gap |
 | Candidate Q&A responses | CLAIMED 2026-04-19 | Voters ask questions on /candidates/[slug] but candidates cannot reply publicly from within the platform | Engagement dead end |
 | Volunteer reimbursement → payment | PENDING | Approval chain is complete but actual payment (Stripe or bank transfer) is not automated | Finance officers manually process outside the platform |

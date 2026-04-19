@@ -65,6 +65,22 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Brand Kit applied to outputs)
+
+**What shipped (commits a20d6b0, a29022c, c298fec):**
+
+- **`src/lib/email/branded-template.ts`** (NEW) — `buildBrandedEmail()`: wraps email body in branded HTML with primary-colour header bar, logo, brand font, CASL footer. Used by both blast + scheduled send routes.
+- **`src/app/api/communications/email/route.ts`** — now calls `buildBrandedEmail()`. Every email blast uses campaign logo, colour, and font.
+- **`src/app/api/cron/send-scheduled/route.ts`** — same `buildBrandedEmail()` applied to scheduled sends.
+- **`src/components/layout/sidebar.tsx`** — amber dot on Settings when `brandKitComplete` is false. Drives setup completion.
+- **`fix(compliance)`** — Membership `orderBy: joinedAt` (was `createdAt`, wrong field).
+
+**Already wired before this session:** print templates, candidate public page, receipt emails, Adoni, calendar reminders — all confirmed using `loadBrandKit`/`applyBrand`.
+
+**Build:** GREEN — pushed via `npm run push:safe`.
+
+---
+
 ## LAST SESSION (2026-04-19 — Scraper JSON fix + push-safe race detection)
 
 **What shipped (commits `4be57df`, `0366a66`):**
