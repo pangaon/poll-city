@@ -184,6 +184,45 @@ export default function MarketingClient() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
+         1b. PAIN SECTION — Name the problem before solving it
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-16 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Sound familiar?</p>
+          <h2 className="text-center text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-3">
+            Most campaigns still run on five disconnected tools.
+          </h2>
+          <p className="text-center text-slate-500 max-w-2xl mx-auto mb-12 text-sm leading-relaxed">
+            One for contacts. One for the website. One for email. One for canvassing. One spreadsheet duct-taped to all of it.
+            Every time data moves between them, something gets lost — and you lose time you don&apos;t have.
+          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 max-w-4xl mx-auto mb-10">
+            {[
+              { tool: "Google Sheets", use: "Your voter list", emoji: "📊", pain: "No one knows whose data is current" },
+              { tool: "Wix / Squarespace", use: "Your website", emoji: "🌐", pain: "Forms feed nowhere useful" },
+              { tool: "WhatsApp Groups", use: "Your canvassers", emoji: "💬", pain: "No tracking. Just chaos." },
+              { tool: "MailChimp", use: "Your emails", emoji: "📧", pain: "Doesn't know your voters" },
+              { tool: "Stripe / e-transfer", use: "Your donations", emoji: "💳", pain: "Manual reconciliation weekly" },
+            ].map((t) => (
+              <div key={t.tool} className="rounded-xl border border-red-100 bg-white p-4 text-center shadow-sm">
+                <div className="text-2xl mb-2">{t.emoji}</div>
+                <p className="text-xs font-bold text-slate-900">{t.tool}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{t.use}</p>
+                <p className="text-[10px] text-red-500 font-semibold mt-2 leading-tight">{t.pain}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="h-px flex-1 max-w-[120px] bg-slate-200" />
+            <div className="rounded-full bg-blue-600 text-white px-5 py-2 text-sm font-bold">There&apos;s a better way</div>
+            <div className="h-px flex-1 max-w-[120px] bg-slate-200" />
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
          2. THE CORE TRUTH — One sentence per capability
          ══════════════════════════════════════════════════════════════════ */}
       <section className="py-20">
