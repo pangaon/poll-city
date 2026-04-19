@@ -5,6 +5,7 @@
 
 import prisma from "@/lib/db/prisma";
 import { isLikelyDuplicate, toContactWriteData, extractConsentFromRow } from "./import-pipeline";
+import { groupHouseholdsForContacts } from "./household-grouper";
 
 const CHUNK_SIZE = 500;
 const ROLLBACK_HOURS = 24;
@@ -76,6 +77,7 @@ export async function processNextChunk(importLogId: string): Promise<{
   let errorsInChunk = 0;
   const newErrors: string[] = [];
   const createdIds: string[] = ((job.rollbackData as string[]) ?? []);
+  const newlyCreatedIds: string[] = [];
 
   // Process chunk in a transaction
   try {
@@ -120,6 +122,7 @@ export async function processNextChunk(importLogId: string): Promise<{
             });
             existingContacts.push({ ...created, phone2: null, businessPhone: null, email2: null, address1: null, city: null, province: null, ward: null, riding: null, notes: null, preferredLanguage: "en", source: "smart_import" });
             createdIds.push(created.id);
+            newlyCreatedIds.push(created.id);
             importedInChunk++;
 
             // CASL: create ConsentRecord if consent was mapped from this row
@@ -150,6 +153,11 @@ export async function processNextChunk(importLogId: string): Promise<{
     // Transaction failed — whole chunk rolls back
     errorsInChunk = chunk.length;
     newErrors.push(`Chunk ${job.currentChunk + 1} failed: ${(e as Error).message}`);
+  }
+
+  // Group newly created contacts into households — best-effort, never fails the import
+  if (newlyCreatedIds.length > 0) {
+    await groupHouseholdsForContacts(job.campaignId, newlyCreatedIds, prisma).catch(() => {});
   }
 
   // Update progress
