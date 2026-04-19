@@ -10,6 +10,38 @@ import {
   Eye, Layers,
 } from "lucide-react";
 
+/* ─── Election Countdown Bar ─────────────────────────────────────────────── */
+
+function ElectionCountdown() {
+  const [days, setDays] = useState<number | null>(null);
+
+  useEffect(() => {
+    const electionDate = new Date("2026-10-27T00:00:00-05:00");
+    function calc() {
+      const diff = electionDate.getTime() - Date.now();
+      setDays(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
+    }
+    calc();
+    const id = setInterval(calc, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (days === null) return null;
+
+  return (
+    <div className="w-full bg-blue-700 text-white text-center py-2 text-xs font-semibold tracking-wide">
+      <span className="opacity-80">Ontario Municipal Elections ·</span>
+      {" "}<span className="font-black text-amber-300">October 27, 2026</span>
+      {" "}<span className="opacity-80">·</span>
+      {" "}<span className="font-black text-white">{days} days away</span>
+      {" "}<span className="opacity-70">— Is your campaign ready?</span>
+      <Link href="/login" className="ml-3 underline underline-offset-2 hover:text-amber-200 transition-colors font-bold">
+        Start now →
+      </Link>
+    </div>
+  );
+}
+
 /* ─── Navbar ─────────────────────────────────────────────────────────────── */
 
 function Navbar() {
@@ -74,6 +106,7 @@ function Navbar() {
 export default function MarketingClient() {
   return (
     <div className="min-h-screen bg-white">
+      <ElectionCountdown />
       <Navbar />
 
       {/* ══════════════════════════════════════════════════════════════════
