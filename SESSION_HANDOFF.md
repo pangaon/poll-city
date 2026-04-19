@@ -65,6 +65,73 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Scraper JSON fix + push-safe race detection)
+
+**What shipped (commits `4be57df`, `0366a66`):**
+
+- **Scraper switched to JSON results API** (`4be57df`) — Toronto CKAN has no candidates CSV; the election results JSON endpoint has all 367 candidates across Mayor + 25 wards + school boards. Scraper now works correctly.
+- **push-safe race detection hardened** (`0366a66`) — Windows NTFS rename race vs real build errors now reliably distinguished; false positives eliminated.
+
+**Build:** GREEN.
+
+---
+
+## LAST SESSION (2026-04-18 — Marketing depth + docs + prisma baseline)
+
+**What shipped (commits `e7a2870`, `44a474b`, `aab3941`, `eacdbb2`, `6fd88a0`, `fb56a0e`, `0b29355`):**
+
+- **`/contact` demo-booking page** (`e7a2870`) — new page for booking demo with George; "Talk to George" CTA wired in Officials section + Command pricing tier; Contact added to nav + footer
+- **Email capture widget** (`44a474b`) — campaign launch checklist lead magnet with role selector on marketing homepage
+- **EmailCaptureSection extracted** (`aab3941`) — fixes webpack chunk split prerender `ReferenceError` on `/` that was breaking SSR
+- **Pricing feature lists updated** (`eacdbb2`) — Campaign + Command tiers now reflect full platform as actually built (not stale placeholder features)
+- **Docs: prisma migrate dev → prisma db push** (`6fd88a0`) — all references corrected platform-wide; `migrate dev` nearly wiped production DB
+- **Prisma migration baseline snapshot** (`fb56a0e`) — baseline committed for GAP-003 tracking
+- **Officials rateLimit await fix** (`0b29355`) — `await rateLimit()` added to GET handler (same class of bug as `f6d6a4d`)
+
+**Build:** GREEN.
+
+---
+
+## LAST SESSION (2026-04-18/19 — Social polish + DB connection fix)
+
+**What shipped (commits `2d548d4`, `646822a`, `24fe04e`, `2a345ad`):**
+
+- **DB connection limit** (`2d548d4`) — `connection_limit` reduced 3→1 to prevent Railway connection exhaustion on Vercel serverless (was silently failing under load)
+- **Officials cards clickable** (`646822a`) — name + avatar now link to politician profile; "Ask a question" → "View Profile"
+- **Social desktop layout** (`24fe04e`) — proper website layout on desktop; officials API bug fixed (was always returning empty)
+- **Apple web app title** (`2a345ad`) — updated to "Poll City Social" for PWA home screen
+
+**Build:** GREEN.
+
+---
+
+## LAST SESSION (2026-04-18 — Platform hardening: nav, sidebar, standards)
+
+**What shipped (commits `a55f9a7`, `cfe102d`, `2951fd2`, `d0227b3`, `caeaac9`, `b05cc2d`):**
+
+- **Middleware redirect** (`a55f9a7`) — logged-in users hitting `/` now redirect to `/dashboard` (no more landing on marketing page while authenticated)
+- **6 buried features wired** (`cfe102d`) — `/supporters/super`, `/call-list`, `/capture`, `/lookup`, `/design-preview`, and `/briefing` added to sidebar; 3-click navigation rule hardcoded into CLAUDE.md
+- **New badges** (`2951fd2`) — recently shipped features get "New" badges in sidebar (visual signal to George and clients)
+- **Sidebar scroll-reset eliminated** (`d0227b3`) — sidebar nav replaced with inline nav to stop scroll position resetting on every route change
+- **Browser test standard** (`caeaac9`, `b05cc2d`) — mandatory browser test checklist added to FEATURE COMPLETION GATE in CLAUDE.md; agents can no longer mark features done without confirming end-to-end action completion
+
+**Build:** GREEN.
+
+---
+
+## LAST SESSION (2026-04-18 — Stripe fundraising + capture polish)
+
+**What shipped (commits `aab7b24`, `cbcd953`, `bed49e8`, `50b50bd`):**
+
+- **Stripe fundraising Connect banner** (`aab7b24`) — fundraising page now shows Connect Stripe onboarding banner when not connected; sidebar badge added; onboarding task skippable
+- **Stripe status guard** (`cbcd953`) — stripe onboarding status properly passed to client; donate page guarded when Stripe not connected
+- **Event form auto-population** (`bed49e8`) — event form auto-populates from campaign profile; own candidate auto-seeded
+- **STRIPE_SECRET_KEY clarification** (`50b50bd`) — docs clarified that this is the platform API credential, NOT the donation destination account
+
+**Build:** GREEN.
+
+---
+
 ## LAST SESSION (2026-04-18 — Municipal Election Scraper Phase 1)
 
 **What shipped (commit `20f8e22`):**
