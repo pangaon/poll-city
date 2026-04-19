@@ -14,7 +14,8 @@ function buildDatabaseUrl(): string {
   const url = process.env.DATABASE_URL ?? "";
   if (!url || url.includes("connection_limit")) return url;
   const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}connection_limit=3`;
+  // 1 connection per serverless function — prevents Railway connection exhaustion
+  return `${url}${sep}connection_limit=1&pool_timeout=20`;
 }
 
 const client =
