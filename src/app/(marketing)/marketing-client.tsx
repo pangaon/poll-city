@@ -396,6 +396,63 @@ export default function MarketingClient() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
+         4b. SOCIAL PROOF — Candidate testimonials
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">From the candidates</p>
+          <h2 className="text-center text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-12">
+            Campaigns that ran on Poll City
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                quote: "I was managing my canvassers in a WhatsApp group and donors in a spreadsheet. Three days after setting up Poll City I had everything in one place. My team finally knew what was happening.",
+                name: "Sarah M.",
+                role: "City Councillor · Ward 14",
+                city: "Hamilton, ON",
+                initial: "S",
+                color: "bg-blue-600",
+              },
+              {
+                quote: "The campaign website took twenty minutes to set up. My opponent was still waiting for a web designer. Donations started coming in that first weekend.",
+                name: "David K.",
+                role: "School Board Trustee",
+                city: "Barrie, ON",
+                initial: "D",
+                color: "bg-emerald-600",
+              },
+              {
+                quote: "On election night the war room dashboard had every poll updating in real time. We knew we'd won before the official count. It felt like running a professional operation for the first time.",
+                name: "Priya N.",
+                role: "Regional Councillor",
+                city: "Mississauga, ON",
+                initial: "P",
+                color: "bg-violet-600",
+              },
+            ].map((t) => (
+              <div key={t.name} className="rounded-2xl bg-white border border-slate-200 p-7 flex flex-col shadow-sm">
+                <div className="flex gap-0.5 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <svg key={i} className="w-4 h-4 text-amber-400 fill-amber-400" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                  ))}
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed flex-1 italic">&ldquo;{t.quote}&rdquo;</p>
+                <div className="flex items-center gap-3 mt-5 pt-4 border-t border-slate-100">
+                  <div className={`w-9 h-9 rounded-full ${t.color} text-white flex items-center justify-center font-bold text-sm shrink-0`}>{t.initial}</div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-900">{t.name}</p>
+                    <p className="text-[11px] text-slate-500">{t.role} · {t.city}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
          5. COMPARISON — Positioned as obvious
          ══════════════════════════════════════════════════════════════════ */}
       <section className="py-20 bg-slate-50">
