@@ -118,10 +118,15 @@ windowsPreBuild();
     NEXT_DISABLE_WORKER_THREAD: "1",
   };
   console.log("\n$ npm run build");
+  // Clear server/app so we can reliably detect whether pages were generated in THIS run
+  if (fs.existsSync(".next/server/app")) {
+    fs.rmSync(".next/server/app", { recursive: true, force: true });
+  }
   const result = spawnSync("npm", ["run", "build"], { stdio: "inherit", shell: true, env });
   if (result.status !== 0) {
-    // Check if the only failure is the known Windows rename race on error pages.
-    // Verify the build is otherwise complete by checking server/app/ output exists.
+    // The Windows NTFS rename race fails AFTER pages are generated (.next/server/app exists).
+    // TypeScript / lint errors fail BEFORE page generation — server/app will be absent.
+    // We cleared server/app before the build, so its presence now means pages were generated.
     const serverAppExists = fs.existsSync(".next/server/app");
     const isWindowsRenameRace = process.platform === "win32" && serverAppExists;
     if (!isWindowsRenameRace) {

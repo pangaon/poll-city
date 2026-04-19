@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-18
-**Updated by:** Claude Sonnet 4.6 (session: politician profile full rebuild)
+**Last updated:** 2026-04-19
+**Updated by:** Claude Sonnet 4.6 (session: three-product cohesion + seed data fix)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -102,9 +102,39 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Three-product cohesion + seed data fix)
+
+**What shipped (commits `77b2f8e`, `0a9b9d2`, `ada33b8`, `ba81776`, `fe8d2ef` — all on origin/main after push:safe):**
+
+**Cohesion fixes — three products now bridged:**
+- `src/app/social/layout.tsx` — header renamed "Poll City Social", tagline "Civic engagement for Canadians" added, Officials→Representatives, "Running for office?" CTA added to desktop nav
+- `src/components/social/social-nav.tsx` — mobile bottom nav renamed "Officials"→"Reps"
+- `src/app/(marketing)/marketing-client.tsx` — two changes:
+  1. Nav/CTAs now point to `/login` and `/signup` (not `/pricing`), Login link added
+  2. New voter-facing section added (between email capture and final CTA): "Not running for office?" with Poll City Social CTA + 3 feature cards (Follow Reps, Live Polls, Ask Questions)
+- `src/components/layout/sidebar.tsx` — Poll City Social link added under Candidate section; Globe icon imported
+- `src/components/layout/public-nav.tsx` — "Poll City Social" link added to public nav (visible on `/officials` standalone directory)
+
+**Seed data fix:**
+- `src/app/api/officials/route.ts` — all three query paths (postal/search/list) now exclude known seed official IDs (`off-council-w12`, `off-mp-todan`, `off-mpp-todan`)
+- `src/app/social/officials/officials-client.tsx` — empty state improved: when no search, shows "Representatives are being added / Check back soon" instead of generic "not found"
+
+**Build:** GREEN — 178 tests pass, TypeScript clean, pushed via `npm run push:safe`.
+
+**George must still do:**
+- `npx prisma migrate dev --name municipal_scraper_phase1` — before scraper can run
+- Officials list will show empty until real officials data is added (scraper populates candidates, not officials — separate data source needed for actual serving officials)
+
+---
+
 ## NEXT SESSION OPENER
 
-Municipal Election Scraper Phase 1 is committed (`20f8e22`). George needs to run migration + dry-run before Phase 2 can be tested end-to-end. Phase 2 scope: normalization layer (map raw candidates to normalized Candidate model), add a second municipality (e.g. Mississauga or Ottawa), and consider a scheduled Vercel cron job trigger via `/api/scraper/run`. Do NOT start Phase 2 until George confirms `scrape:toronto:dry` passes.
+Three-product cohesion is live. Poll City Social has identity ("Poll City Social" brand, civic engagement tagline, Representatives naming). Marketing site has voter entry point. Campaign app sidebar has Poll City Social link. Seed officials are filtered from public view.
+
+Next priorities (pick one):
+1. **Scraper Phase 2** — normalization layer (map RawMuniCandidate → real Candidate records), after George confirms `npx prisma migrate dev --name municipal_scraper_phase1` ran
+2. **Officials data sourcing** — the public `/social/officials` page is now empty (seed filtered). Need real officials from Represent API (opennorth.ca) or manual entry. Consider `/api/officials/import` from Represent API.
+3. **Sprint work** — continue whatever sprint was next from WORK_QUEUE.md
 
 ---
 
