@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { scrapeToronto } from "./toronto";
 
 const prisma = new PrismaClient();
@@ -81,7 +81,7 @@ async function main() {
             ward: c.ward,
             wardNumber: c.wardNumber,
             candidateName: c.candidateName,
-            rawData: c.rawData,
+            rawData: c.rawData as Prisma.InputJsonValue,
           })),
           skipDuplicates: true,
         });
