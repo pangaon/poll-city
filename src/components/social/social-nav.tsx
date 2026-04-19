@@ -29,7 +29,7 @@ export default function SocialNav() {
   }, [session, pathname]);
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-gray-200 flex z-40 safe-area-inset-bottom overflow-x-auto">
+    <nav className="md:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-gray-200 flex z-40 safe-area-inset-bottom overflow-x-auto">
       {tabs.map(({ href, icon: Icon, label }) => {
         const active = pathname === href || (href !== "/social" && (pathname ?? "").startsWith(href));
         const isAlerts = href === "/social/notifications";

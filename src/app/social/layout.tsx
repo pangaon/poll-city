@@ -16,7 +16,6 @@ export const viewport: Viewport = {
   themeColor: "#1e40af",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export default function SocialLayout({ children }: { children: React.ReactNode }) {
@@ -24,30 +23,37 @@ export default function SocialLayout({ children }: { children: React.ReactNode }
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-gray-50">
         <AuthProvider>
-          <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-white shadow-sm">
-            <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
-              <nav className="px-4 py-3 flex items-center justify-between gap-2 text-sm font-medium text-gray-700 overflow-x-auto">
-                <Link href="/social" className="whitespace-nowrap font-bold text-blue-700 hover:text-blue-800 transition-colors">
+          <div className="min-h-screen flex flex-col">
+            <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm shadow-sm">
+              <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-6 text-sm font-medium text-gray-700">
+                <Link href="/social" className="font-bold text-lg text-blue-700 hover:text-blue-800 transition-colors whitespace-nowrap">
                   Poll City
                 </Link>
-                <Link href="/social/officials" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  Officials
-                </Link>
-                <Link href="/social/polls" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  Polls
-                </Link>
-                <Link href="/social/groups" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  Groups
-                </Link>
-                <Link href="/social/profile" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  My Profile
-                </Link>
-                <Link href="/login" className="whitespace-nowrap hover:text-blue-700 transition-colors">
-                  Login
-                </Link>
+                {/* Desktop nav links */}
+                <div className="hidden md:flex items-center gap-6">
+                  <Link href="/social/officials" className="hover:text-blue-700 transition-colors">Officials</Link>
+                  <Link href="/social/polls" className="hover:text-blue-700 transition-colors">Polls</Link>
+                  <Link href="/social/groups" className="hover:text-blue-700 transition-colors">Groups</Link>
+                  <Link href="/social/notifications" className="hover:text-blue-700 transition-colors">Alerts</Link>
+                </div>
+                <div className="hidden md:flex items-center gap-3">
+                  <Link href="/social/profile" className="hover:text-blue-700 transition-colors">My Profile</Link>
+                  <Link href="/login" className="bg-blue-700 text-white px-4 py-1.5 rounded-lg hover:bg-blue-800 transition-colors">
+                    Login
+                  </Link>
+                </div>
+                {/* Mobile: just show login */}
+                <Link href="/login" className="md:hidden text-blue-700 font-medium">Login</Link>
               </nav>
             </header>
-            <main className="flex-1 pb-20">{children}</main>
+
+            <main className="flex-1 pb-20 md:pb-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {children}
+              </div>
+            </main>
+
+            {/* Mobile-only bottom nav */}
             <SocialNav />
           </div>
           <Toaster richColors position="top-center" />
