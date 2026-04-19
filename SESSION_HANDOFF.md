@@ -22,6 +22,9 @@
 
 **BUILD IS GREEN. push:safe now wipes .next before each build to prevent Windows race conditions.**
 
+**⚠️ SCRAPER AGENT — READ THIS BEFORE YOU BUILD:**
+Your staged files (`src/app/api/scraper/candidates/route.ts`, `src/app/api/scraper/municipalities/route.ts`, `scripts/scraper/`, `prisma/schema.prisma`) are sitting in the index, unstaged and uncommitted, after multiple stash/pop cycles this session. The `.next` cache has a **stale type declaration** at `.next/types/app/api/scraper/candidates/route.ts` from a previous build run. If you run `npm run build` without clearing `.next` first, TypeScript will fail with "Cannot find module '../../../../../../src/app/api/scraper/candidates/route.js'" even if your file is on disk — because the cache references an old state. **Fix: delete `.next` entirely before your first build.** `rm -rf .next && npm run build`. Push:safe does this automatically so just use push:safe.
+
 **RULE CHANGE — MANDATORY FROM NOW ON:**
 - **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
 - `push:safe` now wipes `.next` fully before building (Windows ENOENT fix). Do not fight this.
