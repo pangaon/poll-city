@@ -116,16 +116,22 @@ A feature is NOT done when the code is written. It is done when ALL of these are
 
 1. **`npm run push:safe` exits 0** — build passes with the feature included.
 2. **Sidebar entry exists** — the feature appears in `src/components/layout/sidebar.tsx` in the correct section, OR there is an explicit documented reason (e.g. "accessible from parent page only", noted in SESSION_HANDOFF).
-3. **User can reach it** — navigate from the sidebar to the feature and confirm the page loads. Not "it should work" — confirmed it loads.
-4. **Edge cases handled** — empty state, no data, loading state, error state all render without crash.
-5. **CONNECTIONS.md updated** — any new data connections documented.
+3. **3-click navigation path written out** — before closing, write the exact path: "User opens app → clicks X → clicks Y → lands on feature." If you cannot write this path, the feature is not wired. No exceptions.
+4. **User can reach it** — navigate from the sidebar to the feature and confirm the page loads. Not "it should work" — confirmed it loads.
+5. **Edge cases handled** — empty state, no data, loading state, error state all render without crash.
+6. **CONNECTIONS.md updated** — any new data connections documented.
 
 **If you built a feature and it is not in the sidebar and not reachable from the main nav, you have not shipped it. You have buried it.**
 
-Modules currently in the codebase but historically left disconnected:
-- Always check: does the new route appear in the sidebar?
-- Always check: can a user navigate there from a cold start?
-- If no to either: add the sidebar entry before closing the session.
+**THE NAVIGATION AUDIT RULE (added 2026-04-19 after George found 8 buried features):**
+
+Before closing ANY session, run this check:
+```
+grep -r "href=\"/" src/app --include="page.tsx" -l
+```
+For every route that exists, ask: can George find it from the sidebar in 3 clicks? If not, add the sidebar entry OR document why it's intentionally hidden (admin-only, sub-page of parent, etc.). There is no third option.
+
+The cost of burying a feature is higher than the cost of adding a sidebar entry. Always wire the navigation.
 
 ---
 
