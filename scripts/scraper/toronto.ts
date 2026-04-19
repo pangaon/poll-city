@@ -1,13 +1,13 @@
-import { chromium } from "playwright";
 import type { RawCandidate, CkanPackage, CkanApiResponse } from "./types";
 
 const CKAN_BASE = "https://ckan0.cf.opendata.inter.prod-toronto.ca";
 
-const SEARCH_TERMS = [
-  "election candidates",
-  "candidates election",
-  "municipal election",
-  "candidate list",
+// Toronto CKAN has election RESULTS (not a separate candidates list).
+// Results include every candidate who ran + their vote counts.
+// Package IDs in order of preference (unofficial first — available faster post-election).
+const RESULT_PACKAGE_IDS = [
+  "election-results-unofficial",
+  "election-results-official",
 ];
 
 export function parseCsvLine(line: string): string[] {
@@ -56,137 +56,129 @@ export function extractWardNumber(ward: string | null | undefined): number | nul
   return match ? parseInt(match[1], 10) : null;
 }
 
-async function fetchJson<T>(browser: Awaited<ReturnType<typeof chromium.launch>>, url: string): Promise<T> {
-  const page = await browser.newPage();
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
-    const text = await page.evaluate(() => document.body.innerText);
-    return JSON.parse(text) as T;
-  } finally {
-    await page.close();
-  }
+interface CkanOfficeCandidate {
+  name: string;
+  votesReceived?: string;
+  [key: string]: unknown;
 }
 
-async function discoverElectionPackage(
-  browser: Awaited<ReturnType<typeof chromium.launch>>
-): Promise<CkanPackage | null> {
-  for (const term of SEARCH_TERMS) {
-    const url = `${CKAN_BASE}/api/3/action/package_search?q=${encodeURIComponent(term)}&rows=20`;
-    const resp = await fetchJson<CkanApiResponse<{ results: CkanPackage[] }>>(browser, url);
-    if (!resp.success) continue;
+interface CkanWard {
+  num?: string;
+  name?: string;
+  candidate?: CkanOfficeCandidate[];
+  [key: string]: unknown;
+}
 
-    const pkg = resp.result.results.find(
-      (p) =>
-        p.title.toLowerCase().includes("candidate") ||
-        p.name.toLowerCase().includes("candidate")
-    );
-    if (pkg) return pkg;
+interface CkanOffice {
+  id?: number;
+  name: string;
+  ward?: CkanWard[];
+  candidate?: CkanOfficeCandidate[];
+  [key: string]: unknown;
+}
+
+interface CkanResultsJson {
+  electionDesc: string;
+  office: CkanOffice[];
+  seq?: number;
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
+  return res.json() as Promise<T>;
+}
+
+async function discoverResultsPackage(): Promise<CkanPackage | null> {
+  for (const id of RESULT_PACKAGE_IDS) {
+    const url = `${CKAN_BASE}/api/3/action/package_show?id=${id}`;
+    const resp = await fetchJson<CkanApiResponse<CkanPackage>>(url);
+    if (resp.success && resp.result) return resp.result;
   }
   return null;
 }
 
-function pickCsvResource(pkg: CkanPackage): { url: string; name: string } | null {
-  const csv = pkg.resources.find(
-    (r) => r.format.toLowerCase() === "csv"
-  );
-  if (!csv) return null;
-  return { url: csv.url, name: csv.name };
+function pickJsonResource(pkg: CkanPackage): { url: string; name: string } | null {
+  const jsonResources = pkg.resources.filter((r) => r.format.toLowerCase() === "json");
+  if (!jsonResources.length) return null;
+
+  // The wardbyward JSON only has Mayor. The main results JSON has all offices.
+  // Prefer the one WITHOUT "wardbyward" in the name.
+  const mainResult = jsonResources.find(
+    (r) => !r.name.toLowerCase().includes("wardbyward")
+  ) ?? jsonResources[0];
+
+  return { url: mainResult.url, name: mainResult.name };
 }
 
 function detectElectionYear(pkg: CkanPackage): number {
   const text = pkg.title + " " + pkg.name;
-  const match = text.match(/20\d{2}/);
+  const resources = pkg.resources.map((r) => r.name).join(" ");
+  const match = (text + " " + resources).match(/20\d{2}/);
   return match ? parseInt(match[0], 10) : new Date().getFullYear();
 }
 
-async function downloadCsv(
-  browser: Awaited<ReturnType<typeof chromium.launch>>,
-  url: string
-): Promise<string> {
-  const page = await browser.newPage();
-  try {
-    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    if (!response || !response.ok()) {
-      throw new Error(`CSV download failed: HTTP ${response?.status()}`);
-    }
-    return await page.evaluate(() => document.body.innerText);
-  } finally {
-    await page.close();
-  }
-}
-
-function parseCandidatesFromCsv(
-  csv: string,
+function parseResultsJson(
+  data: CkanResultsJson,
   municipality: string,
   electionYear: number
 ): RawCandidate[] {
-  const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
-
-  const headers = parseCsvLine(lines[0]);
-  const colMap = mapColumns(headers);
-
-  const nameCol = colMap["candidate_name"] ?? colMap["name"] ?? colMap["candidate"] ?? null;
-  const officeCol =
-    colMap["office"] ?? colMap["position"] ?? colMap["office_name"] ?? colMap["contest_name"] ?? null;
-  const wardCol = colMap["ward"] ?? colMap["ward_name"] ?? colMap["district"] ?? null;
-
-  if (nameCol === null || officeCol === null) {
-    throw new Error(
-      `Cannot find required columns. Headers found: ${headers.join(", ")}`
-    );
-  }
-
   const candidates: RawCandidate[] = [];
+  const offices = Array.isArray(data.office) ? data.office : [data.office];
 
-  for (let i = 1; i < lines.length; i++) {
-    const fields = parseCsvLine(lines[i]);
-    if (fields.length === 0) continue;
+  for (const office of offices) {
+    if (!office?.name) continue;
 
-    const rawData: Record<string, unknown> = {};
-    headers.forEach((h, idx) => {
-      rawData[h] = fields[idx] ?? null;
-    });
+    const officeName = office.name;
+    const wards = office.ward && office.ward.length > 0 ? office.ward : [null];
 
-    const wardStr = wardCol !== null ? (fields[wardCol] ?? null) : null;
+    for (const ward of wards) {
+      const wardName = ward?.name ?? null;
+      const wardNum = ward?.num ? parseInt(ward.num, 10) : null;
+      const candidateList = ward?.candidate ?? office.candidate ?? [];
 
-    candidates.push({
-      candidateName: fields[nameCol] ?? "",
-      office: fields[officeCol] ?? "",
-      ward: wardStr,
-      wardNumber: extractWardNumber(wardStr),
-      municipality,
-      province: "ON",
-      electionYear,
-      rawData,
-    });
+      for (const c of candidateList) {
+        if (!c.name) continue;
+        const rawData: Record<string, unknown> = {
+          officeName,
+          wardName,
+          wardNum,
+          ...c,
+        };
+        candidates.push({
+          candidateName: c.name,
+          office: officeName,
+          ward: wardName,
+          wardNumber: wardNum,
+          municipality,
+          province: "ON",
+          electionYear,
+          rawData,
+        });
+      }
+    }
   }
 
-  return candidates.filter((c) => c.candidateName.length > 0 && c.office.length > 0);
+  return candidates;
 }
 
 export async function scrapeToronto(): Promise<{
   candidates: RawCandidate[];
   sourceUrl: string;
 }> {
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const pkg = await discoverElectionPackage(browser);
-    if (!pkg) {
-      throw new Error("Could not discover election candidate dataset on Toronto CKAN");
-    }
-
-    const csv = pickCsvResource(pkg);
-    if (!csv) {
-      throw new Error(`No CSV resource found in package: ${pkg.name}`);
-    }
-
-    const electionYear = detectElectionYear(pkg);
-    const rawCsv = await downloadCsv(browser, csv.url);
-    const candidates = parseCandidatesFromCsv(rawCsv, "toronto", electionYear);
-
-    return { candidates, sourceUrl: csv.url };
-  } finally {
-    await browser.close();
+  const pkg = await discoverResultsPackage();
+  if (!pkg) {
+    throw new Error("Could not find election results package on Toronto CKAN");
   }
+
+  const resource = pickJsonResource(pkg);
+  if (!resource) {
+    throw new Error(`No JSON resource found in package: ${pkg.name}`);
+  }
+
+  const electionYear = detectElectionYear(pkg);
+  const data = await fetchJson<CkanResultsJson>(resource.url);
+  const candidates = parseResultsJson(data, "toronto", electionYear);
+
+  return { candidates, sourceUrl: resource.url };
 }
