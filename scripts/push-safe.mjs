@@ -10,7 +10,7 @@ function run(command, options = {}) {
 function runLogged(command) {
   console.log(`\n$ ${command}`);
   const env = command.includes("npm run build")
-    ? { ...process.env, NODE_OPTIONS: "--max-old-space-size=8192", NEXT_TELEMETRY_DISABLED: "1" }
+    ? { ...process.env, NODE_OPTIONS: "--max-old-space-size=8192", NEXT_TELEMETRY_DISABLED: "1", NEXT_DISABLE_WORKER_THREAD: "1" }
     : process.env;
   execSync(command, { stdio: "inherit", env });
 }
