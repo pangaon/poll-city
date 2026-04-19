@@ -102,8 +102,8 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
   const [saving, setSaving] = useState(false);
   const [timelineKind, setTimelineKind] = useState<"all" | TimelineKind>("all");
   const [timelineQuery, setTimelineQuery] = useState("");
-  // CRM tabs
-  const [crmTab, setCrmTab] = useState<"notes" | "relationships" | "roles" | "score" | "audit">("notes");
+  // CRM tabs — consent = CASL consent ledger
+  const [crmTab, setCrmTab] = useState<"notes" | "relationships" | "roles" | "score" | "audit" | "consent">("notes");
   const [notes, setNotes] = useState<CrmNote[]>(initialNotes);
   const [noteBody, setNoteBody] = useState("");
   const [noteType, setNoteType] = useState("general");
@@ -508,7 +508,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
       <div className="border border-gray-200 rounded-xl overflow-hidden">
         {/* Tab strip */}
         <div className="flex border-b border-gray-200 bg-gray-50">
-          {(["notes", "relationships", "roles", ...(isManager ? ["score", "audit"] : [])] as const).map((tab) => (
+          {(["notes", "relationships", "roles", ...(isManager ? ["score", "audit"] : []), "consent"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setCrmTab(tab as typeof crmTab)}
@@ -519,7 +519,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
                   : "text-gray-500 hover:text-gray-900"
               )}
             >
-              {tab === "score" ? "Support Score" : tab}
+              {tab === "score" ? "Support Score" : tab === "consent" ? "CASL Consent" : tab}
               {tab === "notes" && notes.length > 0 && (
                 <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 rounded-full px-1.5">{notes.length}</span>
               )}
@@ -725,6 +725,13 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab: CASL Consent */}
+        {crmTab === "consent" && (
+          <div className="p-4">
+            <ConsentTab contactId={contact.id} campaignId={campaignId} />
           </div>
         )}
 
