@@ -20,7 +20,7 @@ const VALID_LEVELS = new Set(["municipal", "provincial", "federal"]);
 const POSTAL_CODE_PREFIX_REGEX = /^[A-Z0-9]{3}$/;
 
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req);
+  const rateLimitResponse = await rateLimit(req);
   if (rateLimitResponse) return rateLimitResponse;
 
   const sp = req.nextUrl.searchParams;
