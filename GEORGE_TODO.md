@@ -645,6 +645,51 @@ Once `desktop/dist/` has your signed installers, add download buttons to the mar
 
 ---
 
+## Municipal Election Scraper — Phase 1 Setup
+
+### Step 1 — Run database migration
+The scraper needs two new tables (`muni_scrape_runs`, `raw_muni_candidates`).
+
+```bash
+npx prisma migrate dev --name municipal_scraper_phase1
+```
+
+Run this with `DATABASE_URL` pointing at Railway. Required before scraper can store data.
+
+### Step 2 — Install Playwright browser
+Playwright needs its Chromium binary. Run once:
+
+```bash
+npm run scrape:install-browsers
+```
+
+### Step 3 — Dry-run test (no DB writes)
+Verify the scraper reaches Toronto Open Data and parses candidates:
+
+```bash
+npm run scrape:toronto:dry
+```
+
+You should see candidate count in console. If it passes, the scraper is working.
+
+### Step 4 — Full live scrape
+Once migration is done and dry-run passes:
+
+```bash
+npm run scrape:toronto
+```
+
+Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
+- `GET /api/scraper/municipalities` — list scraped municipalities
+- `GET /api/scraper/candidates?municipality=toronto` — list candidates
+
+- [ ] **74. Run `npx prisma migrate dev --name municipal_scraper_phase1`** — create scraper tables
+- [ ] **75. Run `npm run scrape:install-browsers`** — install Playwright Chromium
+- [ ] **76. Run `npm run scrape:toronto:dry`** — verify scraper reaches Toronto Open Data
+- [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB
+
+---
+
 *This file is maintained by AI sessions. Last updated: 2026-04-18*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

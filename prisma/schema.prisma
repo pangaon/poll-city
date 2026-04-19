@@ -8764,3 +8764,43 @@ model CivicGroupMember {
   @@id([userId, groupId])
   @@map("civic_group_members")
 }
+
+/// Raw data from municipality election scraper — no normalization, no FK joins
+model MuniScrapeRun {
+  id           String    @id @default(cuid())
+  municipality String
+  province     String    @default("ON")
+  sourceUrl    String
+  strategy     String    @default("ckan")
+  status       String    @default("running")
+  error        String?   @db.Text
+  rawCount     Int       @default(0)
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  candidates   RawMuniCandidate[]
+
+  @@index([municipality, province])
+  @@index([status])
+  @@map("muni_scrape_runs")
+}
+
+/// Raw candidate record from scraper — rawData preserves the original CSV columns
+model RawMuniCandidate {
+  id            String   @id @default(cuid())
+  runId         String
+  municipality  String
+  province      String   @default("ON")
+  electionYear  Int
+  office        String
+  ward          String?
+  wardNumber    Int?
+  candidateName String
+  rawData       Json
+
+  run MuniScrapeRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([municipality, province, electionYear])
+  @@index([runId])
+  @@index([office])
+  @@map("raw_muni_candidates")
+}
