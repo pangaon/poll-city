@@ -103,7 +103,7 @@ const OUTREACH_SECTION: NavSection = {
   label: "Outreach",
   items: [
     { href: "/communications",    icon: Mail,          label: "Communications"   },
-    { href: "/communications/qa", icon: MessageSquare, label: "Q&A Inbox",       isNew: true },
+    { href: "/communications/qa", icon: MessageSquare, label: "PCS Social Hub",   isNew: true },
     { href: "/calendar",          icon: Calendar,      label: "Calendar"         },
     { href: "/polls",             icon: BarChart3,     label: "Polls"            },
     { href: "/forms",             icon: FileText,      label: "Forms"            },
@@ -232,6 +232,7 @@ export default function Sidebar() {
     const platformItems = [...PLATFORM_SECTION.items];
     if (isSuperAdmin) {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
+      platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
     }
 
     return [

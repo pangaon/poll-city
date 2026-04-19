@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
+import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { session, error } = await apiAuth(req);
-  if (error) return error;
+  const rateLimitResponse = await rateLimit(req, "read");
+  if (rateLimitResponse) return rateLimitResponse;
+
   const questions = await prisma.publicQuestion.findMany({
     where: { officialId: params.id, isPublic: true },
     orderBy: [{ upvotes: "desc" }, { createdAt: "desc" }],

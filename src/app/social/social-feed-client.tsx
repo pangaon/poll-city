@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, BarChart2, Megaphone, FileText, Building2,
-  Bell, ChevronRight, ArrowRight, CheckCircle,
+  BarChart2, Megaphone, FileText, Building2,
+  ChevronRight, ArrowRight, CheckCircle,
   Clock, TrendingUp, Sparkles, Vote, Sun, Moon,
   Heart, MessageCircle, Share2, Zap,
 } from "lucide-react";
@@ -176,18 +176,16 @@ function FeedCard({ post }: { post: FeedPost }) {
       <div className="flex items-center gap-4 px-4 pb-3 border-t border-gray-100 dark:border-white/[0.04] pt-2.5">
         <button className="flex items-center gap-1.5 text-gray-400 dark:text-white/30 hover:text-red-400 transition-colors">
           <Heart className="w-4 h-4" />
-          <span className="text-xs font-semibold">{(Math.random() * 20 | 0) + 1}K</span>
         </button>
         <button className="flex items-center gap-1.5 text-gray-400 dark:text-white/30 hover:text-[#00D4C8] transition-colors">
           <MessageCircle className="w-4 h-4" />
-          <span className="text-xs font-semibold">{(Math.random() * 3 | 0) + 1}.{Math.random() * 9 | 0}K</span>
         </button>
         <button className="flex items-center gap-1.5 text-gray-400 dark:text-white/30 hover:text-[#00D4C8] transition-colors ml-auto">
           <Share2 className="w-4 h-4" />
         </button>
         {post.postType === "poll" && post.poll && (
           <span className="text-[11px] font-bold text-[#00D4C8] ml-1">
-            {post.poll.totalResponses.toLocaleString()} DATA POINTS
+            {post.poll.totalResponses.toLocaleString()} votes
           </span>
         )}
       </div>

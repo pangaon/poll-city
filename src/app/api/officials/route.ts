@@ -16,7 +16,7 @@ const LIST_SELECT = {
   bio: true,
   subscriptionStatus: true,
   isActive: true,
-  _count: { select: { follows: true } },
+  _count: { select: { follows: true, questions: true } },
 } as const;
 
 const VALID_LEVELS = new Set(["municipal", "provincial", "federal"]);
