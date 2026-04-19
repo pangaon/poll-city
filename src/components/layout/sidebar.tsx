@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, useEffect, type ComponentType } from "react";
+import { useMemo, useState, useEffect, useRef, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -257,7 +257,16 @@ export default function Sidebar() {
     window.dispatchEvent(new CustomEvent("pollcity:open-adoni"));
   }
 
-  const SidebarContent = () => (
+  // Preserve scroll position across navigations — navRef stays mounted, scroll never resets
+  const navRef = useRef<HTMLElement>(null);
+  const activeItemRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    // Scroll the active nav item into view without moving the page
+    activeItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [pathname]);
+
+  const navContent = (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200">
       {/* Logo */}
       <div className="px-4 py-4 border-b border-slate-800">
@@ -285,8 +294,8 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin space-y-4">
+      {/* Nav — ref kept stable so scroll position is never reset on re-render */}
+      <nav ref={navRef} className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin space-y-4">
         {sidebarSections.map((section) => (
           <section key={section.id}>
             <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
@@ -300,6 +309,7 @@ export default function Sidebar() {
                   <Link
                     key={href}
                     href={href}
+                    ref={active ? activeItemRef : undefined}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors",
                       active
@@ -348,7 +358,7 @@ export default function Sidebar() {
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-60 flex-shrink-0 bg-slate-950 border-r border-slate-800 flex-col">
-        <SidebarContent />
+        {navContent}
       </aside>
 
       {/* Command palette — rendered outside sidebar so it covers full viewport */}
