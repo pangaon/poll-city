@@ -68,6 +68,7 @@ function Navbar() {
               { label: "Pricing", href: "/pricing" },
               { label: "Demo", href: "/demo" },
               { label: "About", href: "/about" },
+              { label: "Contact", href: "/contact" },
             ].map((link) => (
               <Link key={link.label} href={link.href} className={`text-sm font-medium transition-colors ${scrolled ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>
                 {link.label}
@@ -93,6 +94,8 @@ function Navbar() {
             <Link href="#system" onClick={() => setOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">How It Works</Link>
             <Link href="/pricing" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Pricing</Link>
             <Link href="/demo" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Demo</Link>
+            <Link href="/about" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">About</Link>
+            <Link href="/contact" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Contact</Link>
             <hr className="my-2" />
             <Link href="/pricing" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
           </div>
@@ -775,6 +778,9 @@ export default function MarketingClient() {
             <Link href="/pricing" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl border border-white/15 text-white font-bold text-sm hover:bg-white/5 transition-colors">
               Claim and Start Your Campaign <ArrowRight className="w-4 h-4" />
             </Link>
+            <Link href="/contact" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/20 transition-colors">
+              <Phone className="w-4 h-4" /> Talk to George
+            </Link>
           </div>
         </div>
       </section>
@@ -933,6 +939,7 @@ export default function MarketingClient() {
                 <Link href="/demo" className="block hover:text-white transition-colors">Demo</Link>
                 <Link href="/candidates/demo-campaign-2026" className="block hover:text-white transition-colors">Campaign Website</Link>
                 <Link href="/about" className="block hover:text-white transition-colors">About</Link>
+                <Link href="/contact" className="block hover:text-white transition-colors">Contact</Link>
               </div>
             </div>
             <div>

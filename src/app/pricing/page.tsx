@@ -493,6 +493,11 @@ export default function PricingPage() {
                     }`}>
                       Start 14-Day Free Trial
                     </Link>
+                    {plan.id === "command" && (
+                      <Link href="/contact" className="block w-full text-center py-2 mt-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                        Running for mayor? Talk to George first →
+                      </Link>
+                    )}
                   </div>
                 );
               })}
