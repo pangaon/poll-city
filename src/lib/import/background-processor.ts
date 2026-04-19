@@ -4,7 +4,7 @@
  */
 
 import prisma from "@/lib/db/prisma";
-import { isLikelyDuplicate, toContactWriteData } from "./import-pipeline";
+import { isLikelyDuplicate, toContactWriteData, extractConsentFromRow } from "./import-pipeline";
 
 const CHUNK_SIZE = 500;
 const ROLLBACK_HOURS = 24;
@@ -121,6 +121,24 @@ export async function processNextChunk(importLogId: string): Promise<{
             existingContacts.push({ ...created, phone2: null, businessPhone: null, email2: null, address1: null, city: null, province: null, ward: null, riding: null, notes: null, preferredLanguage: "en", source: "smart_import" });
             createdIds.push(created.id);
             importedInChunk++;
+
+            // CASL: create ConsentRecord if consent was mapped from this row
+            const consent = extractConsentFromRow(row);
+            if (consent?.consentGiven) {
+              await tx.consentRecord.create({
+                data: {
+                  contactId: created.id,
+                  campaignId: job.campaignId,
+                  consentType: "implied",
+                  channel: "email",
+                  source: "import",
+                  collectedAt: consent.collectedAt,
+                  // implied consent expires 2 years from collection per CASL
+                  expiresAt: new Date(consent.collectedAt.getTime() + 2 * 365.25 * 24 * 60 * 60 * 1000),
+                  notes: "Mapped from import CSV consent column",
+                },
+              });
+            }
           }
         } catch (e) {
           errorsInChunk++;

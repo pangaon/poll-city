@@ -78,6 +78,10 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: "skills", label: "Volunteer Skills", category: "campaign", examples: ["skills", "skill", "competencies", "abilities", "volunteer_skills"] },
   { key: "availability", label: "Availability", category: "campaign", examples: ["availability", "available", "schedule", "shift", "timeslot"] },
   { key: "preferredRegion", label: "Preferred Region", category: "campaign", examples: ["preferred_region", "region", "preferred_area", "service_area"] },
+  // CASL consent — maps a date column indicating when this contact gave consent
+  { key: "consentDate", label: "Consent Date", category: "campaign", examples: ["consent_date", "consentdate", "consent_given_date", "opted_in", "opt_in_date", "optin_date", "casl_date", "subscription_date"] },
+  { key: "consentGiven", label: "Consent Given (Y/N)", category: "campaign", examples: ["consent_given", "consent", "opted_in", "has_consent", "email_consent", "casl_consent", "permission"] },
+
   { key: "sourceUrl", label: "Source URL", category: "other", examples: ["source_url", "url", "link", "document_url", "file_url"] },
   { key: "mimeType", label: "MIME Type", category: "other", examples: ["mime_type", "mimetype", "content_type", "file_type"] },
   { key: "ownerId", label: "Owner", category: "other", examples: ["owner", "owner_id", "assignee", "assigned_to"] },

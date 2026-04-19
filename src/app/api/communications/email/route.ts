@@ -98,14 +98,60 @@ export async function POST(req: NextRequest) {
       : {}),
   };
 
-  const recipients = await prisma.contact.findMany({
+  const allRecipients = await prisma.contact.findMany({
     where,
     select: { id: true, firstName: true, lastName: true, email: true, ward: true },
     take: testOnly ? 1 : 5000,
   });
 
-  if (recipients.length === 0) {
+  if (allRecipients.length === 0) {
     return NextResponse.json({ error: "No recipients match that audience" }, { status: 400 });
+  }
+
+  // CASL consent check — filter to contacts with valid email consent only.
+  // Contacts with express_withdrawal are ALWAYS excluded.
+  // Contacts with no consent record, or only expired implied consent, are skipped.
+  const now = new Date();
+  const contactIds = allRecipients.map((r) => r.id);
+
+  // Fetch the most relevant consent record per contact for the email channel
+  const consentRecords = await prisma.consentRecord.findMany({
+    where: { contactId: { in: contactIds }, campaignId, channel: "email" },
+    select: { contactId: true, consentType: true, expiresAt: true },
+    orderBy: { collectedAt: "desc" },
+  });
+
+  // Build a set of contactIds that have valid email consent
+  const withdrawnIds = new Set<string>();
+  const consentedIds = new Set<string>();
+
+  for (const rec of consentRecords) {
+    if (rec.consentType === "express_withdrawal") {
+      withdrawnIds.add(rec.contactId);
+      continue;
+    }
+    if (withdrawnIds.has(rec.contactId)) continue; // withdrawal takes precedence
+    if (consentedIds.has(rec.contactId)) continue; // already marked consented
+    if (
+      (rec.consentType === "explicit" || rec.consentType === "implied") &&
+      (rec.expiresAt === null || rec.expiresAt > now)
+    ) {
+      consentedIds.add(rec.contactId);
+    }
+  }
+
+  const recipients = allRecipients.filter((r) => consentedIds.has(r.id));
+  const noConsentCount = allRecipients.length - recipients.length;
+
+  if (recipients.length === 0) {
+    return NextResponse.json(
+      {
+        error: "No recipients have valid CASL email consent on record.",
+        noConsentCount,
+        hint: "Add consent records via Contacts → Consent tab, or use Import → map the consent_given column.",
+      },
+      { status: 400 },
+    );
   }
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://poll.city";
@@ -190,5 +236,5 @@ export async function POST(req: NextRequest) {
     details: { subject, audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: recipients.length });
+  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, noConsentCount });
 }

@@ -302,6 +302,27 @@ export function toContactWriteData(row: Record<string, string>) {
   };
 }
 
+/** Extract CASL consent data from a mapped row. Returns null if no consent signal. */
+export function extractConsentFromRow(row: Record<string, string>): {
+  consentGiven: boolean;
+  collectedAt: Date;
+} | null {
+  const raw = normalizeString(row.consentGiven ?? "").toLowerCase();
+  const givenTruthy = ["y", "yes", "true", "1", "oui", "checked", "x"].includes(raw);
+  const dateRaw = normalizeString(row.consentDate ?? "");
+
+  if (!givenTruthy && !dateRaw) return null;
+  if (!givenTruthy && !raw) return null; // consentDate without consentGiven = no signal
+
+  const collectedAt = dateRaw ? new Date(dateRaw) : new Date();
+  const validDate = !Number.isNaN(collectedAt.getTime());
+
+  return {
+    consentGiven: givenTruthy,
+    collectedAt: validDate ? collectedAt : new Date(),
+  };
+}
+
 export function isLikelyDuplicate(row: Record<string, string>, existing: Pick<Contact, "firstName" | "lastName" | "postalCode" | "phone" | "email" | "externalId">): boolean {
   const rowExternalId = normalizeString(row.externalId);
   const rowFirst = normalizeName(row.firstName);
