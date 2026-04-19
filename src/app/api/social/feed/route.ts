@@ -19,7 +19,7 @@ import { Prisma } from "@prisma/client";
  *  - limit: default 20
  */
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const session = await getServerSession(authOptions);

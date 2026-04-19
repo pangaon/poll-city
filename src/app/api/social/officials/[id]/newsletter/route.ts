@@ -5,7 +5,7 @@ import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const rateLimitResponse = rateLimit(req, "form");
+  const rateLimitResponse = await rateLimit(req, "form");
   if (rateLimitResponse) return rateLimitResponse;
 
   const session = await getServerSession(authOptions);

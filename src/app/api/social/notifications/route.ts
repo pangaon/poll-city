@@ -15,7 +15,7 @@ import { rateLimit } from "@/lib/rate-limit";
  */
 
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { session, error } = await apiAuth(req);
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const { session, error } = await apiAuth(req);

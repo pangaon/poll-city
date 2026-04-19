@@ -15,7 +15,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const session = await getServerSession(authOptions);

@@ -18,7 +18,7 @@ const SEED_GROUPS = [
  * Returns all civic interest groups. Seeds defaults if none exist.
  */
 export async function GET(req: NextRequest) {
-  const rateLimitResponse = rateLimit(req, "read");
+  const rateLimitResponse = await rateLimit(req, "read");
   if (rateLimitResponse) return rateLimitResponse;
 
   const session = await getServerSession(authOptions);
