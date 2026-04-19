@@ -102,6 +102,22 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Social theme + nav + officials fixes)
+
+**What shipped (commits `f6d6a4d`, `f137147`, `2269516`, `5011ba0`, `1c4a601`):**
+
+- **Social dark/light theme redesign** (`1c4a601`) — Poll City Social rebuilt to match Figma spec
+- **Poll City Social link in marketing nav** (`5011ba0`) — marketing site nav now links to /social
+- **Docs: prisma db push corrected** (`2269516`) — all `prisma migrate dev` references replaced with `prisma db push` across handoff docs
+- **Officials: deactivate stale reps on Represent API import** (`f137147`) — each import now deactivates officials no longer in the source (prevents garbage accumulation)
+- **Social API: missing await on rateLimit()** (`f6d6a4d`) — async rate limiting bug fixed across all social routes
+
+**Build:** GREEN — all pushed via `npm run push:safe`.
+
+**SESSION_HANDOFF not updated by the session that shipped these.** Caught and documented now.
+
+---
+
 ## LAST SESSION (2026-04-19 — Three-product cohesion + seed data fix)
 
 **What shipped (commits `77b2f8e`, `0a9b9d2`, `ada33b8`, `ba81776`, `fe8d2ef` — all on origin/main after push:safe):**
