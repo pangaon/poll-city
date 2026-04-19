@@ -210,6 +210,45 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — CASL Consent Management — P0)
+
+**What shipped (commits `21f5b4a`–`cc97b33`):**
+
+**Schema** (`prisma/schema.prisma`):
+- 3 new enums: `ConsentType` (explicit/implied/express_withdrawal), `ConsentChannel` (email/sms/push), `ConsentSource` (import/form/qr/manual/social_follow/donation/event_signup)
+- New model: `ConsentRecord` — full CASL consent ledger with contactId, campaignId, channel, type, source, collectedAt, expiresAt, ipAddress, notes, recordedById
+- Back-relations on Contact, Campaign, User
+
+**API Routes:**
+- `POST /api/compliance/consent` — record a consent event, validates membership + contact scope
+- `GET /api/compliance/consent?contactId=&campaignId=` — fetch history + per-channel active summary
+
+**Email blast** (`/api/communications/email`):
+- Consent check wired in before sending: fetches ConsentRecord for all recipients, filters to those with valid non-expired consent, skips express_withdrawal permanently
+- Returns `{ noConsentCount }` in response so UI can surface how many were skipped
+- Contacts with NO consent record = excluded from blast (CASL enforcement)
+
+**Smart Import** (`column-mapper.ts` + `background-processor.ts`):
+- Added `consentDate` and `consentGiven` target fields to column mapper
+- Background processor creates a ConsentRecord (type: implied, 2yr expiry) when consent columns are mapped + truthy
+
+**UI:**
+- Contact detail → new "CASL Consent" tab: per-channel status summary (green/amber/red), full history list, "Record consent event" form (type/channel/source/notes)
+- `/compliance` page: stats dashboard (total/consented/withdrawn/no-consent, coverage %, channel bars), "How to collect consent" guidance card, recent consent events history tab
+- Sidebar: CASL Compliance entry added under Outreach section (isNew badge)
+
+**George MUST do:**
+- `npx prisma db push` — creates `consent_records` table + 3 enums on Railway (GEORGE_TODO item 74)
+- Until this runs: compliance page crashes, email blast consent filter is inactive
+
+**Navigation path:** Outreach → CASL Compliance (3 clicks from sidebar). Or: Contacts → [any contact] → CASL Consent tab.
+
+**Build:** GREEN — `880aecd..cc97b33`, exit 0, pushed via `npm run push:safe`.
+
+**Risk:** Email blast now BLOCKS sends to contacts without a ConsentRecord. For campaigns that have never used the consent system, this means all contacts are initially blocked until George runs `npx prisma db push` AND adds consent records. Guidance is in the compliance page.
+
+---
+
 ## NEXT SESSION OPENER
 
 Three-product cohesion is live. Poll City Social has identity ("Poll City Social" brand, civic engagement tagline, Representatives naming). Marketing site has voter entry point. Campaign app sidebar has Poll City Social link. Seed officials are filtered from public view.

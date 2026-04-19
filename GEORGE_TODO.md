@@ -683,7 +683,7 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 - `GET /api/scraper/municipalities` — list scraped municipalities
 - `GET /api/scraper/candidates?municipality=toronto` — list candidates
 
-- [ ] **74. Run `npx prisma db push`** — add scraper tables + any other pending schema changes to Railway
+- [ ] **74. Run `npx prisma db push`** — add scraper tables + CASL consent tables (`consent_records` + enums `ConsentType`, `ConsentChannel`, `ConsentSource`) to Railway. Until this runs, the compliance page will crash and email blasts will not filter by consent.
 - [ ] **75. Run `npm run scrape:install-browsers`** — install Playwright Chromium
 - [ ] **76. Run `npm run scrape:toronto:dry`** — verify scraper reaches Toronto Open Data
 - [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB

@@ -95,7 +95,7 @@ Everything below is built, pushed, and accessible in the app.
 | Task | Status | Notes |
 |---|---|---|
 | Migration baseline | PENDING | Run `npx prisma db push` before first real customer. GAP-003. George's action. |
-| CASL consent management | CLAIMED 2026-04-19 | Canadian anti-spam law. No consent ledger, no legal basis tracking. Cannot legally send mass email to cold lists. Must be built before any real campaign uses Communications for outreach. |
+| CASL consent management | DONE — commit cc97b33 | ConsentRecord schema (3 enums + model), POST/GET /api/compliance/consent, email blast consent filter (skips unconsented, surfaces count), Smart Import consent column mapper + processor, Contact detail CASL Consent tab, /compliance overview page, sidebar entry. George must run `npx prisma db push` to apply schema. |
 | Print vendor portal | PENDING | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
 
 ---
