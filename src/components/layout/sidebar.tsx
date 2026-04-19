@@ -45,7 +45,7 @@ import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
 import { useSession } from "next-auth/react";
 
-type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }> };
+type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }>; isNew?: boolean };
 type NavSection = { id: string; label: string; items: NavItem[] };
 
 // ── Section definitions ───────────────────────────────────────────────────────
@@ -77,12 +77,12 @@ const FIELD_SECTION: NavSection = {
     { href: "/field-ops",              icon: ClipboardList, label: "Field Ops"       },
     { href: "/gotv",                   icon: Target,        label: "GOTV"            },
     { href: "/eday",                   icon: Vote,          label: "Election Day"    },
-    { href: "/eday/capture",           icon: Radio,         label: "Quick Capture"   },
-    { href: "/eday/capture/war-room",  icon: MonitorPlay,   label: "War Room"        },
+    { href: "/eday/capture",           icon: Radio,         label: "Quick Capture",  isNew: true },
+    { href: "/eday/capture/war-room",  icon: MonitorPlay,   label: "War Room",       isNew: true },
     { href: "/signs",                  icon: PenSquare,     label: "Signs"           },
     { href: "/events",                 icon: CalendarDays,  label: "Events"          },
-    { href: "/qr",                     icon: QrCode,        label: "QR Capture"      },
-    { href: "/fuel",                   icon: Truck,         label: "Logistics"       },
+    { href: "/qr",                     icon: QrCode,        label: "QR Capture",     isNew: true },
+    { href: "/fuel",                   icon: Truck,         label: "Logistics",      isNew: true },
   ],
 };
 
@@ -111,9 +111,9 @@ const INTELLIGENCE_SECTION: NavSection = {
   id: "intelligence",
   label: "Intelligence",
   items: [
-    { href: "/analytics",  icon: BarChart2, label: "Analytics"       },
-    { href: "/intel",      icon: Brain,     label: "Candidate Intel" },
-    { href: "/reputation", icon: Shield,    label: "Reputation"      },
+    { href: "/analytics",  icon: BarChart2, label: "Analytics"                        },
+    { href: "/intel",      icon: Brain,     label: "Candidate Intel", isNew: true     },
+    { href: "/reputation", icon: Shield,    label: "Reputation",      isNew: true     },
   ],
 };
 
@@ -282,7 +282,7 @@ export default function Sidebar() {
               {section.label}
             </p>
             <div className="space-y-px">
-              {section.items.map(({ href, icon: Icon, label }) => {
+              {section.items.map(({ href, icon: Icon, label, isNew }) => {
                 const active = pathname === href || (pathname ?? "").startsWith(`${href}/`);
                 const showStripeDot = stripeNotConnected && href === "/fundraising";
                 return (
@@ -298,6 +298,11 @@ export default function Sidebar() {
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate flex-1">{label}</span>
+                    {isNew && !active && (
+                      <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        New
+                      </span>
+                    )}
                     {showStripeDot && (
                       <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Stripe not connected" />
                     )}
