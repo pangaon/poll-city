@@ -3,16 +3,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Home, TrendingUp, MapPin, User, Bell, Plus } from "lucide-react";
+import { Home, BarChart2, Landmark, User, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LEFT_TABS = [
   { href: "/social",           icon: Home,       label: "Feed"     },
-  { href: "/social/polls",     icon: TrendingUp, label: "Trending" },
+  { href: "/social/polls",     icon: BarChart2,  label: "Polls"    },
 ];
 
 const RIGHT_TABS = [
-  { href: "/social/officials", icon: MapPin,     label: "Field"    },
+  { href: "/social/officials", icon: Landmark,   label: "Reps"     },
   { href: "/social/profile",   icon: User,       label: "Profile"  },
 ];
 
