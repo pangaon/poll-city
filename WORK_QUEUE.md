@@ -82,8 +82,8 @@ Everything below is built, pushed, and accessible in the app.
 
 | Task | Status | Notes |
 |---|---|---|
-| Municipal Election Scraper — Phase 1 (Ontario): municipality discovery, Toronto CKAN scraper, raw data storage, GET /api/scraper/municipalities + /candidates | DONE — commit 20f8e22 | MuniScrapeRun + RawMuniCandidate schema, Toronto CKAN scraper (Playwright), CLI runner, 2 API routes, 19 unit tests. George must run `npx prisma migrate dev --name municipal_scraper_phase1` + `npm run scrape:install-browsers` + `npm run scrape:toronto:dry`. |
-| Quick Capture System — full election results capture (advance vote + election day) | DONE — commit 9cff9eb | Schema (7 models), 18 API routes, admin setup, mobile capture, war room, review/export. P0 hardening: atomic double-entry, dedup totals, location reset on revision. George must run `npx prisma migrate dev --name quick-capture-system` against Railway. |
+| Municipal Election Scraper — Phase 1 (Ontario): municipality discovery, Toronto CKAN scraper, raw data storage, GET /api/scraper/municipalities + /candidates | DONE — commit 20f8e22 | MuniScrapeRun + RawMuniCandidate schema, Toronto CKAN scraper (Playwright), CLI runner, 2 API routes, 19 unit tests. George must run `npx prisma db push` + `npm run scrape:install-browsers` + `npm run scrape:toronto:dry`. |
+| Quick Capture System — full election results capture (advance vote + election day) | DONE — commit 9cff9eb | Schema (7 models), 18 API routes, admin setup, mobile capture, war room, review/export. P0 hardening: atomic double-entry, dedup totals, location reset on revision. George must run `npx prisma db push` against Railway. |
 | Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | DONE — commit 0e5ff04 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
 | Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | DONE — commit b805fc4 | Rebuilt settings/public-page: InlineGallery (24 templates), 4 distinct LivePreview heroes, showGallery state wired. 4 layout variants in candidates/[slug] and candidate-page-client.tsx. |
 | Electron Desktop App — Mac (.dmg) + Windows (.exe) installer, system tray, auto-updates, deep links | DONE — commit pending push | desktop/ folder: Electron shell → app.poll.city, electron-builder, electron-updater, system tray, deep links (pollcity://), offline page, macOS entitlements. George needs icon files + code signing certs — see GEORGE_TODO.md items 67–73. |
@@ -94,7 +94,7 @@ Everything below is built, pushed, and accessible in the app.
 
 | Task | Status | Notes |
 |---|---|---|
-| Migration baseline | PENDING | Run `npx prisma migrate dev --name initial_baseline` before first real customer. GAP-003. Without this, any schema change could corrupt production data. George's action. |
+| Migration baseline | PENDING | Run `npx prisma db push` before first real customer. GAP-003. George's action. |
 | CASL consent management | PENDING | Canadian anti-spam law. No consent ledger, no legal basis tracking. Cannot legally send mass email to cold lists. Must be built before any real campaign uses Communications for outreach. |
 | Print vendor portal | PENDING | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
 
@@ -175,7 +175,7 @@ Quick summary of open items:
 
 | Priority | Action |
 |---|---|
-| **CRITICAL** | Migration baseline — `npx prisma migrate dev --name initial_baseline` (GAP-003) |
+| **CRITICAL** | Migration baseline — `npx prisma db push` (GAP-003) |
 | **HIGH** | Stripe keys (Stripe Dashboard → Railway env vars) |
 | **HIGH** | Resend domain verification + API key → Railway |
 | **HIGH** | `ANTHROPIC_API_KEY` → Railway (Adoni is silent without it) |

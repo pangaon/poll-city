@@ -26,7 +26,7 @@
 On this machine (OneDrive syncs Documents/), new files are deleted between creation and build if not git-staged. The fix: **Write file → git add immediately (synchronous) → commit BEFORE running any background process.** `push:safe` wipes `.next` before building — always use it, never raw `git push`. If `.next/types/app/api/...` has stale cache entries, delete `.next` entirely before the first build: `rm -rf .next && mkdir -p .next/server/pages && npm run push:safe:check`.
 
 **⚠️ SCRAPER — PHASE 1 COMMITTED (commit 20f8e22):**
-All scraper files are committed on `origin/main`. George must run DB migration before first use: `npx prisma migrate dev --name municipal_scraper_phase1`. Phase 2 (normalization + additional municipalities) can begin after George confirms migration ran and dry-run passes.
+All scraper files are committed on `origin/main`. George must run DB migration before first use: `npx prisma db push`. Phase 2 (normalization + additional municipalities) can begin after George confirms migration ran and dry-run passes.
 
 **RULE CHANGE — MANDATORY FROM NOW ON:**
 - **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
@@ -91,7 +91,7 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 **playwright** added as devDependency (^1.59.1)
 
 **George MUST do before first use (GEORGE_TODO items 74–77):**
-1. `npx prisma migrate dev --name municipal_scraper_phase1` — create DB tables
+1. `npx prisma db push` — create DB tables
 2. `npm run scrape:install-browsers` — install Playwright Chromium
 3. `npm run scrape:toronto:dry` — verify CKAN connectivity
 4. `npm run scrape:toronto` — first live scrape
@@ -122,7 +122,7 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 **Build:** GREEN — 178 tests pass, TypeScript clean, pushed via `npm run push:safe`.
 
 **George must still do:**
-- `npx prisma migrate dev --name municipal_scraper_phase1` — before scraper can run
+- `npx prisma db push` — before scraper can run
 - Officials list will show empty until real officials data is added (scraper populates candidates, not officials — separate data source needed for actual serving officials)
 
 ---
@@ -132,7 +132,7 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 Three-product cohesion is live. Poll City Social has identity ("Poll City Social" brand, civic engagement tagline, Representatives naming). Marketing site has voter entry point. Campaign app sidebar has Poll City Social link. Seed officials are filtered from public view.
 
 Next priorities (pick one):
-1. **Scraper Phase 2** — normalization layer (map RawMuniCandidate → real Candidate records), after George confirms `npx prisma migrate dev --name municipal_scraper_phase1` ran
+1. **Scraper Phase 2** — normalization layer (map RawMuniCandidate → real Candidate records), after George confirms `npx prisma db push` ran
 2. **Officials data sourcing** — the public `/social/officials` page is now empty (seed filtered). Need real officials from Represent API (opennorth.ca) or manual entry. Consider `/api/officials/import` from Represent API.
 3. **Sprint work** — continue whatever sprint was next from WORK_QUEUE.md
 
@@ -282,7 +282,7 @@ Next priorities (pick one):
 
 **Known gap NOT fixed this session:** CSV formula injection protection in `export/route.ts` — VS Code auto-formatter reverts the `safe` variable addition on every save. A task for a future session using a different edit approach or a `.prettierignore` exclusion. The export route WORKS, just has no formula injection prefix.
 
-**Prisma migrations:** Quick Capture schema is in `prisma/schema.prisma` — **George still needs to run `npx prisma migrate dev --name quick-capture-system --skip-seed` against the Railway DATABASE_URL**. Until then, capture routes will fail in production.
+**Prisma migrations:** Quick Capture schema is in `prisma/schema.prisma` — **George still needs to run `npx prisma db push` against the Railway DATABASE_URL**. Until then, capture routes will fail in production.
 
 **Risks:** None new. Windows build is stable. Vercel unaffected.
 
