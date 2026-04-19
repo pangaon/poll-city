@@ -182,7 +182,7 @@ async function fetchRepresentativesPage(offset: number, attempts = 5): Promise<R
   throw lastError;
 }
 
-async function ingestRepresentative(rep: Representative): Promise<"created" | "updated" | "skipped"> {
+async function ingestRepresentative(rep: Representative, seenIds: Set<string>): Promise<"created" | "updated" | "skipped"> {
   const name = normalizeWhitespace(rep.name);
   const title = normalizeWhitespace(rep.elected_office);
   const district = normalizeWhitespace(rep.district_name);
@@ -194,6 +194,7 @@ async function ingestRepresentative(rep: Representative): Promise<"created" | "u
   const level = detectLevel(rep);
   const province = detectProvince(rep);
   const externalId = buildExternalId(rep);
+  seenIds.add(externalId);
 
   const payload = {
     name,
@@ -255,6 +256,7 @@ async function ingestRepresentative(rep: Representative): Promise<"created" | "u
 async function main() {
   console.log("Starting full Canada representatives ingestion...");
 
+  const seenIds = new Set<string>();
   let offset = 0;
   let totalFetched = 0;
   let processed = 0;
@@ -269,7 +271,7 @@ async function main() {
     totalFetched += page.objects.length;
 
     for (const rep of page.objects) {
-      const result = await ingestRepresentative(rep);
+      const result = await ingestRepresentative(rep, seenIds);
       processed += 1;
 
       if (result === "created") created += 1;
@@ -289,7 +291,18 @@ async function main() {
     await sleep(REQUEST_DELAY_MS);
   }
 
-  const totalOfficials = await prisma.official.count();
+  // Deactivate officials from Represent that were NOT returned in this run —
+  // these are people who retired, lost a seat, or moved to a different office.
+  const { count: deactivated } = await prisma.official.updateMany({
+    where: {
+      externalSource: "represent_opennorth",
+      isActive: true,
+      externalId: { notIn: Array.from(seenIds) },
+    },
+    data: { isActive: false },
+  });
+
+  const totalOfficials = await prisma.official.count({ where: { isActive: true } });
 
   console.log("--- Representatives ingestion complete ---");
   console.log(`Expected from API: ${totalExpected}`);
@@ -298,7 +311,8 @@ async function main() {
   console.log(`Created: ${created}`);
   console.log(`Updated: ${updated}`);
   console.log(`Skipped: ${skipped}`);
-  console.log(`Official rows currently in DB: ${totalOfficials}`);
+  console.log(`Deactivated (no longer serving): ${deactivated}`);
+  console.log(`Active officials in DB: ${totalOfficials}`);
 }
 
 main()
