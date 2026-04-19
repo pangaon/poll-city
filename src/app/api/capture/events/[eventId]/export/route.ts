@@ -5,10 +5,11 @@ import { apiAuth } from "@/lib/auth/helpers";
 function toCsv(rows: Record<string, unknown>[], headers: { key: string; label: string }[]): string {
   const escape = (v: unknown) => {
     const s = v == null ? "" : String(v);
-    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-      return `"${s.replace(/"/g, '""')}"`;
+    const safe = /^[=+\-@|%]/.test(s) ? "'" + s : s;
+    if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
+      return `"${safe.replace(/"/g, '""')}"`;
     }
-    return s;
+    return safe;
   };
   const headerRow = headers.map((h) => escape(h.label)).join(",");
   const dataRows = rows.map((row) => headers.map((h) => escape(row[h.key])).join(","));
