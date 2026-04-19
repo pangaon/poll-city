@@ -26,17 +26,19 @@ export default function SocialLayout({ children }: { children: React.ReactNode }
           <div className="min-h-screen flex flex-col">
             <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-sm shadow-sm">
               <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-6 text-sm font-medium text-gray-700">
-                <Link href="/social" className="font-bold text-lg text-blue-700 hover:text-blue-800 transition-colors whitespace-nowrap">
-                  Poll City
+                <Link href="/social" className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="font-bold text-lg text-blue-700 hover:text-blue-800 transition-colors">Poll City Social</span>
+                  <span className="hidden sm:inline text-xs text-gray-400 font-normal">Civic engagement for Canadians</span>
                 </Link>
                 {/* Desktop nav links */}
                 <div className="hidden md:flex items-center gap-6">
-                  <Link href="/social/officials" className="hover:text-blue-700 transition-colors">Officials</Link>
+                  <Link href="/social/officials" className="hover:text-blue-700 transition-colors">Representatives</Link>
                   <Link href="/social/polls" className="hover:text-blue-700 transition-colors">Polls</Link>
                   <Link href="/social/groups" className="hover:text-blue-700 transition-colors">Groups</Link>
                   <Link href="/social/notifications" className="hover:text-blue-700 transition-colors">Alerts</Link>
                 </div>
                 <div className="hidden md:flex items-center gap-3">
+                  <Link href="/" className="text-xs text-gray-500 hover:text-blue-700 transition-colors">Running for office?</Link>
                   <Link href="/social/profile" className="hover:text-blue-700 transition-colors">My Profile</Link>
                   <Link href="/login" className="bg-blue-700 text-white px-4 py-1.5 rounded-lg hover:bg-blue-800 transition-colors">
                     Login

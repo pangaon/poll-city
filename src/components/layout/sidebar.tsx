@@ -133,6 +133,7 @@ const CANDIDATE_SECTION: NavSection = {
   items: [
     { href: "/calendar/candidate", icon: Mic2,    label: "Candidate Schedule" },
     { href: "/officials",          icon: Landmark, label: "Officials"          },
+    { href: "/social",             icon: Globe,    label: "Poll City Social"   },
   ],
 };
 

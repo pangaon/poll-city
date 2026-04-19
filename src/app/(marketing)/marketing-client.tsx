@@ -803,6 +803,48 @@ export default function MarketingClient() {
       <EmailCaptureSection />
 
       {/* ══════════════════════════════════════════════════════════════════
+         5c. VOTER SECTION — Poll City Social entry point
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-16 bg-slate-50 border-t border-slate-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-full px-4 py-1.5 mb-6">
+            <Vote className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">For Voters</span>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+            Not running for office? We have something for you too.
+          </h2>
+          <p className="mt-3 text-slate-500 max-w-xl mx-auto text-sm leading-relaxed">
+            Poll City Social lets Canadian voters follow their local representatives, ask questions,
+            track public positions, and stay informed on what&apos;s happening in their community.
+          </p>
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <Users className="w-5 h-5 text-blue-600 mb-2" />
+              <p className="font-semibold text-slate-800 text-sm">Follow Your Reps</p>
+              <p className="text-xs text-slate-500 mt-1">See what your local councillors, MPPs, and MPs are doing.</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <BarChart3 className="w-5 h-5 text-blue-600 mb-2" />
+              <p className="font-semibold text-slate-800 text-sm">Live Polls</p>
+              <p className="text-xs text-slate-500 mt-1">Vote on local issues and see where your community stands.</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <MessageSquare className="w-5 h-5 text-blue-600 mb-2" />
+              <p className="font-semibold text-slate-800 text-sm">Ask Questions</p>
+              <p className="text-xs text-slate-500 mt-1">Put questions directly to elected officials and candidates.</p>
+            </div>
+          </div>
+          <Link
+            href="/social"
+            className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-semibold text-sm hover:border-blue-400 hover:text-blue-700 transition-colors shadow-sm"
+          >
+            Explore Poll City Social <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
          6. DECISION — Clear paths
          ══════════════════════════════════════════════════════════════════ */}
       <section className="py-24" style={{ background: "linear-gradient(145deg, #0B1120 0%, #162037 100%)" }}>

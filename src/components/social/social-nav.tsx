@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/social",               icon: Home,   label: "Feed"      },
-  { href: "/social/officials",     icon: Users,  label: "Officials" },
+  { href: "/social/officials",     icon: Users,  label: "Reps"      },
   { href: "/social/polls",         icon: BarChart2, label: "Polls"  },
   { href: "/social/groups",        icon: Users2, label: "Groups"    },
   { href: "/social/notifications", icon: Bell,   label: "Alerts"    },
