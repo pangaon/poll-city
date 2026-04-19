@@ -22,8 +22,11 @@
 
 **BUILD IS GREEN. push:safe now wipes .next before each build to prevent Windows race conditions.**
 
-**⚠️ SCRAPER AGENT — READ THIS BEFORE YOU BUILD:**
-Your staged files (`src/app/api/scraper/candidates/route.ts`, `src/app/api/scraper/municipalities/route.ts`, `scripts/scraper/`, `prisma/schema.prisma`) are sitting in the index, unstaged and uncommitted, after multiple stash/pop cycles this session. The `.next` cache has a **stale type declaration** at `.next/types/app/api/scraper/candidates/route.ts` from a previous build run. If you run `npm run build` without clearing `.next` first, TypeScript will fail with "Cannot find module '../../../../../../src/app/api/scraper/candidates/route.js'" even if your file is on disk — because the cache references an old state. **Fix: delete `.next` entirely before your first build.** `rm -rf .next && npm run build`. Push:safe does this automatically so just use push:safe.
+**⚠️ ALL AGENTS — .next CACHE WARNING (Windows/OneDrive):**
+On this machine (OneDrive syncs Documents/), new files are deleted between creation and build if not git-staged. The fix: **Write file → git add immediately (synchronous) → commit BEFORE running any background process.** `push:safe` wipes `.next` before building — always use it, never raw `git push`. If `.next/types/app/api/...` has stale cache entries, delete `.next` entirely before the first build: `rm -rf .next && mkdir -p .next/server/pages && npm run push:safe:check`.
+
+**⚠️ SCRAPER — PHASE 1 COMMITTED (commit 20f8e22):**
+All scraper files are committed on `origin/main`. George must run DB migration before first use: `npx prisma migrate dev --name municipal_scraper_phase1`. Phase 2 (normalization + additional municipalities) can begin after George confirms migration ran and dry-run passes.
 
 **RULE CHANGE — MANDATORY FROM NOW ON:**
 - **NEVER run `git push` directly.** Use `npm run push:safe` exclusively.
@@ -59,6 +62,49 @@ Your staged files (`src/app/api/scraper/candidates/route.ts`, `src/app/api/scrap
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-18 — Municipal Election Scraper Phase 1)
+
+**What shipped (commit `20f8e22`):**
+
+**New Prisma models** (`prisma/schema.prisma`):
+- `MuniScrapeRun` — tracks each scrape run (municipality, status, rawCount, error, timestamps)
+- `RawMuniCandidate` — raw candidate record per run (candidateName, office, ward, wardNumber, rawData JSON, electionYear)
+- No campaignId — scraper data is platform-wide public data, not campaign-scoped
+
+**Scraper scripts** (`scripts/scraper/`):
+- `types.ts` — shared interfaces (RawCandidate, CkanPackage, CkanResource, CkanApiResponse)
+- `toronto.ts` — Toronto CKAN scraper: dynamic dataset discovery via SEARCH_TERMS array, CSV download + parse, ward number extraction, `parseCsvLine` / `mapColumns` / `extractWardNumber` pure utilities
+- `run.ts` — CLI runner: `--municipality toronto`, `--dry-run` flag, batch inserts 100 at a time, creates/updates MuniScrapeRun record
+
+**API routes** (`src/app/api/scraper/`):
+- `GET /api/scraper/municipalities` — deduplicated list of scraped municipalities (most recent run per muni)
+- `GET /api/scraper/candidates` — cursor-paginated candidate list (max 500/page), filters: municipality, province, office, ward, year
+
+**Tests** (`src/__tests__/scraper/toronto.test.ts`):
+- 19 unit tests for pure utility functions — parseCsvLine (7), mapColumns (3), extractWardNumber (8), CSV integration (1)
+- All pass. 178 total tests green.
+
+**npm scripts added:** `scrape:toronto`, `scrape:toronto:dry`, `scrape:install-browsers`
+**playwright** added as devDependency (^1.59.1)
+
+**George MUST do before first use (GEORGE_TODO items 74–77):**
+1. `npx prisma migrate dev --name municipal_scraper_phase1` — create DB tables
+2. `npm run scrape:install-browsers` — install Playwright Chromium
+3. `npm run scrape:toronto:dry` — verify CKAN connectivity
+4. `npm run scrape:toronto` — first live scrape
+
+**Build:** GREEN — 178 tests pass, TypeScript clean, pushed via `npm run push:safe`.
+
+**Risks:** Toronto CKAN dataset slug may change year-to-year — scraper uses dynamic search (SEARCH_TERMS array), resilient to slug changes. No Vercel env var needed — scraper is CLI-only, not a web job.
+
+---
+
+## NEXT SESSION OPENER
+
+Municipal Election Scraper Phase 1 is committed (`20f8e22`). George needs to run migration + dry-run before Phase 2 can be tested end-to-end. Phase 2 scope: normalization layer (map raw candidates to normalized Candidate model), add a second municipality (e.g. Mississauga or Ottawa), and consider a scheduled Vercel cron job trigger via `/api/scraper/run`. Do NOT start Phase 2 until George confirms `scrape:toronto:dry` passes.
 
 ---
 
