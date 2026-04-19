@@ -469,21 +469,22 @@ export default function MarketingClient() {
                   <th className="text-left py-3 px-4 font-bold text-slate-900 w-[200px]">Capability</th>
                   <th className="text-center py-3 px-4 font-bold text-blue-600">Poll City</th>
                   <th className="text-center py-3 px-4 text-slate-400">NationBuilder</th>
-                  <th className="text-center py-3 px-4 text-slate-400">NGP VAN</th>
                   <th className="text-center py-3 px-4 text-slate-400">Ecanvasser</th>
+                  <th className="text-center py-3 px-4 text-slate-400">DIY Stack</th>
                 </tr>
               </thead>
               <tbody>
                 {[
                   ["Campaign website included", true, true, false, false],
                   ["Custom domain", true, true, false, false],
-                  ["Voter CRM", true, true, true, true],
-                  ["Mobile canvassing", true, false, true, true],
+                  ["Voter CRM", true, true, true, false],
+                  ["Mobile canvassing", true, false, true, false],
                   ["SMS + email campaigns", true, true, false, false],
-                  ["GOTV engine", true, false, true, false],
+                  ["GOTV engine", true, false, false, false],
                   ["AI content generation", true, false, false, false],
                   ["Real-time dashboards", true, false, false, false],
-                  ["Canadian compliance", true, false, false, false],
+                  ["Canadian compliance (PIPEDA / CASL)", true, false, false, false],
+                  ["Ready in under an hour", true, false, false, false],
                 ].map(([feature, ...vals]) => (
                   <tr key={feature as string} className="border-b border-slate-100">
                     <td className="py-2.5 px-4 font-medium text-slate-700 text-xs">{feature as string}</td>
