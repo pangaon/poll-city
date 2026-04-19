@@ -77,10 +77,10 @@ function Navbar() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/demo" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
-              Explore Platform
+            <Link href="/login" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
+              Log In
             </Link>
-            <Link href="/pricing" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+            <Link href="/signup" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
               Start Your Campaign
             </Link>
           </div>
@@ -97,8 +97,9 @@ function Navbar() {
             <Link href="/demo" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Demo</Link>
             <Link href="/about" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">About</Link>
             <Link href="/contact" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Contact</Link>
+            <Link href="/login" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Log In</Link>
             <hr className="my-2" />
-            <Link href="/pricing" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
+            <Link href="/signup" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
           </div>
         </div>
       )}
@@ -128,11 +129,11 @@ export default function MarketingClient() {
               One platform replaces your CRM, your website builder, your email tool, your canvassing app, and your spreadsheets. Everything connected. Ready from day one.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
-                <Play className="w-4 h-4" /> Explore the Platform
-              </Link>
-              <Link href="/pricing" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+              <Link href="/signup" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
                 Start Your Campaign <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+                <Play className="w-4 h-4" /> See the Platform
               </Link>
             </div>
           </div>
@@ -814,7 +815,7 @@ export default function MarketingClient() {
             Campaign website, CRM, canvassing, communications, GOTV — one platform, one login, ready now.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/pricing" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+            <Link href="/signup" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
               Start Your Campaign <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/demo" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl border border-white/15 text-white font-bold text-base hover:bg-white/10 transition-colors">
