@@ -79,6 +79,98 @@ The platform owner is George. His word is final.
 
 ---
 
+## THE USER MATRIX — READ THIS BEFORE BUILDING ANYTHING
+
+**This is the most important question for every feature: WHO IS THIS FOR?**
+Getting this wrong is how features get built in silos, disconnected, and useless.
+
+There are exactly four users in this platform. Know which one you are building for before writing a single line.
+
+### 1. GEORGE (the founder — /ops)
+George's tools live in `/ops`, `/api/ops/`, `/api/intel/`, and the scripts in `scripts/`.
+These are his business intelligence and sales tools. They are NOT user-facing.
+They exist so George can:
+- Discover candidates before they know Poll City exists (scraper → leads pipeline)
+- See who claimed a profile, who converted, who is paying (lead dashboard)
+- Manage all campaigns, clients, and platform health from one cockpit
+- Run data enrichment jobs that improve the experience for everyone else
+
+**The scraper, the intelligence engine, the leads pipeline, the candidate outreach system — these are ALL George's tools.**
+They enrich the voter and candidate experience INDIRECTLY by powering the platform.
+Never surface George's ops tools to voters, campaign managers, or candidates.
+Never build an ops feature and wonder "where does the user access this?" — George accesses it. That's it.
+
+**Ask before building any ops feature:** "What does George see, what action does he take, what happens as a result in the platform?"
+
+### 2. CAMPAIGN MANAGERS / CANDIDATES (paying customers — campaign app)
+These are George's paying customers. They live in the campaign app at `app.poll.city`.
+They use: CRM, canvassing, GOTV, communications, finance, events, analytics.
+They do NOT see `/ops`, the intelligence engine internals, or Poll City Social internals.
+Their connection to Poll City Social: their candidate has a public profile on PCS that voters follow.
+
+### 3. VOTERS / PUBLIC (Poll City Social — /social)
+These are the public. They live at `/social`.
+They use: Representative profiles, candidate profiles, polls, groups, notifications, feed.
+They do NOT see the campaign app or /ops.
+Their value: they follow candidates → candidates see engagement → candidates want the campaign app.
+**Every feature built for voters must ask: "How does this drive a candidate to sign up?"**
+
+### 4. PROSPECTIVE CUSTOMERS (marketing site — poll.city)
+These are candidates considering buying the campaign app.
+They see the marketing site only. Their CTA is always → `/signup` or `/contact`.
+
+---
+
+## THE DATA ENRICHMENT CHAIN — HOW GEORGE'S TOOLS CONNECT TO VOTER EXPERIENCE
+
+This is the chain every agent must understand before touching any data/scraper/ops work:
+
+```
+George's tools (scraper, intel engine, Represent API)
+        ↓  enriches
+Official / CandidateProfile records in the DB
+        ↓  powers
+Poll City Social — voters see accurate, current representatives and candidates
+        ↓  drives
+Candidates discover their profile exists → claim it → offered campaign app
+        ↓  converts
+Paying customer in the campaign app
+        ↓  George sees
+Lead converted in /ops dashboard
+```
+
+Every data tool George asks to build is feeding this chain.
+If you build a scraper that doesn't feed `Official` or `CandidateProfile`, you built a dead end.
+If you build a leads pipeline that George can't see in `/ops`, you built a dead end.
+Ask: "Where in this chain does this feature connect?"
+
+---
+
+## EDGE CASES EVERY AGENT MUST HANDLE
+
+**For ops/intel features:**
+- Only `SUPER_ADMIN` role can access `/ops` and `/api/ops/` and `/api/intel/`. Check `session.user.role === "SUPER_ADMIN"` explicitly on every route.
+- Leads, candidate profiles, and intelligence data are never exposed to campaign managers or voters.
+- George's view of a lead ≠ the candidate's public profile. Keep them separate.
+
+**For Poll City Social features:**
+- Voters may not be logged in. Every public page must render without a session.
+- Candidate profiles on PCS show what voters need: name, office, ward, platform, Q&A. Not internal campaign data.
+- Unclaimed profiles still display publicly — tagged as unverified. Never hide a profile just because it isn't claimed.
+- "Claim your profile" always routes to `/signup` → campaign app trial, never to a standalone form.
+
+**For campaign app features:**
+- Every query is scoped by `campaignId`. No exceptions.
+- Campaign managers see their own data only. Never leak cross-campaign data.
+- The campaign app is authenticated. No public routes inside `(app)/`.
+
+**For the scraper / data pipeline:**
+- `RawMuniCandidate` is a staging table. Data sitting there without flowing to `CandidateLead` → `CandidateProfile` → `Official` is dead weight.
+- Always ask: "What happens to this data after it's scraped?" If the answer is "nothing yet," flag it before building the scraper.
+- Deactivate stale records. Any import that doesn't deactivate records no longer in the source will accumulate garbage. Always build the deactivation step.
+
+---
+
 ## THE MOST IMPORTANT RULE
 
 **Use `npm run push:safe` — NEVER run `git push` directly.**
