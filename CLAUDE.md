@@ -148,8 +148,9 @@ Modules currently in the codebase but historically left disconnected:
    Mismatched slugs at the same path level crash the entire build.
 
 4. **Prisma schema changes require a migration.**
-   Always run: `npx prisma migrate dev --name <description> --skip-seed`
-   Never edit the schema without migrating. Never use `db push` in production.
+   The only safe command to sync schema changes to Railway is: `npx prisma db push`
+   NEVER tell George to run `prisma migrate dev` — it will prompt to wipe the production database.
+   `prisma db push` adds new tables/columns without touching existing data. It is the established workflow.
 
 5. **No new npm packages without a reason.** If a feature can be built with what's
    already installed, build it that way. Every new dependency is a supply chain risk

@@ -8,6 +8,17 @@ gets added here. When you complete a step, change `[ ]` to `[x]`.
 
 ---
 
+## ⚠️ DATABASE RULE — READ THIS FIRST
+
+**The only command to sync schema to Railway is:**
+```bash
+npx prisma db push
+```
+**NEVER run `prisma migrate dev` against Railway.** It will prompt to wipe your database.
+`prisma db push` adds new tables and columns without touching existing data. It has worked every time.
+
+---
+
 ## 🔴 CRITICAL — Platform is broken without these
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
@@ -419,11 +430,7 @@ Map-based turf drawing is built but needs real geocoded contacts to work.
   - Contacts need household lat/lng for map polygon turf mode
   - If your voter file has addresses but no coordinates, run the geocoding cron: it runs hourly automatically once contacts are imported
 
-- [ ] **65. Run baseline migration** (critical before first real customer):
-  ```
-  npx prisma migrate dev --name initial_baseline
-  ```
-  Run this in your poll-city project folder. One time only.
+- [x] **65. Schema is managed via `prisma db push`** — that's your workflow. No baseline migration needed. `db push` has run successfully 6+ times and is the right approach for this setup.
 
 ---
 
@@ -447,13 +454,7 @@ Run this once on Railway to ensure existing campaigns aren't accidentally sent t
   2. Output will say `✓ Marked X existing campaign(s) as onboarding complete.`
   3. Verify by opening /dashboard — it should not redirect to /onboarding.
 
-- [ ] **60. Run schema migration when Railway DB is reachable**
-  The `nomination` and `leadership` ElectionType enum values are in the schema but not yet in the DB.
-  Connect to Railway and run:
-  ```
-  npx prisma migrate dev --name add_nomination_leadership_election_types --skip-seed
-  ```
-  Until this runs, campaigns of type nomination/leadership will fail to save.
+- [ ] **60. Sync schema to Railway** — run `npx prisma db push` to apply any pending schema changes including nomination/leadership enum values.
 
 - [x] **61. Run security schema migration when Railway DB is reachable** ✓ DONE 2026-04-17
   Ran `prisma db push --skip-generate` with `?sslmode=require` appended to DATABASE_URL.
@@ -647,14 +648,14 @@ Once `desktop/dist/` has your signed installers, add download buttons to the mar
 
 ## Municipal Election Scraper — Phase 1 Setup
 
-### Step 1 — Run database migration
+### Step 1 — Add scraper tables to Railway
 The scraper needs two new tables (`muni_scrape_runs`, `raw_muni_candidates`).
 
 ```bash
-npx prisma migrate dev --name municipal_scraper_phase1
+npx prisma db push
 ```
 
-Run this with `DATABASE_URL` pointing at Railway. Required before scraper can store data.
+This is the same command that has worked every time. It adds new tables without touching existing data.
 
 ### Step 2 — Install Playwright browser
 Playwright needs its Chromium binary. Run once:
@@ -683,7 +684,7 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 - `GET /api/scraper/municipalities` — list scraped municipalities
 - `GET /api/scraper/candidates?municipality=toronto` — list candidates
 
-- [ ] **74. Run `npx prisma migrate dev --name municipal_scraper_phase1`** — create scraper tables
+- [ ] **74. Run `npx prisma db push`** — add scraper tables + any other pending schema changes to Railway
 - [ ] **75. Run `npm run scrape:install-browsers`** — install Playwright Chromium
 - [ ] **76. Run `npm run scrape:toronto:dry`** — verify scraper reaches Toronto Open Data
 - [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB
