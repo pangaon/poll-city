@@ -752,6 +752,269 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
   );
 }
 
+// ── CASL Consent Tab ─────────────────────────────────────────────────────────
+
+type ConsentChannel = "email" | "sms" | "push";
+type ConsentType = "explicit" | "implied" | "express_withdrawal";
+type ConsentSource = "import" | "form" | "qr" | "manual" | "social_follow" | "donation" | "event_signup";
+
+interface ConsentRecord {
+  id: string;
+  consentType: ConsentType;
+  channel: ConsentChannel;
+  source: ConsentSource;
+  collectedAt: string;
+  expiresAt: string | null;
+  ipAddress: string | null;
+  notes: string | null;
+  createdAt: string;
+  recordedBy: { id: string; name: string | null } | null;
+}
+
+interface ConsentSummaryEntry {
+  hasConsent: boolean;
+  activeType: ConsentType | null;
+  expiresAt: string | null;
+}
+
+const CHANNEL_LABELS: Record<ConsentChannel, string> = { email: "Email", sms: "SMS", push: "Push" };
+const CONSENT_TYPE_LABELS: Record<ConsentType, string> = {
+  explicit: "Explicit",
+  implied: "Implied",
+  express_withdrawal: "Withdrawn",
+};
+const SOURCE_LABELS: Record<ConsentSource, string> = {
+  import: "CSV Import",
+  form: "Web Form",
+  qr: "QR Capture",
+  manual: "Manual Entry",
+  social_follow: "Social Follow",
+  donation: "Donation",
+  event_signup: "Event Sign-up",
+};
+
+function ConsentTab({ contactId, campaignId }: { contactId: string; campaignId: string }) {
+  const [records, setRecords] = useState<ConsentRecord[]>([]);
+  const [summary, setSummary] = useState<Record<ConsentChannel, ConsentSummaryEntry> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<{
+    consentType: ConsentType;
+    channel: ConsentChannel;
+    source: ConsentSource;
+    notes: string;
+  }>({ consentType: "explicit", channel: "email", source: "manual", notes: "" });
+
+  function load() {
+    setLoading(true);
+    fetch(`/api/compliance/consent?contactId=${contactId}&campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((d) => { setRecords(d.records ?? []); setSummary(d.summary ?? null); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [contactId, campaignId]);
+
+  async function saveConsent() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/compliance/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactId, campaignId, ...form, collectedAt: new Date().toISOString() }),
+      });
+      if (res.ok) {
+        toast.success("Consent recorded");
+        setAdding(false);
+        load();
+      } else {
+        const err = await res.json();
+        toast.error(err.error ?? "Failed to record consent");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center gap-2 py-6 text-sm text-gray-400"><div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />Loading consent history…</div>;
+  }
+
+  const channels: ConsentChannel[] = ["email", "sms", "push"];
+
+  return (
+    <div className="space-y-4">
+      {/* CASL explanation — empty state */}
+      {records.length === 0 && !adding && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-amber-800 mb-1">No consent records for this contact</p>
+          <p className="text-sm text-amber-700">
+            Under Canada&rsquo;s Anti-Spam Legislation (CASL), you need documented consent before sending commercial
+            electronic messages. Add a consent record to include this contact in email or SMS blasts.
+          </p>
+          <p className="text-sm text-amber-700 mt-1">
+            <strong>Explicit consent</strong> never expires. <strong>Implied consent</strong> from an existing business
+            relationship expires after 2 years. <strong>Express withdrawal</strong> permanently blocks all outbound
+            messages on that channel.
+          </p>
+        </div>
+      )}
+
+      {/* Per-channel status summary */}
+      {summary && (
+        <div className="grid grid-cols-3 gap-2">
+          {channels.map((ch) => {
+            const s = summary[ch];
+            return (
+              <div key={ch} className={cn(
+                "rounded-lg border p-3 text-center",
+                s.activeType === "express_withdrawal"
+                  ? "bg-red-50 border-red-200"
+                  : s.hasConsent
+                  ? "bg-green-50 border-green-200"
+                  : "bg-gray-50 border-gray-200",
+              )}>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{CHANNEL_LABELS[ch]}</p>
+                <p className={cn(
+                  "text-sm font-medium mt-0.5",
+                  s.activeType === "express_withdrawal" ? "text-red-700" : s.hasConsent ? "text-green-700" : "text-gray-400",
+                )}>
+                  {s.activeType === "express_withdrawal"
+                    ? "Withdrawn"
+                    : s.hasConsent
+                    ? CONSENT_TYPE_LABELS[s.activeType!]
+                    : "No Consent"}
+                </p>
+                {s.expiresAt && (
+                  <p className="text-xs text-gray-400 mt-0.5">Exp. {formatDate(s.expiresAt)}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add consent button */}
+      {!adding && (
+        <button
+          onClick={() => setAdding(true)}
+          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        >
+          + Record consent event
+        </button>
+      )}
+
+      {/* Add consent form */}
+      {adding && (
+        <div className="border border-blue-200 rounded-lg p-4 space-y-3 bg-blue-50">
+          <p className="text-sm font-medium text-blue-900">Record Consent Event</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Type</label>
+              <select
+                value={form.consentType}
+                onChange={(e) => setForm((f) => ({ ...f, consentType: e.target.value as ConsentType }))}
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+              >
+                <option value="explicit">Explicit (written opt-in)</option>
+                <option value="implied">Implied (business relationship)</option>
+                <option value="express_withdrawal">Express Withdrawal (opt-out)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Channel</label>
+              <select
+                value={form.channel}
+                onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value as ConsentChannel }))}
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+              >
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="push">Push</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Source</label>
+              <select
+                value={form.source}
+                onChange={(e) => setForm((f) => ({ ...f, source: e.target.value as ConsentSource }))}
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+              >
+                {(Object.entries(SOURCE_LABELS) as [ConsentSource, string][]).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Notes (optional)</label>
+            <input
+              type="text"
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="e.g. Door canvass on 2026-04-19, signed paper form"
+              className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+              maxLength={500}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={saveConsent}
+              disabled={saving}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => setAdding(false)}
+              className="px-3 py-1.5 bg-white text-gray-600 border border-gray-200 text-sm rounded hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Consent history */}
+      {records.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">History ({records.length})</p>
+          <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+            {records.map((rec) => (
+              <div key={rec.id} className="px-3 py-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      "text-xs font-semibold px-1.5 py-0.5 rounded",
+                      rec.consentType === "express_withdrawal"
+                        ? "bg-red-100 text-red-700"
+                        : rec.consentType === "explicit"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-amber-100 text-amber-700",
+                    )}>
+                      {CONSENT_TYPE_LABELS[rec.consentType]}
+                    </span>
+                    <span className="text-xs text-gray-500">{CHANNEL_LABELS[rec.channel]}</span>
+                    <span className="text-xs text-gray-400">via {SOURCE_LABELS[rec.source]}</span>
+                  </div>
+                  {rec.notes && <p className="text-xs text-gray-500 mt-0.5">{rec.notes}</p>}
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {formatDate(rec.collectedAt)}
+                    {rec.expiresAt && ` · expires ${formatDate(rec.expiresAt)}`}
+                    {rec.recordedBy && ` · by ${rec.recordedBy.name ?? "unknown"}`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface AuditEntry {
   id: string;
   action: string;
