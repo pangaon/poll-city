@@ -562,6 +562,127 @@ export default function MarketingClient() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
+         3c. POLL CITY SOCIAL — The civic engagement layer
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+            {/* Social feed mockup */}
+            <div className="rounded-2xl border border-slate-200 shadow-xl overflow-hidden order-2 lg:order-1">
+              <div className="bg-slate-900 px-4 py-3 flex items-center gap-3">
+                <div className="flex gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400/70" /><span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" /><span className="w-2.5 h-2.5 rounded-full bg-green-400/70" /></div>
+                <div className="flex-1 bg-slate-700 rounded-full px-3 py-1 text-[10px] text-slate-400 font-medium">social.poll.city</div>
+              </div>
+              <div className="p-4 space-y-3 bg-slate-50">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+                  {["Feed", "Officials", "Polls", "Groups"].map((tab, i) => (
+                    <span key={tab} className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${i === 0 ? "bg-blue-600 text-white" : "text-slate-500"}`}>{tab}</span>
+                  ))}
+                </div>
+                {[
+                  { name: "Maria Santos", role: "Councillor · Ward 3", action: "Posted a civic update about road repairs on Elm St", time: "2m ago", color: "bg-blue-600" },
+                  { name: "David Park", role: "School Board Trustee", action: "Started a poll: Should the new school be on King or Queen?", time: "18m ago", color: "bg-emerald-600" },
+                  { name: "Councillor Bhatt", role: "Regional Rep", action: "Approval rating reached 72% this week", time: "1h ago", color: "bg-violet-600" },
+                ].map((item) => (
+                  <div key={item.name} className="rounded-xl bg-white border border-slate-200 p-3 flex gap-3">
+                    <div className={`w-8 h-8 rounded-full ${item.color} text-white flex items-center justify-center font-bold text-xs shrink-0`}>{item.name[0]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-xs text-slate-900">{item.name}</p>
+                        <p className="text-[10px] text-slate-400">{item.role}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5">{item.action}</p>
+                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0">{item.time}</span>
+                  </div>
+                ))}
+                <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-center">
+                  <p className="text-[11px] text-blue-700 font-semibold">When a voter follows your profile, your campaign gets notified.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Copy */}
+            <div className="order-1 lg:order-2">
+              <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">Three products. One platform.</p>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                Poll City Social —
+                <span className="block text-blue-600">where the public lives.</span>
+              </h2>
+              <p className="mt-4 text-slate-600 leading-relaxed">
+                While your campaign app manages your operations, Poll City Social is the public-facing civic platform.
+                Voters follow officials, respond to polls, join interest groups, and track their community&apos;s promises.
+                When they follow you, your campaign CRM gets the signal.
+              </p>
+              <div className="mt-6 space-y-4">
+                {[
+                  { icon: Users, title: "1,100+ Canadian officials", desc: "Federal, provincial, and municipal — already profiled and searchable." },
+                  { icon: BarChart3, title: "Live approval ratings", desc: "Voters rate performance. You see the numbers. So do they." },
+                  { icon: Vote, title: "Civic polls", desc: "Any official can ask the public a question. Results are public." },
+                  { icon: Target, title: "Follow signal → campaign CRM", desc: "When a voter follows you on Social, it creates a lead in your campaign." },
+                ].map(({ icon: Icon, title, desc }) => (
+                  <div key={title} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-slate-900">{title}</p>
+                      <p className="text-sm text-slate-500">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 flex gap-3">
+                <Link href="/social" className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors">
+                  <Globe className="w-4 h-4" /> Visit Poll City Social
+                </Link>
+                <Link href="/officials" className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors">
+                  Find Your Officials
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+         3d. ELECTED OFFICIALS — The officials vertical
+         ══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-slate-900 text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">For elected officials</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight mb-4">
+            Already in office?
+            <span className="text-amber-400"> Your profile is already here.</span>
+          </h2>
+          <p className="text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Poll City has profiled over 1,100 Canadian elected officials at every level of government. Your voters are already looking you up. Claim your profile — add your photo, your record, your platform — and when the next election comes, your campaign is already set up.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto">
+            {[
+              { level: "Federal MPs", count: "338", color: "text-blue-400" },
+              { level: "Ontario MPPs", count: "124", color: "text-emerald-400" },
+              { level: "Mayors", count: "444+", color: "text-amber-400" },
+              { level: "Councillors", count: "2,400+", color: "text-violet-400" },
+            ].map((s) => (
+              <div key={s.level} className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
+                <p className={`text-3xl font-black ${s.color}`}>{s.count}</p>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{s.level}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/officials" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-amber-500 text-slate-900 font-bold text-sm hover:bg-amber-400 transition-colors">
+              <MapPin className="w-4 h-4" /> Find Your Profile
+            </Link>
+            <Link href="/pricing" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl border border-white/15 text-white font-bold text-sm hover:bg-white/5 transition-colors">
+              Claim and Start Your Campaign <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
          4b. SOCIAL PROOF — Candidate testimonials
          ══════════════════════════════════════════════════════════════════ */}
       <section className="py-20 bg-slate-50">
