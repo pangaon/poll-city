@@ -16,6 +16,9 @@ export default function PublicNav() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
+          <Link href="/social" className="text-sm font-medium text-gray-600 hover:text-blue-700 transition-colors">
+            Poll City Social
+          </Link>
           <Link
             href="/dashboard"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
