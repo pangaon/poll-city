@@ -191,9 +191,24 @@ const MONTHLY_PRICES: Record<string, [number, number]> = { // [campaign, command
   "mp-large": [1199, 2999],
 };
 
-// One-time = monthly × 8 (roughly campaign season)
+// One-time = monthly × months remaining until election day (Oct 27 2026), minimum 1
+const ELECTION_DATE = new Date("2026-10-27T00:00:00-05:00");
+
+function monthsRemaining(): number {
+  const now = new Date();
+  const msLeft = ELECTION_DATE.getTime() - now.getTime();
+  const months = Math.ceil(msLeft / (1000 * 60 * 60 * 24 * 30.44));
+  return Math.max(1, Math.min(months, 18));
+}
+
 function getOneTimePrice(monthly: number): number {
-  return monthly * 8;
+  return monthly * monthsRemaining();
+}
+
+function electionSeasonLabel(): string {
+  const m = monthsRemaining();
+  if (m <= 1) return "covers final month of campaign";
+  return `covers ${m} months to election day`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -227,7 +242,7 @@ const ADDONS = [
 
 const FAQS = [
   { q: "Why does pricing change by location?", a: "A councillor representing 15,000 people has very different needs than one representing 150,000. We price based on the actual scale of your race so you never overpay." },
-  { q: "What's the difference between monthly and one-time?", a: "Monthly gives you flexibility to cancel anytime. One-time is a single payment covering the full campaign season (8 months) at a discount — no recurring charges." },
+  { q: "What's the difference between monthly and one-time?", a: "Monthly gives you flexibility to cancel anytime. One-time is a single payment covering every month from today to election day (October 27, 2026) — you pay for exactly what you need, no more. No recurring charges." },
   { q: "Is the campaign website really included?", a: "Yes. Every plan includes a fully built campaign website with your branding, issues, bio, events, donation links, and forms. Point your own domain (e.g. votegeorge.ca) and nobody knows it's Poll City." },
   { q: "What is Election Day Mode?", a: "It's GOTV on steroids. Real-time voter turnout tracking, priority call lists auto-sorted, ride coordination, scrutineer management, and poll-by-poll results streaming in. Activates 72 hours before election day." },
   { q: "Can I see the campaign website before buying?", a: "Absolutely. Visit our live demo to see a fully built campaign website in action, including the website builder where you customize everything." },
@@ -457,7 +472,7 @@ export default function PricingPage() {
                       <span className="text-5xl font-black text-slate-900">${price.toLocaleString()}</span>
                       <span className="text-sm text-slate-500 mb-2">{billingMode === "monthly" ? "/mo" : " one-time"}</span>
                     </div>
-                    {billingMode === "onetime" && <p className="text-[10px] text-slate-400">Covers full 8-month campaign season</p>}
+                    {billingMode === "onetime" && <p className="text-[10px] text-slate-400 capitalize">{electionSeasonLabel()} · Oct 27, 2026</p>}
 
                     <ul className="mt-6 space-y-2 mb-6">
                       {plan.features.map((f) => (

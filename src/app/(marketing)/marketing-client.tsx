@@ -35,7 +35,7 @@ function ElectionCountdown() {
       {" "}<span className="opacity-80">·</span>
       {" "}<span className="font-black text-white">{days} days away</span>
       {" "}<span className="opacity-70">— Is your campaign ready?</span>
-      <Link href="/login" className="ml-3 underline underline-offset-2 hover:text-amber-200 transition-colors font-bold">
+      <Link href="/pricing" className="ml-3 underline underline-offset-2 hover:text-amber-200 transition-colors font-bold">
         Start now →
       </Link>
     </div>
@@ -77,7 +77,7 @@ function Navbar() {
             <Link href="/demo" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
               Explore Platform
             </Link>
-            <Link href="/login" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+            <Link href="/pricing" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
               Start Your Campaign
             </Link>
           </div>
@@ -93,7 +93,7 @@ function Navbar() {
             <Link href="/pricing" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Pricing</Link>
             <Link href="/demo" className="block px-3 py-2.5 text-sm font-medium text-slate-700 rounded-lg">Demo</Link>
             <hr className="my-2" />
-            <Link href="/login" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
+            <Link href="/pricing" className="block px-3 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg text-center">Start Your Campaign</Link>
           </div>
         </div>
       )}
@@ -126,7 +126,7 @@ export default function MarketingClient() {
               <Link href="/demo" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
                 <Play className="w-4 h-4" /> Explore the Platform
               </Link>
-              <Link href="/login" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
+              <Link href="/pricing" className="inline-flex items-center gap-2 h-12 px-7 rounded-xl text-white font-bold hover:bg-white/10 transition-colors border border-white/15">
                 Start Your Campaign <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -596,7 +596,7 @@ export default function MarketingClient() {
             Campaign website, CRM, canvassing, communications, GOTV — one platform, one login, ready now.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/login" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+            <Link href="/pricing" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
               Start Your Campaign <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/demo" className="inline-flex items-center gap-2 h-13 px-8 rounded-xl border border-white/15 text-white font-bold text-base hover:bg-white/10 transition-colors">
