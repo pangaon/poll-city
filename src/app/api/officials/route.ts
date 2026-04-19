@@ -3,6 +3,9 @@ import prisma from "@/lib/db/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { GovernmentLevel } from "@prisma/client";
 
+// Seed-data officials — hidden from public listings, visible in demo campaign only
+const SEED_OFFICIAL_IDS = ["off-council-w12", "off-mp-todan", "off-mpp-todan"];
+
 const LIST_SELECT = {
   id: true,
   name: true,
@@ -42,6 +45,7 @@ export async function GET(req: NextRequest) {
     const officials = await prisma.official.findMany({
       where: {
         isActive: true,
+        id: { notIn: SEED_OFFICIAL_IDS },
         postalCodes: { has: prefix },
         ...(level && { level: level as GovernmentLevel }),
       },
@@ -61,6 +65,7 @@ export async function GET(req: NextRequest) {
     const officials = await prisma.official.findMany({
       where: {
         isActive: true,
+        id: { notIn: SEED_OFFICIAL_IDS },
         OR: [
           { name: { contains: trimmed, mode: "insensitive" } },
           { district: { contains: trimmed, mode: "insensitive" } },
@@ -74,7 +79,7 @@ export async function GET(req: NextRequest) {
   }
 
   const officials = await prisma.official.findMany({
-    where: { isActive: true },
+    where: { isActive: true, id: { notIn: SEED_OFFICIAL_IDS } },
     orderBy: [{ subscriptionStatus: "desc" }, { name: "asc" }],
     take: 50,
     select: LIST_SELECT,

@@ -50,7 +50,16 @@ export default function SocialOfficials() {
       {loading ? (
         Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)
       ) : officials.length === 0 ? (
-        <div className="text-center py-12 text-gray-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">No officials found{search ? ` for "${search}"` : ""}</p></div>
+        <div className="text-center py-12 text-gray-400">
+          <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          {search
+            ? <p className="text-sm">No representatives found for &ldquo;{search}&rdquo;</p>
+            : <>
+                <p className="text-sm font-medium text-gray-600">Representatives are being added</p>
+                <p className="text-xs mt-1">Check back soon — we&apos;re loading your local reps now.</p>
+              </>
+          }
+        </div>
       ) : officials.map((o) => (
         <div key={o.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
           <Link href={`/social/politicians/${o.id}`} className="flex items-start gap-3 group">
