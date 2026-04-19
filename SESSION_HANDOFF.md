@@ -65,6 +65,24 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-19 — Candidate Q&A response flow)
+
+**What shipped (commit 04349eb):**
+
+- **`src/app/api/social/questions/[id]/answer/route.ts`** (NEW) — Campaign manager publishes a public answer to a voter question. Auth: `apiAuth` + `activeCampaignId` + campaign must have `officialId` matching the question's official + membership verified. Atomic transaction: updates `PublicQuestion.answer` + `answeredAt`, creates `SocialNotification` (`type: "qa_answered"`) for the question asker.
+- **`src/app/api/social/questions/route.ts`** (NEW) — GET endpoint for the campaign Q&A inbox. Returns `PublicQuestion` records for the campaign's linked official; `?answered=false/true` filter. `meta.officialLinked` tells the client whether the campaign has an official linked.
+- **`src/app/(app)/communications/qa/page.tsx`** (NEW) — Server component. Validates session + membership, fetches `campaign.officialId`, passes to client.
+- **`src/app/(app)/communications/qa/qa-inbox-client.tsx`** (NEW) — Full Q&A inbox UI. Filter tabs (Unanswered / Answered / All), each question shows text + asker + upvotes badge. Answer button opens AnimatePresence inline textarea → "Publish Answer" → POST to answer route → optimistic removal from unanswered list. "Edit Reply" for already-answered questions. Empty state when no official linked.
+- **`src/components/layout/sidebar.tsx`** — Q&A Inbox added to Outreach section (`isNew: true`).
+
+**No schema changes needed.** `PublicQuestion` already had `answer: String?` and `answeredAt: DateTime?`. `SocialNotification.type` is a free String — `"qa_answered"` added without migration.
+
+**3-click path:** Dashboard → Communications → Q&A Inbox → unanswered questions list.
+
+**Build:** GREEN (code on origin/main via concurrent CASL session push chain).
+
+---
+
 ## LAST SESSION (2026-04-19 — Brand Kit applied to outputs)
 
 **What shipped (commits a20d6b0, a29022c, c298fec):**

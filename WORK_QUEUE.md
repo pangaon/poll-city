@@ -108,7 +108,7 @@ These are coherence failures — things that should connect but don't.
 |---|---|---|---|
 | Brand Kit → applied to outputs | DONE — commits a20d6b0, a29022c | Email blasts + scheduled emails now use branded HTML (logo header, primary colour bar, brand font). Sidebar shows amber badge when brand kit incomplete. Print/candidate page/receipts were already wired. | Every campaign looks generic |
 | Social → Campaign consent bridge | DONE a17a74f | Voters on Poll City Social who follow/vote can't consent to being contacted by a specific campaign. The link between the two platforms is missing. | Key monetization gap |
-| Candidate Q&A responses | CLAIMED 2026-04-19 | Voters ask questions on /candidates/[slug] but candidates cannot reply publicly from within the platform | Engagement dead end |
+| Candidate Q&A responses | DONE — commit 04349eb | POST /api/social/questions/[id]/answer (auth + official link), GET /api/social/questions inbox, /communications/qa QaInboxClient (unanswered/answered tabs, inline answer textarea, optimistic remove), SocialNotification on answer, sidebar Q&A Inbox entry. PublicQuestion already had answer/answeredAt fields — no migration needed. | Engagement dead end |
 | Volunteer reimbursement → payment | PENDING | Approval chain is complete but actual payment (Stripe or bank transfer) is not automated | Finance officers manually process outside the platform |
 | Voter file import → enrichment | PENDING | Smart import handles general CSVs but does NOT parse ward/poll/riding/household from voter files. Every campaign starts with a voter file. | Campaign setup requires manual data work |
 
