@@ -205,14 +205,16 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [stripeNotConnected, setStripeNotConnected] = useState(false);
+  const [brandIncomplete, setBrandIncomplete] = useState(false);
 
-  // Fetch Stripe onboarding status once on mount for the amber badge
+  // Fetch campaign status once on mount for sidebar badges
   useEffect(() => {
     if (!session) return;
     fetch("/api/campaigns/current")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data && !data.stripeOnboarded && !data.isDemo) setStripeNotConnected(true);
+        if (data && !data.brandKitComplete && !data.isDemo) setBrandIncomplete(true);
       })
       .catch(() => undefined);
   }, [session]);
@@ -309,6 +311,7 @@ export default function Sidebar() {
               {section.items.map(({ href, icon: Icon, label, isNew }) => {
                 const active = pathname === href || (pathname ?? "").startsWith(`${href}/`);
                 const showStripeDot = stripeNotConnected && href === "/fundraising";
+                const showBrandDot = brandIncomplete && href === "/settings";
                 return (
                   <Link
                     key={href}
@@ -330,6 +333,9 @@ export default function Sidebar() {
                     )}
                     {showStripeDot && (
                       <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Stripe not connected" />
+                    )}
+                    {showBrandDot && !active && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Brand kit not set up" />
                     )}
                   </Link>
                 );

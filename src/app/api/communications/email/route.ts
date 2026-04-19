@@ -6,6 +6,7 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email";
 import { enforceLimit } from "@/lib/rate-limit-redis";
 import { loadBrandKit } from "@/lib/brand/brand-kit";
+import { buildBrandedEmail } from "@/lib/email/branded-template";
 import { audit } from "@/lib/audit";
 import { encodeTrackingToken } from "@/lib/email/tracking-token";
 
@@ -175,8 +176,8 @@ export async function POST(req: NextRequest) {
   });
 
   const caslFooter = `
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0 16px">
-    <div style="font-family:system-ui,sans-serif;font-size:11px;color:#64748b;line-height:1.5">
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 12px">
+    <div style="font-size:11px;color:#64748b;line-height:1.5">
       <p style="margin:0 0 6px"><strong>${brand.campaignName}</strong>${brand.websiteUrl ? ` · <a href="${brand.websiteUrl}" style="color:#64748b">${brand.websiteUrl}</a>` : ""}</p>
       <p style="margin:0 0 6px">You're receiving this because you or someone in your household was contacted by this campaign.</p>
       <p style="margin:0"><a href="${baseUrl}/unsubscribe?c={{contactId}}" style="color:#64748b">Unsubscribe</a> · Sent via Poll City campaign tools · Complies with Canada's Anti-Spam Legislation (CASL)</p>
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest) {
       });
 
     const footer = caslFooter.replace("{{contactId}}", r.id);
-    const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#0f172a">${personalized}</div>${footer}${openPixel}`;
+    const html = buildBrandedEmail({ bodyHtml: personalized, caslFooter: footer, openPixel, brand });
     try {
       await sendEmail({
         to: r.email,
