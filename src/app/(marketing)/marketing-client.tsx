@@ -291,47 +291,131 @@ export default function MarketingClient() {
       {/* ══════════════════════════════════════════════════════════════════
          3. THE WEBSITE — Deep showcase
          ══════════════════════════════════════════════════════════════════ */}
-      <section className="py-20 bg-slate-950 text-white">
+      <section className="py-20 bg-slate-950 text-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mb-12">
+          <div className="max-w-2xl mb-14">
             <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">The differentiator</p>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">
               Your campaign website isn&apos;t an add-on.
               <span className="text-blue-400"> It&apos;s built into the system.</span>
             </h2>
             <p className="mt-4 text-slate-400 leading-relaxed">
-              Every other tool makes you build a website somewhere else. With Poll City, your website is part of the platform — supporters sign up, donors contribute, volunteers register, and every action flows directly into your operations. Point your domain and go.
+              When a donor gives on your website, it hits your CRM. When a supporter signs up, they enter your funnel. When a volunteer registers, they get scheduled. Every action flows directly into your operations — no integrations, no copy-paste, no data lost.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* 4 layout variant previews */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
             {[
-              "Hero section with candidate photo",
-              "Platform & issues with details",
-              "Endorsements from organizations",
-              "Stripe-powered donations",
-              "Volunteer signup → CRM",
-              "Lawn sign requests → tasks",
-              "Event calendar with RSVP",
-              "Interactive ward boundary map",
-              "Live Q&A from constituents",
-              "Custom domain (votegeorge.ca)",
-              "6 themes · 5 font pairs",
-              "SEO + social sharing meta",
-            ].map((f) => (
-              <div key={f} className="flex items-start gap-2 py-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-300">{f}</span>
+              {
+                name: "Professional",
+                desc: "Portrait left, copy right. Clean authority.",
+                bg: "from-blue-900 to-blue-950",
+                accent: "#3B82F6",
+                preview: (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="w-10 h-12 rounded-lg bg-blue-400/30 shrink-0" />
+                      <div className="space-y-1 flex-1">
+                        <div className="h-2.5 rounded bg-white/60 w-3/4" />
+                        <div className="h-1.5 rounded bg-white/30 w-full" />
+                        <div className="h-1.5 rounded bg-white/30 w-2/3" />
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <div className="h-5 rounded flex-1 bg-blue-500/70 flex items-center justify-center"><span className="text-[7px] text-white font-bold">Support</span></div>
+                      <div className="h-5 rounded flex-1 bg-green-500/70 flex items-center justify-center"><span className="text-[7px] text-white font-bold">Donate</span></div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                name: "Modern",
+                desc: "Centered circle photo, frosted CTA bar.",
+                bg: "from-slate-700 to-slate-900",
+                accent: "#10B981",
+                preview: (
+                  <div className="space-y-2 text-center">
+                    <div className="w-10 h-10 rounded-full bg-emerald-400/30 mx-auto" />
+                    <div className="h-2 rounded bg-white/60 w-2/3 mx-auto" />
+                    <div className="h-1.5 rounded bg-white/30 w-full" />
+                    <div className="h-5 rounded bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center"><span className="text-[7px] text-white">JOIN THE MOVEMENT</span></div>
+                  </div>
+                ),
+              },
+              {
+                name: "Bold",
+                desc: "Massive split typography. Photo fills the frame.",
+                bg: "from-red-900 to-red-950",
+                accent: "#EF4444",
+                preview: (
+                  <div className="space-y-1">
+                    <div className="text-[18px] font-black text-white/80 leading-none">VOTE</div>
+                    <div className="flex gap-1 items-center">
+                      <div className="h-6 w-6 rounded bg-red-400/30 shrink-0" />
+                      <div className="text-[18px] font-black text-white leading-none">GEORGE</div>
+                    </div>
+                    <div className="h-1.5 rounded bg-white/30 w-3/4" />
+                    <div className="h-4 rounded bg-red-500/70 w-1/2 mt-1" />
+                  </div>
+                ),
+              },
+              {
+                name: "Minimal",
+                desc: "Serif type, light background, editorial feel.",
+                bg: "from-stone-700 to-stone-900",
+                accent: "#A78BFA",
+                preview: (
+                  <div className="space-y-2 bg-stone-100/10 rounded p-2">
+                    <div className="h-2.5 rounded bg-white/70 w-2/3" style={{ fontFamily: "serif" }} />
+                    <div className="h-1.5 rounded bg-white/40 w-full" />
+                    <div className="h-1.5 rounded bg-white/40 w-4/5" />
+                    <div className="flex justify-end">
+                      <div className="h-4 w-14 rounded-full border border-white/30 flex items-center justify-center"><span className="text-[7px] text-white/70">Learn more</span></div>
+                    </div>
+                  </div>
+                ),
+              },
+            ].map((layout) => (
+              <div key={layout.name} className={`rounded-xl bg-gradient-to-b ${layout.bg} p-4 border border-white/10`}>
+                <div className="mb-3 h-[90px] flex items-center">
+                  {layout.preview}
+                </div>
+                <p className="font-bold text-sm text-white">{layout.name}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{layout.desc}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-3">
+          {/* Feature list */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 mb-10 max-w-4xl">
+            {[
+              ["Full-bleed hero with candidate photo", "blue"],
+              ["Platform & issues — as deep as you want", "blue"],
+              ["Endorsements with photos and quotes", "blue"],
+              ["Stripe-powered donations — you keep 97%+", "green"],
+              ["Volunteer signup flows into your CRM", "green"],
+              ["Lawn sign requests create tasks automatically", "green"],
+              ["Event calendar with RSVP + reminders", "green"],
+              ["Interactive ward boundary map", "green"],
+              ["Custom domain — votegeorge.ca", "amber"],
+              ["Live polls your voters can answer", "amber"],
+              ["Google Analytics + Meta Pixel built in", "amber"],
+              ["4 layouts · 6 themes · live preview", "amber"],
+            ].map(([f, c]) => (
+              <div key={f as string} className="flex items-start gap-2">
+                <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${c === "blue" ? "text-blue-400" : c === "green" ? "text-emerald-400" : "text-amber-400"}`} />
+                <span className="text-sm text-slate-300">{f as string}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
             <Link href="/candidates/demo-campaign-2026" target="_blank" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors">
               <Globe className="w-4 h-4" /> See a Live Campaign Website <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
             <Link href="/demo" className="inline-flex items-center gap-2 h-11 px-6 rounded-xl border border-white/15 text-white font-bold text-sm hover:bg-white/5 transition-colors">
-              <Eye className="w-4 h-4" /> See the Website Builder
+              <Eye className="w-4 h-4" /> Try the Website Builder
             </Link>
           </div>
         </div>
