@@ -113,6 +113,10 @@ export async function GET(req: NextRequest) {
   if (pollNumber) where.municipalPoll = pollNumber;
   if (streets.length) where.streetName = { in: streets };
 
+  // Filtered calls (ward/poll selected) return all matching contacts — no cap.
+  // Unfiltered calls (map-dot load) cap at 2000 to avoid returning entire db.
+  const hasFilters = !!(ward || pollNumber || streets.length);
+
   const contacts = await prisma.contact.findMany({
     where,
     select: {
@@ -130,7 +134,7 @@ export async function GET(req: NextRequest) {
       household: { select: { lat: true, lng: true } },
     },
     orderBy: [{ streetName: "asc" }, { streetNumber: "asc" }],
-    take: 500,
+    ...(hasFilters ? {} : { take: 2000 }),
   });
 
   // Apply odd/even filter
@@ -166,6 +170,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     contacts: filtered,
     total: filtered.length,
+    truncated: !hasFilters && contacts.length === 2000,
     wards: distinctWards.map((w) => w.ward).filter(Boolean),
     polls: distinctPolls.map((p) => p.municipalPoll).filter(Boolean),
     streets: distinctStreets.map((s) => s.streetName).filter(Boolean),

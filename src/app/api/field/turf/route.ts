@@ -87,10 +87,20 @@ export async function POST(req: NextRequest) {
   const validContacts = contactIds.length
     ? await prisma.contact.findMany({
         where: { id: { in: contactIds }, campaignId: body.campaignId, deletedAt: null },
-        select: { id: true },
+        select: { id: true, streetName: true, streetNumber: true },
       })
     : [];
-  const validIds = validContacts.map((c) => c.id);
+
+  // Sort by street name then parsed street number so canvassers walk in door order
+  const sortedContacts = [...validContacts].sort((a, b) => {
+    const nameA = a.streetName ?? "";
+    const nameB = b.streetName ?? "";
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+    const numA = parseInt(a.streetNumber ?? "0") || 0;
+    const numB = parseInt(b.streetNumber ?? "0") || 0;
+    return numA - numB;
+  });
+  const validIds = sortedContacts.map((c) => c.id);
 
   // Determine initial status
   let initialStatus: TurfStatus = TurfStatus.draft;

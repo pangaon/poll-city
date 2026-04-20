@@ -155,8 +155,37 @@ function CreateDrawer({
   const [mapPreviewing, setMapPreviewing] = useState(false);
   const [mapContactsLoaded, setMapContactsLoaded] = useState(false);
 
-  const distinctWards = Array.from(new Set(density.map((d) => d.ward).filter(Boolean) as string[]));
+  // ── Load ward/poll options from API on mount (density prop may be empty) ──
+  const [apiWards, setApiWards] = useState<string[]>([]);
+  const [apiPolls, setApiPolls] = useState<string[]>([]);
+  const [apiStreets, setApiStreets] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/turf/preview?campaignId=${campaignId}`)
+      .then((r) => r.json())
+      .then((json: { wards?: string[]; polls?: string[]; streets?: string[] }) => {
+        setApiWards(json.wards ?? []);
+        setApiPolls(json.polls ?? []);
+        setApiStreets(json.streets ?? []);
+      })
+      .catch(() => {});
+  }, [campaignId]);
+
+  const distinctWards = Array.from(
+    new Set([
+      ...density.map((d) => d.ward).filter(Boolean) as string[],
+      ...apiWards,
+    ])
+  ).sort();
+
   const pollsForWard = ward ? density.filter((d) => d.ward === ward) : density;
+  // Merge density polls + API polls so dropdown works even when density is empty
+  const densityPollValues = new Set(pollsForWard.map((d) => d.poll));
+  const extraApiPolls = apiPolls.filter((p) => !densityPollValues.has(p));
+  const allPollsForWard = [
+    ...pollsForWard,
+    ...extraApiPolls.map((p) => ({ poll: p, ward: null as string | null, contactCount: 0 })),
+  ];
 
   // ── Load all geocoded contacts for the map (once, when map mode is activated)
   useEffect(() => {
@@ -373,9 +402,9 @@ function CreateDrawer({
             <FormField label="Poll Number">
               <Select value={pollNumber} onChange={(e) => { setPollNumber(e.target.value); setPreviewCount(null); }}>
                 <option value="">— Any poll —</option>
-                {pollsForWard.map((d) => (
+                {allPollsForWard.map((d) => (
                   <option key={d.poll} value={d.poll}>
-                    Poll {d.poll} ({d.contactCount} contacts)
+                    Poll {d.poll}{d.contactCount > 0 ? ` (${d.contactCount} contacts)` : ""}
                   </option>
                 ))}
               </Select>
@@ -412,10 +441,18 @@ function CreateDrawer({
         {/* ── Draw on Map mode ── */}
         {mode === "map" && (
           <>
-            <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700">
-              Click on the map to add vertices. Draw at least 3 points to define your turf boundary.
-              Contacts with geocoded addresses will appear as coloured dots.
-            </div>
+            {mapContactsLoaded && mapContacts.length === 0 ? (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+                <p className="font-semibold mb-0.5">No geocoded contacts found</p>
+                <p>Map mode requires addresses with GPS coordinates. Your contacts have not been geocoded yet.</p>
+                <p className="mt-1">Use <strong>By Poll / Ward</strong> mode to cut turf from your contact list.</p>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700">
+                Click on the map to add vertices. Draw at least 3 points to define your turf boundary.
+                Contacts with geocoded addresses will appear as coloured dots.
+              </div>
+            )}
 
             <TurfDrawMap
               contacts={mapContacts}

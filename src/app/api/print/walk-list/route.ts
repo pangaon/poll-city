@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const contacts = await prisma.contact.findMany({
+  const rawContacts = await prisma.contact.findMany({
     where,
     select: {
       id: true,
@@ -106,8 +106,20 @@ export async function GET(req: NextRequest) {
       notes: true,
       signRequested: true,
       signPlaced: true,
+      streetNumber: true,
+      streetName: true,
     },
-    orderBy: [{ address1: "asc" }, { lastName: "asc" }],
+  });
+
+  // Sort by street name then parsed street number (12 Oak before 100 Oak before 20 Oak)
+  const contacts = [...rawContacts].sort((a, b) => {
+    const nameA = a.streetName ?? a.address1 ?? "";
+    const nameB = b.streetName ?? b.address1 ?? "";
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+    const numA = parseInt(a.streetNumber ?? "0") || 0;
+    const numB = parseInt(b.streetNumber ?? "0") || 0;
+    if (numA !== numB) return numA - numB;
+    return (a.lastName ?? "").localeCompare(b.lastName ?? "");
   });
 
   const data = contacts.map((c) => ({
