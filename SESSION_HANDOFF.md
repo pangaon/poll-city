@@ -88,7 +88,54 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 - **`src/app/(app)/field/turf/turf-client.tsx`** — Loads ward boundary from `/api/geodata/ward-boundary`, passes to `<TurfDrawMap>`. Real-time contact count badge when polygon has ≥3 vertices (green pill: "X contacts in this turf").
 - **`src/app/onboarding/onboarding-wizard.tsx`** — Launch step now shows candidate's ward on the map (dynamic import, `wardGeoJSON` loaded when `currentStep === "launch"`). Shows "Your campaign territory" card with jurisdiction label.
 
-**Build:** GREEN — `npm run push:safe` exit 0. 178/178 tests pass. Zero Leaflet imports in `src/`.
+**Build:** GREEN — `npm run push:safe` exit 0. Zero Leaflet imports in `src/`.
+
+---
+
+## LAST SESSION (2026-04-20 — Intelligence controls + Platform Readiness pre-flight)
+
+**Goal set at session start:** Launch production-ready campaign onboarding in 48 hours. Onboard first real Whitby candidate manually.
+
+**What shipped (commits 24e8bf8, f7d096a, 724a0d2, 402946b, fe0bbad + hook-generated):**
+
+**Commit 24e8bf8 (feat(ops): wire officialId into provision form + API):**
+- `/api/ops/provision/route.ts` — accepts `officialId?: string`, validates official exists, sets `Campaign.officialId`, marks `Official.isClaimed = true`, logs to ActivityLog.
+- `src/app/(app)/ops/clients/clients-ops-client.tsx` — officialId field added to provision form (text input, optional, accepts Official record ID).
+- P1 gap DONE: George can now concierge-onboard a candidate and link their campaign to their PCS social profile in one step.
+
+**Commit f7d096a (feat(intel): founder intelligence controls + campaign tier gate):**
+- **Schema** — `intelligenceEnabled Boolean @default(false)` added to Campaign model. Run `npx prisma db push` to sync to Railway.
+- **`POST /api/platform/data-ops/run`** — SUPER_ADMIN only. Triggers a live connector for any dataset slug. Currently wired: `toronto-ward-boundaries`, `toronto-election-results`.
+- **`POST /api/platform/data-ops/enrich`** — SUPER_ADMIN only. Checks what ingested datasets match a campaign's jurisdiction (via `dataSource.jurisdictionName`). Logs to ActivityLog.
+- **`PATCH /api/platform/clients/[campaignId]`** — SUPER_ADMIN only. Toggles `intelligenceEnabled`. Logs `intelligence_enabled` / `intelligence_disabled` action.
+- **`src/app/(app)/ops/ops-client.tsx` DataOpsTab** — "Run Now" button per dataset row with live green/red feedback.
+- **`src/app/(app)/ops/ops-client.tsx` CustomersTab** — Per-campaign intelligence toggle switch + "Enrich" button with result display. SUPER_ADMIN-only banner.
+- **`src/app/(app)/analytics/analytics-client.tsx`** — `intelligenceEnabled` prop added; Historical tab gated behind flag (locked state with upgrade CTA for non-intelligence campaigns).
+- **`src/app/(app)/analytics/page.tsx`** — Fetches `intelligenceEnabled` from DB, passes to client.
+
+**Commits 724a0d2–fe0bbad (readiness pre-flight + geocoding docs):**
+- **`GET /api/platform/readiness`** — SUPER_ADMIN only. Checks 12 platform criteria: auth secret, app URL, DB connection, schema baseline, Adoni AI, email (Resend), Stripe, geocoding (Google Maps), SMS (Twilio), cron jobs, DB encryption, active campaigns + geocoding data. Returns OK/warn/error for each with exact George action.
+- **`src/app/(app)/ops/ops-client.tsx`** — New "Readiness" tab (second tab, after Platform). Shows pre-flight checklist with overall status banner + per-check detail + inline action instructions. Re-check button.
+- **`.env.example`** — `GOOGLE_MAPS_API_KEY` added with setup instructions.
+- **`GEORGE_TODO.md`** — Items 78–79: step-by-step Google Maps API key setup + Vercel env var instructions. Cost reference included ($5/1000 after free 40k/month).
+- **`WORK_QUEUE.md`** — officialId task marked DONE. Voter file import/geocoding gap updated with accurate status.
+
+**3-click path (Readiness):**
+George: /ops → Readiness tab → sees all 12 checks with inline action steps for any that fail.
+
+**What's live on Vercel:** Build GREEN. All changes on origin/main.
+
+**George's immediate actions to unblock first client:**
+1. `/ops → Readiness tab` — run it, see what's red/amber
+2. Add env vars listed as errors (Resend, NEXTAUTH_SECRET if missing)
+3. Run `npx prisma db push` — intelligenceEnabled column not yet on Railway
+4. Add `GOOGLE_MAPS_API_KEY` (GEORGE_TODO items 78-79) before importing voter file
+
+**Known gaps before first real client can go live:**
+- `npx prisma db push` must be run (intelligenceEnabled column not on Railway yet)
+- Resend API key must be set (invites and emails won't send without it)
+- ANTHROPIC_API_KEY for Adoni in production
+- Geocoding: Nominatim fallback works for demo, Google Maps needed for 15k+ voter file
 
 **3-click paths (maps):**
 - Campaign manager: Dashboard → Field Ops → Turf map (MapLibre, ward boundary overlaid)
