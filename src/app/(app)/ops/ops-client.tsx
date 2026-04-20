@@ -67,6 +67,8 @@ interface Campaign {
   mrr: number;
   active: boolean;
   createdAt: string;
+  intelligenceEnabled: boolean;
+  jurisdiction?: string | null;
 }
 
 interface DemoToken {
@@ -336,6 +338,8 @@ export default function OpsClient() {
           mrr: 0,
           active: c.isActive,
           createdAt: c.createdAt,
+          intelligenceEnabled: (c as RecentCampaign & { intelligenceEnabled?: boolean }).intelligenceEnabled ?? false,
+          jurisdiction: (c as RecentCampaign & { jurisdiction?: string | null }).jurisdiction ?? null,
         }));
         setCampaigns(campaignList);
       }
@@ -1339,6 +1343,38 @@ function CustomersTab({
   campaigns: Campaign[];
   totalMrr: number;
 }) {
+  const [intelStates, setIntelStates] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(campaigns.map((c) => [c.id, c.intelligenceEnabled]))
+  );
+  const [enriching, setEnriching] = useState<Record<string, boolean>>({});
+  const [enrichResults, setEnrichResults] = useState<Record<string, string>>({});
+
+  async function toggleIntel(campaignId: string, enabled: boolean) {
+    setIntelStates((prev) => ({ ...prev, [campaignId]: enabled }));
+    const res = await fetch(`/api/platform/clients/${campaignId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intelligenceEnabled: enabled }),
+    });
+    if (!res.ok) setIntelStates((prev) => ({ ...prev, [campaignId]: !enabled }));
+  }
+
+  async function enrichCampaign(campaignId: string) {
+    setEnriching((prev) => ({ ...prev, [campaignId]: true }));
+    setEnrichResults((prev) => ({ ...prev, [campaignId]: "" }));
+    const res = await fetch("/api/platform/data-ops/enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId }),
+    });
+    const data = await res.json() as { data?: { message: string }; error?: string };
+    setEnrichResults((prev) => ({
+      ...prev,
+      [campaignId]: data.data?.message ?? data.error ?? "Done",
+    }));
+    setEnriching((prev) => ({ ...prev, [campaignId]: false }));
+  }
+
   return (
     <div className="space-y-4">
       {/* MRR banner */}
@@ -1356,22 +1392,21 @@ function CustomersTab({
 
       {/* Campaigns table */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+          <Zap className="w-4 h-4" style={{ color: AMBER }} />
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Intelligence Controls</span>
+          <span className="text-xs text-gray-400 ml-1">— Super Admin only. Campaigns cannot see or change these.</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left">
               <tr>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Campaign
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Tier
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  MRR
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                  Status
-                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Campaign</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ward</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tier</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Intelligence</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Enrich</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -1383,37 +1418,55 @@ function CustomersTab({
                       <span className="font-medium text-gray-900">{c.name}</span>
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{c.jurisdiction ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "text-xs font-bold px-2 py-0.5 rounded-full",
-                        TIER_STYLES[c.tier] ?? "bg-gray-100 text-gray-600",
-                      )}
-                    >
+                    <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", TIER_STYLES[c.tier] ?? "bg-gray-100 text-gray-600")}>
                       {c.tier}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    ${c.mrr}
-                  </td>
                   <td className="px-4 py-3">
                     {c.active ? (
-                      <span
-                        className="inline-flex items-center gap-1 text-xs font-medium"
-                        style={{ color: GREEN }}
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: GREEN }}
-                        />{" "}
-                        Active
+                      <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: GREEN }}>
+                        <span className="w-2 h-2 rounded-full" style={{ background: GREEN }} /> Active
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
-                        <span className="w-2 h-2 rounded-full bg-gray-300" />{" "}
-                        Inactive
+                        <span className="w-2 h-2 rounded-full bg-gray-300" /> Inactive
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => void toggleIntel(c.id, !intelStates[c.id])}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                        intelStates[c.id] ? "bg-emerald-500" : "bg-gray-200"
+                      )}
+                      title={intelStates[c.id] ? "Intelligence ON — click to disable" : "Intelligence OFF — click to enable"}
+                    >
+                      <span className={cn(
+                        "inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform",
+                        intelStates[c.id] ? "translate-x-4" : "translate-x-0.5"
+                      )} />
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => void enrichCampaign(c.id)}
+                        disabled={enriching[c.id]}
+                        className="text-xs px-2 py-1 rounded-lg font-medium text-white disabled:opacity-50"
+                        style={{ background: NAVY }}
+                        title="Pull ward boundary + election data for this campaign's jurisdiction"
+                      >
+                        {enriching[c.id] ? "..." : "Enrich"}
+                      </button>
+                      {enrichResults[c.id] && (
+                        <span className="text-xs text-gray-500 max-w-[160px] truncate" title={enrichResults[c.id]}>
+                          {enrichResults[c.id]}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1688,6 +1741,28 @@ function DataOpsTab({
   seeding: boolean;
   onRefresh: () => void;
 }) {
+  const [running, setRunning] = useState<Record<string, boolean>>({});
+  const [runResults, setRunResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+
+  async function runNow(datasetSlug: string) {
+    setRunning((prev) => ({ ...prev, [datasetSlug]: true }));
+    setRunResults((prev) => ({ ...prev, [datasetSlug]: { ok: true, msg: "Running..." } }));
+    const res = await fetch("/api/platform/data-ops/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ datasetSlug }),
+    });
+    const body = await res.json() as { data?: { recordsInserted?: number; recordsUpdated?: number; status?: string }; error?: string };
+    if (res.ok && body.data) {
+      const { recordsInserted = 0, recordsUpdated = 0, status } = body.data;
+      setRunResults((prev) => ({ ...prev, [datasetSlug]: { ok: true, msg: `${status} — ${recordsInserted} inserted, ${recordsUpdated} updated` } }));
+    } else {
+      setRunResults((prev) => ({ ...prev, [datasetSlug]: { ok: false, msg: body.error ?? "Failed" } }));
+    }
+    setRunning((prev) => ({ ...prev, [datasetSlug]: false }));
+    onRefresh();
+  }
+
   if (loading) {
     return (
       <div className='space-y-3'>
@@ -1760,7 +1835,7 @@ function DataOpsTab({
                   <div className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: statusColor(d.status) }} />
                   <div className='flex-1 min-w-0'>
                     <p className='text-sm font-medium text-gray-900 truncate'>{d.name}</p>
-                    <p className='text-xs text-gray-400'>{d.source.name} � {d.category}</p>
+                    <p className='text-xs text-gray-400'>{d.source.name} · {d.category}</p>
                   </div>
                   <div className='text-right text-xs text-gray-400 flex-shrink-0'>
                     {d.lastIngestedAt ? new Date(d.lastIngestedAt).toLocaleDateString('en-CA') : <span className='text-amber-500'>never run</span>}
@@ -1775,6 +1850,24 @@ function DataOpsTab({
                        <Play className='w-4 h-4 text-gray-400' />}
                     </div>
                   )}
+                  <div className='flex items-center gap-2 flex-shrink-0'>
+                    {runResults[d.slug] && (
+                      <span className={cn('text-xs', runResults[d.slug].ok ? 'text-emerald-600' : 'text-red-500')}
+                        title={runResults[d.slug].msg}>
+                        {runResults[d.slug].ok ? '✓' : '✗'}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => void runNow(d.slug)}
+                      disabled={running[d.slug]}
+                      className='flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-white disabled:opacity-50'
+                      style={{ background: running[d.slug] ? '#9ca3af' : NAVY }}
+                      title={`Run ${d.name} now`}
+                    >
+                      <Play className='w-3 h-3' />
+                      {running[d.slug] ? 'Running...' : 'Run'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

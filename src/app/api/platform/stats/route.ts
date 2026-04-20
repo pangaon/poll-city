@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
         slug: true,
         isActive: true,
         createdAt: true,
+        intelligenceEnabled: true,
+        jurisdiction: true,
         _count: {
           select: { memberships: true },
         },

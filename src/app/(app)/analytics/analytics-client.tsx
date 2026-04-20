@@ -71,6 +71,7 @@ type TabKey =
 interface Props {
   campaignId: string;
   userName?: string;
+  intelligenceEnabled?: boolean;
 }
 
 interface HeatRow {
@@ -310,7 +311,7 @@ function EmptyChart({ message }: { message: string }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
-export default function AnalyticsClient({ campaignId, userName }: Props) {
+export default function AnalyticsClient({ campaignId, userName, intelligenceEnabled = false }: Props) {
   const [tab, setTab] = useState<TabKey>("campaign");
   const [year, setYear] = useState("2022");
   const [province] = useState("ON");
@@ -1078,7 +1079,21 @@ export default function AnalyticsClient({ campaignId, userName }: Props) {
             )}
 
             {/* ═══ TAB 8: Historical Election Results ════════════════════ */}
-            {tab === "historical" && (
+            {tab === "historical" && !intelligenceEnabled && (
+              <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50 p-10 text-center">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-8a4 4 0 100 8 4 4 0 000-8z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Intelligence tier required</h3>
+                <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                  Historical election results, GIS boundary overlays, and demographic data are part of the Intelligence tier.
+                  Contact your Poll City account manager to unlock.
+                </p>
+              </div>
+            )}
+            {tab === "historical" && intelligenceEnabled && (
               <div className="grid gap-4 md:grid-cols-2">
                 <ChartPanel title={`Top 10 Municipalities by Votes (${year})`} className="md:col-span-2">
                   {data.topRows.length > 0 ? (
