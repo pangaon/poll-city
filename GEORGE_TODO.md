@@ -690,6 +690,28 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-18*
+## 🗺️ Geocoding — Required Before First Voter File Import at Scale
+
+The geocoding infrastructure is built. Smart import auto-triggers a 500-household pass after upload. Hourly cron handles the rest. Without a Google Maps API key, it falls back to Nominatim (1 req/sec — too slow for 10,000+ households).
+
+- [ ] **78. Get Google Maps Geocoding API key**
+  1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+  2. Create a project or use an existing one
+  3. Go to **APIs & Services → Library → Geocoding API → Enable**
+  4. Go to **APIs & Services → Credentials → Create Credentials → API Key**
+  5. Restrict the key: under "API restrictions", select "Geocoding API" only
+  6. Copy the key (starts with `AIza...`)
+
+- [ ] **79. Add `GOOGLE_MAPS_API_KEY` to Vercel**
+  1. Go to vercel.com → your Poll City project → **Settings → Environment Variables**
+  2. Add: `GOOGLE_MAPS_API_KEY` = your key from step 78
+  3. Apply to: **Production + Preview + Development**
+  4. Click Save — no redeploy needed, cron and API routes pick it up automatically
+
+**Cost reference:** Google Maps Geocoding = $5 USD per 1,000 requests after the free 40k/month. A 15,000-voter ward file = ~$37.50 (one-time). The free tier covers demo campaigns.
+
+---
+
+*This file is maintained by AI sessions. Last updated: 2026-04-20*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*
