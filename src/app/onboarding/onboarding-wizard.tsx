@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import {
   CheckCircle2, Users, CreditCard, Rocket, Upload,
-  ArrowRight, ExternalLink, Loader2, Check, MessageSquare,
+  ArrowRight, ExternalLink, Loader2, Check, MessageSquare, MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -135,6 +138,17 @@ export default function OnboardingWizard({
   const [stripeOnboarded] = useState(initialStripeOnboarded);
   const [completing, setCompleting] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [wardGeoJSON, setWardGeoJSON] = useState<GeoJSON.Feature | GeoJSON.FeatureCollection | null>(null);
+
+  useEffect(() => {
+    if (currentStep !== "launch" || wardGeoJSON) return;
+    fetch(`/api/geodata/ward-boundary?campaignId=${encodeURIComponent(campaignId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { data?: GeoJSON.Feature | GeoJSON.FeatureCollection } | null) => {
+        if (d?.data) setWardGeoJSON(d.data);
+      })
+      .catch(() => null);
+  }, [currentStep, campaignId, wardGeoJSON]);
 
   const stepsDone: Record<StepId, boolean> = {
     contacts: contactCount > 0,
@@ -523,6 +537,29 @@ export default function OnboardingWizard({
                 Here&apos;s where you stand. You can complete anything you skipped at any time.
               </p>
             </div>
+
+            {/* Ward map — your campaign territory */}
+            {wardGeoJSON ? (
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#1D9E75]" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Your campaign territory</p>
+                    {jurisdiction && (
+                      <p className="text-xs text-slate-500">{jurisdiction}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="h-56">
+                  <PollCityMap
+                    mode="public"
+                    wardGeoJSON={wardGeoJSON}
+                    height="100%"
+                    campaignId={campaignId}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
               <LaunchItem

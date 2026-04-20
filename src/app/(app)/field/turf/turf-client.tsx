@@ -154,6 +154,7 @@ function CreateDrawer({
   const [mapPreviewCount, setMapPreviewCount] = useState<number | null>(null);
   const [mapPreviewing, setMapPreviewing] = useState(false);
   const [mapContactsLoaded, setMapContactsLoaded] = useState(false);
+  const [wardGeoJSON, setWardGeoJSON] = useState<GeoJSON.Feature | GeoJSON.FeatureCollection | null>(null);
 
   // ── Load ward/poll options from API on mount (density prop may be empty) ──
   const [apiWards, setApiWards] = useState<string[]>([]);
@@ -186,6 +187,17 @@ function CreateDrawer({
     ...pollsForWard,
     ...extraApiPolls.map((p) => ({ poll: p, ward: null as string | null, contactCount: 0 })),
   ];
+
+  // ── Load ward boundary once when map mode is activated ───────────────────
+  useEffect(() => {
+    if (mode !== "map" || wardGeoJSON) return;
+    fetch(`/api/geodata/ward-boundary?campaignId=${encodeURIComponent(campaignId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { data?: GeoJSON.Feature | GeoJSON.FeatureCollection } | null) => {
+        if (d?.data) setWardGeoJSON(d.data);
+      })
+      .catch(() => null);
+  }, [mode, campaignId, wardGeoJSON]);
 
   // ── Load all geocoded contacts for the map (once, when map mode is activated)
   useEffect(() => {
@@ -454,10 +466,21 @@ function CreateDrawer({
               </div>
             )}
 
+            {/* Real-time contact count badge */}
+            {vertices.length >= 3 && mapPreviewCount !== null && (
+              <div className="flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 text-white text-sm font-semibold px-4 py-1.5 shadow">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {mapPreviewCount} contacts in this turf
+                </span>
+              </div>
+            )}
+
             <TurfDrawMap
               contacts={mapContacts}
               vertices={vertices}
               onAddVertex={handleAddVertex}
+              wardGeoJSON={wardGeoJSON}
             />
 
             {/* Vertex controls */}
