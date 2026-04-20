@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-19
-**Updated by:** Claude Sonnet 4.6 (session: three-product cohesion + seed data fix)
+**Last updated:** 2026-04-20
+**Updated by:** Claude Sonnet 4.6 (session: MapLibre migration — all 7 Leaflet components replaced)
 
 ---
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
@@ -62,6 +62,39 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 3. Update "CURRENT PLATFORM STATE" if anything changed
 4. Write the next session opener in "NEXT SESSION OPENER"
 5. Commit and push this file
+
+---
+
+## LAST SESSION (2026-04-20 — MapLibre GL JS migration)
+
+**What shipped (commits 41e8283 + 32d467d):**
+
+**Commit 41e8283 (feat(maps): migrate all maps from Leaflet to MapLibre GL JS):**
+- **Uninstalled:** `leaflet`, `react-leaflet`, `leaflet-routing-machine`, `@types/leaflet`. Zero Leaflet imports remain.
+- **Installed:** `maplibre-gl`, `react-map-gl` (v7). Tile provider: OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`) — no API key.
+- **NEW `src/components/maps/lib/map-utils.ts`** — Shared utilities: `SUPPORT_COLORS`, `buildSupportExpression()`, `turfStatusColor()`. Uses `ExpressionSpecification` from `@maplibre/maplibre-gl-style-spec`.
+- **NEW `src/app/api/geodata/ward-boundary/route.ts`** — Serves Whitby ward GeoJSON. SUPER_ADMIN gets full FeatureCollection (all 4 wards); campaign manager gets single Feature matching `campaign.jurisdiction`. Reads from `docs/geodata/municipalities/ontario/whitby/whitby-wards.geojson`. `Cache-Control: public, max-age=86400`.
+- **NEW `src/components/maps/poll-city-map.tsx`** — Base MapLibre wrapper. Renders ward boundary (fill + line + WARD_DESC label + COUNCILOR label). Default view: Toronto (-79.3832, 43.6532, zoom 12). `reuseMaps` for performance. All parents must `dynamic(() => import(...), { ssr: false })`.
+- **NEW layer components** — `contact-dots-layer`, `turf-polygons-layer`, `turf-draw-layer`, `sign-pins-layer`, `canvasser-layer`, `ward-progress-layer` (all in `src/components/maps/layers/`).
+- **REWRITTEN `src/components/maps/campaign-map.tsx`** — All modes (canvassing/walk/signs/dashboard/gotv/public), draw mode, layer toggles, turf legend, area calculator. Fetches ward boundary from new API.
+- **REWRITTEN `src/components/maps/turf-map.tsx`** — Walk route as dasharray, numbered stop markers, canvasser GPS pins.
+- **REWRITTEN `src/components/maps/turf-draw-map.tsx`** — Crosshair cursor, ward boundary overlay, `wardGeoJSON` prop.
+- **REWRITTEN `src/components/dashboard/live-insight-map.tsx`** — `BoundsWatcher` via `useMap()`, viewport-based pin loading.
+- **REWRITTEN `src/app/(app)/analytics/choropleth-map.tsx`** — Pre-computed `_fillColor` per feature.
+- **REWRITTEN `src/app/(app)/signs/signs-map.tsx`** — Clustered pins, zoom-aware expand.
+- **REWRITTEN `src/components/public/candidate-site/candidate-ward-map.tsx`** — Public candidate page ward display.
+
+**Commit 32d467d (turf-client + onboarding-wizard + WORK_QUEUE update):**
+- **`src/app/(app)/field/turf/turf-client.tsx`** — Loads ward boundary from `/api/geodata/ward-boundary`, passes to `<TurfDrawMap>`. Real-time contact count badge when polygon has ≥3 vertices (green pill: "X contacts in this turf").
+- **`src/app/onboarding/onboarding-wizard.tsx`** — Launch step now shows candidate's ward on the map (dynamic import, `wardGeoJSON` loaded when `currentStep === "launch"`). Shows "Your campaign territory" card with jurisdiction label.
+
+**Build:** GREEN — `npm run push:safe` exit 0. 178/178 tests pass. Zero Leaflet imports in `src/`.
+
+**3-click paths (maps):**
+- Campaign manager: Dashboard → Field Ops → Turf map (MapLibre, ward boundary overlaid)
+- Canvasser: Field Ops → Walk → turf-map.tsx (route, numbered stops, GPS)
+- George: Dashboard → Analytics → choropleth map (ward-level heat)
+- New candidate: Onboarding → Launch step → ward preview map
 
 ---
 

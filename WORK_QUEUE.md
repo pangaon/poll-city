@@ -124,7 +124,7 @@ This is the business model. Every gap below undermines the conversion funnel.
 
 | Task | Status | What a user can do TODAY | What's missing |
 |---|---|---|---|
-| Geographic maps (CNN-level) | DONE — commit pending push | MapLibre GL JS migration complete. All 7 Leaflet components replaced. Ward boundaries, turf draw with live contact count, heatmaps, canvasser tracking, choropleth, signs map. |
+| Geographic maps (CNN-level) | DONE — commits 41e8283 + 32d467d | MapLibre GL JS migration complete. All 7 Leaflet components replaced. Ward boundaries, turf draw with live contact count, heatmaps, canvasser tracking, choropleth, signs map. |
 | Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
 | `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
 | `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
