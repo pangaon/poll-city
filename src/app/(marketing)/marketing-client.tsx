@@ -56,7 +56,7 @@ function Navbar() {
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/50" : "bg-transparent"}`}>
+    <nav className={`w-full transition-all duration-200 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/50" : "bg-transparent"}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
@@ -126,13 +126,15 @@ function Navbar() {
 export default function MarketingClient() {
   return (
     <div className="min-h-screen bg-white">
-      <ElectionCountdown />
-      <Navbar />
+      <div className="sticky top-0 z-50">
+        <ElectionCountdown />
+        <Navbar />
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════
          1. OPENING — The Hook
          ══════════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden pt-16" style={{ background: "linear-gradient(145deg, #0B1120 0%, #162037 40%, #0B1120 100%)" }}>
+      <section className="relative overflow-hidden" style={{ background: "linear-gradient(145deg, #0B1120 0%, #162037 40%, #0B1120 100%)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 md:pt-28 md:pb-12 relative">
           <div className="max-w-3xl">
             <h1 className="text-[clamp(2.5rem,6vw,4.5rem)] font-black text-white leading-[1.05] tracking-tight">
