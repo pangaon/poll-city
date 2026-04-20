@@ -65,6 +65,32 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-20 — Turf cutting + chain audit)
+
+**What shipped (commits fc4f648 + 64aa67f):**
+
+**Commit fc4f648 (prior session):**
+- **middleware.ts** — `/signup` and `/accept-invite` added to PUBLIC_PATHS. Invited candidates were being redirected to `/login` and couldn't activate accounts.
+- **onboarding-wizard.tsx** — Removed broken CSV upload (was sending FormData to a JSON endpoint → always 400). Replaced with Smart Import Wizard link + "check my count" button.
+
+**Commit 64aa67f:**
+- **Preview API** (`/api/turf/preview/route.ts`) — Removed `take: 500` cap for filtered ward/poll queries. With 80k contacts, cut to Poll 14 now returns all 400 stops, not the first 500. Unfiltered map-dot calls still capped at 2000.
+- **Turf POST** (`/api/field/turf/route.ts`) — TurfStops now sorted by `streetName` + parsed `streetNumber` before order assignment. Canvassers walk 1 Oak → 3 Oak → 5 Oak, not random insertion order.
+- **Import** (`/api/import-export/route.ts`) — Aliases added: `poll/pollno/pollingdivision → municipalPoll`, `streetnumber/housenumber → streetNumber`, `streetname → streetName`. All three fields saved on contact create.
+- **Print walk list** (`/api/print/walk-list/route.ts`) — Street sort now uses parsed integer: 2, 10, 20 Oak (correct), not 10, 100, 2 (wrong string order).
+- **Turf client** (`turf-client.tsx`) — Ward/poll dropdowns now load from preview API on drawer open (fixes empty dropdowns when density data is missing). Map mode shows amber geocoding warning when no GPS contacts exist.
+
+**Chain audit done this session:**
+The full Social → Claim → Campaign chain was audited. Two P1 gaps identified and added to WORK_QUEUE:
+1. "Claim this profile" CTA routes to `/pricing` instead of `/signup?officialId={id}` — loses profile context
+2. `/ops/provision` doesn't accept `officialId` — George can't link campaigns to officials when onboarding concierge-style
+
+**Build:** GREEN — pushed via `npm run push:safe` (commit 64aa67f).
+
+**Working tree:** Clean.
+
+---
+
 ## LAST SESSION (2026-04-19 — DB cleanup: officials + campaign wipe)
 
 **What was done (no new code commits — DB operations only):**
