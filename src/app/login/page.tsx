@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validators";
@@ -162,8 +163,18 @@ export default function LoginPage() {
 
         </div>
 
+        {/* Sign up prompt */}
+        <div className="text-center mt-4">
+          <p className="text-sm text-blue-200">
+            New to Poll City?{" "}
+            <Link href="/signup" className="text-white font-semibold hover:underline">
+              Start your free trial →
+            </Link>
+          </p>
+        </div>
+
         {/* Legal links */}
-        <div className="text-center mt-6 flex items-center justify-center gap-4 text-xs text-blue-200">
+        <div className="text-center mt-4 flex items-center justify-center gap-4 text-xs text-blue-200">
           <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
           <span className="opacity-40">·</span>
           <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>

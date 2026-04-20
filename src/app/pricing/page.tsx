@@ -453,9 +453,8 @@ export default function PricingPage() {
               </button>
               <button onClick={() => setBillingMode("onetime")}
                 className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-colors ${billingMode === "onetime" ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                One-Time (Full Season)
+                One-Time (to Oct 27)
               </button>
-              {billingMode === "onetime" && <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">Save ~15%</span>}
             </div>
 
             {/* Plan Cards */}
@@ -488,7 +487,7 @@ export default function PricingPage() {
                       ))}
                     </ul>
 
-                    <Link href="/login" className={`block w-full text-center py-3 rounded-xl text-sm font-bold transition-colors ${
+                    <Link href="/signup" className={`block w-full text-center py-3 rounded-xl text-sm font-bold transition-colors ${
                       plan.popular ? "bg-blue-600 text-white hover:bg-blue-700 shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}>
                       Start 14-Day Free Trial
@@ -577,7 +576,7 @@ export default function PricingPage() {
           <h2 className="text-3xl font-black text-white">Ready to Win?</h2>
           <p className="mt-3 text-slate-400">14-day free trial. Campaign website included. No credit card.</p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/login" className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/25">
+            <Link href="/signup" className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/25">
               Start Your Campaign <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/candidates/demo-campaign-2026" target="_blank" className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/15 border border-white/10">

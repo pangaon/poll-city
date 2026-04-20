@@ -42,18 +42,18 @@ const DEMO_SHOWCASES = [
 ];
 
 const EXPLORE_AREAS = [
-  { icon: BarChart3, label: "Dashboard Studio", desc: "Custom widgets, live metrics, 6 modes", href: "/dashboard" },
-  { icon: Users, label: "Contacts CRM", desc: "Search, filter, tag, score voters", href: "/contacts" },
-  { icon: MapPin, label: "Canvassing", desc: "Turfs, walk lists, GPS routes, scripts", href: "/canvassing" },
-  { icon: Mail, label: "Communications", desc: "Email, SMS, inbox, templates", href: "/communications" },
-  { icon: Target, label: "GOTV Engine", desc: "Priority lists, vote tracking", href: "/gotv" },
-  { icon: DollarSign, label: "Donations & Budget", desc: "Track spending, log donations", href: "/donations" },
-  { icon: BookOpen, label: "Resource Studio", desc: "Templates, scripts, AI generator", href: "/resources" },
+  { icon: BarChart3, label: "Dashboard Studio", desc: "Custom widgets, live metrics, 6 modes", href: "/demo/candidate" },
+  { icon: Users, label: "Contacts CRM", desc: "Search, filter, tag, score voters", href: "/demo/candidate" },
+  { icon: MapPin, label: "Canvassing", desc: "Turfs, walk lists, GPS routes, scripts", href: "/demo/candidate" },
+  { icon: Mail, label: "Communications", desc: "Email, SMS, inbox, templates", href: "/demo/candidate" },
+  { icon: Target, label: "GOTV Engine", desc: "Priority lists, vote tracking", href: "/demo/candidate" },
+  { icon: DollarSign, label: "Donations & Budget", desc: "Track spending, log donations", href: "/demo/candidate" },
+  { icon: BookOpen, label: "Resource Studio", desc: "Templates, scripts, AI generator", href: "/demo/candidate" },
   { icon: Globe, label: "Campaign Website", desc: "Live public-facing candidate site", href: "/candidates/demo-campaign-2026" },
-  { icon: Settings, label: "Website Builder", desc: "Customize branding, layout, content", href: "/settings/public-page" },
-  { icon: Printer, label: "Print Marketplace", desc: "Signs, flyers, door hangers", href: "/print" },
-  { icon: Calendar, label: "Events & Calendar", desc: "Schedule, RSVP, team coordination", href: "/calendar" },
-  { icon: Bot, label: "AI Operator (Adoni)", desc: "Generate content, run queries", href: "/ai-assist" },
+  { icon: Settings, label: "Website Builder", desc: "Customize branding, layout, content", href: "/demo/candidate" },
+  { icon: Printer, label: "Print Marketplace", desc: "Signs, flyers, door hangers", href: "/demo/candidate" },
+  { icon: Calendar, label: "Events & Calendar", desc: "Schedule, RSVP, team coordination", href: "/demo/candidate" },
+  { icon: Bot, label: "AI Operator (Adoni)", desc: "Generate content, run queries", href: "/demo/candidate" },
 ];
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
@@ -70,7 +70,7 @@ export default function DemoPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/pricing" className="text-sm font-semibold text-slate-600 hover:text-slate-900">Pricing</Link>
-            <Link href="/login" className="text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Start Campaign</Link>
+            <Link href="/signup" className="text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Start Campaign</Link>
           </div>
         </div>
       </nav>

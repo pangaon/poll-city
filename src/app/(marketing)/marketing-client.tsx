@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Menu, X, ArrowRight, Shield, MapPin, Users, BarChart3,
@@ -47,21 +47,14 @@ function ElectionCountdown() {
 
 function Navbar() {
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
-  }, []);
 
   return (
-    <nav className={`w-full transition-all duration-200 ${scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/50" : "bg-transparent"}`}>
+    <nav className="w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo.png" alt="Poll City" className="w-8 h-8 rounded-lg object-contain" />
-            <span className={`font-bold text-lg ${scrolled ? "text-slate-900" : "text-white"}`}>Poll City</span>
+            <span className="font-bold text-lg text-slate-900">Poll City</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             {[
@@ -71,7 +64,7 @@ function Navbar() {
               { label: "About", href: "/about" },
               { label: "Contact", href: "/contact" },
             ].map((link) => (
-              <Link key={link.label} href={link.href} className={`text-sm font-medium transition-colors ${scrolled ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>
+              <Link key={link.label} href={link.href} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
                 {link.label}
               </Link>
             ))}
@@ -79,23 +72,19 @@ function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/social"
-              className={`flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-full border transition-colors ${
-                scrolled
-                  ? "border-[#1D9E75]/40 text-[#1D9E75] hover:bg-[#1D9E75]/8"
-                  : "border-[#1D9E75]/50 text-[#1D9E75] hover:bg-[#1D9E75]/10"
-              }`}
+              className="flex items-center gap-1.5 text-sm font-semibold px-3.5 py-1.5 rounded-full border border-[#1D9E75]/40 text-[#1D9E75] hover:bg-[#1D9E75]/8 transition-colors"
             >
               <Globe className="w-3.5 h-3.5" />
               Poll City Social
             </Link>
-            <Link href="/login" className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${scrolled ? "text-slate-700 hover:bg-slate-100" : "text-white/90 hover:bg-white/10"}`}>
+            <Link href="/login" className="text-sm font-semibold px-4 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors">
               Log In
             </Link>
             <Link href="/signup" className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
               Start Your Campaign
             </Link>
           </div>
-          <button onClick={() => setOpen(!open)} className={`md:hidden ${scrolled ? "text-slate-900" : "text-white"}`}>
+          <button onClick={() => setOpen(!open)} className="md:hidden text-slate-900">
             {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -708,55 +697,52 @@ export default function MarketingClient() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-         4b. SOCIAL PROOF — Candidate testimonials
+         4b. BUILT FOR — What campaigns look like on Poll City
          ══════════════════════════════════════════════════════════════════ */}
       <section className="py-20 bg-slate-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">From the candidates</p>
-          <h2 className="text-center text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-12">
-            Campaigns that ran on Poll City
+          <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest mb-3">Built for every level</p>
+          <h2 className="text-center text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-4">
+            From your first campaign to your fifth term.
           </h2>
+          <p className="text-center text-slate-500 max-w-2xl mx-auto mb-12 text-sm leading-relaxed">
+            Whether you&apos;re a first-time school board candidate or an incumbent mayor preparing a re-election — Poll City is built for your race, your scale, and your budget.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                quote: "I was managing my canvassers in a WhatsApp group and donors in a spreadsheet. Three days after setting up Poll City I had everything in one place. My team finally knew what was happening.",
-                name: "Sarah M.",
-                role: "City Councillor · Ward 14",
-                city: "Hamilton, ON",
-                initial: "S",
-                color: "bg-blue-600",
+                scenario: "The first-time candidate",
+                desc: "You&apos;re announcing in three weeks. You need a website, a way to track supporters, and a system your volunteers can actually use. Poll City is operational in under an hour.",
+                tools: ["Campaign website", "Volunteer management", "Door-knock walk lists"],
+                color: "border-blue-200 bg-blue-50/40",
+                accent: "text-blue-600",
               },
               {
-                quote: "The campaign website took twenty minutes to set up. My opponent was still waiting for a web designer. Donations started coming in that first weekend.",
-                name: "David K.",
-                role: "School Board Trustee",
-                city: "Barrie, ON",
-                initial: "D",
-                color: "bg-emerald-600",
+                scenario: "The incumbent running again",
+                desc: "You have a donor list, a team, and a record. You need everything connected — your website, your CRM, your communications — so nothing falls through the cracks this cycle.",
+                tools: ["CRM with existing contacts", "Email & SMS blasts", "Finance & compliance"],
+                color: "border-emerald-200 bg-emerald-50/40",
+                accent: "text-emerald-600",
               },
               {
-                quote: "On election night the war room dashboard had every poll updating in real time. We knew we'd won before the official count. It felt like running a professional operation for the first time.",
-                name: "Priya N.",
-                role: "Regional Councillor",
-                city: "Mississauga, ON",
-                initial: "P",
-                color: "bg-violet-600",
+                scenario: "The mayor&apos;s office",
+                desc: "You&apos;re running city-wide. You need a war room, scrutineer management, real-time poll tracking on election night, and a team that can execute at scale.",
+                tools: ["Election night HQ", "GOTV engine", "Multi-team coordination"],
+                color: "border-violet-200 bg-violet-50/40",
+                accent: "text-violet-600",
               },
-            ].map((t) => (
-              <div key={t.name} className="rounded-2xl bg-white border border-slate-200 p-7 flex flex-col shadow-sm">
-                <div className="flex gap-0.5 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-4 h-4 text-amber-400 fill-amber-400" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            ].map((s) => (
+              <div key={s.scenario} className={`rounded-2xl border p-7 flex flex-col ${s.color}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${s.accent}`}>{s.scenario}</p>
+                <p className="text-sm text-slate-700 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: s.desc }} />
+                <div className="mt-5 pt-4 border-t border-white/60 space-y-1.5">
+                  {s.tools.map((t) => (
+                    <div key={t} className="flex items-center gap-2 text-xs text-slate-600">
+                      <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${s.accent}`} />
+                      {t}
+                    </div>
                   ))}
-                </div>
-                <p className="text-sm text-slate-700 leading-relaxed flex-1 italic">&ldquo;{t.quote}&rdquo;</p>
-                <div className="flex items-center gap-3 mt-5 pt-4 border-t border-slate-100">
-                  <div className={`w-9 h-9 rounded-full ${t.color} text-white flex items-center justify-center font-bold text-sm shrink-0`}>{t.initial}</div>
-                  <div>
-                    <p className="font-bold text-sm text-slate-900">{t.name}</p>
-                    <p className="text-[11px] text-slate-500">{t.role} · {t.city}</p>
-                  </div>
                 </div>
               </div>
             ))}
