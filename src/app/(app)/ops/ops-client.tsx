@@ -31,7 +31,9 @@ import {
   XCircle,
   MinusCircle,
   Rocket,
+  LogIn,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 /* ── palette ────────────────────────────────────────────────── */
@@ -936,11 +938,30 @@ function ClientsTab({
   data: ClientRecord[];
   loading: boolean;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<Record<string, { name: string | null; email: string | null; role: string; lastLogin: string | null }[]>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [entering, setEntering] = useState<string | null>(null);
+
+  async function enterCampaign(campaignId: string) {
+    setEntering(campaignId);
+    try {
+      const res = await fetch("/api/campaigns/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      if (res.ok) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } finally {
+      setEntering(null);
+    }
+  }
 
   const filtered = data.filter((c) => {
     if (!search) return true;
@@ -1195,6 +1216,15 @@ function ClientsTab({
                               Actions
                             </p>
                             <div className="space-y-2">
+                              <button
+                                onClick={() => void enterCampaign(c.id)}
+                                disabled={entering === c.id}
+                                className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+                                style={{ background: NAVY }}
+                              >
+                                <LogIn className="w-3.5 h-3.5" />
+                                {entering === c.id ? "Entering…" : "Enter Campaign View"}
+                              </button>
                               {c.adminEmail && (
                                 <a
                                   href={`mailto:${c.adminEmail}?subject=Poll City Support — ${c.name}`}
