@@ -19,6 +19,7 @@ const ProvisionBody = z.object({
   electionType: z.nativeEnum(ElectionType).default(ElectionType.municipal),
   electionDate: z.string().datetime({ offset: true }).optional().nullable(),
   jurisdiction: z.string().max(100).optional(),
+  officialId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -44,7 +45,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { candidateName, campaignName, adminEmail, electionType, electionDate, jurisdiction } = parsed.data;
+  const { candidateName, campaignName, adminEmail, electionType, electionDate, jurisdiction, officialId } = parsed.data;
+
+  // Verify official exists if provided
+  if (officialId) {
+    const official = await prisma.official.findUnique({
+      where: { id: officialId },
+      select: { id: true, isClaimed: true },
+    });
+    if (!official) {
+      return NextResponse.json({ error: "Official not found" }, { status: 404 });
+    }
+  }
   const origin = req.headers.get("origin") ?? process.env.NEXTAUTH_URL ?? "https://app.poll.city";
 
   // ── 1. Find or create the user ─────────────────────────────────────────────
@@ -82,10 +94,23 @@ export async function POST(req: NextRequest) {
       electionType,
       electionDate: electionDate ? new Date(electionDate) : null,
       jurisdiction: jurisdiction ?? null,
+      officialId: officialId ?? null,
       isActive: true,
       onboardingComplete: false,
     },
   });
+
+  // Mark official as claimed when George provisions concierge-style
+  if (officialId) {
+    await prisma.official.update({
+      where: { id: officialId },
+      data: {
+        isClaimed: true,
+        claimedAt: new Date(),
+        claimedByUserId: user.id,
+      },
+    });
+  }
 
   // ── 4. Check for duplicate membership ─────────────────────────────────────
   const existingMembership = await prisma.membership.findUnique({
@@ -176,7 +201,7 @@ export async function POST(req: NextRequest) {
     entityId: campaign.id,
     entityType: "Campaign",
     ip: req.headers.get("x-forwarded-for"),
-    details: { adminEmail, campaignName, isNewUser, emailSent },
+    details: { adminEmail, campaignName, isNewUser, emailSent, officialId: officialId ?? null },
   });
 
   return NextResponse.json({

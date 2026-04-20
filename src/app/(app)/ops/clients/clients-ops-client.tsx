@@ -51,6 +51,7 @@ interface ProvisionForm {
   electionType: ElectionType;
   electionDate: string;
   jurisdiction: string;
+  officialId: string;
 }
 
 const EMPTY_FORM: ProvisionForm = {
@@ -60,6 +61,7 @@ const EMPTY_FORM: ProvisionForm = {
   electionType: ElectionType.municipal,
   electionDate: "",
   jurisdiction: "",
+  officialId: "",
 };
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -165,6 +167,7 @@ export default function ClientsOpsClient() {
         electionType: form.electionType,
         electionDate: form.electionDate || null,
         jurisdiction: form.jurisdiction || undefined,
+        officialId: form.officialId || undefined,
       }),
     });
 
@@ -560,6 +563,17 @@ export default function ClientsOpsClient() {
                         className="field-input"
                         disabled={provisionStage === "submitting"}
                       />
+                    </FormField>
+
+                    <FormField label="PCS Official ID">
+                      <input
+                        value={form.officialId}
+                        onChange={(e) => setField("officialId", e.target.value)}
+                        placeholder="Paste from /ops/social or /social/politicians/[id] (optional)"
+                        className="field-input font-mono text-xs"
+                        disabled={provisionStage === "submitting"}
+                      />
+                      <p className="text-xs text-gray-400 mt-0.5">Links campaign to their PCS profile and marks it claimed</p>
                     </FormField>
 
                     {provisionError && (
