@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-20
-**Updated by:** Claude Sonnet 4.6 (session-close clean rewrite — disorganization removed)
+**Updated by:** Claude Sonnet 4.6 (session-close — officials directory rebuilt + _count fix)
 
 ---
 
@@ -32,7 +32,8 @@
 
 ### Build
 - **GREEN** — all commits on origin/main. Vercel deploying.
-- Latest commit: `91784fe chore: ignore Google OAuth client_secret*.json files`
+- Latest local commit: `c2201c2 fix(officials): add _count.follows to directory API`
+- Latest origin/main: `91784fe chore: ignore Google OAuth client_secret*.json files` (+ 2 local commits pending push)
 
 ### ⚠️ CRITICAL: `npx prisma db push` HAS NOT BEEN RUN since these schema additions
 
@@ -82,6 +83,7 @@ Everything below exists in origin/main and the build passes. Whether it works en
 | Forms | Builder, results | None |
 | Polls | All vote types, live results SSE | None |
 | Social | Home feed, politician profiles, groups, Q&A, notifications | None |
+| Officials directory | Rebuilt: dark/light, level tabs, postal code, proper follow API, infinite scroll (commits 6e90b25 + c2201c2) | NOT browser-verified. Follower counts now correctly returned from directory API. |
 | Ops | Clients, readiness, intelligence controls, social officials panel | SUPER_ADMIN only |
 | Settings | Profile, campaign, brand, security, billing | None |
 | Maps | MapLibre GL JS — ward boundary, turf draw, choropleth, signs, canvasser | OpenFreeMap tiles (no key). Geocoding: needs GOOGLE_MAPS_API_KEY for voter files |
