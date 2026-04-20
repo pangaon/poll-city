@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Show Exit banner when George (SUPER_ADMIN) is viewing a client campaign
   const fullSession = await getServerSession(authOptions);
-  const u = fullSession?.user as typeof fullSession.user & { role?: Role; activeCampaignId?: string | null };
+  const u = fullSession?.user as { role?: Role; activeCampaignId?: string | null } | undefined;
   let founderCampaignName: string | null = null;
   if (u?.role === Role.SUPER_ADMIN && u?.activeCampaignId) {
     const campaign = await prisma.campaign.findUnique({
