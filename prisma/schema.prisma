@@ -625,25 +625,25 @@ model User {
   consentLogs                 ConsentLog[]
   pushSubscriptions           PushSubscription[]
   notificationLogs            NotificationLog[]
-  socialPostsAuthored         SocialPost[]           @relation("SocialPostAuthor")
-  socialPostsApproved         SocialPost[]           @relation("SocialPostApprover")
-  socialPostsRejected         SocialPost[]           @relation("SocialPostRejector")
-  socialMentionsOwned         SocialMention[]        @relation("SocialMentionAssignee")
-  constituentCasesOwned       ConstituentCaseFile[]  @relation("ConstituentCaseAssignee")
+  socialPostsAuthored         SocialPost[]                @relation("SocialPostAuthor")
+  socialPostsApproved         SocialPost[]                @relation("SocialPostApprover")
+  socialPostsRejected         SocialPost[]                @relation("SocialPostRejector")
+  socialMentionsOwned         SocialMention[]             @relation("SocialMentionAssignee")
+  constituentCasesOwned       ConstituentCaseFile[]       @relation("ConstituentCaseAssignee")
   constituentCaseNotes        ConstituentCaseNote[]
   volunteerLocations          VolunteerLocation[]
-  voiceBroadcastsCreated      VoiceBroadcast[]       @relation("VoiceBroadcastCreator")
-  phoneBankSessions           PhoneBankSession[]     @relation("PhoneBankVolunteer")
+  voiceBroadcastsCreated      VoiceBroadcast[]            @relation("VoiceBroadcastCreator")
+  phoneBankSessions           PhoneBankSession[]          @relation("PhoneBankVolunteer")
   debugSessions               DebugSession[]
-  newsletterCampaignsAuthored NewsletterCampaign[]   @relation("NewsletterAuthor")
-  scrutineerAssignments       ScrutineerAssignment[] @relation("ScrutineerUser")
-  scrutineerAssignedBy        ScrutineerAssignment[] @relation("ScrutineerAssigner")
-  captureAssignments          CaptureAssignment[]    @relation("CaptureAssignee")
-  captureAssignmentsCreated   CaptureAssignment[]    @relation("CaptureAssigner")
+  newsletterCampaignsAuthored NewsletterCampaign[]        @relation("NewsletterAuthor")
+  scrutineerAssignments       ScrutineerAssignment[]      @relation("ScrutineerUser")
+  scrutineerAssignedBy        ScrutineerAssignment[]      @relation("ScrutineerAssigner")
+  captureAssignments          CaptureAssignment[]         @relation("CaptureAssignee")
+  captureAssignmentsCreated   CaptureAssignment[]         @relation("CaptureAssigner")
   captureSubmissions          CaptureSubmission[]
   captureRevisions            CaptureSubmissionRevision[]
-  captureIssuesReported       CaptureIssueReport[]   @relation("CaptureIssueReporter")
-  captureIssuesResolved       CaptureIssueReport[]   @relation("CaptureIssueResolver")
+  captureIssuesReported       CaptureIssueReport[]        @relation("CaptureIssueReporter")
+  captureIssuesResolved       CaptureIssueReport[]        @relation("CaptureIssueResolver")
   captureEventsCreated        CaptureEvent[]
   printInventoryLogs          PrintInventoryLog[]
 
@@ -735,7 +735,7 @@ model User {
   repIssuesOwned ReputationIssue[] @relation("rep_issue_owner")
 
   // Poll City Social feed
-  socialNotifications  SocialNotification[]
+  socialNotifications   SocialNotification[]
   civicGroupMemberships CivicGroupMember[]
 
   // CASL
@@ -2577,21 +2577,21 @@ model InboxMessage {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum QrCodeType {
-  contact        // scan → open contact profile (legacy)
-  volunteer      // scan → volunteer sign-up form (legacy)
-  sign_request   // scan → sign request form (legacy)
-  event          // scan → event check-in / booth capture
-  poll           // scan → poll
+  contact // scan → open contact profile (legacy)
+  volunteer // scan → volunteer sign-up form (legacy)
+  sign_request // scan → sign request form (legacy)
+  event // scan → event check-in / booth capture
+  poll // scan → poll
   generic_social // broad engagement, not tied to a subscribed campaign
-  campaign       // directly tied to a campaign
-  location       // bus stop, crosswalk, storefront, transit shelter
-  lawn_sign      // placed on a sign — host-attributable
-  flyer_print    // literature, mail drops, posters, postcards
+  campaign // directly tied to a campaign
+  location // bus stop, crosswalk, storefront, transit shelter
+  lawn_sign // placed on a sign — host-attributable
+  flyer_print // literature, mail drops, posters, postcards
   volunteer_capture // booth staff, canvass captains, clipboards
   issue_petition // local issue or petition
   candidate_teaser // captures activity even without active subscription
-  smart_dynamic  // same printed code, editable destination
-  event_booth    // time-bound event, high-volume
+  smart_dynamic // same printed code, editable destination
+  event_booth // time-bound event, high-volume
 }
 
 enum QrPlacementType {
@@ -2648,12 +2648,12 @@ enum QrIntent {
 }
 
 enum QrConversionStage {
-  landed        // page loaded
-  engaged       // interacted with at least one element
-  intent_set    // selected intent
+  landed // page loaded
+  engaged // interacted with at least one element
+  intent_set // selected intent
   info_captured // provided name/email/phone
-  converted     // became contact/prospect
-  followed_up   // follow-up action taken
+  converted // became contact/prospect
+  followed_up // follow-up action taken
 }
 
 enum QrProspectType {
@@ -2694,43 +2694,43 @@ enum QrFollowUpStatus {
 }
 
 model QrCode {
-  id            String         @id @default(cuid())
-  campaignId    String?        // nullable — generic/social QR codes have no campaign
-  type          QrCodeType
-  placementType QrPlacementType?
-  funnelType    QrFunnelType   @default(general_engagement)
-  entityId      String?        // linked event/poll/sign entity id
-  token         String         @unique @default(cuid())
-  slug          String?        @unique // short human-readable slug (optional, e.g. "ward5-transit")
-  label         String?
-  description   String?
+  id              String           @id @default(cuid())
+  campaignId      String? // nullable — generic/social QR codes have no campaign
+  type            QrCodeType
+  placementType   QrPlacementType?
+  funnelType      QrFunnelType     @default(general_engagement)
+  entityId        String? // linked event/poll/sign entity id
+  token           String           @unique @default(cuid())
+  slug            String?          @unique // short human-readable slug (optional, e.g. "ward5-transit")
+  label           String?
+  description     String?
   // Location metadata
-  locationName  String?        // e.g. "Finch & Yonge Bus Stop", "Bloor/Dufferin Transit Shelter"
+  locationName    String? // e.g. "Finch & Yonge Bus Stop", "Bloor/Dufferin Transit Shelter"
   locationAddress String?
-  lat           Float?
-  lng           Float?
-  radiusMetres  Int?           // geo-fence radius for proximity matching
-  wardId        String?        // ward linkage if available
+  lat             Float?
+  lng             Float?
+  radiusMetres    Int? // geo-fence radius for proximity matching
+  wardId          String? // ward linkage if available
   // Landing page configuration (custom CTAs, intro copy, issue prompt)
-  landingConfig Json?          // { headline, subheadline, ctaLabels, introText, issuePrompt, thankYouText }
+  landingConfig   Json? // { headline, subheadline, ctaLabels, introText, issuePrompt, thankYouText }
   // Campaign branding override (fallback to campaign brand)
-  brandOverride Json?          // { primaryColor, logoUrl, candidateName }
+  brandOverride   Json? // { primaryColor, logoUrl, candidateName }
   // Lifecycle
-  status        String         @default("active") // active | inactive | archived | expired
-  isPublic      Boolean        @default(true)
-  allowAnonymous Boolean       @default(true)
-  scanCount     Int            @default(0)
-  startAt       DateTime?
-  endAt         DateTime?
+  status          String           @default("active") // active | inactive | archived | expired
+  isPublic        Boolean          @default(true)
+  allowAnonymous  Boolean          @default(true)
+  scanCount       Int              @default(0)
+  startAt         DateTime?
+  endAt           DateTime?
   // Teaser/unsubscribed support
-  teaserMode    Boolean        @default(false) // true when campaign not subscribed — stores leads but locks them
-  createdById   String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  teaserMode      Boolean          @default(false) // true when campaign not subscribed — stores leads but locks them
+  createdById     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  scans    QrScan[]
-  prospects    QrProspect[]
+  campaign          Campaign?           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scans             QrScan[]
+  prospects         QrProspect[]
   signOpportunities QrSignOpportunity[]
 
   @@index([campaignId, status])
@@ -2740,40 +2740,40 @@ model QrCode {
 }
 
 model QrScan {
-  id             String             @id @default(cuid())
-  qrCodeId       String
-  campaignId     String?            // denormalized from QrCode for fast analytics queries
+  id                   String            @id @default(cuid())
+  qrCodeId             String
+  campaignId           String? // denormalized from QrCode for fast analytics queries
   // Identity — may be null for anonymous
-  contactId      String?            // set if scan resolves to a CRM contact
-  prospectId     String?            // set when prospect record is created from this scan
-  sessionToken   String?            // privacy-safe anonymous session identifier (client-generated UUID)
-  ipHash         String?            // sha256 of ip — never raw IP stored
-  userAgent      String?
-  deviceClass    String?            // "mobile" | "tablet" | "desktop"
+  contactId            String? // set if scan resolves to a CRM contact
+  prospectId           String? // set when prospect record is created from this scan
+  sessionToken         String? // privacy-safe anonymous session identifier (client-generated UUID)
+  ipHash               String? // sha256 of ip — never raw IP stored
+  userAgent            String?
+  deviceClass          String? // "mobile" | "tablet" | "desktop"
   // Intent and conversion
-  intent         QrIntent?
-  conversionStage QrConversionStage @default(landed)
+  intent               QrIntent?
+  conversionStage      QrConversionStage @default(landed)
   // Geo
-  geoGranted     Boolean            @default(false)
-  lat            Float?
-  lng            Float?
+  geoGranted           Boolean           @default(false)
+  lat                  Float?
+  lng                  Float?
   // Capture state
-  capturedName   String?
-  capturedEmail  String?
-  capturedPhone  String?
-  capturedPostal String?
-  capturedAddress String?
-  capturedNote   String?
+  capturedName         String?
+  capturedEmail        String?
+  capturedPhone        String?
+  capturedPostal       String?
+  capturedAddress      String?
+  capturedNote         String?
   // Meta
-  isRepeat       Boolean            @default(false) // same sessionToken scanned this code before
-  referrer       String?            // HTTP Referer header
-  landingVariant String?            // A/B variant id if applicable
-  followUpQueued Boolean            @default(false)
-  notificationSurfaced Boolean      @default(false) // campaign was alerted about this scan
-  createdAt      DateTime           @default(now())
+  isRepeat             Boolean           @default(false) // same sessionToken scanned this code before
+  referrer             String? // HTTP Referer header
+  landingVariant       String? // A/B variant id if applicable
+  followUpQueued       Boolean           @default(false)
+  notificationSurfaced Boolean           @default(false) // campaign was alerted about this scan
+  createdAt            DateTime          @default(now())
 
-  qrCode   QrCode          @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  prospect QrProspect?     @relation(fields: [prospectId], references: [id])
+  qrCode    QrCode       @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  prospect  QrProspect?  @relation(fields: [prospectId], references: [id])
   followUps QrFollowUp[]
 
   @@index([qrCodeId, createdAt])
@@ -2784,40 +2784,40 @@ model QrScan {
 }
 
 model QrProspect {
-  id              String            @id @default(cuid())
-  qrCodeId        String
-  campaignId      String?           // null for generic social prospects
-  contactId       String?           // set when prospect is merged into CRM
+  id                 String           @id @default(cuid())
+  qrCodeId           String
+  campaignId         String? // null for generic social prospects
+  contactId          String? // set when prospect is merged into CRM
   // Identity (may be masked for unsubscribed campaigns)
-  name            String?
-  email           String?
-  phone           String?
-  postalCode      String?
+  name               String?
+  email              String?
+  phone              String?
+  postalCode         String?
   // Classification
-  prospectType    QrProspectType    @default(anonymous_engagement)
-  intent          QrIntent?
-  status          QrProspectStatus  @default(new)
+  prospectType       QrProspectType   @default(anonymous_engagement)
+  intent             QrIntent?
+  status             QrProspectStatus @default(new)
   // Location context
-  locationCluster String?           // e.g. "Finch & Yonge area"
+  locationCluster    String? // e.g. "Finch & Yonge area"
   approximateAddress String?
   // Flags
-  signRequested   Boolean           @default(false)
-  volunteerInterest Boolean         @default(false)
+  signRequested      Boolean          @default(false)
+  volunteerInterest  Boolean          @default(false)
   // Scoring
-  score           Int               @default(0)  // 0-100 engagement score
+  score              Int              @default(0) // 0-100 engagement score
   // Access control for teaser mode
-  isLocked        Boolean           @default(false) // true when campaign not subscribed
-  unlockEligible  Boolean           @default(false) // can be unlocked when campaign subscribes
+  isLocked           Boolean          @default(false) // true when campaign not subscribed
+  unlockEligible     Boolean          @default(false) // can be unlocked when campaign subscribes
   // Follow-up
-  followUpStatus  String            @default("pending") // pending | contacted | done
-  notes           String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  followUpStatus     String           @default("pending") // pending | contacted | done
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  qrCode     QrCode      @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  scans      QrScan[]
-  signOpps   QrSignOpportunity[]
-  followUps  QrFollowUp[]
+  qrCode    QrCode              @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  scans     QrScan[]
+  signOpps  QrSignOpportunity[]
+  followUps QrFollowUp[]
 
   @@index([campaignId, status])
   @@index([qrCodeId])
@@ -2826,34 +2826,34 @@ model QrProspect {
 }
 
 model QrSignOpportunity {
-  id              String    @id @default(cuid())
-  qrCodeId        String
-  prospectId      String?
-  campaignId      String?
+  id                 String     @id @default(cuid())
+  qrCodeId           String
+  prospectId         String?
+  campaignId         String?
   // Location
-  locationName    String?
+  locationName       String?
   approximateAddress String?
-  exactAddress    String?   // only if user explicitly submitted
-  city            String?
-  postalCode      String?
-  lat             Float?
-  lng             Float?
-  propertyType    String?   // residential | commercial | corner_lot | apartment | other
+  exactAddress       String? // only if user explicitly submitted
+  city               String?
+  postalCode         String?
+  lat                Float?
+  lng                Float?
+  propertyType       String? // residential | commercial | corner_lot | apartment | other
   // Request details
-  signSize        String?   // standard | large | window | boulevard
-  notes           String?
-  requesterName   String?
-  requesterPhone  String?
-  requesterEmail  String?
+  signSize           String? // standard | large | window | boulevard
+  notes              String?
+  requesterName      String?
+  requesterPhone     String?
+  requesterEmail     String?
   // Workflow
-  status          SignStatus @default(requested) // reuses existing SignStatus enum
-  assignedUserId  String?
-  linkedSignId    String?   // set when converted to a real Sign record
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status             SignStatus @default(requested) // reuses existing SignStatus enum
+  assignedUserId     String?
+  linkedSignId       String? // set when converted to a real Sign record
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
-  qrCode   QrCode       @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
-  prospect QrProspect?  @relation(fields: [prospectId], references: [id])
+  qrCode   QrCode      @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  prospect QrProspect? @relation(fields: [prospectId], references: [id])
 
   @@index([campaignId, status])
   @@index([qrCodeId])
@@ -2861,7 +2861,7 @@ model QrSignOpportunity {
 }
 
 model QrFollowUp {
-  id           String          @id @default(cuid())
+  id           String           @id @default(cuid())
   qrScanId     String?
   prospectId   String?
   campaignId   String?
@@ -2870,22 +2870,22 @@ model QrFollowUp {
   // Recipient
   toPhone      String?
   toEmail      String?
-  toUserId     String?         // internal staff notification
+  toUserId     String? // internal staff notification
   // Content
   subject      String?
   body         String?
   templateId   String?
   // Delivery tracking
-  attempts     Int             @default(0)
+  attempts     Int              @default(0)
   sentAt       DateTime?
   failedAt     DateTime?
   failReason   String?
   scheduledFor DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
-  scan      QrScan?     @relation(fields: [qrScanId], references: [id])
-  prospect  QrProspect? @relation(fields: [prospectId], references: [id])
+  scan     QrScan?     @relation(fields: [qrScanId], references: [id])
+  prospect QrProspect? @relation(fields: [prospectId], references: [id])
 
   @@index([campaignId, status])
   @@index([qrScanId])
@@ -8324,17 +8324,17 @@ enum AutomationEnrollmentStatus {
 }
 
 model AutomationRule {
-  id              String             @id @default(cuid())
+  id              String            @id @default(cuid())
   campaignId      String
   name            String
   description     String?
   trigger         AutomationTrigger
-  triggerFilter   Json               @default("{}") // e.g. { tagName, segmentId, formId }
-  isActive        Boolean            @default(false)
-  enrollOnce      Boolean            @default(true)  // prevent re-enrollment
+  triggerFilter   Json              @default("{}") // e.g. { tagName, segmentId, formId }
+  isActive        Boolean           @default(false)
+  enrollOnce      Boolean           @default(true) // prevent re-enrollment
   createdByUserId String
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   campaign    Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   createdBy   User                   @relation("AutomationRuleAuthor", fields: [createdByUserId], references: [id])
@@ -8346,14 +8346,14 @@ model AutomationRule {
 }
 
 model AutomationStep {
-  id         String              @id @default(cuid())
-  ruleId     String
-  stepOrder  Int
-  stepType   AutomationStepType
-  config     Json                @default("{}") // { templateId, tagName, segmentId, days }
-  createdAt  DateTime            @default(now())
+  id        String             @id @default(cuid())
+  ruleId    String
+  stepOrder Int
+  stepType  AutomationStepType
+  config    Json               @default("{}") // { templateId, tagName, segmentId, days }
+  createdAt DateTime           @default(now())
 
-  rule        AutomationRule          @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  rule        AutomationRule             @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   completions AutomationStepCompletion[]
 
   @@index([ruleId, stepOrder])
@@ -8361,21 +8361,21 @@ model AutomationStep {
 }
 
 model AutomationEnrollment {
-  id              String                       @id @default(cuid())
-  ruleId          String
-  contactId       String
-  campaignId      String
-  status          AutomationEnrollmentStatus   @default(active)
-  currentStepOrder Int                         @default(1)
-  nextDueAt       DateTime?
-  completedAt     DateTime?
-  errorMessage    String?
-  enrolledAt      DateTime                     @default(now())
-  updatedAt       DateTime                     @updatedAt
+  id               String                     @id @default(cuid())
+  ruleId           String
+  contactId        String
+  campaignId       String
+  status           AutomationEnrollmentStatus @default(active)
+  currentStepOrder Int                        @default(1)
+  nextDueAt        DateTime?
+  completedAt      DateTime?
+  errorMessage     String?
+  enrolledAt       DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
-  rule       AutomationRule             @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  contact    Contact                    @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  campaign   Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rule        AutomationRule             @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  contact     Contact                    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign    Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   completions AutomationStepCompletion[]
 
   @@unique([ruleId, contactId])
@@ -8408,18 +8408,18 @@ enum CaptureEventType {
 }
 
 enum CaptureEventStatus {
-  setup     // being configured — no submissions allowed
-  active    // open for submissions
-  locked    // closed for new submissions, results final
-  archived  // historical record only
+  setup // being configured — no submissions allowed
+  active // open for submissions
+  locked // closed for new submissions, results final
+  archived // historical record only
 }
 
 enum CaptureSubmissionStatus {
-  draft            // saved locally, not yet submitted
-  pending_review   // submitted, awaiting approval
-  approved         // approved by a manager
-  rejected         // rejected, requires correction
-  flagged          // anomaly detected, needs human review
+  draft // saved locally, not yet submitted
+  pending_review // submitted, awaiting approval
+  approved // approved by a manager
+  rejected // rejected, requires correction
+  flagged // anomaly detected, needs human review
 }
 
 enum CaptureIssueType {
@@ -8441,21 +8441,21 @@ enum CaptureIssueSeverity {
 }
 
 enum CaptureAssignmentRole {
-  lead      // primary submitter for this location
-  backup    // can submit if lead unavailable
-  observer  // read-only war room access
+  lead // primary submitter for this location
+  backup // can submit if lead unavailable
+  observer // read-only war room access
 }
 
 // CaptureEvent — one per election event (advance vote period OR election day)
 model CaptureEvent {
   id         String             @id @default(cuid())
   campaignId String
-  name       String             // e.g. "Advance Vote — Oct 4-7" or "Election Day Oct 28"
+  name       String // e.g. "Advance Vote — Oct 4-7" or "Election Day Oct 28"
   eventType  CaptureEventType   @default(election_day)
   status     CaptureEventStatus @default(setup)
 
   // Geography / race being captured
-  office       String  // "Mayor" | "Ward 3 Councillor" etc.
+  office       String // "Mayor" | "Ward 3 Councillor" etc.
   ward         String?
   district     String?
   municipality String
@@ -8466,20 +8466,20 @@ model CaptureEvent {
   endDate   DateTime?
 
   // Submission configuration
-  requireDoubleEntry   Boolean @default(true)  // require two separate users to confirm votes
-  allowPartialSubmit   Boolean @default(true)  // allow < 100% reporting
-  lockAfterApproval    Boolean @default(true)  // freeze record after manager approves
-  allowCorrections     Boolean @default(true)  // allow authorized corrections after lock
-  anomalyThreshold     Float?                  // flag if any candidate % deviates >X% from expected
+  requireDoubleEntry Boolean @default(true) // require two separate users to confirm votes
+  allowPartialSubmit Boolean @default(true) // allow < 100% reporting
+  lockAfterApproval  Boolean @default(true) // freeze record after manager approves
+  allowCorrections   Boolean @default(true) // allow authorized corrections after lock
+  anomalyThreshold   Float? // flag if any candidate % deviates >X% from expected
 
   // Audit
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  campaign    Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdBy   User                @relation(fields: [createdById], references: [id])
+  campaign    Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User                 @relation(fields: [createdById], references: [id])
   candidates  CaptureCandidate[]
   locations   CaptureLocation[]
   assignments CaptureAssignment[]
@@ -8513,22 +8513,22 @@ model CaptureCandidate {
 
 // CaptureLocation — polling station or advance vote location for a CaptureEvent
 model CaptureLocation {
-  id           String   @id @default(cuid())
-  eventId      String
-  campaignId   String
-  name         String   // "Poll 42-A — Ward 3"
-  address      String?
-  municipality String?
-  ward         String?
-  district     String?
-  pollNumber   String?  // official poll number from elections authority
-  expectedTurnout Int?  // for anomaly threshold calculation
+  id              String  @id @default(cuid())
+  eventId         String
+  campaignId      String
+  name            String // "Poll 42-A — Ward 3"
+  address         String?
+  municipality    String?
+  ward            String?
+  district        String?
+  pollNumber      String? // official poll number from elections authority
+  expectedTurnout Int? // for anomaly threshold calculation
 
-  status    String   @default("active") // active | closed | problem | completed
-  notes     String?
+  status     String    @default("active") // active | closed | problem | completed
+  notes      String?
   importedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   event       CaptureEvent         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   assignments CaptureAssignment[]
@@ -8542,15 +8542,15 @@ model CaptureLocation {
 
 // CaptureAssignment — assigns a user to cover a specific location
 model CaptureAssignment {
-  id         String                @id @default(cuid())
-  eventId    String
-  locationId String
-  userId     String
-  campaignId String
-  role       CaptureAssignmentRole @default(lead)
+  id           String                @id @default(cuid())
+  eventId      String
+  locationId   String
+  userId       String
+  campaignId   String
+  role         CaptureAssignmentRole @default(lead)
   assignedById String
-  notes      String?
-  assignedAt DateTime              @default(now())
+  notes        String?
+  assignedAt   DateTime              @default(now())
 
   event      CaptureEvent    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   location   CaptureLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -8566,10 +8566,10 @@ model CaptureAssignment {
 
 // CaptureSubmission — a field user's result submission for one location
 model CaptureSubmission {
-  id         String                  @id @default(cuid())
-  eventId    String
-  locationId String
-  campaignId String
+  id            String @id @default(cuid())
+  eventId       String
+  locationId    String
+  campaignId    String
   submittedById String
 
   status      CaptureSubmissionStatus @default(pending_review)
@@ -8584,22 +8584,22 @@ model CaptureSubmission {
   // Aggregate fields (denormalized for fast war room queries)
   totalVotes       Int?
   rejectedBallots  Int?
-  percentReporting Float   @default(100)
+  percentReporting Float @default(100)
 
   // Timestamps
-  submittedAt DateTime?
-  reviewedAt  DateTime?
+  submittedAt  DateTime?
+  reviewedAt   DateTime?
   reviewedById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  event       CaptureEvent              @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  location    CaptureLocation           @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  campaign    Campaign                  @relation(fields: [campaignId], references: [id])
-  submittedBy User                      @relation(fields: [submittedById], references: [id])
+  event       CaptureEvent                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location    CaptureLocation             @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  campaign    Campaign                    @relation(fields: [campaignId], references: [id])
+  submittedBy User                        @relation(fields: [submittedById], references: [id])
   results     CaptureSubmissionResult[]
   revisions   CaptureSubmissionRevision[]
-  issues      CaptureIssueReport[]      @relation("IssueSubmission")
+  issues      CaptureIssueReport[]        @relation("IssueSubmission")
 
   @@index([eventId])
   @@index([locationId])
@@ -8625,13 +8625,13 @@ model CaptureSubmissionResult {
 
 // CaptureSubmissionRevision — full audit trail for every edit to a submission
 model CaptureSubmissionRevision {
-  id           String   @id @default(cuid())
-  submissionId String
-  revisedById  String
-  reason       String
-  previousValues Json   // snapshot of CaptureSubmissionResult[] before change
-  newValues      Json   // snapshot after change
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  submissionId   String
+  revisedById    String
+  reason         String
+  previousValues Json // snapshot of CaptureSubmissionResult[] before change
+  newValues      Json // snapshot after change
+  createdAt      DateTime @default(now())
 
   submission CaptureSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   revisedBy  User              @relation(fields: [revisedById], references: [id])
@@ -8642,29 +8642,29 @@ model CaptureSubmissionRevision {
 
 // CaptureIssueReport — field incident report linked to a location or submission
 model CaptureIssueReport {
-  id           String               @id @default(cuid())
+  id           String  @id @default(cuid())
   eventId      String
   locationId   String?
   submissionId String?
   campaignId   String
   reportedById String
 
-  issueType   CaptureIssueType     @default(other)
-  severity    CaptureIssueSeverity @default(medium)
-  description String
-  resolvedAt  DateTime?
+  issueType    CaptureIssueType     @default(other)
+  severity     CaptureIssueSeverity @default(medium)
+  description  String
+  resolvedAt   DateTime?
   resolvedById String?
-  resolution  String?
+  resolution   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  event        CaptureEvent               @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  location     CaptureLocation?           @relation("IssueLocation", fields: [locationId], references: [id])
-  submission   CaptureSubmission?         @relation("IssueSubmission", fields: [submissionId], references: [id])
-  campaign     Campaign                   @relation(fields: [campaignId], references: [id])
-  reportedBy   User                       @relation("CaptureIssueReporter", fields: [reportedById], references: [id])
-  resolvedBy   User?                      @relation("CaptureIssueResolver", fields: [resolvedById], references: [id])
+  event      CaptureEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  location   CaptureLocation?   @relation("IssueLocation", fields: [locationId], references: [id])
+  submission CaptureSubmission? @relation("IssueSubmission", fields: [submissionId], references: [id])
+  campaign   Campaign           @relation(fields: [campaignId], references: [id])
+  reportedBy User               @relation("CaptureIssueReporter", fields: [reportedById], references: [id])
+  resolvedBy User?              @relation("CaptureIssueResolver", fields: [resolvedById], references: [id])
 
   @@index([eventId])
   @@index([campaignId])
@@ -8697,23 +8697,23 @@ enum CivicGroupTopic {
 /// A post made by an elected official or campaign on Poll City Social.
 /// officialId OR campaignId must be set (not both required, but at least one).
 model PoliticianPost {
-  id             String              @id @default(cuid())
+  id             String             @id @default(cuid())
   officialId     String?
   campaignId     String?
-  authorName     String              // denormalized display name
+  authorName     String // denormalized display name
   postType       PoliticianPostType
   title          String
-  body           String              @db.Text
-  pollId         String?             // link to existing Poll if postType = poll
+  body           String             @db.Text
+  pollId         String? // link to existing Poll if postType = poll
   imageUrl       String?
-  municipalScope String?             // "toronto" | "brampton" etc. for feed filtering
-  isPublished    Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  municipalScope String? // "toronto" | "brampton" etc. for feed filtering
+  isPublished    Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
-  official      Official?          @relation(fields: [officialId], references: [id], onDelete: Cascade)
-  campaign      Campaign?          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  poll          Poll?              @relation(fields: [pollId], references: [id], onDelete: SetNull)
+  official      Official?            @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  campaign      Campaign?            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  poll          Poll?                @relation(fields: [pollId], references: [id], onDelete: SetNull)
   notifications SocialNotification[]
 
   @@index([officialId, createdAt])
@@ -8729,7 +8729,7 @@ model SocialNotification {
   userId     String
   postId     String?
   officialId String?
-  type       String   // "new_post" | "new_poll" | "announcement" | "civic_update"
+  type       String // "new_post" | "new_poll" | "announcement" | "civic_update"
   title      String
   body       String
   isRead     Boolean  @default(false)
@@ -8750,7 +8750,7 @@ model CivicInterestGroup {
   name         String
   description  String?
   topic        CivicGroupTopic
-  municipality String?         // "toronto" | "brampton" etc.
+  municipality String? // "toronto" | "brampton" etc.
   memberCount  Int             @default(0)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -8777,15 +8777,15 @@ model CivicGroupMember {
 
 /// Raw data from municipality election scraper — no normalization, no FK joins
 model MuniScrapeRun {
-  id           String    @id @default(cuid())
+  id           String             @id @default(cuid())
   municipality String
-  province     String    @default("ON")
+  province     String             @default("ON")
   sourceUrl    String
-  strategy     String    @default("ckan")
-  status       String    @default("running")
-  error        String?   @db.Text
-  rawCount     Int       @default(0)
-  startedAt    DateTime  @default(now())
+  strategy     String             @default("ckan")
+  status       String             @default("running")
+  error        String?            @db.Text
+  rawCount     Int                @default(0)
+  startedAt    DateTime           @default(now())
   completedAt  DateTime?
   candidates   RawMuniCandidate[]
 
@@ -8799,8 +8799,8 @@ model MuniScrapeRun {
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum ConsentType {
-  explicit           // Written/digital opt-in — strongest basis under CASL
-  implied            // Existing business relationship — expires 2 yrs under CASL
+  explicit // Written/digital opt-in — strongest basis under CASL
+  implied // Existing business relationship — expires 2 yrs under CASL
   express_withdrawal // Contact explicitly opted out — permanently blocks outbound
 }
 
@@ -8811,13 +8811,13 @@ enum ConsentChannel {
 }
 
 enum ConsentSource {
-  import        // Mapped from import CSV consent column
-  form          // Campaign web form submission
-  qr            // QR Capture flow
-  manual        // Manually recorded by campaign staff
+  import // Mapped from import CSV consent column
+  form // Campaign web form submission
+  qr // QR Capture flow
+  manual // Manually recorded by campaign staff
   social_follow // Poll City Social follow action
-  donation      // Donation record (implied consent)
-  event_signup  // Event RSVP (implied consent)
+  donation // Donation record (implied consent)
+  event_signup // Event RSVP (implied consent)
 }
 
 /// CASL consent ledger — every consent event for every contact × channel × campaign
@@ -8829,10 +8829,10 @@ model ConsentRecord {
   channel      ConsentChannel
   source       ConsentSource
   collectedAt  DateTime
-  expiresAt    DateTime?      // null = no expiry; implied consent typically 2 yrs per CASL
+  expiresAt    DateTime? // null = no expiry; implied consent typically 2 yrs per CASL
   ipAddress    String?
   notes        String?
-  recordedById String?        // userId of staff who recorded; null = system-generated
+  recordedById String? // userId of staff who recorded; null = system-generated
 
   contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -8850,10 +8850,10 @@ model ConsentRecord {
 
 /// Raw candidate record from scraper — rawData preserves the original CSV columns
 model RawMuniCandidate {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   runId         String
   municipality  String
-  province      String   @default("ON")
+  province      String  @default("ON")
   electionYear  Int
   office        String
   ward          String?
