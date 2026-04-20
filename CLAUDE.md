@@ -6,6 +6,53 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 ---
 
+## ⛔ THE VIOLATIONS THAT KEEP HAPPENING — READ THIS FIRST ⛔
+
+These are the exact rules previous sessions broke. They are now HARDCODED at the top.
+If you break any of these, you have failed. Not partially. Completely.
+
+### 1. DONE MEANS BROWSER-VERIFIED. NOT BUILD-GREEN. NOT CODE-WRITTEN.
+
+A feature is DONE only when George has confirmed it works in a browser, OR the only reason it doesn't work is a missing env var (and that env var is documented in GEORGE_TODO.md with exact steps).
+
+**Do NOT mark anything DONE in WORK_QUEUE.md based on:**
+- The build passing
+- TypeScript compiling
+- "It should work"
+- "The code is correct"
+
+**The build passing is the minimum bar to push. It is not the bar to call something done.**
+
+If you cannot open a browser and trace the full action — button click → API call → database write → confirmation back to user — it is not done. Write it as `CLAIMED` with a note: "Code complete. Awaiting George browser confirmation."
+
+### 2. SCHEMA CHANGES REQUIRE `npx prisma db push` — DOCUMENT IT EVERY TIME
+
+Any time you add a model, field, or enum to `prisma/schema.prisma`, you MUST:
+1. Add a `[ ]` checkbox item to `GEORGE_TODO.md` (CRITICAL section) saying: "Run `npx prisma db push` — added [ModelName/fieldName] in commit [hash]"
+2. Note in WORK_QUEUE.md that the feature requires DB migration before it works in production
+
+Until `npx prisma db push` is confirmed run by George, every feature touching the new schema WILL 500 in production. Code-green does not mean prod-green.
+
+### 3. ONE SESSION, ONE TASK — NO PARALLEL SESSIONS ON THE SAME FILES
+
+If SESSION_HANDOFF.md or WORK_QUEUE.md shows a task as `CLAIMED`, do not touch it.
+If you pull and find conflicts, do NOT push your version. Resolve the conflict, then push.
+The claim commit on `origin/main` is the lock. Respect it.
+
+### 4. SESSION_HANDOFF.md GETS ONE CURRENT STATE BLOCK — NOT STACKED HISTORY
+
+Do NOT append another "LAST SESSION" block to SESSION_HANDOFF.md.
+Update the **CURRENT PLATFORM STATE** section in place.
+Move what changed to the top of that section.
+The file must stay navigable. Stacking 10 blocks on top of each other is not coordination — it is noise.
+
+### 5. PUSH MEANS `npm run push:safe` — NOTHING ELSE
+
+Never `git push`. Never `git push origin main`. Only `npm run push:safe`.
+If it fails: fix it. Never bypass the check.
+
+---
+
 ## MANDATORY SESSION START — DO THIS BEFORE ANYTHING ELSE
 
 **Every session. No exceptions. Takes 60 seconds.**

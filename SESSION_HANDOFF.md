@@ -147,11 +147,12 @@ In priority order — these block real customers:
 
 ---
 
-## COORDINATION RULES (non-negotiable)
+## COORDINATION RULES (non-negotiable — read CLAUDE.md violations section for full detail)
 
-- `npm run push:safe` is the ONLY push command.
-- Build must be green before marking DONE in WORK_QUEUE.
-- Every new feature needs a sidebar entry.
+- `npm run push:safe` is the ONLY push command. Never `git push`.
+- **DONE = browser-verified by George.** Build green = minimum to push, not minimum to call done.
+- Every new feature needs a sidebar entry before claiming DONE.
 - Every new API route needs `apiAuth()` + `campaignId` scoping.
-- Nothing is DONE until George confirms it in browser (or risk is env-var-only).
-- Claim tasks in WORK_QUEUE before starting. First claim on origin/main wins if two sessions conflict.
+- Every schema change → add `[ ]` checkbox to GEORGE_TODO.md CRITICAL section immediately.
+- Claim tasks in WORK_QUEUE before starting. `CLAIMED` in origin/main = locked, do not touch.
+- Update CURRENT PLATFORM STATE section in place. Do NOT append another LAST SESSION block.
