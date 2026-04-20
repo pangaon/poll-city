@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
     externalId: string | null;
     email: string | null;
     phone: string | null;
+    _count: { follows: number };
   }> = [];
   let total = 0;
   let provinceRows: Array<{ province: string | null }> = [];
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
           externalId: true,
           email: true,
           phone: true,
+          _count: { select: { follows: true } },
         },
       }),
       prisma.official.count({ where }),
