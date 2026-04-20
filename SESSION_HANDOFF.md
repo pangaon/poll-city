@@ -207,6 +207,35 @@ The full Social → Claim → Campaign chain was audited. Two P1 gaps identified
 
 ---
 
+## LAST SESSION (2026-04-20 — Household grouper + DB cleanup close)
+
+**What is actually live (verified on origin/main):**
+
+- **Household grouping after voter file import** (commit fedd9c3) — `src/lib/import/household-grouper.ts` (new). After each import chunk, newly created contacts are grouped into `Household` records by address (street + unit + postal code). Re-import safe — existing households at the same address are reused, not duplicated. Bounded to ~500 contacts/chunk so it never times out the cron. No schema changes needed (Household model was already in the schema). This wires the canvassing household view: every address becomes a door stop.
+
+- **DB cleanup** (commit 4f6fdde) — Officials directory cleaned: only 26 Toronto City Council members remain active. All empty campaign shells deleted. Ward 12 campaign (58,505 contacts) deleted. 2 campaigns remain: Demo Campaign 2026 + Toronto Mayoral Campaign 2026.
+
+**What requires `npx prisma db push` before it works in production:**
+
+⚠️ George has NOT run `npx prisma db push` for these accumulated schema additions:
+1. `intelligenceEnabled Boolean @default(false)` on Campaign (commit f7d096a) — analytics Historical tab crashes without this column on Railway
+2. CASL `ConsentRecord` model (commit cc97b33) — compliance tab and email blast consent filter broken without this
+3. QR Capture (7 models) — confirmed run previously per GEORGE_TODO item 2
+4. Scraper models — `MuniScrapeRun`, `RawMuniCandidate` — not yet pushed
+
+**George MUST run `npx prisma db push` now.** One command fixes items 1 and 2 above.
+
+**Google OAuth — in progress:**
+
+George has `client_secret_227453436369-...json` open. GEORGE_TODO item 47 is checked (credentials created). Item 48 is NOT checked (not yet in Vercel). Google sign-in is broken in production until Vercel has these two env vars:
+- `GOOGLE_CLIENT_ID` (the `client_id` from the JSON file)
+- `GOOGLE_CLIENT_SECRET` (the `client_secret` from the JSON file)
+
+**⚠️ DISORGANIZATION NOTE:**
+Multiple sessions ran in parallel April 19-20. Some things claimed as "done" in this session's history were not verified in production. The outstanding `npx prisma db push` is the single biggest source of "it should work but doesn't" — anything touching intelligence, CASL, or analytics history will silently fail on Railway until that column exists.
+
+---
+
 ## LAST SESSION (2026-04-19 — DB cleanup: officials + campaign wipe)
 
 **What was done (no new code commits — DB operations only):**
