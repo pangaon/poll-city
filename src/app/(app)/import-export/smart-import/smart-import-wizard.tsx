@@ -12,6 +12,7 @@ import {
   Upload, ChevronRight, Check, AlertTriangle, ArrowLeft, X,
   Sparkles, FileSpreadsheet, ShieldCheck, Merge, Play,
   Scissors, GitMerge, TextSearch, Plus, Wand2, ChevronDown,
+  MapPin, Loader2,
 } from "lucide-react";
 import { Card, CardHeader, CardContent, Select } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,34 @@ export default function SmartImportWizard({ campaignId }: Props) {
   const [transforms, setTransforms] = useState<TransformConfig>(DEFAULT_TRANSFORMS);
   const [showTransforms, setShowTransforms] = useState(false);
   const [showTransformPreview, setShowTransformPreview] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState<{
+    geocoded: number; pending: number; total: number; percentComplete: number; running: boolean;
+  } | null>(null);
+
+  // Auto-trigger geocoding when import completes
+  useEffect(() => {
+    if (step !== "done") return;
+    setGeocodeStatus({ geocoded: 0, pending: 0, total: 0, percentComplete: 0, running: true });
+    void (async () => {
+      try {
+        const res = await fetch("/api/geocode/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campaignId }),
+        });
+        if (res.ok) {
+          const data = await res.json() as {
+            data: { geocoded: number; pending: number; total: number; percentComplete: number };
+          };
+          setGeocodeStatus({ ...data.data, running: false });
+        } else {
+          setGeocodeStatus(null);
+        }
+      } catch {
+        setGeocodeStatus(null);
+      }
+    })();
+  }, [step, campaignId]);
 
   const STEPS: Step[] = ["upload", "map", "duplicates", "strategy", "done"];
   const STEP_LABELS = ["Upload", "Map Columns", "Preview", "Strategy", "Done"];
@@ -1342,8 +1371,40 @@ export default function SmartImportWizard({ campaignId }: Props) {
                     {importResult.errors.length > 5 && <p className="text-xs text-amber-500">and {importResult.errors.length - 5} more...</p>}
                   </div>
                 )}
+                {/* Geocoding progress */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="w-4 h-4 text-[#1D9E75]" />
+                    <p className="text-sm font-semibold text-slate-800">Map geocoding</p>
+                    {geocodeStatus?.running && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400 ml-auto" />}
+                  </div>
+                  {!geocodeStatus && (
+                    <p className="text-xs text-slate-500">Starting geocoding…</p>
+                  )}
+                  {geocodeStatus?.running && (
+                    <p className="text-xs text-slate-500">Converting addresses to GPS coordinates…</p>
+                  )}
+                  {geocodeStatus && !geocodeStatus.running && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#1D9E75] rounded-full transition-all"
+                            style={{ width: `${geocodeStatus.percentComplete}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-700">{geocodeStatus.percentComplete}%</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        {geocodeStatus.geocoded.toLocaleString()} of {geocodeStatus.total.toLocaleString()} addresses mapped
+                        {geocodeStatus.pending > 0 && ` — ${geocodeStatus.pending.toLocaleString()} will finish in the next hourly run`}
+                      </p>
+                    </>
+                  )}
+                </div>
+
                 <div className="flex gap-3 justify-center flex-wrap">
-                  <MButton variant="outline" onClick={() => { setStep("upload"); setAnalysis(null); setImportResult(null); setFile(null); setImportProgress(0); }}>
+                  <MButton variant="outline" onClick={() => { setStep("upload"); setAnalysis(null); setImportResult(null); setFile(null); setImportProgress(0); setGeocodeStatus(null); }}>
                     Import another file
                   </MButton>
                   <MButton onClick={() => { window.location.href = "/contacts"; }}>
