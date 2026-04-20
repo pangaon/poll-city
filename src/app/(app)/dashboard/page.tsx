@@ -11,9 +11,9 @@ export const metadata = { title: "Dashboard Studio — Poll City" };
 export default async function DashboardPage() {
   // Super admins with no explicitly chosen campaign go to /ops — their home.
   const session = await getServerSession(authOptions);
-  const user = session?.user as typeof session.user & { role?: Role; activeCampaignId?: string | null };
-  if (user?.role === Role.SUPER_ADMIN && !user?.activeCampaignId) {
-    redirect("/ops");
+  if (session?.user) {
+    const u = session.user as { role?: Role; activeCampaignId?: string | null };
+    if (u.role === Role.SUPER_ADMIN && !u.activeCampaignId) redirect("/ops");
   }
 
   const { campaignId, campaignName } = await resolveActiveCampaign();
