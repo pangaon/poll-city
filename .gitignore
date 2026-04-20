@@ -2,6 +2,11 @@
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
+# Figma Make export files (large binaries, not source)
+figma_design_pollcity_iosapp/*.mb
+figma_design_pollcity_iosapp/SocialCommand.tsx
+figma_design_pollcity_iosapp/sc-data.ts
+
 # Google OAuth credential downloads (never commit these)
 client_secret*.json
 
