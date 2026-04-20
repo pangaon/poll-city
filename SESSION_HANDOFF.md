@@ -65,6 +65,42 @@ All scraper files are committed on `origin/main`. George must run DB migration b
 
 ---
 
+## LAST SESSION (2026-04-20 — Geocoding live + nav fix + founder ops UX)
+
+**What shipped (commits 4020505, b1c8131, 71a98f5, 1b1e6ce, 45bdcdc, cc5df83, 3942b63):**
+
+**GOOGLE_MAPS_API_KEY is now live in Vercel.** Geocoding uses Google Maps (500/batch, fast). Nominatim fallback removed from production path. `.env.local` also updated for local dev.
+
+**fix(marketing) commit 4020505:**
+- Marketing nav + election countdown bar were overlapping — fixed countdown bar now visible separately above nav. Both wrapped in `sticky top-0 z-50` container. `pt-16` removed from hero section (no longer needed).
+
+**feat(auth) commit b1c8131:**
+- SUPER_ADMIN users now land on `/ops` on login, not `/dashboard`. SUPER_ADMIN with no `activeCampaignId` is also redirected from `/dashboard` to `/ops`.
+
+**feat(ops) commits 71a98f5 + 1b1e6ce:**
+- **Founder Banner** — when George enters a client campaign view, a navy banner shows at top: "Viewing as client: [Campaign Name]" + "Exit to Founder View" button (calls `/api/campaigns/switch/clear` + redirects to `/ops`).
+- **Enter Campaign View button** — Ops → Clients tab now has "Enter Campaign View" button per client. Calls `/api/campaigns/switch` POST, sets `activeCampaignId`, redirects to `/dashboard`.
+- **`/api/campaigns/switch/clear/route.ts`** — NEW. POST resets `activeCampaignId` to null in session.
+
+**feat(founder) commit 45bdcdc + fixes cc5df83, 3942b63:**
+- Session null guards added to dashboard page + app layout to prevent crash when SUPER_ADMIN has no campaign context.
+
+**Build:** GREEN — all commits on origin/main. Vercel deploying.
+
+**George's outstanding manual actions:**
+1. `npx prisma db push` — intelligenceEnabled column still needs to reach Railway
+2. Verify Resend API key is in Vercel (emails won't send without it)
+3. Verify ANTHROPIC_API_KEY is in Vercel (Adoni is silent without it)
+4. Delete the 2 old unrestricted Google Maps API keys in Google Cloud Console (warning triangles)
+
+**Known UX issues George flagged this session (NOT yet fixed):**
+- George says things that were "fixed" are still broken — specific issues not yet confirmed. Next session must do a full browser walkthrough before claiming anything is done. Do NOT mark UI issues as fixed without George confirming in browser.
+- Marketing site: George was not satisfied — screenshot review was inconclusive. Next session should do a full scroll of poll.city and identify everything that looks wrong.
+
+**Google OAuth JSON file:** George opened `client_secret_...apps.googleusercontent.com.json` in IDE — this is for Google Calendar OAuth (Calendar Phase 6) or Google Sign-In. George_TODO items 80-83 cover mobile OAuth. This file should NOT be committed — it's a secret.
+
+---
+
 ## LAST SESSION (2026-04-20 — MapLibre GL JS migration)
 
 **What shipped (commits 41e8283 + 32d467d):**

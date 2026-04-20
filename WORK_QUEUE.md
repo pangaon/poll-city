@@ -116,7 +116,7 @@ This is the business model. Every gap below undermines the conversion funnel.
 | **"Claim this profile" → signup with officialId** | **DONE — commit f4b0f5b** | `/claim/[slug]` page built — CTA routes to `/claim/${p.id}`, `ClaimClient` calls `/api/auth/claim-profile` which creates account, sets `Campaign.officialId`, marks `Official.isClaimed`. Full chain verified. | Self-serve acquisition funnel is broken |
 | **Ops provision → officialId linkage** | **DONE — commit 24e8bf8** | officialId field added to provision form + API — campaign creation links to Official record, marks isClaimed=true. | George can't see which social profiles converted to paid campaigns |
 | Volunteer reimbursement → payment | PENDING | Approval chain is complete but actual payment (Stripe or bank transfer) is not automated | Finance officers manually process outside the platform |
-| Voter file import → enrichment | PARTIAL — commit 64aa67f | poll/polling_division/streetNumber/streetName aliases added to simple import. Smart import already handles these. Geocoding infrastructure exists (/api/geocode/batch + /api/cron/geocode-contacts). Smart import auto-triggers 500-household geocoding pass on completion. Needs GOOGLE_MAPS_API_KEY in Vercel for scale (Nominatim fallback = 1/sec, too slow for 15k+ households). | Campaign maps blank until geocoded |
+| Voter file import → enrichment | PARTIAL — commits 64aa67f + fedd9c3 | Electoral field aliases wired. Geocoding infrastructure exists. Household grouping now runs automatically after each import chunk (fedd9c3) — contacts at the same address get linked into Household records for canvassing. Remaining gap: GOOGLE_MAPS_API_KEY needed in Vercel for scale geocoding (Nominatim = 1/sec, too slow for 15k+ household voter files). No schema changes needed for household grouper. | Canvassers see grouped households; maps need geocoding key to show pins |
 
 ---
 
@@ -125,6 +125,9 @@ This is the business model. Every gap below undermines the conversion funnel.
 | Task | Status | What a user can do TODAY | What's missing |
 |---|---|---|---|
 | Geographic maps (CNN-level) | DONE — commits 41e8283 + 32d467d | MapLibre GL JS migration complete. All 7 Leaflet components replaced. Ward boundaries, turf draw with live contact count, heatmaps, canvasser tracking, choropleth, signs map. |
+| Marketing nav overlap | DONE — commit 4020505 | Election countdown bar and navbar were stacked on top of each other. Wrapped in sticky container — both now visible. |
+| SUPER_ADMIN → /ops routing | DONE — commits b1c8131, 45bdcdc | George lands on /ops on login. Redirected from /dashboard if no activeCampaignId. Null guards added. |
+| Founder campaign view UX | DONE — commits 71a98f5, 1b1e6ce | "Enter Campaign View" in Ops→Clients. Navy banner shows campaign name when inside client view. "Exit to Founder View" clears activeCampaignId and returns to /ops. |
 | Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
 | `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
 | `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
