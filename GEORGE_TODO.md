@@ -305,17 +305,69 @@ These activate your personal debug toolbar when you're logged in as yourself.
 
 ## 🔵 GOOGLE OAUTH — Social login + future calendar sync
 
-- [ ] **47. Create OAuth credentials** at [console.cloud.google.com](https://console.cloud.google.com)
-  1. New project (or use existing)
-  2. APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
-  3. Application type: Web application
-  4. Authorized redirect URIs: `https://app.poll.city/api/auth/callback/google`
-- [ ] **48. Add to Vercel**:
+- [x] **47. Create OAuth credentials** at console.cloud.google.com ✓ Done 2026-04-20
+- [ ] **48. Add to Vercel** (do this now — Google sign-in won't work until you do):
+  1. vercel.com → Poll City project → Settings → Environment Variables
+  2. Add `GOOGLE_CLIENT_ID` = client_id from the downloaded JSON file
+  3. Add `GOOGLE_CLIENT_SECRET` = client_secret from the downloaded JSON file
+  4. Apply to Production + Preview + Development → Save
+  5. Redeploy: Settings → Deployments → Redeploy latest
 
-| Variable | Value |
-|---|---|
-| `GOOGLE_CLIENT_ID` | Client ID from Google Console |
-| `GOOGLE_CLIENT_SECRET` | Client secret from Google Console |
+---
+
+## 🍎 APPLE SIGN-IN (WEB) — Do this before public campaign sign-up launches (~30 min)
+
+Required before any voter or candidate can sign up via Apple ID on the web.
+
+- [ ] **80. Create Apple Service ID** at [developer.apple.com](https://developer.apple.com)
+  1. Certificates, IDs & Profiles → Identifiers → + → Service IDs
+  2. Description: "Poll City Web", Identifier: `com.pollcity.web`
+  3. Enable "Sign In with Apple" → Configure
+  4. Domains: `app.poll.city`
+  5. Return URL: `https://app.poll.city/api/auth/callback/apple`
+  6. Save → Continue → Register
+
+- [ ] **81. Generate private key**
+  1. Keys → + → name: "Poll City Sign In with Apple"
+  2. Enable "Sign In with Apple" → Configure → select Primary App ID
+  3. Register → Download `.p8` file (ONE TIME ONLY — save it somewhere safe)
+  4. Note your **Key ID** (shown on the page) and **Team ID** (top-right of developer.apple.com)
+
+- [ ] **82. Generate APPLE_CLIENT_SECRET** (JWT — expires every 6 months max)
+  Run in terminal (replace YOUR_TEAM_ID, YOUR_KEY_ID, and path to .p8 file):
+  ```bash
+  node -e "
+  const jwt = require('jsonwebtoken');
+  const fs = require('fs');
+  const key = fs.readFileSync('./AuthKey_YOURKEYID.p8');
+  const token = jwt.sign({}, key, {
+    algorithm: 'ES256', expiresIn: '180d',
+    issuer: 'YOUR_TEAM_ID', subject: 'com.pollcity.web',
+    keyid: 'YOUR_KEY_ID', audience: 'https://appleid.apple.com',
+  });
+  console.log(token);
+  "
+  ```
+
+- [ ] **83. Add to Vercel**:
+  - `APPLE_CLIENT_ID` = `com.pollcity.web`
+  - `APPLE_CLIENT_SECRET` = JWT from above
+  - Redeploy after adding
+
+**Reminder:** Renew APPLE_CLIENT_SECRET every 6 months (max lifetime). Set a calendar reminder.
+
+---
+
+## 📱 MOBILE OAUTH (iOS + Android) — Tell AI when App Store submission is approaching
+
+This requires code changes — not just config. Flag it as a build task when mobile goes to App Store.
+At that point the AI needs to build:
+- `expo-apple-authentication` for iOS (App Store **requires** this if any other social login exists)
+- `@react-native-google-signin/google-signin` for Android + iOS
+- iOS client ID + Android client ID from same Google Cloud project (poll-city-384910)
+- Apple App ID with "Sign In with Apple" capability enabled
+
+**Do NOT submit to App Store without Apple sign-in — Apple will reject the app.**
 
 ---
 
