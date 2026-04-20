@@ -1,12 +1,10 @@
 "use client";
-/**
- * ChoroplethMap — renders a real GIS choropleth map using Leaflet + GeoJSON boundaries.
- * Loaded dynamically with ssr:false from analytics-client.tsx.
- *
- * Falls back to a message box if no boundary data exists in the DB yet
- * (i.e., the GIS seed script has not been run).
- */
-import { useEffect, useRef } from "react";
+
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
+import { Source, Layer } from "react-map-gl/maplibre";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 interface ElectionFeatureProps {
   id: string;
@@ -38,87 +36,50 @@ interface Props {
   year: string;
 }
 
-function bucketColour(bucket: string | undefined, percentage: number | null | undefined): string {
-  const pct = percentage ?? 0;
-  if (!bucket || bucket === "no-data") return "#E5E7EB";
+function bucketFillColor(pct: number, bucket: string): string {
   if (bucket === "dominant") return `rgba(30,58,138,${Math.min(0.9, 0.35 + (pct - 60) / 80)})`;
   if (bucket === "moderate") return `rgba(59,130,246,${Math.min(0.8, 0.25 + (pct - 40) / 100)})`;
   return `rgba(220,38,38,${Math.min(0.7, 0.15 + (60 - pct) / 120)})`;
 }
 
-export default function ChoroplethMap({ geojson, year }: Props) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapInstanceRef = useRef<any>(null);
+function enrichGeoJSON(geojson: GeoJsonCollection): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: geojson.features.map((f) => {
+      const p = f.properties;
+      const pct = p.percentage ?? 0;
+      const bucket = p.bucket ?? "no-data";
+      const fillColor = !p.hasElectionData || bucket === "no-data"
+        ? "#E5E7EB"
+        : bucketFillColor(pct, bucket);
+      return {
+        ...f,
+        properties: {
+          ...p,
+          _fillColor: fillColor,
+          _label: p.hasElectionData
+            ? `${p.name ?? ""} — ${p.candidateName ?? "—"} ${pct.toFixed(1)}%`
+            : `${p.name ?? ""} — No ${p.province ?? ""} data`,
+        },
+      } as GeoJSON.Feature;
+    }),
+  };
+}
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !mapRef.current) return;
+function deriveInitialView(geojson: GeoJsonCollection): { longitude: number; latitude: number; zoom: number } {
+  if (geojson.features.length === 0) return { longitude: -78.5, latitude: 44.2, zoom: 6 };
+  return { longitude: -78.5, latitude: 44.2, zoom: 6 };
+}
 
-    // Dynamically import Leaflet to avoid SSR issues
-    import("leaflet").then((L) => {
-      // Destroy previous instance if re-mounting
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-
-      const map = L.map(mapRef.current!, {
-        center: [44.2, -78.5], // Ontario centre
-        zoom: 6,
-        scrollWheelZoom: true,
-      });
-
-      mapInstanceRef.current = map;
-
-      // Tile layer — OSM
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 18,
-      }).addTo(map);
-
-      if (!geojson || geojson.features.length === 0) return;
-
-      // GeoJSON layer with choropleth styling
-      const layer = L.geoJSON(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        geojson as any,
-        {
-          style: (feature) => {
-            const p = feature?.properties as ElectionFeatureProps | undefined;
-            return {
-              fillColor: bucketColour(p?.bucket, p?.percentage),
-              weight: 1,
-              opacity: 0.8,
-              color: "#ffffff",
-              fillOpacity: 0.75,
-            };
-          },
-          onEachFeature: (feature, lyr) => {
-            const p = feature.properties as ElectionFeatureProps;
-            const tooltip = p.hasElectionData
-              ? `<strong>${p.name}</strong><br>${p.candidateName ?? "—"}<br>${p.percentage?.toFixed(1) ?? "—"}% · ${p.totalVotesCast?.toLocaleString() ?? "—"} votes`
-              : `<strong>${p.name}</strong><br>No ${year} election data`;
-            lyr.bindTooltip(tooltip, { sticky: true });
-          },
-        }
-      ).addTo(map);
-
-      // Fit to bounds if features exist
-      try {
-        const bounds = layer.getBounds();
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
-      } catch {
-        // noop
-      }
-    });
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [geojson, year]);
+function ChoroplethMapInner({ geojson, year }: Props) {
+  const enriched = useMemo(
+    () => (geojson ? enrichGeoJSON(geojson) : null),
+    [geojson],
+  );
+  const initialView = useMemo(
+    () => (geojson ? deriveInitialView(geojson) : { longitude: -78.5, latitude: 44.2, zoom: 6 }),
+    [geojson],
+  );
 
   if (!geojson || geojson.features.length === 0) {
     return (
@@ -126,9 +87,8 @@ export default function ChoroplethMap({ geojson, year }: Props) {
         <div className="text-4xl mb-3">🗺️</div>
         <p className="font-semibold text-gray-700 mb-1">GIS Boundary Data Not Yet Loaded</p>
         <p className="text-sm text-gray-500 max-w-md">
-          Run <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">npm run db:seed:boundaries:gis</code> from
-          Railway (requires network access to opendata.arcgis.com and represent.opennorth.ca) to import
-          Ontario municipal boundary polygons. The heat grid below is available now.
+          Run <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">npm run db:seed:boundaries:gis</code> to
+          import Ontario municipal boundary polygons.
         </p>
       </div>
     );
@@ -136,14 +96,33 @@ export default function ChoroplethMap({ geojson, year }: Props) {
 
   return (
     <div className="relative rounded-xl overflow-hidden border border-gray-100" style={{ height: 480 }}>
-      <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      />
-      <div ref={mapRef} style={{ height: "100%", width: "100%" }} />
+      <PollCityMap mode="analytics" initialViewState={initialView} height="100%">
+        {enriched && (
+          <Source id="choropleth" type="geojson" data={enriched}>
+            <Layer
+              id="choropleth-fill"
+              type="fill"
+              paint={{
+                "fill-color": ["get", "_fillColor"] as never,
+                "fill-opacity": 0.75,
+              }}
+            />
+            <Layer
+              id="choropleth-outline"
+              type="line"
+              paint={{
+                "line-color": "#ffffff",
+                "line-width": 1,
+                "line-opacity": 0.8,
+              }}
+            />
+          </Source>
+        )}
+      </PollCityMap>
+
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow p-2.5 text-xs space-y-1">
-        <p className="font-semibold text-gray-700 mb-1">Winner margin</p>
+      <div className="absolute bottom-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-lg shadow p-2.5 text-xs space-y-1">
+        <p className="font-semibold text-gray-700 mb-1">Winner margin — {year}</p>
         {[
           { colour: "rgba(220,38,38,0.5)", label: "Close race (<40%)" },
           { colour: "rgba(59,130,246,0.6)", label: "Moderate (40–60%)" },
@@ -158,4 +137,8 @@ export default function ChoroplethMap({ geojson, year }: Props) {
       </div>
     </div>
   );
+}
+
+export default function ChoroplethMap(props: Props) {
+  return <ChoroplethMapInner {...props} />;
 }

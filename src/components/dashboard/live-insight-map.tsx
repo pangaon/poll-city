@@ -1,14 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
-  Circle,
-  useMapEvents,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import dynamic from "next/dynamic";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Source, Layer, useMap } from "react-map-gl/maplibre";
+import { SUPPORT_COLORS } from "@/components/maps/lib/map-utils";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 type ContactPin = {
   id: string;
@@ -39,27 +36,73 @@ type PinResponse = {
   total: number;
 };
 
-function supportColor(level: string) {
-  if (level === "strong_support" || level === "leaning_support") return "#22c55e";
-  if (level === "undecided") return "#eab308";
-  if (level.includes("opposition") || level.includes("against")) return "#ef4444";
-  return "#9ca3af";
+function buildContactFC(contacts: ContactPin[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: contacts.map((c) => {
+      const mins = c.lastContacted
+        ? Math.round((Date.now() - new Date(c.lastContacted).getTime()) / 60000)
+        : null;
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lng, c.lat] },
+        properties: {
+          id: c.id,
+          name: c.name,
+          address: c.address ?? "",
+          supportLevel: c.supportLevel,
+          voted: c.voted,
+          hasSign: c.hasSign,
+          wantsSign: c.wantsSign,
+          lastContacted: c.lastContacted ?? "",
+          isRecent: mins !== null && mins < 30,
+          color: SUPPORT_COLORS[c.supportLevel] ?? SUPPORT_COLORS.default,
+        },
+      };
+    }),
+  };
 }
 
-function centroid(points: Array<{ lat: number; lng: number }>) {
-  if (points.length === 0) return null;
-  const sum = points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
-  return { lat: sum.lat / points.length, lng: sum.lng / points.length };
+function buildSignFC(signs: SignPin[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: signs.map((s, i) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+      properties: { id: `sign-${i}`, address: s.address, signType: s.signType },
+    })),
+  };
 }
 
-export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
+function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (b: { south: number; north: number; west: number; east: number }) => void }) {
+  const { current: mapRef } = useMap();
+
+  useEffect(() => {
+    if (!mapRef) return;
+    const map = mapRef.getMap();
+    function fire() {
+      const b = map.getBounds();
+      if (b) onBoundsChange({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
+    }
+    fire();
+    map.on("moveend", fire);
+    return () => { map.off("moveend", fire); };
+  }, [mapRef, onBoundsChange]);
+
+  return null;
+}
+
+function LiveInsightMapInner({ campaignId }: { campaignId: string }) {
   const [data, setData] = useState<PinResponse>({ contacts: [], signs: [], total: 0 });
   const [selected, setSelected] = useState<ContactPin | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false);
 
-  async function load(bounds: { south: number; north: number; west: number; east: number }) {
-    setLoading(true);
-    try {
+  const load = useCallback(
+    (bounds: { south: number; north: number; west: number; east: number }) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
       const q = new URLSearchParams({
         campaignId,
         south: String(bounds.south),
@@ -68,91 +111,91 @@ export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
         east: String(bounds.east),
         limit: "2500",
       });
-      const res = await fetch(`/api/maps/live-pins?${q.toString()}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const payload = (await res.json()) as PinResponse;
-      setData(payload);
-    } finally {
-      setLoading(false);
-    }
-  }
+      fetch(`/api/maps/live-pins?${q.toString()}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((payload: PinResponse | null) => {
+          if (payload) setData(payload);
+        })
+        .catch(() => null)
+        .finally(() => {
+          setLoading(false);
+          loadingRef.current = false;
+        });
+    },
+    [campaignId],
+  );
 
-  const supporterCenter = useMemo(
-    () => centroid(data.contacts.filter((c) => c.supportLevel.includes("support")).map((c) => ({ lat: c.lat, lng: c.lng }))),
-    [data.contacts],
-  );
-  const oppositionCenter = useMemo(
-    () => centroid(data.contacts.filter((c) => c.supportLevel.includes("opposition") || c.supportLevel.includes("against")).map((c) => ({ lat: c.lat, lng: c.lng }))),
-    [data.contacts],
-  );
-  const opponentSignCenter = useMemo(
-    () => centroid(data.signs.filter((s) => String(s.signType).includes("opponent")).map((s) => ({ lat: s.lat, lng: s.lng }))),
-    [data.signs],
-  );
+  const contactFC = buildContactFC(data.contacts);
+  const signFC = buildSignFC(data.signs);
 
   return (
     <div className="relative z-0 h-[26rem] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-      <MapContainer center={[43.6532, -79.3832]} zoom={12} className="h-full w-full" zoomControl>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapBoundsLoader onBoundsChange={load} />
+      <PollCityMap mode="dashboard" height="100%">
+        <BoundsWatcher onBoundsChange={load} />
 
-        {supporterCenter && (
-          <Circle center={[supporterCenter.lat, supporterCenter.lng]} radius={900} pathOptions={{ color: "#22c55e", fillOpacity: 0.12, weight: 2 }} />
-        )}
-        {oppositionCenter && (
-          <Circle center={[oppositionCenter.lat, oppositionCenter.lng]} radius={850} pathOptions={{ color: "#ef4444", fillOpacity: 0.1, weight: 2 }} />
-        )}
-        {opponentSignCenter && (
-          <Circle center={[opponentSignCenter.lat, opponentSignCenter.lng]} radius={700} pathOptions={{ color: "#dc2626", fillOpacity: 0.16, weight: 2 }} />
-        )}
-
-        {data.contacts.map((contact) => {
-          const recentlyContacted = !!contact.lastContacted && Date.now() - new Date(contact.lastContacted).getTime() < 30 * 60 * 1000;
-            return (
-              <Fragment key={contact.id}>
-              {recentlyContacted && (
-                <Circle
-                  key={`${contact.id}-pulse`}
-                  center={[contact.lat, contact.lng]}
-                  radius={120}
-                  pathOptions={{ color: "#38bdf8", weight: 1, fillOpacity: 0.08 }}
-                />
-              )}
-              <CircleMarker
-                key={contact.id}
-                center={[contact.lat, contact.lng]}
-                radius={contact.voted ? 4 : recentlyContacted ? 7 : 5.5}
-                pathOptions={{
-                  color: "#0f172a",
-                  weight: 1,
-                  fillColor: supportColor(contact.supportLevel),
-                  fillOpacity: contact.voted ? 0.6 : 0.95,
-                }}
-                eventHandlers={{ click: () => setSelected(contact) }}
-              />
-              </Fragment>
-          );
-        })}
-
-        {data.signs.map((sign, i) => (
-          <CircleMarker
-            key={`sign-${i}`}
-            center={[sign.lat, sign.lng]}
-            radius={3.5}
-            pathOptions={{ color: "#7f1d1d", fillColor: "#ef4444", fillOpacity: 0.85, weight: 1 }}
+        {/* Heatmap */}
+        <Source id="live-contacts-heat" type="geojson" data={contactFC}>
+          <Layer
+            id="live-heat"
+            type="heatmap"
+            maxzoom={15}
+            paint={{
+              "heatmap-radius": 20,
+              "heatmap-opacity": 0.6,
+            }}
           />
-        ))}
-      </MapContainer>
+        </Source>
 
+        {/* Contact dots */}
+        <Source id="live-contacts" type="geojson" data={contactFC}>
+          <Layer
+            id="live-dots"
+            type="circle"
+            paint={{
+              "circle-color": ["get", "color"] as never,
+              "circle-radius": 5.5,
+              "circle-opacity": 0.9,
+              "circle-stroke-width": 1,
+              "circle-stroke-color": "#0f172a",
+            }}
+          />
+        </Source>
+
+        {/* Sign dots */}
+        <Source id="live-signs" type="geojson" data={signFC}>
+          <Layer
+            id="live-sign-dots"
+            type="circle"
+            paint={{
+              "circle-color": "#ef4444",
+              "circle-radius": 3.5,
+              "circle-opacity": 0.85,
+              "circle-stroke-width": 1,
+              "circle-stroke-color": "#7f1d1d",
+            }}
+          />
+        </Source>
+      </PollCityMap>
+
+      {/* Viewport counter */}
       <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-white/40 bg-white/70 px-2 py-1 text-[11px] font-semibold text-slate-700 backdrop-blur">
-        {loading ? "Loading pins..." : `${data.total.toLocaleString()} contacts in viewport`}
+        {loading ? "Loading pins..." : `${data.total.toLocaleString()} contacts in view`}
+      </div>
+
+      {/* Legend */}
+      <div className="absolute bottom-10 left-3 z-10 bg-white/90 backdrop-blur rounded-lg p-2 text-xs space-y-1">
+        {Object.entries(SUPPORT_COLORS)
+          .filter(([k]) => k !== "default")
+          .map(([level, color]) => (
+            <div key={level} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+              <span className="text-slate-600 capitalize">{level.replace(/_/g, " ")}</span>
+            </div>
+          ))}
       </div>
 
       {selected && (
-        <aside className="absolute inset-y-0 right-0 w-72 border-l border-slate-200 bg-white/80 p-3 backdrop-blur">
+        <aside className="absolute inset-y-0 right-0 w-72 border-l border-slate-200 bg-white/80 p-3 backdrop-blur z-10">
           <p className="text-sm font-black text-slate-900">{selected.name}</p>
           <p className="mt-0.5 text-xs text-slate-600">{selected.address ?? "Address unavailable"}</p>
           <div className="mt-3 space-y-1 text-xs text-slate-700">
@@ -175,16 +218,6 @@ export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
   );
 }
 
-function MapBoundsLoader({ onBoundsChange }: { onBoundsChange: (bounds: { south: number; north: number; west: number; east: number }) => void }) {
-  const map = useMapEvents({
-    load: () => {
-      const b = map.getBounds();
-      onBoundsChange({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
-    },
-    moveend: () => {
-      const b = map.getBounds();
-      onBoundsChange({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
-    },
-  });
-  return null;
+export default function LiveInsightMap({ campaignId }: { campaignId: string }) {
+  return <LiveInsightMapInner campaignId={campaignId} />;
 }

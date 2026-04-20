@@ -1,6 +1,8 @@
 "use client";
 
-import { MapContainer, Marker, Polygon, TileLayer, Popup } from "react-leaflet";
+import dynamic from "next/dynamic";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 type Point = { id: string; label: string; lat: number; lng: number };
 
@@ -10,51 +12,71 @@ interface CandidateWardMapProps {
   officePoint: { lat: number; lng: number } | null;
 }
 
-function toLatLngPairs(boundaryGeoJSON: unknown): [number, number][] {
-  if (!boundaryGeoJSON || typeof boundaryGeoJSON !== "object") return [];
-
+function toFeatureCollection(boundaryGeoJSON: unknown): GeoJSON.FeatureCollection | null {
+  if (!boundaryGeoJSON || typeof boundaryGeoJSON !== "object") return null;
   const obj = boundaryGeoJSON as Record<string, unknown>;
-  const coordinates = obj.coordinates;
-  if (!Array.isArray(coordinates) || coordinates.length === 0) return [];
 
-  const polygon = coordinates[0];
-  if (!Array.isArray(polygon)) return [];
-
-  return polygon
-    .filter((point): point is [number, number] => Array.isArray(point) && point.length >= 2)
-    .map((point): [number, number] => [Number(point[1]), Number(point[0])])
-    .filter((pair) => Number.isFinite(pair[0]) && Number.isFinite(pair[1]));
+  if (obj.type === "FeatureCollection") {
+    return obj as unknown as GeoJSON.FeatureCollection;
+  }
+  if (obj.type === "Feature") {
+    return {
+      type: "FeatureCollection",
+      features: [obj as unknown as GeoJSON.Feature],
+    };
+  }
+  if (obj.type === "Polygon" || obj.type === "MultiPolygon") {
+    return {
+      type: "FeatureCollection",
+      features: [{ type: "Feature", geometry: obj as unknown as GeoJSON.Geometry, properties: {} }],
+    };
+  }
+  return null;
 }
 
-export default function CandidateWardMap({ boundaryGeoJSON, eventPoints, officePoint }: CandidateWardMapProps) {
-  const polygon = toLatLngPairs(boundaryGeoJSON);
+function deriveCenter(
+  boundaryGeoJSON: unknown,
+  eventPoints: Point[],
+  officePoint: { lat: number; lng: number } | null,
+): { longitude: number; latitude: number; zoom: number } {
+  const ep = eventPoints[0];
+  const op = officePoint;
+  if (ep) return { longitude: ep.lng, latitude: ep.lat, zoom: 12 };
+  if (op) return { longitude: op.lng, latitude: op.lat, zoom: 12 };
 
-  const fallbackCenter: [number, number] = [43.6532, -79.3832];
-  const center: [number, number] =
-    polygon[0] ||
-    (eventPoints[0] ? [eventPoints[0].lat, eventPoints[0].lng] : null) ||
-    (officePoint ? [officePoint.lat, officePoint.lng] : fallbackCenter);
+  const obj = boundaryGeoJSON as Record<string, unknown> | null;
+  if (obj?.type === "Feature") {
+    const geom = (obj as { geometry?: { coordinates?: unknown[] } }).geometry;
+    const ring = geom?.coordinates?.[0] as number[][] | undefined;
+    if (ring?.length) {
+      const lngs = ring.map((p) => p[0]);
+      const lats = ring.map((p) => p[1]);
+      return {
+        longitude: lngs.reduce((a, b) => a + b, 0) / lngs.length,
+        latitude: lats.reduce((a, b) => a + b, 0) / lats.length,
+        zoom: 12,
+      };
+    }
+  }
+  return { longitude: -79.3832, latitude: 43.6532, zoom: 12 };
+}
+
+export default function CandidateWardMap({
+  boundaryGeoJSON,
+  eventPoints,
+  officePoint,
+}: CandidateWardMapProps) {
+  const wardFC = toFeatureCollection(boundaryGeoJSON);
+  const initialViewState = deriveCenter(boundaryGeoJSON, eventPoints, officePoint);
 
   return (
-    <MapContainer center={center} zoom={12} className="h-[300px] md:h-[420px] w-full" scrollWheelZoom>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="h-[300px] md:h-[420px] w-full rounded-xl overflow-hidden">
+      <PollCityMap
+        mode="public"
+        wardGeoJSON={wardFC}
+        initialViewState={initialViewState}
+        height="100%"
       />
-
-      {polygon.length > 2 ? <Polygon positions={polygon} pathOptions={{ color: "#1a4782", fillOpacity: 0.12 }} /> : null}
-
-      {officePoint ? (
-        <Marker position={[officePoint.lat, officePoint.lng]}>
-          <Popup>Campaign office</Popup>
-        </Marker>
-      ) : null}
-
-      {eventPoints.map((eventPoint) => (
-        <Marker key={eventPoint.id} position={[eventPoint.lat, eventPoint.lng]}>
-          <Popup>{eventPoint.label}</Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+    </div>
   );
 }

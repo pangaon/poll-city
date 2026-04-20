@@ -1,42 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Circle,
-  MapContainer,
-  Marker,
-  Polygon,
-  Popup,
-  Polyline,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet";
-import L, { LatLngExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { Source, Layer } from "react-map-gl/maplibre";
+import { turfStatusColor } from "@/components/maps/lib/map-utils";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 export type CampaignMapMode = "canvassing" | "walk" | "signs" | "dashboard" | "gotv" | "public";
-
-interface FeatureCollection {
-  type: "FeatureCollection";
-  features: Array<{
-    type: "Feature";
-    geometry: {
-      type: string;
-      coordinates: unknown;
-    };
-    properties: Record<string, unknown>;
-  }>;
-}
-
-interface LayerToggles {
-  heat: boolean;
-  doors: boolean;
-  turfs: boolean;
-  signs: boolean;
-  volunteers: boolean;
-  route: boolean;
-}
 
 interface AreaStats {
   doors: number;
@@ -74,83 +45,6 @@ export interface CampaignMapProps {
   hideLegend?: boolean;
 }
 
-const DEFAULT_CENTER: [number, number] = [43.6532, -79.3832];
-
-const volunteerIcon = L.divIcon({
-  className: "",
-  html: '<div style="width:14px;height:14px;border-radius:50%;background:#2563eb;border:2px solid #ffffff;box-shadow:0 0 0 2px rgba(37,99,235,0.25)"></div>',
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
-
-const currentStopIcon = L.divIcon({
-  className: "",
-  html: '<div style="width:20px;height:20px;border-radius:50%;background:#f97316;border:2px solid #ffffff"></div>',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-});
-
-const doneStopIcon = L.divIcon({
-  className: "",
-  html: '<div style="width:18px;height:18px;border-radius:50%;background:#22c55e;border:2px solid #ffffff"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
-
-const pendingStopIcon = L.divIcon({
-  className: "",
-  html: '<div style="width:18px;height:18px;border-radius:50%;background:#9ca3af;border:2px solid #ffffff"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
-
-function FitMapBounds({ points }: { points: Array<[number, number]> }) {
-  const map = useMap();
-  useEffect(() => {
-    if (points.length > 1) {
-      map.fitBounds(points, { padding: [24, 24] });
-    }
-  }, [map, points]);
-  return null;
-}
-
-function DrawListener({
-  enabled,
-  onPoint,
-}: {
-  enabled: boolean;
-  onPoint: (point: [number, number]) => void;
-}) {
-  const map = useMapEvents({
-    click(event) {
-      if (!enabled) return;
-      onPoint([event.latlng.lat, event.latlng.lng]);
-    },
-  });
-
-  useEffect(() => {
-    map.getContainer().style.cursor = enabled ? "crosshair" : "";
-    return () => {
-      map.getContainer().style.cursor = "";
-    };
-  }, [enabled, map]);
-
-  return null;
-}
-
-function normalizePolygonCoordinates(geometry: FeatureCollection["features"][number]["geometry"]): Array<[number, number]> {
-  if (!geometry || geometry.type !== "Polygon") return [];
-  const coords = geometry.coordinates as number[][][];
-  const outer = coords[0] ?? [];
-  return outer.map((pair) => [pair[1], pair[0]]);
-}
-
-function normalizePoint(geometry: FeatureCollection["features"][number]["geometry"]): [number, number] | null {
-  if (!geometry || geometry.type !== "Point") return null;
-  const coord = geometry.coordinates as number[];
-  return [coord[1], coord[0]];
-}
-
 function computeAreaStats(pointCount: number): AreaStats {
   const doors = pointCount;
   const knocked = Math.round(doors * 0.42);
@@ -160,40 +54,46 @@ function computeAreaStats(pointCount: number): AreaStats {
   return { doors, knocked, supporters, estimatedHours, volunteersNeeded };
 }
 
-/** 7-state turf colour based on workflow status + completion */
-export function turfStatusColor(
-  status: unknown,
-  percent: number | null | undefined,
-): string {
-  const pct = percent ?? 0;
-  switch (status) {
-    case "completed":   return "#22c55e"; // green
-    case "reassigned":  return "#a855f7"; // purple
-    case "in_progress":
-      if (pct >= 75) return "#84cc16"; // lime — nearly done
-      if (pct >= 40) return "#f97316"; // orange — good progress
-      return "#f59e0b";                // amber — just started
-    case "assigned":    return "#3b82f6"; // blue — ready to go
-    default:            return "#9ca3af"; // grey — draft / unknown
-  }
+interface LayerToggles {
+  heat: boolean;
+  doors: boolean;
+  turfs: boolean;
+  signs: boolean;
+  volunteers: boolean;
+  route: boolean;
 }
 
-function turfFillOpacity(status: unknown, percent: number | null | undefined): number {
-  const pct = percent ?? 0;
-  if (status === "completed") return 0.3;
-  if (pct > 0) return 0.2;
-  if (status === "assigned") return 0.15;
-  return 0.08;
+export { turfStatusColor };
+
+type GeoFC = GeoJSON.FeatureCollection;
+type GeoFeat = GeoJSON.Feature;
+
+function fetchGeoJSON(url: string): Promise<GeoFC | null> {
+  return fetch(url)
+    .then((r) => (r.ok ? (r.json() as Promise<GeoFC>) : null))
+    .catch(() => null);
 }
 
-/** @deprecated use turfStatusColor */
-function completionColor(percent: number | null | undefined): string {
-  return turfStatusColor(percent && percent >= 90 ? "completed" : percent && percent > 0 ? "in_progress" : "draft", percent);
-}
+const SUPPORT_COLOR_EXPR = [
+  "match",
+  ["get", "supportLevel"],
+  "strong_support", "#1D9E75",
+  "lean_support",   "#6ee7b7",
+  "undecided",      "#EF9F27",
+  "lean_oppose",    "#fca5a5",
+  "strong_oppose",  "#E24B4A",
+  "#94a3b8",
+];
 
-function completionFillOpacity(percent: number | null | undefined): number {
-  return turfFillOpacity(percent && percent > 0 ? "in_progress" : "draft", percent);
-}
+const TURF_COLOR_EXPR = [
+  "match",
+  ["get", "status"],
+  "completed",   "#22c55e",
+  "reassigned",  "#a855f7",
+  "in_progress", "#f59e0b",
+  "assigned",    "#3b82f6",
+  "#9ca3af",
+];
 
 export default function CampaignMap({
   mode,
@@ -216,263 +116,258 @@ export default function CampaignMap({
     volunteers: mode !== "public",
     route: mode === "walk" || mode === "canvassing",
   });
-  const [contacts, setContacts] = useState<FeatureCollection | null>(null);
-  const [turfs, setTurfs] = useState<FeatureCollection | null>(null);
-  const [signs, setSigns] = useState<FeatureCollection | null>(null);
-  const [volunteers, setVolunteers] = useState<FeatureCollection | null>(null);
-  const [wardBoundary, setWardBoundary] = useState<FeatureCollection | null>(null);
+
+  const [contacts, setContacts] = useState<GeoFC | null>(null);
+  const [turfs, setTurfs] = useState<GeoFC | null>(null);
+  const [signs, setSigns] = useState<GeoFC | null>(null);
+  const [volunteers, setVolunteers] = useState<GeoFC | null>(null);
+  const [wardBoundary, setWardBoundary] = useState<GeoFC | GeoFeat | null>(null);
   const [drawMode, setDrawMode] = useState(false);
   const [draftPolygon, setDraftPolygon] = useState<Array<[number, number]>>([]);
   const [selectedStats, setSelectedStats] = useState<AreaStats>(computeAreaStats(0));
 
-  const readApi = useCallback(async (url: string) => {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      return (await res.json()) as FeatureCollection;
-    } catch {
-      return null;
-    }
-  }, []);
-
   useEffect(() => {
-    const cid = campaignId ? `campaignId=${encodeURIComponent(campaignId)}` : "";
-    const turfParam = turfId ? `turfId=${encodeURIComponent(turfId)}` : "";
-    const contactsParams = [cid, turfParam].filter(Boolean).join("&");
+    if (!campaignId) return;
+    const cid = encodeURIComponent(campaignId);
+    const turfParam = turfId ? `&turfId=${encodeURIComponent(turfId)}` : "";
     void Promise.all([
-      readApi(`/api/maps/contacts-geojson${contactsParams ? `?${contactsParams}` : ""}`),
-      readApi(campaignId ? `/api/maps/turfs-geojson?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/turfs-geojson"),
-      readApi(campaignId ? `/api/maps/signs-geojson?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/signs-geojson"),
-      readApi(campaignId ? `/api/maps/volunteer-locations?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/volunteer-locations"),
-      readApi(campaignId ? `/api/maps/ward-boundary?campaignId=${encodeURIComponent(campaignId)}` : "/api/maps/ward-boundary"),
-    ]).then(([contactGeoJson, turfGeoJson, signGeoJson, volunteerGeoJson, boundaryGeoJson]) => {
-      setContacts(contactGeoJson);
-      setTurfs(turfGeoJson);
-      setSigns(signGeoJson);
-      setVolunteers(volunteerGeoJson);
-      setWardBoundary(boundaryGeoJson);
+      fetchGeoJSON(`/api/maps/contacts-geojson?campaignId=${cid}${turfParam}&take=10000`),
+      fetchGeoJSON(`/api/maps/turfs-geojson?campaignId=${cid}`),
+      fetchGeoJSON(`/api/maps/signs-geojson?campaignId=${cid}`),
+      fetchGeoJSON(`/api/maps/volunteer-locations?campaignId=${cid}`),
+      fetch(`/api/geodata/ward-boundary?campaignId=${cid}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { data?: GeoFC | GeoFeat } | null) => d?.data ?? null)
+        .catch(() => null),
+    ]).then(([contactGeo, turfGeo, signGeo, volunteerGeo, boundary]) => {
+      setContacts(contactGeo);
+      setTurfs(turfGeo);
+      setSigns(signGeo);
+      setVolunteers(volunteerGeo);
+      setWardBoundary(boundary as GeoFC | GeoFeat | null);
 
-      const fallbackCount = contactGeoJson?.features?.length ?? 0;
-      const stats = computeAreaStats(fallbackCount);
+      const stats = computeAreaStats(contactGeo?.features?.length ?? 0);
       setSelectedStats(stats);
       onAreaSelect?.(stats);
     });
-  }, [onAreaSelect, readApi, turfId, campaignId]);
+  }, [campaignId, turfId, onAreaSelect]);
 
+  // Dashboard live refresh
   useEffect(() => {
-    if (mode !== "dashboard") return;
+    if (mode !== "dashboard" || !campaignId) return;
     const timer = window.setInterval(() => {
-      void readApi("/api/maps/contacts-geojson").then((next) => {
-        if (next) setContacts(next);
-      });
+      void fetchGeoJSON(`/api/maps/contacts-geojson?campaignId=${encodeURIComponent(campaignId)}&take=10000`)
+        .then((next) => { if (next) setContacts(next); });
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, [mode, readApi]);
-
-  const contactPoints = useMemo(() => {
-    if (!contacts) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return (contacts.features ?? [])
-      .map((feature) => {
-        const latLng = normalizePoint(feature.geometry);
-        if (!latLng) return null;
-        return { latLng, properties: feature.properties ?? {} };
-      })
-      .filter((item): item is { latLng: [number, number]; properties: Record<string, unknown> } => Boolean(item));
-  }, [contacts]);
-
-  const turfPolygons = useMemo(() => {
-    if (!turfs) return [] as Array<{ points: Array<[number, number]>; properties: Record<string, unknown> }>;
-    return (turfs.features ?? [])
-      .map((feature) => {
-        const points = normalizePolygonCoordinates(feature.geometry);
-        if (!points.length) return null;
-        return { points, properties: feature.properties ?? {} };
-      })
-      .filter((item): item is { points: Array<[number, number]>; properties: Record<string, unknown> } => Boolean(item));
-  }, [turfs]);
-
-  const signPoints = useMemo(() => {
-    if (!signs) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return (signs.features ?? [])
-      .map((feature) => {
-        const latLng = normalizePoint(feature.geometry);
-        if (!latLng) return null;
-        return { latLng, properties: feature.properties ?? {} };
-      })
-      .filter((item): item is { latLng: [number, number]; properties: Record<string, unknown> } => Boolean(item));
-  }, [signs]);
-
-  const volunteerPoints = useMemo(() => {
-    if (!volunteers) return [] as Array<{ latLng: [number, number]; properties: Record<string, unknown> }>;
-    return (volunteers.features ?? [])
-      .map((feature) => {
-        const latLng = normalizePoint(feature.geometry);
-        if (!latLng) return null;
-        return { latLng, properties: feature.properties ?? {} };
-      })
-      .filter((item): item is { latLng: [number, number]; properties: Record<string, unknown> } => Boolean(item));
-  }, [volunteers]);
-
-  const boundaryPolygons = useMemo(() => {
-    if (!wardBoundary) return [] as Array<Array<[number, number]>>;
-    return (wardBoundary.features ?? [])
-      .map((feature) => normalizePolygonCoordinates(feature.geometry))
-      .filter((points) => points.length > 0);
-  }, [wardBoundary]);
-
-  const routePoints: Array<[number, number]> = useMemo(
-    () => contactPoints.map((point) => point.latLng),
-    [contactPoints],
-  );
-
-  const mapPoints = useMemo(() => {
-    const all = [
-      ...contactPoints.map((point) => point.latLng),
-      ...signPoints.map((point) => point.latLng),
-      ...volunteerPoints.map((point) => point.latLng),
-      ...turfPolygons.flatMap((item) => item.points),
-      ...boundaryPolygons.flatMap((item) => item),
-    ];
-    return all;
-  }, [boundaryPolygons, contactPoints, signPoints, turfPolygons, volunteerPoints]);
+  }, [mode, campaignId]);
 
   const areaStats = useMemo(() => {
-    const sourceCount = draftPolygon.length > 2 ? draftPolygon.length * 16 : contactPoints.length;
-    return computeAreaStats(sourceCount);
-  }, [contactPoints.length, draftPolygon.length]);
+    const count = draftPolygon.length > 2 ? draftPolygon.length * 16 : (contacts?.features?.length ?? 0);
+    return computeAreaStats(count);
+  }, [contacts, draftPolygon.length]);
 
   useEffect(() => {
     setSelectedStats(areaStats);
     onAreaSelect?.(areaStats);
   }, [areaStats, onAreaSelect]);
 
+  const handleMapClick = useCallback(
+    (lngLat: { lng: number; lat: number }) => {
+      if (!drawMode) return;
+      setDraftPolygon((prev) => [...prev, [lngLat.lat, lngLat.lng]]);
+    },
+    [drawMode],
+  );
+
+  const wardFC: GeoFC | null = useMemo(() => {
+    if (!wardBoundary) return null;
+    if (wardBoundary.type === "FeatureCollection") return wardBoundary as GeoFC;
+    if (wardBoundary.type === "Feature") {
+      return { type: "FeatureCollection", features: [wardBoundary as GeoFeat] };
+    }
+    return null;
+  }, [wardBoundary]);
+
+  // Draft polygon GeoJSON for draw mode
+  const draftFC: GeoFC = useMemo(() => {
+    if (draftPolygon.length < 2) return { type: "FeatureCollection", features: [] };
+    const coords = draftPolygon.map(([lat, lng]) => [lng, lat]);
+    return {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: draftPolygon.length >= 3
+          ? { type: "Polygon", coordinates: [[...coords, coords[0]]] }
+          : { type: "LineString", coordinates: coords },
+        properties: {},
+      }],
+    };
+  }, [draftPolygon]);
+
+  // Turf data with selected flag
+  const turfsDisplay: GeoFC | null = useMemo(() => {
+    if (!turfs) return null;
+    return {
+      ...turfs,
+      features: turfs.features.map((f) => ({
+        ...f,
+        properties: {
+          ...(f.properties ?? {}),
+          _selected: (f.properties?.id ?? "") === (selectedTurfId ?? "__none__"),
+        },
+      })),
+    };
+  }, [turfs, selectedTurfId]);
+
   const containerHeight = typeof height === "number" ? `${height}px` : height;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white" style={{ height: containerHeight, isolation: "isolate", zIndex: 0 }}>
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={13}
-        style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom
+      <PollCityMap
+        mode={mode}
+        wardGeoJSON={wardFC}
+        height="100%"
+        cursor={drawMode ? "crosshair" : "grab"}
+        onMapClick={handleMapClick}
       >
-        <DrawListener
-          enabled={drawMode}
-          onPoint={(point) => {
-            setDraftPolygon((prev) => [...prev, point]);
-          }}
-        />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        {mapPoints.length > 1 && <FitMapBounds points={mapPoints} />}
-
-        {layer.turfs && turfPolygons.map((poly, index) => {
-          const pct = typeof poly.properties.completionPercent === "number" ? poly.properties.completionPercent : 0;
-          const status = typeof poly.properties.status === "string" ? poly.properties.status : undefined;
-          const isSelected = selectedTurfId && poly.properties.id === selectedTurfId;
-          const color = turfStatusColor(status, pct);
-          const fill = turfFillOpacity(status, pct);
-          return (
-          <Polygon
-            key={`turf-${index}`}
-            positions={poly.points as LatLngExpression[]}
-            pathOptions={{
-              color: isSelected ? "#1d4ed8" : color,
-              weight: isSelected ? 3 : 2,
-              fillOpacity: isSelected ? 0.35 : fill,
-            }}
-            eventHandlers={{
-              click: () => {
-                const pointCount = Math.max(1, poly.points.length * 16);
-                onTurfClick?.({
-                  id: typeof poly.properties.id === "string" ? poly.properties.id : null,
-                  name: typeof poly.properties.name === "string" ? poly.properties.name : null,
-                  coordinates: poly.points,
-                  stats: computeAreaStats(pointCount),
-                  status,
-                  completionPercent: pct,
-                  assignedVolunteer: typeof poly.properties.assignedVolunteer === "string" ? poly.properties.assignedVolunteer : null,
-                  totalDoors: typeof poly.properties.totalDoors === "number" ? poly.properties.totalDoors : 0,
-                  doorsKnocked: typeof poly.properties.doorsKnocked === "number" ? poly.properties.doorsKnocked : 0,
-                  supporters: typeof poly.properties.supporters === "number" ? poly.properties.supporters : 0,
-                  undecided: typeof poly.properties.undecided === "number" ? poly.properties.undecided : 0,
-                });
-              },
-            }}
-          >
-            <Popup>
-              {(poly.properties.name as string) ?? `Turf ${index + 1}`}
-              {" — "}
-              {status === "completed" ? "Complete" : pct > 0 ? `${Math.round(pct)}% done` : (status === "assigned" ? "Assigned" : "Not started")}
-              {poly.properties.assignedVolunteer ? ` (${poly.properties.assignedVolunteer})` : ""}
-            </Popup>
-          </Polygon>
-          );
-        })}
-
-        {layer.signs && signPoints.map((point, index) => (
-          <Marker key={`sign-${index}`} position={point.latLng}>
-            <Popup>{(point.properties.address as string) ?? "Sign location"}</Popup>
-          </Marker>
-        ))}
-
-        {layer.volunteers && volunteerPoints.map((point, index) => (
-          <Marker key={`volunteer-${index}`} position={point.latLng} icon={volunteerIcon}>
-            <Popup>{(point.properties.name as string) ?? "Volunteer"}</Popup>
-          </Marker>
-        ))}
-
-        {layer.doors && mode !== "signs" && contactPoints.map((point, index) => (
-          <Circle key={`contact-${index}`} center={point.latLng} radius={18} pathOptions={{ color: "#3b82f6", fillOpacity: 0.35, weight: 1 }}>
-            <Popup>{(point.properties.name as string) ?? "Contact"}</Popup>
-          </Circle>
-        ))}
-
-        {mode === "walk" && layer.route && routePoints.length > 1 && (
-          <>
-            <Polyline positions={routePoints as LatLngExpression[]} pathOptions={{ color: "#2563eb", weight: 3 }} />
-            {routePoints.map((point, index) => (
-              <Marker
-                key={`route-${index}`}
-                position={point}
-                icon={index === 0 ? currentStopIcon : index % 3 === 0 ? doneStopIcon : pendingStopIcon}
-              >
-                <Popup>Stop {index + 1}</Popup>
-              </Marker>
-            ))}
-            {volunteerPoints[0] && <Circle center={volunteerPoints[0].latLng} radius={12} pathOptions={{ color: "#2563eb", fillOpacity: 0.8 }} />}
-          </>
+        {/* Turf polygons */}
+        {layer.turfs && turfsDisplay && (
+          <Source id="cm-turfs" type="geojson" data={turfsDisplay}>
+            <Layer
+              id="cm-turf-fill"
+              type="fill"
+              paint={{
+                "fill-color": TURF_COLOR_EXPR as never,
+                "fill-opacity": [
+                  "case", ["==", ["get", "_selected"], true], 0.35, 0.12,
+                ] as never,
+              }}
+            />
+            <Layer
+              id="cm-turf-outline"
+              type="line"
+              paint={{
+                "line-color": [
+                  "case", ["==", ["get", "_selected"], true], "#EF9F27", ...TURF_COLOR_EXPR as string[],
+                ] as never,
+                "line-width": ["case", ["==", ["get", "_selected"], true], 3, 2] as never,
+              }}
+            />
+          </Source>
         )}
 
-        {mode === "public" && boundaryPolygons.map((poly, index) => (
-          <Polygon key={`boundary-${index}`} positions={poly as LatLngExpression[]} pathOptions={{ color: "#1d4ed8", weight: 3, fillOpacity: 0.04 }} />
-        ))}
-
-        {drawMode && draftPolygon.length > 1 && (
-          <Polygon positions={draftPolygon as LatLngExpression[]} pathOptions={{ color: "#f97316", weight: 2, dashArray: "6 4" }} />
+        {/* Contact dots (with optional heatmap) */}
+        {layer.doors && contacts && mode !== "signs" && (
+          <Source id="cm-contacts" type="geojson" data={contacts}>
+            {layer.heat && (
+              <Layer
+                id="cm-heat"
+                type="heatmap"
+                maxzoom={15}
+                paint={{
+                  "heatmap-radius": 20,
+                  "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0.7, 15, 0.2] as never,
+                }}
+              />
+            )}
+            <Layer
+              id="cm-dots"
+              type="circle"
+              paint={{
+                "circle-color": SUPPORT_COLOR_EXPR as never,
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 3, 14, 6] as never,
+                "circle-opacity": 0.85,
+                "circle-stroke-width": 1,
+                "circle-stroke-color": "#ffffff",
+              }}
+            />
+          </Source>
         )}
-      </MapContainer>
 
+        {/* Sign dots */}
+        {layer.signs && signs && (
+          <Source id="cm-signs" type="geojson" data={signs}>
+            <Layer
+              id="cm-sign-dots"
+              type="circle"
+              paint={{
+                "circle-color": "#EF9F27",
+                "circle-radius": 6,
+                "circle-stroke-width": 1.5,
+                "circle-stroke-color": "#ffffff",
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Volunteer pins */}
+        {layer.volunteers && volunteers && (
+          <Source id="cm-volunteers" type="geojson" data={volunteers}>
+            <Layer
+              id="cm-volunteer-dots"
+              type="circle"
+              paint={{
+                "circle-color": "#2563eb",
+                "circle-radius": 7,
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#ffffff",
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Walk route */}
+        {mode === "walk" && layer.route && contacts && (contacts.features?.length ?? 0) > 1 && (
+          <Source id="cm-route" type="geojson" data={contacts}>
+            <Layer
+              id="cm-route-line"
+              type="line"
+              paint={{
+                "line-color": "#2563eb",
+                "line-width": 3,
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Draw mode draft polygon */}
+        {drawMode && draftPolygon.length >= 2 && (
+          <Source id="cm-draft" type="geojson" data={draftFC}>
+            {draftPolygon.length >= 3 && (
+              <Layer
+                id="cm-draft-fill"
+                type="fill"
+                paint={{ "fill-color": "#f97316", "fill-opacity": 0.15 }}
+              />
+            )}
+            <Layer
+              id="cm-draft-line"
+              type="line"
+              paint={{ "line-color": "#f97316", "line-width": 2, "line-dasharray": [6, 4] }}
+            />
+          </Source>
+        )}
+      </PollCityMap>
+
+      {/* Layer toggle panel */}
       {showControls && (
-        <div className="absolute right-3 top-3 z-[500] w-56 rounded-xl bg-white/95 border border-slate-200 p-3 shadow-lg text-xs text-slate-700">
+        <div className="absolute right-3 top-3 z-10 w-56 rounded-xl bg-white/95 border border-slate-200 p-3 shadow-lg text-xs text-slate-700">
           <p className="font-semibold text-slate-900 mb-2">Layers</p>
           <div className="space-y-1.5">
-            {[
+            {([
               ["heat", "Support heat map"],
               ["doors", "Doors knocked"],
               ["turfs", "Turf boundaries"],
               ["signs", "Signs"],
               ["volunteers", "Volunteers live"],
               ["route", "Walking route"],
-            ].map(([key, label]) => (
+            ] as [keyof LayerToggles, string][]).map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={layer[key as keyof LayerToggles]}
-                  onChange={(event) => setLayer((prev) => ({ ...prev, [key]: event.target.checked }))}
+                  checked={layer[key]}
+                  onChange={(e) => setLayer((prev) => ({ ...prev, [key]: e.target.checked }))}
                 />
                 <span>{label}</span>
               </label>
@@ -507,8 +402,9 @@ export default function CampaignMap({
         </div>
       )}
 
+      {/* Area calculator */}
       {(showCalculator || drawMode) && (
-        <div className="absolute left-3 bottom-3 z-[500] w-[290px] rounded-xl bg-white/95 border border-slate-200 p-3 shadow-lg text-xs text-slate-700">
+        <div className="absolute left-3 bottom-3 z-10 w-[290px] rounded-xl bg-white/95 border border-slate-200 p-3 shadow-lg text-xs text-slate-700">
           <p className="font-semibold text-slate-900">Area Calculator</p>
           <p className="mt-2">This area: {selectedStats.doors} doors, about {selectedStats.estimatedHours} hrs, {selectedStats.volunteersNeeded} volunteers</p>
           <p className="mt-1">Knocked: {selectedStats.knocked} ({selectedStats.doors ? Math.round((selectedStats.knocked / selectedStats.doors) * 100) : 0}%)</p>
@@ -516,9 +412,9 @@ export default function CampaignMap({
         </div>
       )}
 
-      {/* Turf status legend */}
-      {!hideLegend && layer.turfs && turfPolygons.length > 0 && (
-        <div className="absolute left-3 top-3 z-[500] rounded-xl bg-white/95 border border-slate-200 p-2.5 shadow-lg text-xs text-slate-700">
+      {/* Turf legend */}
+      {!hideLegend && layer.turfs && (turfsDisplay?.features?.length ?? 0) > 0 && (
+        <div className="absolute left-3 top-3 z-10 rounded-xl bg-white/95 border border-slate-200 p-2.5 shadow-lg text-xs text-slate-700">
           <p className="font-semibold text-slate-900 mb-1.5">Turf Status</p>
           <div className="space-y-1">
             {[

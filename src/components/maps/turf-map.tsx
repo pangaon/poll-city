@@ -1,10 +1,10 @@
 "use client";
-/**
- * TurfMap — Leaflet map for turf visualization and canvasser GPS tracking.
- * Must be dynamically imported with ssr: false.
- */
-import { useEffect, useRef } from "react";
-import "leaflet/dist/leaflet.css";
+
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
+import { Source, Layer } from "react-map-gl/maplibre";
+
+const PollCityMap = dynamic(() => import("@/components/maps/poll-city-map"), { ssr: false });
 
 export interface MapStop {
   id: string;
@@ -32,6 +32,75 @@ interface Props {
   zoom?: number;
 }
 
+function buildRouteGeoJSON(stops: MapStop[]): GeoJSON.FeatureCollection {
+  const sorted = [...stops].sort((a, b) => a.order - b.order);
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: sorted.map((s) => [s.lng, s.lat]),
+        },
+        properties: {},
+      },
+    ],
+  };
+}
+
+function buildStopsGeoJSON(stops: MapStop[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: stops.map((s) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+      properties: {
+        id: s.id,
+        label: s.label,
+        visited: s.visited,
+        order: s.order + 1,
+        color: s.visited ? "#10b981" : "#1e40af",
+      },
+    })),
+  };
+}
+
+function buildCanvasserGeoJSON(canvassers: CanvasserPin[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: canvassers.map((c) => {
+      const initials = c.name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lng, c.lat] },
+        properties: { userId: c.userId, name: c.name, initials },
+      };
+    }),
+  };
+}
+
+function deriveCenter(
+  stops: MapStop[],
+  canvassers: CanvasserPin[],
+  center?: [number, number],
+): { longitude: number; latitude: number; zoom: number } {
+  if (center) return { latitude: center[0], longitude: center[1], zoom: 15 };
+  const allPoints = [
+    ...stops.map((s) => ({ lat: s.lat, lng: s.lng })),
+    ...canvassers.map((c) => ({ lat: c.lat, lng: c.lng })),
+  ];
+  if (allPoints.length === 0) return { longitude: -79.3832, latitude: 43.6532, zoom: 15 };
+  const lat = allPoints.reduce((s, p) => s + p.lat, 0) / allPoints.length;
+  const lng = allPoints.reduce((s, p) => s + p.lng, 0) / allPoints.length;
+  return { latitude: lat, longitude: lng, zoom: 15 };
+}
+
 export default function TurfMap({
   stops = [],
   canvassers = [],
@@ -40,137 +109,88 @@ export default function TurfMap({
   center,
   zoom = 15,
 }: Props) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<unknown>(null);
+  const initialViewState = useMemo(() => {
+    const derived = deriveCenter(stops, canvassers, center);
+    return { ...derived, zoom };
+  }, [stops, canvassers, center, zoom]);
 
-  useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
-
-    // Dynamic import to avoid SSR issues
-    import("leaflet").then((L) => {
-      if (!mapRef.current || mapInstanceRef.current) return;
-
-      // Fix Leaflet default icon paths in webpack/Next.js
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
-
-      // Determine map center
-      let mapCenter: [number, number] = center ?? [43.6532, -79.3832]; // default: Toronto
-      if (!center && stops.length > 0) {
-        const avgLat = stops.reduce((s, p) => s + p.lat, 0) / stops.length;
-        const avgLng = stops.reduce((s, p) => s + p.lng, 0) / stops.length;
-        mapCenter = [avgLat, avgLng];
-      } else if (!center && canvassers.length > 0) {
-        mapCenter = [canvassers[0].lat, canvassers[0].lng];
-      }
-
-      const map = L.map(mapRef.current!, { zoomControl: true }).setView(mapCenter, zoom);
-      mapInstanceRef.current = map;
-
-      // OpenStreetMap tiles
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
-      }).addTo(map);
-
-      // Route polyline
-      if (showRoute && stops.length > 1) {
-        const sortedStops = [...stops].sort((a, b) => a.order - b.order);
-        const routeCoords = sortedStops.map((s) => [s.lat, s.lng] as [number, number]);
-        L.polyline(routeCoords, { color: "#1e40af", weight: 2.5, opacity: 0.7, dashArray: "6 4" }).addTo(map);
-      }
-
-      // Stop markers
-      stops.forEach((stop) => {
-        const color = stop.visited ? "#10b981" : "#1e40af";
-        const borderColor = stop.visited ? "#065f46" : "#1e3a8a";
-
-        const icon = L.divIcon({
-          className: "",
-          html: `<div style="
-            width:28px;height:28px;border-radius:50%;
-            background:${color};border:2.5px solid ${borderColor};
-            color:white;font-size:10px;font-weight:700;
-            display:flex;align-items:center;justify-content:center;
-            box-shadow:0 2px 4px rgba(0,0,0,0.3);
-          ">${stop.order + 1}</div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
-          popupAnchor: [0, -16],
-        });
-
-        L.marker([stop.lat, stop.lng], { icon })
-          .addTo(map)
-          .bindPopup(`
-            <div style="font-size:12px;min-width:140px">
-              <strong>#${stop.order + 1} · ${stop.label}</strong>
-              <br/><span style="color:${stop.visited ? "#10b981" : "#6b7280"}">${stop.visited ? "✓ Visited" : "Not visited"}</span>
-            </div>
-          `);
-      });
-
-      // Canvasser markers (GPS pins)
-      const canvasserIcon = L.divIcon({
-        className: "",
-        html: `<div style="
-          width:32px;height:32px;border-radius:50%;
-          background:#f59e0b;border:3px solid #92400e;
-          display:flex;align-items:center;justify-content:center;
-          box-shadow:0 2px 6px rgba(0,0,0,0.4);
-          font-size:14px;
-        ">📍</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -18],
-      });
-
-      canvassers.forEach((c) => {
-        const mins = Math.round((Date.now() - new Date(c.updatedAt).getTime()) / 60000);
-        L.marker([c.lat, c.lng], { icon: canvasserIcon })
-          .addTo(map)
-          .bindPopup(`
-            <div style="font-size:12px;min-width:140px">
-              <strong>${c.name}</strong>
-              <br/><span style="color:#6b7280">Updated ${mins}m ago</span>
-            </div>
-          `);
-      });
-
-      // Fit bounds to all markers
-      const allCoords: [number, number][] = [
-        ...stops.map((s) => [s.lat, s.lng] as [number, number]),
-        ...canvassers.map((c) => [c.lat, c.lng] as [number, number]),
-      ];
-      if (allCoords.length > 1) {
-        map.fitBounds(allCoords, { padding: [32, 32] });
-      }
-    });
-
-    return () => {
-      if (mapInstanceRef.current) {
-        (mapInstanceRef.current as { remove: () => void }).remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const routeFC = useMemo(() => buildRouteGeoJSON(stops), [stops]);
+  const stopsFC = useMemo(() => buildStopsGeoJSON(stops), [stops]);
+  const canvasserFC = useMemo(() => buildCanvasserGeoJSON(canvassers), [canvassers]);
 
   return (
-    <div
-      ref={mapRef}
-      style={{
-        height,
-        width: "100%",
-        borderRadius: "12px",
-        overflow: "hidden",
-        position: "relative",
-        zIndex: 0,
-      }}
-    />
+    <div style={{ height, width: "100%", borderRadius: 12, overflow: "hidden" }}>
+      <PollCityMap mode="turf" initialViewState={initialViewState} height="100%">
+        {/* Walk route */}
+        {showRoute && stops.length > 1 && (
+          <Source id="turf-route" type="geojson" data={routeFC}>
+            <Layer
+              id="turf-route-line"
+              type="line"
+              paint={{
+                "line-color": "#1e40af",
+                "line-width": 2.5,
+                "line-opacity": 0.7,
+                "line-dasharray": [6, 4],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Stop markers */}
+        {stops.length > 0 && (
+          <Source id="turf-stops" type="geojson" data={stopsFC}>
+            <Layer
+              id="turf-stop-circles"
+              type="circle"
+              paint={{
+                "circle-color": ["get", "color"] as never,
+                "circle-radius": 14,
+                "circle-stroke-width": 2.5,
+                "circle-stroke-color": ["case", ["get", "visited"], "#065f46", "#1e3a8a"] as never,
+              }}
+            />
+            <Layer
+              id="turf-stop-labels"
+              type="symbol"
+              layout={{
+                "text-field": ["to-string", ["get", "order"]] as never,
+                "text-size": 10,
+                "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+                "text-anchor": "center",
+              }}
+              paint={{ "text-color": "#ffffff" }}
+            />
+          </Source>
+        )}
+
+        {/* Canvasser GPS pins */}
+        {canvassers.length > 0 && (
+          <Source id="turf-canvassers" type="geojson" data={canvasserFC}>
+            <Layer
+              id="turf-canvasser-circles"
+              type="circle"
+              paint={{
+                "circle-color": "#f59e0b",
+                "circle-radius": 16,
+                "circle-stroke-width": 3,
+                "circle-stroke-color": "#92400e",
+              }}
+            />
+            <Layer
+              id="turf-canvasser-labels"
+              type="symbol"
+              layout={{
+                "text-field": ["get", "initials"],
+                "text-size": 10,
+                "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+                "text-anchor": "center",
+              }}
+              paint={{ "text-color": "#1c1917" }}
+            />
+          </Source>
+        )}
+      </PollCityMap>
+    </div>
   );
 }
