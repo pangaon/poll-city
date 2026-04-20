@@ -2,7 +2,28 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-20
-**Updated by:** Claude Sonnet 4.6 (session-close — founder flow, TypeScript fixes, DB confirmed in sync)
+**Updated by:** Claude Sonnet 4.6 (session-close — mobile preview lab wired, mobile nav parity, SocialCommand port queued)
+
+---
+
+## 🚨 NEXT SESSION TASK — PORT SOCIALCOMMAND (door-to-door wizard) 🚨
+
+**The one task queued for the next session:**
+
+Port the full `SocialCommand.tsx` from Figma Make into the design preview lab.
+
+- **Figma source:** `figma_design_pollcity_iosapp/pages/Social/SocialCommand.tsx` (~42K tokens — read in chunks)
+- **Data/types:** `figma_design_pollcity_iosapp/pages/Social/sc-data.ts`
+- **Target component:** `src/components/figma-preview/screens/social-command.tsx` (currently a 170-line stub — replace entirely)
+- **Preview route:** `/design-preview/social/command`
+- **Adaption rules:** `motion/react` → `framer-motion` | react-router `Link`/`useLocation` → `next/link`/`usePathname` | inline cn util → `@/lib/utils`
+- **Real API to wire:** canvassing shifts from existing field ops API — check what `/api/field/shifts` returns before wiring
+
+The screen contains: FIELD OPS / WAR ROOM tab split, gamified deployment mission cards (XP, CRITICAL/ELEVATED/STANDARD, ACCEPT), full door-by-door wizard (door → household → survey → extras → summary), theme toggle (dark/light), share drawer, QR stub, radar + area charts.
+
+This is George's primary test screen for the Wednesday demo follow-up and the iOS app field ops tool.
+
+**DO NOT touch any live web app pages. Preview lab only.**
 
 ---
 
