@@ -22,10 +22,25 @@ npx prisma db push
 ## 🔴 CRITICAL — Platform is broken without these
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
-- [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync" — The QR Capture feature (8 new models, 8 new enums) requires a schema migration. Until this runs, creating QR codes will return a 500 error.
-  1. Open Railway → Poll City service → Connect tab → copy the `DATABASE_URL`
-  2. In this repo: `DATABASE_URL="<paste>" npx prisma db push`
-  4. Confirm: try creating a QR code at /qr — the "Network error" should disappear
+- [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync"
+- [ ] **3. ⚠️ Run `npx prisma db push` AGAIN — NEW schema additions since item 2**
+
+  Since the last `db push`, three new schema additions have been committed. These features CRASH in production until you run this:
+
+  ```bash
+  npx prisma db push
+  ```
+
+  What this fixes:
+  - `intelligenceEnabled` column on Campaign (Analytics Historical tab crashes without it)
+  - `ConsentRecord` model + 3 enums (CASL Compliance page and email consent filter crash without it)
+  - `MuniScrapeRun` + `RawMuniCandidate` models (Scraper phase 1)
+
+  Steps:
+  1. Open your terminal in the poll-city project folder
+  2. Run: `npx prisma db push`
+  3. Expected output: "Your database is now in sync with your Prisma schema"
+  4. Test: go to /compliance — it should load (not 500)
 
 ---
 
