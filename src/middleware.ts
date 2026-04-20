@@ -25,6 +25,8 @@ function isBlockedAgent(ua: string): boolean {
 
 const PUBLIC_PATHS = [
   "/login",
+  "/signup",
+  "/accept-invite",
   "/api/auth",
   "/social",
   "/api/polls",

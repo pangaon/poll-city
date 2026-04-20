@@ -192,32 +192,22 @@ export default function OnboardingWizard({
     }
   }
 
-  // ── Upload handler (basic CSV — triggers import API) ──────────────────────
-  async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("campaignId", campaignId);
-
+  // ── Refresh contact count after user imports via the wizard ──────────────
+  const [refreshingCount, setRefreshingCount] = useState(false);
+  async function refreshContactCount() {
+    setRefreshingCount(true);
     try {
-      const res = await fetch("/api/import-export", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json() as { data?: { inserted?: number }; error?: string };
-      if (!res.ok) {
-        toast.error(data.error ?? "Import failed — check your CSV format.");
-        return;
-      }
-      const count = data.data?.inserted ?? 0;
-      setContactCount((prev) => prev + count);
-      toast.success(`${count} contacts imported successfully.`);
+      const res = await fetch(`/api/contacts?campaignId=${campaignId}&limit=1`);
+      if (!res.ok) return;
+      const data = await res.json() as { total?: number };
+      const newCount = data.total ?? 0;
+      setContactCount(newCount);
+      if (newCount > 0) toast.success(`${newCount.toLocaleString()} contacts found — you're ready to go!`);
+      else toast.error("No contacts found yet. Complete the import wizard and try again.");
     } catch {
-      toast.error("Upload failed. Try the full import tool.");
+      toast.error("Could not check contact count. Try again.");
     } finally {
-      e.target.value = "";
+      setRefreshingCount(false);
     }
   }
 
@@ -312,37 +302,39 @@ export default function OnboardingWizard({
               </div>
             ) : (
               <div className="space-y-3">
-                <label className="block">
-                  <div className="border-2 border-dashed border-slate-300 hover:border-[#0A2342] rounded-xl p-8 text-center cursor-pointer transition-colors group">
-                    <Upload className="w-8 h-8 text-slate-400 group-hover:text-[#0A2342] mx-auto mb-3 transition-colors" />
-                    <p className="text-sm font-medium text-slate-700 group-hover:text-[#0A2342]">
-                      Drop a CSV file here, or click to browse
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Columns: firstName, lastName, email, phone, address — all optional except at least one name field
-                    </p>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={handleCsvUpload}
-                    />
-                  </div>
-                </label>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-xs text-slate-400">or</span>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-
                 <a
-                  href="/import-export"
+                  href={`/import-export/smart-import?campaignId=${campaignId}`}
                   target="_blank"
-                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-xl hover:border-[#0A2342] hover:shadow-sm transition-all group"
                 >
-                  Open full import tool <ExternalLink className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-[#0A2342]/10 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-[#0A2342]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 group-hover:text-[#0A2342]">
+                        Open Import Wizard
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Maps your CSV columns, handles voter files, imports up to 50,000 contacts
+                      </p>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-[#0A2342] shrink-0" />
                 </a>
+
+                <button
+                  onClick={refreshContactCount}
+                  disabled={refreshingCount}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  {refreshingCount ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</>
+                  ) : (
+                    <>I&apos;ve finished importing — check my count</>
+                  )}
+                </button>
               </div>
             )}
 
