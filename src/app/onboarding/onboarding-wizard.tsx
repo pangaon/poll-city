@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   CheckCircle2, Users, CreditCard, Rocket, Upload,
-  ArrowRight, ExternalLink, Loader2, Check,
+  ArrowRight, ExternalLink, Loader2, Check, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +20,11 @@ interface Props {
   contactCount: number;
   memberCount: number;
   stripeOnboarded: boolean;
+  officialContext?: {
+    followerCount: number;
+    questionCount: number;
+    photoUrl: string | null;
+  };
 }
 
 type StepId = "contacts" | "team" | "stripe" | "launch";
@@ -120,6 +126,7 @@ export default function OnboardingWizard({
   contactCount: initialContactCount,
   memberCount: initialMemberCount,
   stripeOnboarded: initialStripeOnboarded,
+  officialContext,
 }: Props) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<StepId>("contacts");
@@ -234,6 +241,42 @@ export default function OnboardingWizard({
           </div>
         </div>
       </div>
+
+      {/* Social profile welcome — shown when campaign came through the claim flow */}
+      {officialContext && (officialContext.followerCount > 0 || officialContext.questionCount > 0) && (
+        <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            {officialContext.photoUrl ? (
+              <Image
+                src={officialContext.photoUrl}
+                alt={candidateName ?? ""}
+                width={36}
+                height={36}
+                className="rounded-full border-2 border-emerald-300 object-cover shrink-0"
+              />
+            ) : null}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-800">
+                Your Poll City profile is already live — voters are paying attention.
+              </p>
+              <div className="flex items-center gap-3 mt-0.5">
+                {officialContext.followerCount > 0 && (
+                  <span className="text-xs text-emerald-700 flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {officialContext.followerCount.toLocaleString()} followers
+                  </span>
+                )}
+                {officialContext.questionCount > 0 && (
+                  <span className="text-xs text-emerald-700 flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {officialContext.questionCount} voter question{officialContext.questionCount !== 1 ? "s" : ""} waiting
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step progress bar */}
       <div className="bg-white border-b border-slate-200">

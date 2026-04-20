@@ -65,6 +65,8 @@ const PUBLIC_PATHS = [
   "/api/calendar",
   "/api/help",
   "/api/domain-lookup",
+  "/claim",
+  "/api/auth/claim-profile",
 ];
 
 function isPublicPath(path: string) {

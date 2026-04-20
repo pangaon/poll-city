@@ -28,6 +28,7 @@ export default async function OnboardingPage() {
         jurisdiction: true,
         stripeOnboarded: true,
         onboardingComplete: true,
+        officialId: true,
       },
     }),
     prisma.contact.count({
@@ -43,6 +44,25 @@ export default async function OnboardingPage() {
   // Already completed — send to dashboard
   if (campaign.onboardingComplete) redirect("/dashboard");
 
+  // Fetch social context for campaigns that came through the claim flow
+  let officialContext: { followerCount: number; questionCount: number; photoUrl: string | null } | null = null;
+  if (campaign.officialId) {
+    const official = await prisma.official.findUnique({
+      where: { id: campaign.officialId },
+      select: {
+        photoUrl: true,
+        _count: { select: { follows: true, questions: true } },
+      },
+    });
+    if (official) {
+      officialContext = {
+        followerCount: official._count.follows,
+        questionCount: official._count.questions,
+        photoUrl: official.photoUrl,
+      };
+    }
+  }
+
   return (
     <OnboardingWizard
       campaignId={campaign.id}
@@ -53,6 +73,7 @@ export default async function OnboardingPage() {
       contactCount={contactCount}
       memberCount={memberCount}
       stripeOnboarded={campaign.stripeOnboarded}
+      officialContext={officialContext ?? undefined}
     />
   );
 }

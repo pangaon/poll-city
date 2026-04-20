@@ -583,21 +583,21 @@ export default function PoliticianProfileClient() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={spring}
-            className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 p-4"
+            className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4"
           >
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-amber-800">
-                  Is this your profile?
+                  Is this you?
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                  Claim it to post updates, respond to questions, and connect
-                  directly with your constituents on Poll City.
+                  Claim your profile to respond to voter questions, post updates,
+                  and launch your campaign tools — all in one place.
                 </p>
                 <Link
-                  href="/pricing"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2"
+                  href={`/claim/${p.id}`}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
                 >
                   Claim this profile <ExternalLink className="w-3 h-3" />
                 </Link>
