@@ -2,6 +2,9 @@
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
+# Google OAuth credential downloads (never commit these)
+client_secret*.json
+
 # Dependencies
 node_modules/
 .pnp
