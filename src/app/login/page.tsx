@@ -55,6 +55,8 @@ export default function LoginPage() {
           router.push("/canvass");
         } else if (role === "PUBLIC_USER") {
           router.push("/social/profile");
+        } else if (role === "SUPER_ADMIN") {
+          router.push("/ops");
         } else {
           router.push("/dashboard");
         }

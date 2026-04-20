@@ -1,11 +1,21 @@
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth/auth-options";
 import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
 import prisma from "@/lib/db/prisma";
 import DashboardStudio from "@/components/dashboard/dashboard-studio";
+import { Role } from "@prisma/client";
 
 export const metadata = { title: "Dashboard Studio — Poll City" };
 
 export default async function DashboardPage() {
+  // Super admins with no explicitly chosen campaign go to /ops — their home.
+  const session = await getServerSession(authOptions);
+  const user = session?.user as typeof session.user & { role?: Role; activeCampaignId?: string | null };
+  if (user?.role === Role.SUPER_ADMIN && !user?.activeCampaignId) {
+    redirect("/ops");
+  }
+
   const { campaignId, campaignName } = await resolveActiveCampaign();
 
   const campaign = await prisma.campaign.findUnique({

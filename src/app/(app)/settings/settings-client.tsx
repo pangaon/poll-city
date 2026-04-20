@@ -132,7 +132,7 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
 
   return (
     <div className="max-w-2xl space-y-5 animate-fade-in">
-      <PageHeader title="Settings" description="Manage your campaign environment and personal preferences" />
+      <PageHeader title="Settings" description="Campaign settings and personal preferences" />
 
       {/* Settings navigation cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
