@@ -47,6 +47,7 @@ import {
   Receipt,
   Tv,
   MessageSquare,
+  Smartphone,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -233,6 +234,7 @@ export default function Sidebar() {
     if (isSuperAdmin) {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
       platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
+      platformItems.push({ href: "/design-preview", icon: Smartphone, label: "Mobile Preview" });
     }
 
     return [
