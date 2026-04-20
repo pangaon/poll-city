@@ -2,7 +2,7 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-20
-**Updated by:** Claude Sonnet 4.6 (session-close — officials directory rebuilt + _count fix)
+**Updated by:** Claude Sonnet 4.6 (session-close — founder flow, TypeScript fixes, DB confirmed in sync)
 
 ---
 
@@ -31,30 +31,19 @@
 ## CURRENT PLATFORM STATE (as of 2026-04-20)
 
 ### Build
-- **GREEN** — all commits on origin/main. Vercel deploying.
-- Latest local commit: `c2201c2 fix(officials): add _count.follows to directory API`
-- Latest origin/main: `91784fe chore: ignore Google OAuth client_secret*.json files` (+ 2 local commits pending push)
+- **GREEN** — Vercel current deployment is green (5RRWk2TkD)
+- DB is confirmed in sync (`npx prisma db push` ran — "already in sync")
+- Google OAuth credentials: George confirmed added to Vercel this session
+- `client_secret*.json` is now git-ignored
 
-### ⚠️ CRITICAL: `npx prisma db push` HAS NOT BEEN RUN since these schema additions
+### Founder Experience — LIVE as of this session
+- Super Admin (George) logs in → lands on `/ops` (not inside a campaign)
+- `/ops` Clients tab → "Enter Campaign View" button → enters any client campaign
+- Navy FounderBanner shows at top: "Viewing: [Campaign Name] · Exit to Ops"
+- Exit to Ops clears session and returns George to `/ops`
 
-These features are in the code but will crash in production until Railway has the updated schema:
-
-| Feature | Schema addition | Added in commit |
-|---|---|---|
-| Analytics Historical tab | `intelligenceEnabled Boolean @default(false)` on Campaign | f7d096a |
-| CASL Compliance tab | `ConsentRecord` model + 3 enums | cc97b33 |
-| Municipal scraper | `MuniScrapeRun` + `RawMuniCandidate` models | 20f8e22 |
-
-**George's ONE action: `npx prisma db push`** — fixes all three at once. Safe: adds columns, never wipes data.
-
-### ⚠️ Google OAuth — credentials NOT in Vercel
-George has `client_secret_227453436369-...json` open in IDE.
-The JSON file is now git-ignored (committed `91784fe`).
-Google sign-in is broken in production until Vercel has:
-- `GOOGLE_CLIENT_ID` (the `client_id` from the JSON)
-- `GOOGLE_CLIENT_SECRET` (the `client_secret` from the JSON)
-
-Add both to: Vercel → poll-city project → Settings → Environment Variables → (all environments)
+### ⚠️ Next session MUST start with a browser walkthrough
+George has a meeting Wednesday morning (2026-04-22) with councillor candidate Maleeha and the Mayor of Whitby. The platform needs to be demo-ready. No more building — next session is a page-by-page walkthrough: George navigates, flags what's broken, session fixes in real time.
 
 ---
 
