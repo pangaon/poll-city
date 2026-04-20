@@ -30,6 +30,7 @@ import {
   Play,
   XCircle,
   MinusCircle,
+  Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +43,7 @@ const RED = "#E24B4A";
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 /* ── types ──────────────────────────────────────────────────── */
-type Tab = "health" | "alerts" | "customers" | "demo" | "platform" | "clients" | "dataops";
+type Tab = "health" | "alerts" | "customers" | "demo" | "platform" | "clients" | "dataops" | "readiness";
 
 interface HealthMetric {
   id: string;
@@ -169,6 +170,21 @@ interface DataOpsData {
   recentRuns: IngestRun[];
 }
 
+interface ReadinessCheck {
+  id: string;
+  label: string;
+  description: string;
+  status: "ok" | "warn" | "error";
+  detail?: string;
+  georgeAction?: string;
+}
+
+interface ReadinessData {
+  overallStatus: "ok" | "warn" | "error";
+  summary: { ok: number; warn: number; error: number; total: number };
+  checks: ReadinessCheck[];
+}
+
 const METRIC_ICONS = {
   server: Server,
   database: Database,
@@ -259,6 +275,9 @@ export default function OpsClient() {
   const [dataOpsLoading, setDataOpsLoading] = useState(false);
   const [dataOpsLoaded, setDataOpsLoaded] = useState(false);
   const [dataOpsSeeding, setDataOpsSeeding] = useState(false);
+  const [readinessData, setReadinessData] = useState<ReadinessData | null>(null);
+  const [readinessLoading, setReadinessLoading] = useState(false);
+  const [readinessLoaded, setReadinessLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -411,6 +430,23 @@ export default function OpsClient() {
     }
   }, [dataOpsLoaded]);
 
+  const loadReadiness = useCallback(async () => {
+    if (readinessLoaded) return;
+    setReadinessLoading(true);
+    try {
+      const res = await fetch("/api/platform/readiness");
+      if (res.ok) {
+        const json = (await res.json()) as { data: ReadinessData };
+        setReadinessData(json.data ?? null);
+        setReadinessLoaded(true);
+      }
+    } catch (err) {
+      console.error("Failed to load readiness:", err);
+    } finally {
+      setReadinessLoading(false);
+    }
+  }, [readinessLoaded]);
+
   const seedRegistry = useCallback(async () => {
     setDataOpsSeeding(true);
     try {
@@ -453,6 +489,7 @@ export default function OpsClient() {
 
   const tabs: { id: Tab; label: string; icon: typeof Activity }[] = [
     { id: "platform", label: "Platform", icon: BarChart3 },
+    { id: "readiness", label: "Readiness", icon: Rocket },
     { id: "clients", label: "Clients", icon: Building2 },
     { id: "dataops", label: "Data Ops", icon: Globe },
     { id: "health", label: "Health", icon: Activity },
@@ -465,6 +502,7 @@ export default function OpsClient() {
     setTab(id);
     if (id === "clients") void loadClients();
     if (id === "dataops") void loadDataOps();
+    if (id === "readiness") void loadReadiness();
   }
 
   const unresolvedCount = alerts.filter((a) => !a.resolved).length;
@@ -552,6 +590,13 @@ export default function OpsClient() {
           >
             {tab === "platform" && (
               <PlatformTab stats={platformStats} clients={clientsData} onLoadClients={() => void loadClients()} />
+            )}
+            {tab === "readiness" && (
+              <ReadinessTab
+                data={readinessData}
+                loading={readinessLoading}
+                onRefresh={() => { setReadinessLoaded(false); void loadReadiness(); }}
+              />
             )}
             {tab === "clients" && (
               <ClientsTab data={clientsData} loading={clientsLoading} />
@@ -1894,3 +1939,99 @@ function DataOpsTab({
   );
 }
 
+/* ── Readiness Tab ──────────────────────────────────────────── */
+function ReadinessTab({
+  data,
+  loading,
+  onRefresh,
+}: {
+  data: ReadinessData | null;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  if (loading || !data) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Checking platform readiness…</p>
+      </div>
+    );
+  }
+
+  const overallColor = data.overallStatus === "ok" ? GREEN : data.overallStatus === "warn" ? AMBER : RED;
+  const overallLabel = data.overallStatus === "ok" ? "Ready to onboard" : data.overallStatus === "warn" ? "Ready with caveats" : "Blocked — fix errors first";
+
+  return (
+    <div className="space-y-5">
+      {/* Header banner */}
+      <div
+        className="rounded-2xl p-5 flex items-center justify-between"
+        style={{ background: data.overallStatus === "ok" ? "#ecfdf5" : data.overallStatus === "warn" ? "#fffbeb" : "#fef2f2", border: `1px solid ${overallColor}30` }}
+      >
+        <div className="flex items-center gap-3">
+          <Rocket className="w-6 h-6" style={{ color: overallColor }} />
+          <div>
+            <p className="font-bold text-gray-900">{overallLabel}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {data.summary.ok} ready · {data.summary.warn} warnings · {data.summary.error} blocking errors
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+          style={{ background: NAVY }}
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Re-check
+        </button>
+      </div>
+
+      {/* Checks */}
+      <div className="space-y-2">
+        {data.checks.map((check, i) => {
+          const isOk = check.status === "ok";
+          const isWarn = check.status === "warn";
+          const color = isOk ? GREEN : isWarn ? AMBER : RED;
+          const Icon = isOk ? CheckCircle : isWarn ? AlertCircle : XCircle;
+
+          return (
+            <motion.div
+              key={check.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...spring, delay: i * 0.03 }}
+              className="bg-white rounded-xl border border-gray-200 p-4"
+            >
+              <div className="flex items-start gap-3">
+                <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900">{check.label}</p>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: `${color}15`, color }}
+                    >
+                      {check.status === "ok" ? "OK" : check.status === "warn" ? "Warning" : "Error"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{check.description}</p>
+                  {check.detail && (
+                    <p className="text-xs mt-1" style={{ color: isOk ? "#6b7280" : color }}>
+                      {check.detail}
+                    </p>
+                  )}
+                  {check.georgeAction && (
+                    <div className="mt-2 rounded-lg px-3 py-2 text-xs font-medium" style={{ background: "#f1f5f9", color: NAVY }}>
+                      <span className="font-bold">Action: </span>{check.georgeAction}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
