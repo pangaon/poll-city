@@ -6,6 +6,31 @@
 
 ---
 
+## 🚨 NEW ACTIVE TRACK — MOBILE PREVIEW LAB (added 2026-04-20) 🚨
+
+**READ THIS BEFORE DOING ANY MOBILE WORK.**
+
+George is building the Poll City iOS app for campaign staff. There are two separate tracks:
+
+**Track 1 — Design Preview Lab** (`/design-preview`, web, SUPER_ADMIN only)
+- Phone frame in the browser showing Figma-ported screens
+- Sidebar → Platform → "Mobile Preview" → opens full-screen, no app shell
+- 27 screens exist as stubs. They need to be replaced with the full Figma designs + live data.
+- Figma source files live in `figma_design_pollcity_iosapp/pages/` in the repo root
+- Preview components live in `src/components/figma-preview/screens/`
+- Individual screen routes: `src/app/(app)/design-preview/social/[screen]/page.tsx` etc.
+- Porting process: Read Figma source → adapt imports (motion/react→framer-motion, react-router→next/link) → wire real API data → verify in browser
+
+**Track 2 — Expo iOS App** (`mobile/` directory)
+- Real native app. Shell exists. Full design rebuild needed to match Figma.
+- Not started. Comes after Track 1 proves each screen.
+
+**RULE: NEVER touch live web app pages when working on mobile preview. Completely separate.**
+**RULE: No new Prisma schema for preview work — read existing models only.**
+**Full context in memory:** `project_mobile_preview.md`
+
+---
+
 ## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
 
 **INFRASTRUCTURE:**
