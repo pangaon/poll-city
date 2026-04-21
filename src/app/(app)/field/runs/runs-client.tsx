@@ -11,7 +11,7 @@ import {
 import {
   Badge, Button, Card, CardContent, EmptyState,
   FormField, Input, PageHeader, Select, Spinner, Textarea,
-  StatCard, Tabs, TabsList, TabsTrigger, TabsContent,
+  StatCard, Tabs, TabsList, TabsTrigger, TabsContent, FeatureGuide,
 } from "@/components/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1366,6 +1366,16 @@ export default function RunsClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FeatureGuide
+        featureKey="field-runs"
+        title="What are Field Runs?"
+        description="A run is a scheduled canvassing session — the specific shift when your volunteers go out to knock doors or drop lit. Runs track who showed up, when they went out, and how much ground they covered."
+        bullets={[
+          "Create a run with a date, time, and turf assignment",
+          "Volunteers check in when they arrive and log their activity",
+          "Run reports show your daily and weekly canvassing output",
+        ]}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <PageHeader
           title="Canvassing Runs"

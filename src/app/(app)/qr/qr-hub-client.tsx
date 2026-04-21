@@ -25,6 +25,7 @@ import {
   Square,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureGuide } from "@/components/ui";
 
 interface QrCodeRow {
   id: string;
@@ -148,6 +149,17 @@ export default function QrHubClient({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <FeatureGuide
+        featureKey="qr-hub"
+        title="What is QR Capture?"
+        description="QR codes let you capture supporter information at events without a paper form. Someone scans your code, fills in their details on their phone, and they appear instantly as a contact in your campaign."
+        bullets={[
+          "Generate a QR code for any event — rally, town hall, meet-and-greet",
+          "Each scan creates a contact record automatically",
+          "Track which events are generating the most sign-ups",
+        ]}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

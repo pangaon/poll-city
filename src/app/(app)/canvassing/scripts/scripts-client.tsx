@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { FieldHelp } from "@/components/ui";
+import { FieldHelp, FeatureGuide } from "@/components/ui";
 
 /* ─── Brand colours ─────────────────────────────────────────────────────────── */
 const NAVY = "#0A2342";
@@ -213,6 +213,17 @@ export default function ScriptsClient({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="space-y-6">
+      <FeatureGuide
+        featureKey="canvassing-scripts"
+        title="What are Canvassing Scripts?"
+        description="A canvassing script is the conversation guide your volunteers follow when they knock on doors. A good script opens the conversation, identifies the voter's support level, and closes with a clear ask — all in under 90 seconds."
+        bullets={[
+          "Create different scripts for different voters: undecided, soft support, opposition",
+          "Volunteers see the script on their phones at each door",
+          "Track which responses are recorded most to refine your message over time",
+        ]}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

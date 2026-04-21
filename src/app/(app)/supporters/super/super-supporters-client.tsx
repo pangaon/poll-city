@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FeatureGuide } from "@/components/ui";
 
 const tasks = ["Lawn sign host", "Phone banker", "Event volunteer", "Donor ask"];
 
@@ -33,6 +34,17 @@ export default function SuperSupportersClient({ campaignId }: { campaignId: stri
 
   return (
     <div className="space-y-6">
+      <FeatureGuide
+        featureKey="super-supporters"
+        title="Your Super Supporter Program"
+        description="Super supporters are your most committed volunteers — the people who do more than just vote. They host events, put up signs, recruit other volunteers, and become the engine of your ground game."
+        bullets={[
+          "Tag contacts as super supporters when they show strong commitment",
+          "Activate them with targeted asks and escalating engagement tasks",
+          "Track their activity: events hosted, doors knocked, people recruited",
+        ]}
+      />
+
       <div>
         <h1 className="text-xl font-bold text-gray-900">Super Supporter Program</h1>
         <p className="text-sm text-gray-500">Track top supporters and assign high-impact campaign tasks.</p>

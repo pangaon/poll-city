@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState,
-  FormField, Input, PageHeader, Select, Spinner, Textarea,
+  FormField, Input, PageHeader, Select, Spinner, Textarea, FeatureGuide,
 } from "@/components/ui";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -515,6 +515,16 @@ export default function ProgramsClient({ campaignId, campaignName, initialProgra
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      <FeatureGuide
+        featureKey="field-programs"
+        title="What are Field Programs?"
+        description="A field program is your overall strategy for a canvassing or literature drop campaign — the combination of routes, turfs, and runs that make up your voter contact plan. Think of it as the master plan for covering your ward."
+        bullets={[
+          "Create programs for canvassing, lit drops, or sign deployment",
+          "Each program contains multiple runs and volunteer assignments",
+          "Track progress toward your voter contact goal in one view",
+        ]}
+      />
       <PageHeader
         title="Field Programs"
         description={`${campaignName} · ${programs.length} program${programs.length !== 1 ? "s" : ""}`}

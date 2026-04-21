@@ -10,7 +10,7 @@ import {
 import {
   Badge, Button, Card, CardContent, EmptyState,
   FormField, Input, PageHeader, Select, Spinner, Textarea,
-  StatCard, Tabs, TabsList, TabsTrigger, TabsContent,
+  StatCard, Tabs, TabsList, TabsTrigger, TabsContent, FeatureGuide,
 } from "@/components/ui";
 import { toast } from "sonner";
 import type { FieldShiftStatus, FieldProgramStatus } from "@prisma/client";
@@ -252,6 +252,16 @@ export default function LitDropsClient({ campaignId, campaignName, initialShifts
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      <FeatureGuide
+        featureKey="field-lit-drops"
+        title="What is a Lit Drop?"
+        description="A literature drop (lit drop) is when volunteers deliver campaign materials — brochures, flyers, door hangers — to households without knocking. Faster than canvassing, ideal for reaching high-density areas quickly."
+        bullets={[
+          "Create a lit drop program and assign routes to teams",
+          "Track which streets have been covered and by whom",
+          "Useful for blanketing an area before a major canvass push",
+        ]}
+      />
       <PageHeader
         title="Literature Drops"
         description={`Manage lit drop runs for ${campaignName}`}

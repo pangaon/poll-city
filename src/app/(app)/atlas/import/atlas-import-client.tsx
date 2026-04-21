@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { FeatureGuide } from "@/components/ui";
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -541,6 +542,16 @@ export default function AtlasImportClient({ campaignId }: Props) {
 
   return (
     <div className="min-h-screen bg-[#060E1A] text-slate-100">
+      <FeatureGuide
+        featureKey="atlas-import"
+        title="ATLAS Data Import Pipeline"
+        description="This is where you load official election data — historical results, boundaries, census data — into your campaign's intelligence layer. You only need to do this once per election cycle."
+        bullets={[
+          "Import data from Elections Ontario, Statistics Canada, or your city clerk",
+          "The system validates and geocodes every record automatically",
+          "Once imported, your atlas maps and swing calculator update automatically",
+        ]}
+      />
       {/* Header */}
       <div className="px-6 py-5 border-b border-slate-800 flex items-center gap-3">
         <button className="text-slate-500 hover:text-slate-300 text-sm flex items-center gap-1 transition-colors">

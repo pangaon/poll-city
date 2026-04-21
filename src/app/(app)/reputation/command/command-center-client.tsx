@@ -8,7 +8,7 @@ import {
   RefreshCw, Shield, Siren, TrendingUp, ChevronRight,
   Globe, User, Zap, FileText,
 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, FeatureGuide } from "@/components/ui";
 import type {
   RepAlertSeverity, RepAlertSentiment, RepAlertSourceType,
   RepIssueStatus, RepIssueCategory, RepRecActionType, RepRecUrgency,
@@ -150,6 +150,16 @@ export default function CommandCenterClient({ campaignId }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FeatureGuide
+        featureKey="reputation-command"
+        title="Your Reputation Command Centre"
+        description="The command centre shows you every online mention of your campaign that needs a response — social media posts, news articles, forum comments. Deal with issues here before they spread."
+        bullets={[
+          "Each alert shows the source, reach, and recommended response tone",
+          "Draft and approve responses directly from the command centre",
+          "Track which issues have been resolved and which are still active",
+        ]}
+      />
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>

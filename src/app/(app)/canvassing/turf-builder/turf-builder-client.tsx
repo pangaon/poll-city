@@ -6,7 +6,7 @@ import {
   Circle, Loader2, X, Zap, Navigation, RefreshCw, AlertTriangle,
   MapPin, User, Clock, Route,
 } from "lucide-react";
-import { FieldHelp } from "@/components/ui";
+import { FieldHelp, FeatureGuide } from "@/components/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { MapStop, CanvasserPin } from "@/components/maps/turf-map";
@@ -185,6 +185,17 @@ export default function TurfBuilderClient({
 
   return (
     <div className="space-y-5">
+      <FeatureGuide
+        featureKey="canvassing-turf-builder"
+        title="Building your canvassing turfs"
+        description="The Turf Builder divides your ward into canvassing zones that you assign to volunteers. Each volunteer gets a clear, manageable area so every door gets knocked without overlap or gaps."
+        bullets={[
+          "Draw boundaries on the map or auto-divide by street range",
+          "Assign a volunteer or team to each zone",
+          "Canvassers see their exact turf on their phone when they go out",
+        ]}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Turf Builder</h1>

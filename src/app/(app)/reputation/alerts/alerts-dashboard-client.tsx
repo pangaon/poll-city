@@ -8,7 +8,7 @@ import {
   ExternalLink, Filter, Globe, Newspaper, MessageSquare,
   Plus, RefreshCw, Search, Shield, Siren, TrendingUp, X, Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, FeatureGuide } from "@/components/ui";
 import type {
   RepAlertSeverity, RepAlertStatus, RepAlertSentiment, RepAlertSourceType,
 } from "@prisma/client";
@@ -184,6 +184,16 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <FeatureGuide
+        featureKey="reputation-alerts"
+        title="Reputation Monitoring"
+        description="This dashboard watches the internet for mentions of your name, your opponents, and key campaign issues. You'll be alerted when something needs attention — before it becomes a story."
+        bullets={[
+          "Alerts surface social media, news articles, and online comments about your campaign",
+          "Set up keywords for your name, your opponents, and local issues you're campaigning on",
+          "High-priority alerts are flagged for immediate response",
+        ]}
+      />
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">

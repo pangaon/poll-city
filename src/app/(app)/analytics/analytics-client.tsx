@@ -35,6 +35,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { FeatureGuide } from "@/components/ui";
 
 const ChoroplethMap = dynamic(() => import("./choropleth-map"), {
   ssr: false,
@@ -467,6 +468,16 @@ export default function AnalyticsClient({ campaignId, userName, intelligenceEnab
   /* ═══ RENDER ═══════════════════════════════════════════════════════════ */
   return (
     <div className="min-w-[390px] space-y-5">
+      <FeatureGuide
+        featureKey="analytics"
+        title="Campaign Intelligence"
+        description="Analytics shows you the health of your campaign in real time — voter contacts by poll, support levels across your ward, donor trends, and volunteer activity. Use it daily to know where you're winning and where you need to push harder."
+        bullets={[
+          "Check your voter contact rate — how much of the ward has been knocked",
+          "See support levels by poll to identify your strongest and weakest areas",
+          "Track donations and volunteer hours week over week",
+        ]}
+      />
       {/* Shimmer keyframes */}
       <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
 

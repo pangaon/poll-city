@@ -6,7 +6,7 @@ import {
   Plus, X, Globe, Lock, Users, Calendar, Mail, Building2, Trash2, CheckCircle2, Edit2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Card, CardContent, CardHeader, PageHeader, FormField, Input, EmptyState } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, PageHeader, FormField, Input, EmptyState, FeatureGuide } from "@/components/ui";
 
 interface Coalition {
   id: string;
@@ -141,6 +141,17 @@ export default function CoalitionsClient({ campaignId }: { campaignId: string })
 
   return (
     <div className="max-w-3xl space-y-5 animate-fade-in">
+      <FeatureGuide
+        featureKey="coalitions"
+        title="Building your coalition"
+        description="A coalition is the network of community organisations, unions, business groups, and local leaders who support your campaign. Tracking endorsements and partnerships here helps you coordinate joint activities and show voters you have broad community backing."
+        bullets={[
+          "Add organisations that have endorsed or partnered with your campaign",
+          "Track their contact person and what they've committed to",
+          "Use coalition data when writing press releases and voter literature",
+        ]}
+      />
+
       <PageHeader
         title="Coalition Management"
         description="Track endorsing organizations and partners. Public endorsements appear on your candidate page."

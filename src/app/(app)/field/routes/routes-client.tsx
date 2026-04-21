@@ -10,7 +10,7 @@ import {
 import {
   Badge, Button, Card, CardContent, EmptyState,
   FormField, Input, PageHeader, Select, Spinner, Textarea,
-  Tabs, TabsList, TabsTrigger, TabsContent,
+  Tabs, TabsList, TabsTrigger, TabsContent, FeatureGuide,
 } from "@/components/ui";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -464,6 +464,16 @@ export default function RoutesClient({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      <FeatureGuide
+        featureKey="field-routes"
+        title="What are Routes?"
+        description="A route is the specific path a canvasser walks — the ordered list of doors they'll knock in a single session. Routes are generated from your turf and voter file, optimised to minimise walking time."
+        bullets={[
+          "Generate a route automatically from any turf",
+          "Canvassers see their route as a walking map on their phone",
+          "Completed doors are logged in real time as the canvasser moves through",
+        ]}
+      />
       <PageHeader
         title="Field Routes"
         description={`${campaignName} · ${routes.length} route${routes.length !== 1 ? "s" : ""}`}

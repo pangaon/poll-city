@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { FeatureGuide } from "@/components/ui";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -224,6 +225,16 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[900px]" style={{ backgroundColor: "#f8fafc" }}>
+      <FeatureGuide
+        featureKey="ai-assist"
+        title="Your AI Campaign Assistant"
+        description="AI Assist helps you write faster and think through campaign problems. Ask it to draft an email, suggest a response to a voter question, or help you articulate a policy position. It knows your campaign, your ward, and Canadian municipal election context."
+        bullets={[
+          "Write emails, social posts, and canvassing scripts in seconds",
+          "Ask strategic questions: 'What should I say to renters in Ward 3?'",
+          "All output is a draft — always review and personalise before sending",
+        ]}
+      />
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">

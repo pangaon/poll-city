@@ -6,7 +6,7 @@ import {
   Link2, FileSpreadsheet, Users, MapPin,
   ClipboardList, ArrowUpFromLine, ArrowDownToLine, RotateCcw, Clock, Download,
 } from "lucide-react";
-import { Card, CardHeader, CardContent, Select, Badge, EmptyState } from "@/components/ui";
+import { Card, CardHeader, CardContent, Select, Badge, EmptyState, FeatureGuide } from "@/components/ui";
 import { TARGET_FIELDS } from "@/lib/import/column-mapper";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1109,6 +1109,18 @@ export default function ImportExportClient({ campaignId }: Props) {
       transition={{ duration: 0.35 }}
       className="max-w-5xl space-y-6"
     >
+      <FeatureGuide
+        featureKey="import-export"
+        title="Importing your voter file"
+        description="Your voter file is the list of registered voters in your ward. Importing it into Poll City is how your team knows who to contact and where they live. Once imported, every door knock and interaction is tracked against real voter records."
+        bullets={[
+          "Upload a CSV or Excel file from your city clerk or Elections Ontario",
+          "The system maps your columns automatically — review and confirm before importing",
+          "Existing contacts won't be duplicated — the system matches by name and address",
+        ]}
+        caution="Your voter file is confidential. Only share it with authorised campaign staff."
+      />
+
       {/* In-progress import reconnect banner */}
       <AnimatePresence>
         {activeImportJob && (

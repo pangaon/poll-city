@@ -14,7 +14,7 @@ import {
   Scissors, GitMerge, TextSearch, Plus, Wand2, ChevronDown,
   MapPin, Loader2,
 } from "lucide-react";
-import { Card, CardHeader, CardContent, Select } from "@/components/ui";
+import { Card, CardHeader, CardContent, Select, FeatureGuide } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ColumnMapping } from "@/lib/import/column-mapper";
@@ -546,6 +546,17 @@ export default function SmartImportWizard({ campaignId }: Props) {
       transition={{ duration: 0.35 }}
       className="max-w-2xl space-y-5"
     >
+      <FeatureGuide
+        featureKey="smart-import-wizard"
+        title="Smart Import — step by step"
+        description="Smart Import walks you through uploading a voter or contact file and mapping your columns to Poll City fields. The system detects your columns automatically — you just confirm and click import."
+        bullets={[
+          "Upload any CSV or Excel file — it doesn't need to be perfectly formatted",
+          "Review the column mapping before importing — fix any mismatches here",
+          "Duplicate contacts are merged automatically based on name and address",
+        ]}
+        caution="Your voter file is confidential. Do not import files from unknown sources."
+      />
       {/* Progress steps */}
       <div className="flex items-center gap-1 sm:gap-2">
         {STEPS.map((s, i) => {

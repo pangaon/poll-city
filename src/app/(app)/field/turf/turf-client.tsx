@@ -11,7 +11,7 @@ import {
 import {
   Badge, Button, Card, CardContent, EmptyState,
   FormField, Input, PageHeader, Select, Spinner, Textarea,
-  StatCard,
+  StatCard, FeatureGuide,
 } from "@/components/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1088,6 +1088,16 @@ export default function TurfClient({
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
+      <FeatureGuide
+        featureKey="field-turf"
+        title="What is a Turf?"
+        description="A turf is a zone of streets assigned to one canvasser or team. Dividing your ward into turfs lets you cover every door systematically — so no street gets knocked twice and no street gets missed."
+        bullets={[
+          "Draw turfs on the map or let the system auto-divide by street",
+          "Assign a volunteer to each turf — they see their exact zone on their phone",
+          "Track completion in real time as canvassers log each door",
+        ]}
+      />
       {/* Backdrop */}
       <AnimatePresence>
         {(showCreate || selected) && (
