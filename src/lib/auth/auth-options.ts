@@ -2,6 +2,8 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import AppleProvider from "next-auth/providers/apple";
+import FacebookProvider from "next-auth/providers/facebook";
+import TwitterProvider from "next-auth/providers/twitter";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
 import { Role } from "@prisma/client";
@@ -23,6 +25,10 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
 const appleClientId = process.env.APPLE_CLIENT_ID ?? "";
 const appleClientSecret = process.env.APPLE_CLIENT_SECRET ?? "";
+const facebookClientId = process.env.FACEBOOK_CLIENT_ID ?? "";
+const facebookClientSecret = process.env.FACEBOOK_CLIENT_SECRET ?? "";
+const twitterClientId = process.env.TWITTER_CLIENT_ID ?? "";
+const twitterClientSecret = process.env.TWITTER_CLIENT_SECRET ?? "";
 
 const oauthProviders = [
   ...(googleClientId && googleClientSecret
@@ -38,6 +44,23 @@ const oauthProviders = [
         AppleProvider({
           clientId: appleClientId,
           clientSecret: appleClientSecret,
+        }),
+      ]
+    : []),
+  ...(facebookClientId && facebookClientSecret
+    ? [
+        FacebookProvider({
+          clientId: facebookClientId,
+          clientSecret: facebookClientSecret,
+        }),
+      ]
+    : []),
+  ...(twitterClientId && twitterClientSecret
+    ? [
+        TwitterProvider({
+          clientId: twitterClientId,
+          clientSecret: twitterClientSecret,
+          version: "2.0",
         }),
       ]
     : []),
@@ -60,7 +83,8 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google" || account?.provider === "apple") {
+      const socialProviders = ["google", "apple", "facebook", "twitter"];
+      if (account?.provider && socialProviders.includes(account.provider)) {
         // Check if user exists
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email! },

@@ -367,6 +367,55 @@ These activate your personal debug toolbar when you're logged in as yourself.
 
 ---
 
+## 📘 FACEBOOK LOGIN — OAuth sign-in for campaign app
+
+Code is live in `auth-options.ts`. Activate by adding two env vars to Vercel.
+Meta App ID: **259940671246811** (you created this already)
+
+- [ ] **90. Confirm redirect URI is set in Meta App**
+  1. Go to [developers.facebook.com](https://developers.facebook.com) → your app (259940671246811)
+  2. Left sidebar → **Facebook Login** → **Settings**
+  3. Under **Valid OAuth Redirect URIs**, confirm this is listed:
+     `https://app.poll.city/api/auth/callback/facebook`
+  4. If not, add it and click **Save Changes**
+
+- [ ] **91. Get App Secret from Meta**
+  1. Same Meta app → left sidebar → **App settings** → **Basic**
+  2. Click **Show** next to **App Secret** → copy the value
+
+- [ ] **92. Add to Vercel**
+  1. vercel.com → Poll City project → Settings → Environment Variables
+  2. Add `FACEBOOK_CLIENT_ID` = `259940671246811`
+  3. Add `FACEBOOK_CLIENT_SECRET` = the App Secret from step 91
+  4. Apply to Production + Preview + Development → Save
+  5. Redeploy: Settings → Deployments → Redeploy latest
+  6. Test: log in at app.poll.city → "Continue with Facebook" should appear
+
+---
+
+## 🐦 TWITTER / X LOGIN — OAuth sign-in for campaign app
+
+Code is live in `auth-options.ts`. You need to create the Twitter app first.
+
+- [ ] **93. Create Twitter OAuth 2.0 app**
+  1. Go to [developer.twitter.com](https://developer.twitter.com/en/portal/dashboard)
+  2. Create a new project + app (or use existing if you have one)
+  3. Under **App settings** → **Authentication settings** → enable **OAuth 2.0**
+  4. Set **Type of App**: Web App
+  5. **Callback URI**: `https://app.poll.city/api/auth/callback/twitter`
+  6. **Website URL**: `https://app.poll.city`
+  7. Save → go to **Keys and Tokens** tab
+  8. Under **OAuth 2.0 Client ID and Client Secret** → generate and copy both values
+
+- [ ] **94. Add to Vercel**
+  1. vercel.com → Poll City project → Settings → Environment Variables
+  2. Add `TWITTER_CLIENT_ID` = Client ID from step 93
+  3. Add `TWITTER_CLIENT_SECRET` = Client Secret from step 93
+  4. Apply to Production + Preview + Development → Save
+  5. Redeploy → test "Continue with Twitter" on login page
+
+---
+
 ## 🍎 APPLE SIGN-IN (WEB) — Do this before public campaign sign-up launches (~30 min)
 
 Required before any voter or candidate can sign up via Apple ID on the web.

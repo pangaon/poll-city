@@ -146,6 +146,7 @@ This is the business model. Every gap below undermines the conversion funnel.
 
 | Task | Status | Notes |
 |---|---|---|
+| Social OAuth login providers — Facebook + Twitter | CLAIMED 2026-04-21 | Wire FacebookProvider + TwitterProvider into auth-options.ts. George has Meta App ID 259940671246811. Needs env vars in Vercel. |
 | Comms Phase 8 — Social publishing | PENDING | Real Facebook/X/LinkedIn API calls. UI built, API stubs exist. Needs OAuth registration. |
 | Comms Phase 10 — Fatigue guard | PENDING | Max contact frequency enforcement across channels. |
 | Calendar Phase 6 — Google/Outlook OAuth | PENDING | Real two-way sync. Stub at `/api/campaign-calendar/sync`. Needs Google/Outlook OAuth registration. |
