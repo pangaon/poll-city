@@ -56,13 +56,15 @@ export async function verifyTurnstile(token: string): Promise<boolean> {
 }
 
 export async function verifyTurnstileToken(req: NextRequest, token?: string): Promise<boolean> {
-  if (!token || token.trim().length === 0) {
-    return false;
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+
+  // Turnstile not configured — allow through (rate limiting still protects the route)
+  if (!secret) {
+    return true;
   }
 
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    return verifyTurnstile(token);
+  if (!token || token.trim().length === 0) {
+    return false;
   }
 
   const body = new URLSearchParams({
