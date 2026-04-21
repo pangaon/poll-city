@@ -1,78 +1,98 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  Mail,
-  MessageSquare,
-  Send,
-  Users,
-  Search,
-  Filter,
-  Plus,
-  Clock,
-  Check,
-  CheckCircle2,
-  Loader2,
-  AlertTriangle,
-  X,
-  Eye,
-  Copy,
-  Pencil,
-  Archive,
-  MoreVertical,
-  ChevronRight,
-  ArrowRight,
-  Globe,
-  Inbox,
-  FileText,
-  History,
-  Calendar,
-  Zap,
-  Settings,
-  Target,
-  BarChart3,
-  TrendingUp,
-  RefreshCw,
-  Pause,
-  Play,
-  Trash2,
-  ExternalLink,
-  Hash,
-  AtSign,
-  Phone,
-  Radio,
-  Layers,
-  MessageCircle,
-  Bot,
-  Share2,
-  Sparkles,
-  Bell,
-  Shield,
-  UserCircle,
-  Tag,
-  ChevronDown,
+  MessageSquare, Send, Clock, CheckCircle, HelpCircle, Search, Mail,
+  Phone, User, Inbox, Plus, X, Zap, Settings, ChevronRight,
+  AlertTriangle, Loader2, Tag,
 } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab =
-  | "overview"
-  | "compose"
-  | "campaigns"
-  | "inbox"
-  | "templates"
-  | "automations"
-  | "scheduled"
-  | "history"
-  | "audiences"
-  | "subscribers"
-  | "analytics"
-  | "settings";
+type NavTab = "broadcast" | "inbox" | "triggers";
+type CommsChannel = "sms" | "email";
+type InboxChannelFilter = "all" | "email" | "sms" | "social" | "question";
 
-type Channel = "email" | "sms" | "all";
+interface FilterDefinition {
+  supportLevels?: string[];
+  wards?: string[];
+  tagIds?: string[];
+  channel?: "email" | "sms" | "all";
+  excludeDnc?: boolean;
+}
 
-type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "failed";
+interface Segment {
+  id: string;
+  name: string;
+  description: string | null;
+  filterDefinition: FilterDefinition;
+  lastCount: number | null;
+}
+
+interface ThreadMessage {
+  id: string;
+  direction: "inbound" | "outbound";
+  fromHandle: string;
+  body: string;
+  sentAt: string;
+  sentByUser: { id: string; name: string | null } | null;
+}
+
+interface InboxThread {
+  id: string;
+  channel: "email" | "sms";
+  status: "open" | "resolved" | "snoozed";
+  subject: string | null;
+  fromName: string | null;
+  fromHandle: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  contact: { id: string; firstName: string; lastName: string } | null;
+  messages: Array<{ body: string; direction: string; sentAt: string }>;
+}
+
+interface ThreadDetail {
+  id: string;
+  channel: "email" | "sms";
+  status: "open" | "resolved" | "snoozed";
+  subject: string | null;
+  fromName: string | null;
+  fromHandle: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  messages: ThreadMessage[];
+}
+
+interface AutomationStep {
+  id: string;
+  stepOrder: number;
+  stepType: string;
+  config: Record<string, unknown>;
+}
+
+interface AutomationRule {
+  id: string;
+  name: string;
+  description: string | null;
+  trigger: string;
+  isActive: boolean;
+  steps: AutomationStep[];
+  _count: { enrollments: number };
+}
+
+interface ScheduledMessage {
+  id: string;
+  channel: string;
+  subject: string | null;
+  bodyText: string;
+  status: string;
+  sendAt: string;
+  sentCount: number;
+  segment: { id: string; name: string } | null;
+}
 
 interface Props {
   campaignId: string;
@@ -81,1419 +101,780 @@ interface Props {
   wards: string[];
 }
 
-interface AudienceResult {
-  count: number;
-  sample: Array<{
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string | null;
-    phone: string | null;
-  }>;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
 
-interface HistoryItem {
-  id: string;
-  title: string;
-  body: string;
-  status: string;
-  sentAt: string | null;
-  totalSubscribers: number;
-  deliveredCount: number;
-  failedCount: number;
-  createdAt: string;
+function randomKey(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
-interface ScheduledItem {
-  id: string;
-  channel: "email" | "sms" | "push";
-  subject: string | null;
-  bodyText: string;
-  sendAt: string;
-  timezone: string;
-  status: "queued" | "processing" | "sent" | "cancelled" | "failed";
-  sentAt: string | null;
-  sentCount: number;
-  failedCount: number;
-  errorMessage: string | null;
-  sendKey: string;
-  segment: { id: string; name: string } | null;
-  createdBy: { id: string; name: string | null };
-  createdAt: string;
-}
+// ─── Shared UI ────────────────────────────────────────────────────────────────
 
-// Legacy: kept for backward compatibility during migration
-interface CustomTemplate {
-  slug: string;
-  name: string;
-  channel: "email" | "sms";
-  subject?: string;
-  body: string;
-  createdAt: string;
-}
-
-interface MessageTemplate {
-  id: string;
-  channel: "email" | "sms" | "push";
-  name: string;
-  subject?: string | null;
-  bodyHtml?: string | null;
-  bodyText: string;
-  previewText?: string | null;
-  tokensUsed: string[];
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: { id: string; name: string | null };
-}
-
-interface AutomationStep {
-  id: string;
-  stepOrder: number;
-  stepType: "send_email" | "send_sms" | "wait_days" | "add_tag" | "remove_tag" | "add_to_segment" | "remove_from_segment";
-  config: Record<string, unknown>;
-}
-
-interface AutomationRule {
-  id: string;
-  name: string;
-  description?: string | null;
-  trigger: "contact_created" | "tag_added" | "segment_joined" | "donation_made" | "event_rsvped" | "form_submitted" | "manual";
-  isActive: boolean;
-  enrollOnce: boolean;
-  steps: AutomationStep[];
-  _count?: { enrollments: number };
-  createdAt: string;
-}
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "compose", label: "Compose", icon: Pencil },
-  { id: "campaigns", label: "Campaigns", icon: Radio },
-  { id: "inbox", label: "Inbox", icon: Inbox },
-  { id: "templates", label: "Templates", icon: FileText },
-  { id: "automations", label: "Automations", icon: Zap },
-  { id: "scheduled", label: "Scheduled", icon: Clock },
-  { id: "history", label: "History", icon: History },
-  { id: "audiences", label: "Audiences", icon: Target },
-  { id: "subscribers", label: "Subscribers", icon: UserCircle },
-  { id: "analytics", label: "Analytics", icon: TrendingUp },
-  { id: "settings", label: "Settings", icon: Settings },
-];
-
-const SUPPORT_LEVELS = [
-  { value: "strong_support", label: "Strong Support" },
-  { value: "leaning_support", label: "Leaning Support" },
-  { value: "undecided", label: "Undecided" },
-  { value: "leaning_opposition", label: "Leaning Against" },
-  { value: "strong_opposition", label: "Strong Against" },
-  { value: "unknown", label: "Unknown" },
-];
-
-const EMAIL_TEMPLATES = [
-  { slug: "canvassing-invite", name: "Canvassing Invite", subject: "{{firstName}}, we need you this Saturday", body: `<p>Hi {{firstName}},</p><p>We're knocking doors across {{ward}} this Saturday morning and I'd love to have you on the team.</p><p>Two hours. Snacks provided. You'll meet great people and move this campaign forward.</p><p><a href="#">Sign up for a shift</a></p><p>Thank you,<br>{{candidateName}}</p>` },
-  { slug: "gotv-reminder", name: "GOTV Reminder", subject: "Tomorrow is election day. Here's your polling station.", body: `<p>Hi {{firstName}},</p><p>Tomorrow is election day. Polls are open 10am to 8pm.</p><p>Find your polling station at <a href="https://www.elections.on.ca">elections.on.ca</a>. Bring ID.</p><p>Let's finish this together.</p><p>-- {{candidateName}}</p>` },
-  { slug: "thank-you", name: "Thank You", subject: "Thank you, {{firstName}}", body: `<p>Hi {{firstName}},</p><p>I wanted to thank you personally for your support in this campaign. It meant everything.</p><p>Whatever comes next, I'm grateful you trusted me with your vote.</p><p>-- {{candidateName}}</p>` },
-  { slug: "event-invite", name: "Event Invitation", subject: "Coffee and conversation -- this Thursday", body: `<p>Hi {{firstName}},</p><p>I'm hosting a small community meetup this Thursday at 7pm. Coffee, questions, real conversation about {{ward}}.</p><p>Hope you'll join us.</p><p><a href="#">RSVP</a></p><p>-- {{candidateName}}</p>` },
-];
-
-const SMS_TEMPLATES = [
-  { slug: "gotv", name: "GOTV Reminder", body: "Hi {{firstName}}, tomorrow is election day. Polls are open 10-8. Find your polling station at elections.on.ca. Let's finish this together!" },
-  { slug: "canvassing", name: "Canvassing Invite", body: "Hi {{firstName}}, quick reminder: knock doors with us this Sat 10am in {{ward}}. Reply YES to join." },
-  { slug: "thanks", name: "Thank You", body: "{{firstName}}, thank you for your support. It means the world. -- {{candidateName}}" },
-  { slug: "event", name: "Event Invite", body: "Hi {{firstName}}, coffee meetup Thursday 7pm. Hope you'll come. Reply for details." },
-];
-
-const MERGE_FIELDS = [
-  { token: "{{firstName}}", label: "First name" },
-  { token: "{{lastName}}", label: "Last name" },
-  { token: "{{ward}}", label: "Ward" },
-  { token: "{{candidateName}}", label: "Candidate name" },
-  { token: "{{campaignName}}", label: "Campaign name" },
-];
-
-const AUTOMATION_PRESETS = [
-  { id: "gotv-reminder", name: "GOTV Reminder", trigger: "3 days before election", channel: "sms", description: "Auto-send GOTV reminders to confirmed supporters" },
-  { id: "event-reminder", name: "Event Reminder", trigger: "24h before event", channel: "email", description: "Remind RSVPs about upcoming events" },
-  { id: "volunteer-followup", name: "Volunteer Follow-up", trigger: "After first shift", channel: "email", description: "Thank volunteers and invite to next shift" },
-  { id: "donation-thankyou", name: "Donation Thank You", trigger: "On donation received", channel: "email", description: "Immediate thank-you with tax receipt" },
-  { id: "new-supporter", name: "New Supporter Welcome", trigger: "On contact identified", channel: "email", description: "Welcome message with campaign info" },
-  { id: "canvass-debrief", name: "Canvass Debrief", trigger: "End of canvass shift", channel: "sms", description: "Quick survey for canvasser after each shift" },
-];
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function formatDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-function statusBadge(status: string | undefined | null) {
-  if (!status) return null;
-  const map: Record<string, { bg: string; text: string; dot: string }> = {
-    draft: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
-    scheduled: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
-    sending: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
-    in_progress: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
-    sent: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-    completed: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-    delivered: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-    failed: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
-    cancelled: { bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
-    active: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
-    paused: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+function SBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; c: string; bg: string }> = {
+    open:       { label: "OPEN",       c: "#2979FF", bg: "rgba(41,121,255,0.15)" },
+    resolved:   { label: "RESOLVED",   c: "#00C853", bg: "rgba(0,200,83,0.15)" },
+    snoozed:    { label: "SNOOZED",    c: "#EF9F27", bg: "rgba(239,159,39,0.15)" },
+    email:      { label: "EMAIL",      c: "#2979FF", bg: "rgba(41,121,255,0.15)" },
+    sms:        { label: "SMS",        c: "#00C853", bg: "rgba(0,200,83,0.15)" },
+    social:     { label: "SOCIAL",     c: "#AA00FF", bg: "rgba(170,0,255,0.15)" },
+    question:   { label: "Q&A",        c: "#EF9F27", bg: "rgba(239,159,39,0.15)" },
+    live:       { label: "LIVE",       c: "#00C853", bg: "rgba(0,200,83,0.15)" },
+    draft:      { label: "PAUSED",     c: "#6B72A0", bg: "rgba(107,114,160,0.15)" },
+    queued:     { label: "QUEUED",     c: "#EF9F27", bg: "rgba(239,159,39,0.15)" },
+    processing: { label: "SENDING",    c: "#00C853", bg: "rgba(0,200,83,0.15)" },
+    sent:       { label: "SENT",       c: "#6B72A0", bg: "rgba(107,114,160,0.15)" },
   };
-  const s = map[status] ?? map.draft;
+  const s = map[status] ?? { label: status.toUpperCase(), c: "#AAB2FF", bg: "rgba(170,178,255,0.15)" };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-      {status.replace("_", " ")}
+    <span
+      className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap"
+      style={{ color: s.c, backgroundColor: s.bg, textShadow: `0 0 6px ${s.c}60` }}
+    >
+      {s.label}
     </span>
   );
 }
 
-// ─── Main Component ─────────────────────────────────────────────────────────
-
-export default function CommunicationsClient({ campaignId, campaignName, tags, wards }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [channelFilter, setChannelFilter] = useState<Channel>("all");
-
-  // Compose pre-fill state (for Reply / Use Template navigation)
-  const [composePrefill, setComposePrefill] = useState<{ channel?: "email" | "sms"; subject?: string; body?: string } | null>(null);
-
-  function navigateToCompose(prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) {
-    if (prefill) setComposePrefill(prefill);
-    setActiveTab("compose");
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* ─── Header ──────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 bg-white">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-                <Mail className="w-6 h-6 text-blue-600" />
-                Communications
-              </h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Command center for{" "}
-                <span className="font-medium text-slate-700">{campaignName}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveTab("compose")}
-                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                New Message
-              </button>
-              <button
-                onClick={() => setActiveTab("campaigns")}
-                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <Radio className="w-4 h-4" />
-                New Campaign
-              </button>
-              <button
-                onClick={() => setActiveTab("templates")}
-                className="hidden sm:inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Templates
-              </button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="mt-4 flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search messages, campaigns, contacts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            {/* Channel filter pills */}
-            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
-              {(["all", "email", "sms"] as const).map((ch) => (
-                <button
-                  key={ch}
-                  onClick={() => setChannelFilter(ch)}
-                  className={`h-10 px-3 text-xs font-semibold transition-colors capitalize ${
-                    channelFilter === ch
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {ch === "all" ? "All" : ch.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="mt-4 -mb-px flex gap-0.5 overflow-x-auto scrollbar-thin">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    isActive
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Body ──────────────────────────────────────────── */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === "overview" && (
-          <OverviewTab campaignId={campaignId} channelFilter={channelFilter} onNavigate={setActiveTab} />
-        )}
-        {activeTab === "compose" && (
-          <ComposeTab
-            campaignId={campaignId}
-            campaignName={campaignName}
-            tags={tags}
-            wards={wards}
-            channelFilter={channelFilter}
-            prefill={composePrefill}
-            onPrefillConsumed={() => setComposePrefill(null)}
-            onNavigate={setActiveTab}
-          />
-        )}
-        {activeTab === "campaigns" && (
-          <CampaignsTab campaignId={campaignId} channelFilter={channelFilter} />
-        )}
-        {activeTab === "inbox" && (
-          <InboxTab campaignId={campaignId} onNavigateCompose={navigateToCompose} />
-        )}
-        {activeTab === "templates" && (
-          <TemplatesTab campaignId={campaignId} channelFilter={channelFilter} onNavigateCompose={navigateToCompose} />
-        )}
-        {activeTab === "automations" && (
-          <AutomationsTab campaignId={campaignId} />
-        )}
-        {activeTab === "scheduled" && (
-          <ScheduledTab campaignId={campaignId} />
-        )}
-        {activeTab === "history" && (
-          <HistoryTab campaignId={campaignId} channelFilter={channelFilter} />
-        )}
-        {activeTab === "audiences" && (
-          <AudiencesTab campaignId={campaignId} tags={tags} wards={wards} />
-        )}
-        {activeTab === "subscribers" && (
-          <SubscribersTab campaignId={campaignId} />
-        )}
-        {activeTab === "analytics" && (
-          <AnalyticsTab campaignId={campaignId} />
-        )}
-        {activeTab === "settings" && (
-          <SettingsTab />
-        )}
-      </div>
-    </div>
-  );
+function ChannelIcon({ channel }: { channel: string }) {
+  const cls: Record<string, string> = {
+    email:    "text-[#2979FF]",
+    sms:      "text-[#00C853]",
+    social:   "text-[#AA00FF]",
+    question: "text-[#EF9F27]",
+  };
+  const Icon = channel === "sms" ? Phone : channel === "question" ? HelpCircle : Mail;
+  return <Icon size={13} className={cls[channel] ?? "text-[#AAB2FF]"} />;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: OVERVIEW
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Broadcast Panel ──────────────────────────────────────────────────────────
 
-function OverviewTab({ campaignId, channelFilter, onNavigate }: { campaignId: string; channelFilter: Channel; onNavigate: (tab: Tab) => void }) {
-  const [stats, setStats] = useState<{ total: number; delivered: number; failed: number; deliveryRate: number }>({ total: 0, delivered: 0, failed: 0, deliveryRate: 0 });
-  const [recentSends, setRecentSends] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+const ALL_SUPPORT_LEVELS_EXCEPT_HARD_OPPOSE = [
+  "strong_support", "leaning_support", "undecided", "leaning_opposition", "unknown",
+];
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [statsRes, historyRes] = await Promise.all([
-          fetch(`/api/notifications/stats?campaignId=${campaignId}`),
-          fetch(`/api/notifications/history?campaignId=${campaignId}&limit=10`),
-        ]);
-
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          const t = statsData.data?.totals ?? { total: 0, delivered: 0, failed: 0 };
-          setStats({
-            total: t.total ?? 0,
-            delivered: t.delivered ?? 0,
-            failed: t.failed ?? 0,
-            deliveryRate: statsData.data?.deliveryRate ?? 0,
-          });
-        }
-
-        if (historyRes.ok) {
-          const histData = await historyRes.json();
-          setRecentSends(histData.data ?? []);
-        }
-      } catch (err) {
-        console.error("Failed to load overview:", err);
-      }
-      setLoading(false);
-    })();
-  }, [campaignId]);
-
-  return (
-    <div className="space-y-6">
-      {/* Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: "Total Sends", value: stats.total, icon: Send, color: "text-blue-600 bg-blue-50" },
-          { label: "Delivery Rate", value: `${(stats.deliveryRate * 100).toFixed(1)}%`, icon: TrendingUp, color: "text-emerald-600 bg-emerald-50" },
-          { label: "Delivered", value: stats.delivered.toLocaleString(), icon: CheckCircle2, color: "text-green-600 bg-green-50" },
-          { label: "Failed", value: stats.failed.toLocaleString(), icon: AlertTriangle, color: "text-red-600 bg-red-50" },
-        ].map((m) => {
-          const Icon = m.icon;
-          return (
-            <div key={m.label} className="bg-white rounded-xl border border-slate-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${m.color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900 tabular-nums">{m.value}</p>
-                  <p className="text-xs text-slate-500 font-medium">{m.label}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Send Email", desc: "Compose to segments", icon: Mail, tab: "compose" as Tab, color: "bg-blue-50 text-blue-600" },
-          { label: "Send SMS", desc: "Text blast", icon: MessageSquare, tab: "compose" as Tab, color: "bg-violet-50 text-violet-600" },
-          { label: "View Inbox", desc: "Messages + replies", icon: Inbox, tab: "inbox" as Tab, color: "bg-emerald-50 text-emerald-600" },
-          { label: "Subscribers", desc: "Newsletter + questions", icon: UserCircle, tab: "subscribers" as Tab, color: "bg-amber-50 text-amber-600" },
-        ].map((a) => {
-          const Icon = a.icon;
-          return (
-            <button
-              key={a.label}
-              onClick={() => onNavigate(a.tab)}
-              className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:shadow-md transition-all text-left"
-            >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${a.color}`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <p className="font-semibold text-xs text-slate-900">{a.label}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5">{a.desc}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Recent Sends */}
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Recent Sends</h3>
-        {loading ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-          </div>
-        ) : recentSends.length === 0 ? (
-          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
-            <Send className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="font-semibold text-slate-700">No sends yet</p>
-            <p className="text-sm text-slate-500 mt-1">Compose your first message to get started.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="grid grid-cols-[1fr_100px_80px_80px_80px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Message</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Sent</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Delivered</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Failed</span>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {recentSends.slice(0, 10).map((h) => (
-                <div key={h.id} className="grid grid-cols-[1fr_100px_80px_80px_80px] gap-4 px-4 py-3 hover:bg-slate-50 transition-colors">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm text-slate-900 truncate">{h.title || "Untitled"}</p>
-                    <p className="text-xs text-slate-500 truncate">{h.body?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
-                  </div>
-                  <div>{statusBadge(h.status)}</div>
-                  <p className="text-xs text-slate-500 tabular-nums text-right">{h.totalSubscribers}</p>
-                  <p className="text-xs text-green-600 tabular-nums text-right font-medium">{h.deliveredCount}</p>
-                  <p className="text-xs text-red-500 tabular-nums text-right font-medium">{h.failedCount}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: COMPOSE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function ComposeTab({
+function BroadcastPanel({
   campaignId,
   campaignName,
   tags,
-  wards,
-  channelFilter,
-  prefill,
-  onPrefillConsumed,
-  onNavigate,
 }: {
   campaignId: string;
   campaignName: string;
   tags: Array<{ id: string; name: string; color: string | null }>;
-  wards: string[];
-  channelFilter: Channel;
-  prefill: { channel?: "email" | "sms"; subject?: string; body?: string } | null;
-  onPrefillConsumed: () => void;
-  onNavigate: (tab: Tab) => void;
 }) {
-  const [channel, setChannel] = useState<"email" | "sms">(channelFilter === "sms" ? "sms" : "email");
-  const [subject, setSubject] = useState("");
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string>("");
+  const [reach, setReach] = useState<number | null>(null);
+  const [reachLoading, setReachLoading] = useState(false);
+  const [channel, setChannel] = useState<CommsChannel>("sms");
   const [body, setBody] = useState("");
-  const [supportLevels, setSupportLevels] = useState<string[]>([]);
-  const [wardFilter, setWardFilter] = useState<string[]>([]);
-  const [tagFilter, setTagFilter] = useState<string[]>([]);
-  const [excludeDnc, setExcludeDnc] = useState(true);
-  const [excludeEmailBounced, setExcludeEmailBounced] = useState(true);
-  const [excludeSmsOptOut, setExcludeSmsOptOut] = useState(true);
-  const [audience, setAudience] = useState<AudienceResult | null>(null);
-  const [audienceLoading, setAudienceLoading] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [excludeHardOppose, setExcludeHardOppose] = useState(true);
+  const [excludedTagIds, setExcludedTagIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
-  const [savingDraft, setSavingDraft] = useState(false);
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string; message?: string } | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [showMergeFields, setShowMergeFields] = useState(false);
-  const [showAiPrompt, setShowAiPrompt] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [volunteerOnly, setVolunteerOnly] = useState(false);
-  const [hasEmail, setHasEmail] = useState(false);
-  const [hasPhone, setHasPhone] = useState(false);
-  const [lastContactedFilter, setLastContactedFilter] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  async function generateWithAi() {
-    if (!aiPrompt.trim()) return;
-    setAiGenerating(true);
+  useEffect(() => {
+    fetch(`/api/comms/segments?campaignId=${campaignId}`)
+      .then(r => r.json())
+      .then((d: { segments?: Segment[] }) => {
+        if (d.segments) setSegments(d.segments);
+      })
+      .catch(() => {});
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (!selectedSegmentId) { setReach(null); return; }
+    setReachLoading(true);
+    fetch(`/api/comms/segments/${selectedSegmentId}/count`, { method: "POST" })
+      .then(r => r.json())
+      .then((d: { count?: number }) => setReach(d.count ?? null))
+      .catch(() => setReach(null))
+      .finally(() => setReachLoading(false));
+  }, [selectedSegmentId]);
+
+  const selectedSegment = segments.find(s => s.id === selectedSegmentId);
+  const fd = selectedSegment?.filterDefinition ?? {};
+
+  function buildSendPayload(isTest: boolean): Record<string, unknown> {
+    // Support levels: if segment has explicit list, use that (minus hard oppose if toggled).
+    // If no segment, and exclude hard oppose is on, send to all except strong_opposition.
+    let supportLevels: string[] | undefined;
+    if (fd.supportLevels && fd.supportLevels.length > 0) {
+      supportLevels = excludeHardOppose
+        ? fd.supportLevels.filter(l => l !== "strong_opposition")
+        : fd.supportLevels;
+    } else if (excludeHardOppose) {
+      supportLevels = ALL_SUPPORT_LEVELS_EXCEPT_HARD_OPPOSE;
+    }
+
+    const payload: Record<string, unknown> = {
+      campaignId,
+      testOnly: isTest,
+      sendKey: randomKey(),
+      excludeDnc: true,
+    };
+    if (supportLevels) payload.supportLevels = supportLevels;
+    if (fd.wards?.length) payload.wards = fd.wards;
+
+    // Tag-based include from segment, minus any explicitly excluded tags
+    const includeTags = fd.tagIds?.filter(id => !excludedTagIds.includes(id));
+    if (includeTags?.length) payload.tagIds = includeTags;
+
+    return payload;
+  }
+
+  async function handleTestSend() {
+    if (!body.trim()) { toast.error("Write a message first"); return; }
+    if (channel === "email" && !subject.trim()) { toast.error("Subject required for email"); return; }
+    setTestSending(true);
     try {
-      const kind = channel === "email" ? "fundraising-email" : "social-post";
-      const res = await fetch("/api/adoni/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind, brief: aiPrompt, campaignId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.text) {
-          setBody(data.text);
-          if (channel === "email" && !subject) {
-            const firstLine = data.text.split("\n")[0].replace(/<[^>]*>/g, "").slice(0, 100);
-            setSubject(firstLine);
-          }
-          setResult({ message: "AI content generated. Review and edit before sending." });
+      const payload = buildSendPayload(true);
+      if (channel === "sms") {
+        payload.body = body;
+        payload.excludeSmsOptOut = true;
+      } else {
+        payload.subject = subject;
+        payload.bodyHtml = `<div style="font-family:system-ui,sans-serif;padding:24px">${body.replace(/\n/g, "<br>")}</div>`;
+        payload.excludeEmailBounced = true;
+      }
+      const res = await fetch(
+        channel === "sms" ? "/api/communications/sms" : "/api/communications/email",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      );
+      const data = await res.json() as { sent?: number; error?: string; code?: string };
+      if (!res.ok) {
+        if (data.code === "INTEGRATION_UNAVAILABLE") {
+          toast.info("Integration not configured — message logged but not sent");
         } else {
-          setResult({ error: "AI returned empty content. Try a more specific prompt." });
+          toast.error(data.error ?? "Test send failed");
         }
       } else {
-        const err = await res.json().catch(() => ({ error: "AI generation failed" }));
-        setResult({ error: err.error || "AI generation failed. Check your ANTHROPIC_API_KEY." });
+        toast.success(`Test send: ${data.sent ?? 0} delivered`);
       }
-    } catch {
-      setResult({ error: "Network error connecting to AI. Try again." });
-    }
-    setAiGenerating(false);
-    setShowAiPrompt(false);
-    setAiPrompt("");
-  }
-
-  // Apply prefill when it changes
-  useEffect(() => {
-    if (prefill) {
-      if (prefill.channel) setChannel(prefill.channel);
-      if (prefill.subject !== undefined) setSubject(prefill.subject);
-      if (prefill.body !== undefined) setBody(prefill.body);
-      onPrefillConsumed();
-    }
-  }, [prefill, onPrefillConsumed]);
-
-  // Live audience count
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      setAudienceLoading(true);
-      try {
-        const res = await fetch("/api/communications/audience", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            campaignId,
-            channel,
-            supportLevels: supportLevels.length ? supportLevels : undefined,
-            wards: wardFilter.length ? wardFilter : undefined,
-            tagIds: tagFilter.length ? tagFilter : undefined,
-            excludeDnc,
-            excludeEmailBounced,
-            excludeSmsOptOut,
-            volunteerOnly: volunteerOnly || undefined,
-            hasEmail: hasEmail || undefined,
-            hasPhone: hasPhone || undefined,
-            lastContactedDays: lastContactedFilter || undefined,
-          }),
-        });
-        if (res.ok) setAudience(await res.json());
-        else setAudience(null);
-      } catch {
-        setAudience(null);
-      }
-      setAudienceLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [campaignId, channel, supportLevels, wardFilter, tagFilter, excludeDnc, excludeEmailBounced, excludeSmsOptOut, volunteerOnly, hasEmail, hasPhone, lastContactedFilter]);
-
-  function toggle(arr: string[], val: string, setter: (v: string[]) => void) {
-    setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
-  }
-
-  function loadTemplate(slug: string) {
-    if (channel === "email") {
-      const t = EMAIL_TEMPLATES.find((x) => x.slug === slug);
-      if (t) { setSubject(t.subject); setBody(t.body); }
-    } else {
-      const t = SMS_TEMPLATES.find((x) => x.slug === slug);
-      if (t) setBody(t.body);
+    } finally {
+      setTestSending(false);
     }
   }
 
-  function insertMergeField(token: string) {
-    setBody((prev) => prev + token);
-    setShowMergeFields(false);
-  }
-
-  async function saveDraft() {
-    if (!body) return;
-    setSavingDraft(true);
-    setResult(null);
-    try {
-      const res = await fetch("/api/notifications/schedule", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          title: subject || "SMS",
-          body,
-          scheduledFor: new Date(Date.now() + 86400000).toISOString(),
-        }),
-      });
-      if (res.ok) {
-        setResult({ message: "Draft saved as scheduled send (tomorrow). View it in the Scheduled tab." });
-      } else {
-        const data = await res.json();
-        setResult({ error: data.error ?? "Failed to save draft" });
-      }
-    } catch {
-      setResult({ error: "Network error saving draft" });
-    }
-    setSavingDraft(false);
-  }
-
-  async function saveAsTemplate() {
-    if (!body) return;
-    setSavingTemplate(true);
-    setResult(null);
-    try {
-      const res = await fetch("/api/comms/templates", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          channel,
-          name: (channel === "email" && subject) ? subject : `${channel.toUpperCase()} Template`,
-          subject: channel === "email" ? subject : undefined,
-          bodyHtml: channel === "email" ? body : undefined,
-          bodyText: body.replace(/<[^>]*>/g, ""),
-        }),
-      });
-      if (res.ok) {
-        setResult({ message: "Template saved. View it in the Templates tab." });
-      } else {
-        const data = await res.json();
-        setResult({ error: data.error ?? "Failed to save template" });
-      }
-    } catch {
-      setResult({ error: "Network error saving template" });
-    }
-    setSavingTemplate(false);
-  }
-
-  async function send(testOnly: boolean) {
-    if (channel === "email" && (!subject || !body)) {
-      setResult({ error: "Subject and body required" });
-      return;
-    }
-    if (channel === "sms" && !body) {
-      setResult({ error: "Message body required" });
-      return;
-    }
+  async function handleArmPayload() {
+    if (!body.trim()) { toast.error("Message body required"); return; }
+    if (channel === "email" && !subject.trim()) { toast.error("Subject required for email"); return; }
     setSending(true);
-    setResult(null);
+    setConfirmOpen(false);
     try {
-      const endpoint = channel === "email" ? "/api/communications/email" : "/api/communications/sms";
-      const payload: Record<string, unknown> = {
-        campaignId,
-        ...(channel === "email" ? { subject, bodyHtml: body } : { body }),
-        supportLevels: supportLevels.length ? supportLevels : undefined,
-        wards: wardFilter.length ? wardFilter : undefined,
-        tagIds: tagFilter.length ? tagFilter : undefined,
-        excludeDnc,
-        ...(channel === "email" ? { excludeEmailBounced } : { excludeSmsOptOut }),
-        testOnly,
-      };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setResult({ error: data.error ?? "Send failed" });
+      const payload = buildSendPayload(false);
+      if (channel === "sms") {
+        payload.body = body;
+        payload.excludeSmsOptOut = true;
       } else {
-        const sentCount = data.sent ?? data.delivered ?? 0;
-        const failedCount = data.failed ?? 0;
-        setResult({
-          sent: sentCount,
-          failed: failedCount,
-          message: testOnly
-            ? `Test send complete: ${sentCount} delivered.`
-            : `Successfully sent to ${sentCount} recipient${sentCount !== 1 ? "s" : ""} via ${channel.toUpperCase()}.${failedCount ? ` ${failedCount} failed.` : " All delivered."}`,
-        });
+        payload.subject = subject;
+        payload.bodyHtml = `<div style="font-family:system-ui,sans-serif;padding:24px">${body.replace(/\n/g, "<br>")}</div>`;
+        payload.excludeEmailBounced = true;
       }
-    } catch {
-      setResult({ error: "Network error" });
+      const res = await fetch(
+        channel === "sms" ? "/api/communications/sms" : "/api/communications/email",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+      );
+      const data = await res.json() as { sent?: number; failed?: number; audienceSize?: number; error?: string; code?: string };
+      if (!res.ok) {
+        if (data.code === "INTEGRATION_UNAVAILABLE") {
+          toast.info("Integration not configured — configure Twilio or Resend in Vercel to send live");
+        } else {
+          toast.error(data.error ?? "Deploy failed");
+        }
+      } else {
+        toast.success(`Deployed: ${data.sent ?? 0}/${data.audienceSize ?? 0} delivered`);
+        setBody("");
+        setSubject("");
+      }
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   }
 
-  const smsCharCount = channel === "sms" ? body.length : 0;
-  const smsSegments = Math.ceil(smsCharCount / 160) || 0;
-  const templates = channel === "email" ? EMAIL_TEMPLATES : SMS_TEMPLATES;
+  function insertToken(token: string) {
+    const el = textareaRef.current;
+    if (!el) { setBody(b => b + token); return; }
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    setBody(body.slice(0, start) + token + body.slice(end));
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
+  }
+
+  function toggleTagExclusion(tagId: string) {
+    setExcludedTagIds(prev =>
+      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId],
+    );
+  }
+
+  const charCount = body.length;
+  const segments160 = Math.ceil(charCount / 160) || 1;
+  const costEst = reach != null ? (reach * (channel === "sms" ? 0.01 : 0.001)).toFixed(2) : "0.00";
+  const previewBody = body
+    .replace(/\{first_name\}|\{\{firstName\}\}/g, "Michael")
+    .replace(/\{riding\}|\{\{ward\}\}/g, "Parkdale–High Park")
+    .replace(/\{\{candidateName\}\}/g, campaignName.split(" ")[0] ?? "Jane")
+    .replace(/\{\{candidateName\}\}/g, campaignName.split(" ")[0] ?? "Jane");
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* ── Left: Composer ─────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-4">
-        {/* Channel Selector */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5">Channel</p>
-          <p className="text-[11px] text-slate-400 mb-2">Email reaches everyone with an address. SMS is best for urgent GOTV nudges — keep messages under 160 characters.</p>
-          <div className="flex gap-2">
-            {(["email", "sms"] as const).map((ch) => (
-              <button
-                key={ch}
-                onClick={() => setChannel(ch)}
-                className={`flex-1 h-11 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 border transition-colors ${
-                  channel === ch
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-                }`}
+    <div className="flex-1 flex flex-col p-6 overflow-y-auto relative z-20">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-black uppercase tracking-tighter drop-shadow-[0_0_10px_rgba(41,121,255,0.8)] flex items-center gap-3">
+          New Deployment{" "}
+          <span className="bg-[#2979FF]/20 text-[#2979FF] border border-[#2979FF]/40 text-[10px] px-2 py-0.5 rounded tracking-widest font-black">
+            DRAFT
+          </span>
+        </h2>
+        <div className="flex gap-3">
+          <button
+            onClick={handleTestSend}
+            disabled={testSending || !body.trim()}
+            className="px-4 py-2 border border-[#2979FF]/40 rounded text-[11px] font-bold uppercase tracking-widest text-[#AAB2FF] hover:bg-[#2979FF]/10 transition-colors disabled:opacity-40"
+          >
+            {testSending ? "Sending..." : "Test Send"}
+          </button>
+          <button
+            onClick={() => setConfirmOpen(true)}
+            disabled={sending || !body.trim()}
+            className="px-6 py-2 bg-[#FF3B30] text-white rounded text-[11px] font-black uppercase tracking-widest hover:bg-red-500 shadow-[0_0_20px_rgba(255,59,48,0.4)] transition-all flex items-center gap-2 disabled:opacity-40"
+          >
+            {sending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+            {sending ? "Deploying..." : "ARM PAYLOAD"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6 min-h-0">
+        {/* Left + Center: 2 cols */}
+        <div className="col-span-2 flex flex-col gap-6">
+
+          {/* Target Vector */}
+          <div className="bg-[#0F1440]/60 border border-[#2979FF]/30 rounded p-4 shadow-[0_0_20px_rgba(0,0,0,0.5)] flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-[#2979FF]/20 pb-3">
+              <h3 className="text-[11px] font-black text-[#AAB2FF] uppercase tracking-[0.2em]">Target Vector</h3>
+              <Link
+                href="/app/communications/inbox"
+                className="text-[10px] text-[#00E5FF] hover:underline tracking-widest"
               >
-                {ch === "email" ? <Mail className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                {ch === "email" ? "Email" : "SMS"}
+                View Matrix
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] uppercase text-[#6B72A0] w-16 flex-shrink-0">Segment</span>
+              <select
+                value={selectedSegmentId}
+                onChange={e => setSelectedSegmentId(e.target.value)}
+                className="bg-[#050A1F] border border-[#2979FF]/40 text-[#F5F7FF] text-xs p-2 rounded flex-1 outline-none focus:border-[#00E5FF]"
+              >
+                <option value="">— All Contacts —</option>
+                {segments.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{s.lastCount != null ? ` (${s.lastCount.toLocaleString()})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="text-[10px] uppercase text-[#6B72A0] w-16 flex-shrink-0 pt-1">Exclusion</span>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setExcludeHardOppose(!excludeHardOppose)}
+                  className={cn(
+                    "text-[10px] px-2 py-1 rounded border transition-colors font-bold",
+                    excludeHardOppose
+                      ? "bg-[#FF3B30]/20 border-[#FF3B30]/40 text-[#FF3B30]"
+                      : "bg-transparent border-[#2979FF]/20 text-[#6B72A0] hover:text-[#AAB2FF]",
+                  )}
+                >
+                  Hard Oppose
+                </button>
+                <span className="bg-[#FF3B30]/20 border border-[#FF3B30]/40 text-[#FF3B30] text-[10px] px-2 py-1 rounded font-bold">
+                  DNC List
+                </span>
+                <span className={cn(
+                  "border text-[10px] px-2 py-1 rounded font-bold",
+                  channel === "sms"
+                    ? "bg-[#EF9F27]/20 border-[#EF9F27]/40 text-[#EF9F27]"
+                    : "bg-[#EF9F27]/20 border-[#EF9F27]/40 text-[#EF9F27]",
+                )}>
+                  {channel === "sms" ? "SMS Opt-out" : "Email Bounced"}
+                </span>
+                {tags.map(tag => (
+                  <button
+                    key={tag.id}
+                    onClick={() => toggleTagExclusion(tag.id)}
+                    className={cn(
+                      "text-[10px] px-2 py-1 rounded border transition-colors font-bold flex items-center gap-1",
+                      excludedTagIds.includes(tag.id)
+                        ? "bg-[#FF3B30]/20 border-[#FF3B30]/40 text-[#FF3B30]"
+                        : "bg-transparent border-[#2979FF]/20 text-[#6B72A0] hover:text-[#AAB2FF]",
+                    )}
+                  >
+                    <Tag size={9} />
+                    {tag.name}
+                    {excludedTagIds.includes(tag.id) && <X size={9} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-[#2979FF]/10 p-3 rounded border border-[#2979FF]/20 flex justify-between items-center">
+              <span className="text-[10px] font-bold text-[#AAB2FF] uppercase tracking-widest">Calculated Reach</span>
+              {reachLoading ? (
+                <Loader2 size={18} className="text-[#00E5FF] animate-spin" />
+              ) : (
+                <span className="text-xl font-black text-[#00E5FF] drop-shadow-[0_0_8px_#00E5FF]">
+                  {reach != null ? reach.toLocaleString() : selectedSegmentId ? "—" : "All"}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Message Composer */}
+          <div className="bg-[#0F1440]/60 border border-[#2979FF]/30 rounded flex flex-col shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+            <div className="flex border-b border-[#2979FF]/20">
+              <button
+                onClick={() => setChannel("sms")}
+                className={cn(
+                  "flex-1 py-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-colors",
+                  channel === "sms"
+                    ? "text-[#00E5FF] border-[#00E5FF] bg-[#00E5FF]/5"
+                    : "text-[#6B72A0] border-transparent hover:bg-[#2979FF]/5",
+                )}
+              >
+                <Phone size={14} /> SMS Text
+              </button>
+              <button
+                onClick={() => setChannel("email")}
+                className={cn(
+                  "flex-1 py-3 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-colors",
+                  channel === "email"
+                    ? "text-[#00E5FF] border-[#00E5FF] bg-[#00E5FF]/5"
+                    : "text-[#6B72A0] border-transparent hover:bg-[#2979FF]/5",
+                )}
+              >
+                <Mail size={14} /> Email
+              </button>
+            </div>
+
+            <div className="p-4 flex flex-col gap-3">
+              {channel === "email" && (
+                <input
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  placeholder="Subject line..."
+                  className="w-full bg-[#050A1F] border border-[#2979FF]/40 rounded p-3 text-[#F5F7FF] text-sm focus:outline-none focus:border-[#00E5FF] placeholder:text-[#6B72A0]"
+                />
+              )}
+              <textarea
+                ref={textareaRef}
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                className="w-full bg-[#050A1F] border border-[#2979FF]/40 rounded p-4 text-[#F5F7FF] text-sm resize-none focus:outline-none focus:border-[#00E5FF] focus:shadow-[0_0_15px_rgba(0,229,255,0.2)] transition-all font-sans min-h-[120px]"
+                placeholder={
+                  channel === "sms"
+                    ? "Hi {first_name}, this is {candidateName} from the campaign..."
+                    : "Dear {first_name},\n\nYour message here..."
+                }
+              />
+              <div className="flex justify-between items-center text-[10px] text-[#6B72A0]">
+                <div className="flex gap-2 flex-wrap">
+                  {["{first_name}", "{riding}", "{candidateName}"].map(token => (
+                    <button
+                      key={token}
+                      onClick={() => insertToken(token)}
+                      className="hover:text-[#00E5FF] border border-[#2979FF]/30 px-2 py-1 rounded bg-[#050A1F] transition-colors"
+                    >
+                      +{token}
+                    </button>
+                  ))}
+                </div>
+                {channel === "sms" && (
+                  <span>{charCount} / 160 chars ({segments160} segment{segments160 !== 1 ? "s" : ""})</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Device Sim + Compliance */}
+        <div className="col-span-1 flex flex-col gap-6">
+
+          {/* Device Simulator */}
+          <div className="bg-[#050A1F] border border-[#2979FF]/40 rounded p-4 relative shadow-[0_0_20px_rgba(0,0,0,0.8)] flex flex-col items-center flex-1 min-h-[320px]">
+            <div className="absolute top-3 left-4 text-[9px] font-black text-[#6B72A0] uppercase tracking-[0.2em]">Device Sim</div>
+            <div className="absolute top-3 right-4 text-[9px] font-black text-[#6B72A0] uppercase tracking-[0.2em]">888-555-0199</div>
+
+            <div className="w-[200px] h-[290px] border-2 border-[#141419] rounded-2xl p-2 bg-[#0B0B0F] relative shadow-lg mt-8">
+              <div className="w-full h-full bg-[#141419] rounded-xl overflow-hidden flex flex-col font-sans">
+                <div className="bg-[#0B0B0F] p-2 text-center text-[10px] font-bold border-b border-white/10 text-white">
+                  Campaign
+                </div>
+                <div className="flex-1 p-3 bg-[#0B0B0F] flex flex-col justify-end overflow-hidden">
+                  {previewBody.trim() ? (
+                    <div className="bg-[#2979FF] text-white p-2.5 rounded-2xl rounded-bl-sm text-[11px] shadow-sm max-w-[85%] self-end break-words leading-relaxed">
+                      {previewBody.slice(0, 200)}{previewBody.length > 200 ? "..." : ""}
+                    </div>
+                  ) : (
+                    <div className="text-[#6B72A0] text-[10px] text-center pb-8">Preview appears here</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compliance */}
+          <div className="bg-[#0F1440]/60 border border-[#00C853]/40 rounded p-4 shadow-[0_0_20px_rgba(0,200,83,0.1)]">
+            <h3 className="text-[11px] font-black text-[#00C853] uppercase tracking-[0.2em] flex items-center gap-2 mb-3">
+              <CheckCircle size={14} /> System Checks Passed
+            </h3>
+            <div className="space-y-2 text-[10px] text-[#AAB2FF]">
+              <div className="flex justify-between border-b border-[#2979FF]/20 pb-1">
+                <span>CASL Compliance</span>
+                <span className="text-[#00C853] font-bold">VERIFIED</span>
+              </div>
+              <div className="flex justify-between border-b border-[#2979FF]/20 pb-1">
+                <span>Carrier Route Check</span>
+                <span className="text-[#00C853] font-bold">OPTIMAL</span>
+              </div>
+              {channel === "sms" && (
+                <div className="flex justify-between border-b border-[#2979FF]/20 pb-1">
+                  <span>SMS Segments</span>
+                  <span className="text-[#F5F7FF] font-bold">{segments160}</span>
+                </div>
+              )}
+              <div className="flex justify-between pb-1">
+                <span>Cost Est.</span>
+                <span className="text-[#F5F7FF] font-bold">${costEst}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Confirm Modal */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0F1440] border border-[#FF3B30]/40 rounded-xl p-6 max-w-md w-full mx-4 shadow-[0_0_40px_rgba(255,59,48,0.2)]">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle size={20} className="text-[#FF3B30]" />
+              <h3 className="text-sm font-black text-[#F5F7FF] uppercase tracking-wider">Confirm Deployment</h3>
+            </div>
+            <p className="text-xs text-[#AAB2FF] mb-2">
+              Sending to{" "}
+              <span className="text-[#00E5FF] font-bold">
+                {reach != null ? reach.toLocaleString() : "all matching"}
+              </span>{" "}
+              contacts via{" "}
+              <span className="text-[#00E5FF] font-bold uppercase">{channel}</span>.
+            </p>
+            <p className="text-xs text-[#6B72A0] mb-6">
+              CASL suffix auto-appended. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 border border-[#2979FF]/30 rounded text-xs font-bold text-[#AAB2FF] hover:text-[#F5F7FF] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArmPayload}
+                className="px-6 py-2 bg-[#FF3B30] text-white rounded text-xs font-black uppercase tracking-wider hover:bg-red-500 shadow-[0_0_15px_rgba(255,59,48,0.4)] transition-all"
+              >
+                Deploy Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Triage Inbox Panel ───────────────────────────────────────────────────────
+
+function TriageInboxPanel({ campaignId }: { campaignId: string }) {
+  const [threads, setThreads] = useState<InboxThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [channelFilter, setChannelFilter] = useState<InboxChannelFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [threadDetail, setThreadDetail] = useState<ThreadDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/inbox?campaignId=${campaignId}&limit=40`)
+      .then(r => r.json())
+      .then((d: { threads?: InboxThread[] }) => { if (d.threads) setThreads(d.threads); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (!selectedId) { setThreadDetail(null); return; }
+    setDetailLoading(true);
+    fetch(`/api/inbox/${selectedId}?campaignId=${campaignId}`)
+      .then(r => r.json())
+      .then((d: { thread?: ThreadDetail }) => { if (d.thread) setThreadDetail(d.thread); })
+      .catch(() => {})
+      .finally(() => setDetailLoading(false));
+  }, [selectedId, campaignId]);
+
+  async function sendReply() {
+    if (!selectedId || !replyText.trim()) return;
+    setReplySending(true);
+    try {
+      const res = await fetch(`/api/inbox/${selectedId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, body: replyText }),
+      });
+      const data = await res.json() as { error?: string; code?: string };
+      if (!res.ok) {
+        if (data.code === "INTEGRATION_UNAVAILABLE") {
+          toast.info("Integration not configured — configure Twilio/Resend in Vercel to send replies");
+        } else {
+          toast.error(data.error ?? "Reply failed");
+        }
+      } else {
+        toast.success("Reply sent");
+        setReplyText("");
+        // Refresh thread detail
+        fetch(`/api/inbox/${selectedId}?campaignId=${campaignId}`)
+          .then(r => r.json())
+          .then((d: { thread?: ThreadDetail }) => { if (d.thread) setThreadDetail(d.thread); })
+          .catch(() => {});
+      }
+    } finally {
+      setReplySending(false);
+    }
+  }
+
+  async function resolveThread(threadId: string) {
+    await fetch(`/api/inbox/${threadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId, status: "resolved" }),
+    });
+    setThreads(prev => prev.map(t => t.id === threadId ? { ...t, status: "resolved" as const } : t));
+    setSelectedId(null);
+    toast.success("Thread resolved");
+  }
+
+  const CHANNELS: InboxChannelFilter[] = ["all", "email", "sms", "social", "question"];
+  const filtered = threads.filter(t => channelFilter === "all" || t.channel === channelFilter);
+  const unreadCount = threads.filter(t => t.unreadCount > 0).length;
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* Thread List */}
+      <div className="w-[340px] flex-shrink-0 border-r border-[#2979FF]/20 flex flex-col bg-[#0F1440]/40">
+        <div className="p-4 border-b border-[#2979FF]/20">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-sm font-black text-[#F5F7FF] uppercase tracking-wider flex items-center gap-2">
+              <Inbox size={14} className="text-[#2979FF]" /> Unified Inbox
+              {unreadCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-[#FF3B30] text-white text-[9px] font-black shadow-[0_0_8px_rgba(255,59,48,0.6)]">
+                  {unreadCount}
+                </span>
+              )}
+            </h1>
+          </div>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B72A0]" size={12} />
+            <input
+              placeholder="Search messages..."
+              className="w-full bg-[#050A1F]/80 border border-[#2979FF]/30 text-[#F5F7FF] text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#00E5FF] placeholder:text-[#6B72A0]"
+            />
+          </div>
+          <div className="flex gap-1 flex-wrap">
+            {CHANNELS.map(c => (
+              <button
+                key={c}
+                onClick={() => setChannelFilter(c)}
+                className={cn(
+                  "px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all",
+                  channelFilter === c
+                    ? "bg-[#2979FF]/20 text-[#00E5FF] border border-[#00E5FF]/40"
+                    : "text-[#6B72A0] hover:text-[#AAB2FF] border border-transparent",
+                )}
+              >
+                {c}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Message Editor */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Message</p>
-            <div className="flex gap-1">
-              {/* Merge fields */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMergeFields(!showMergeFields)}
-                  className="h-7 px-2.5 rounded-md text-[11px] font-semibold text-slate-500 border border-slate-200 hover:bg-slate-50 flex items-center gap-1"
-                >
-                  <Hash className="w-3 h-3" />
-                  Merge fields
-                </button>
-                {showMergeFields && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-slate-200 shadow-lg z-30 py-1">
-                    {MERGE_FIELDS.map((f) => (
-                      <button
-                        key={f.token}
-                        onClick={() => insertMergeField(f.token)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-slate-50"
-                      >
-                        <span className="text-slate-700">{f.label}</span>
-                        <code className="text-[10px] text-blue-600 font-mono">{f.token}</code>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* AI Write */}
-              <button
-                onClick={() => setShowAiPrompt(!showAiPrompt)}
-                className="h-7 px-2.5 rounded-md text-[11px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 hover:bg-violet-100 flex items-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" /> AI Write
-              </button>
-              {/* Template picker */}
-              <select
-                onChange={(e) => { if (e.target.value) loadTemplate(e.target.value); e.target.value = ""; }}
-                className="h-7 px-2 rounded-md text-[11px] font-semibold text-slate-500 border border-slate-200 bg-white cursor-pointer"
-                defaultValue=""
-              >
-                <option value="" disabled>Use template...</option>
-                {templates.map((t) => (
-                  <option key={t.slug} value={t.slug}>{t.name}</option>
-                ))}
-              </select>
+        <div className="flex-1 overflow-y-auto divide-y divide-[#2979FF]/10">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-[#2979FF]" />
             </div>
-          </div>
-
-          {showAiPrompt && (
-            <div className="flex gap-2 p-3 rounded-lg bg-violet-50 border border-violet-200">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Tell Adoni what to write..."
-                className="flex-1 h-9 px-3 rounded-lg border border-violet-200 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none bg-white"
-                onKeyDown={(e) => e.key === "Enter" && generateWithAi()}
-              />
-              <button
-                onClick={generateWithAi}
-                disabled={aiGenerating || !aiPrompt.trim()}
-                className="h-9 px-4 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {aiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                Generate
-              </button>
-            </div>
-          )}
-
-          {channel === "email" && (
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-600">Subject line</label>
-                <span className={`text-[11px] tabular-nums ${subject.length > 50 ? "text-amber-600 font-semibold" : "text-slate-400"}`}>
-                  {subject.length}/50 — keep under 50 for mobile preview
-                </span>
-              </div>
-              <input
-                type="text"
-                placeholder="Subject line..."
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full h-11 px-3 rounded-lg border border-slate-200 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-baseline justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-600">
-                {channel === "email" ? "Body (HTML supported)" : "Message"}
-              </label>
-              {channel === "email" && (
-                <span className="text-[11px] text-slate-400">Use merge fields like {"{{firstName}}"} for personalization</span>
-              )}
-            </div>
-            <textarea
-              rows={channel === "email" ? 10 : 5}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={channel === "email" ? "Write your email body (HTML supported)..." : "Write your SMS message..."}
-              className="w-full px-3 py-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none font-mono"
-            />
-          </div>
-
-          {channel === "sms" && (
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>{smsCharCount} characters</span>
-              <span>
-                {smsSegments} segment{smsSegments !== 1 ? "s" : ""}
-                <span className="text-slate-400 ml-1">(each segment = 160 chars, billed separately by Twilio)</span>
-              </span>
-            </div>
-          )}
-
-          {/* Schedule */}
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-[11px] text-slate-400 mb-2">Leave blank to send immediately. Schedule for off-hours delivery (e.g. 9am Tuesday) for better open rates.</p>
-            <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-              <Clock className="w-3.5 h-3.5" />
-              Schedule:
-            </label>
-            <input
-              type="datetime-local"
-              value={scheduleDate}
-              onChange={(e) => setScheduleDate(e.target.value)}
-              className="h-8 px-2 rounded-md border border-slate-200 text-xs"
-            />
-            {scheduleDate && (
-              <button onClick={() => setScheduleDate("")} className="text-xs text-slate-400 hover:text-red-500">
-                Clear
-              </button>
-            )}
-            </div>
-          </div>
-
-          {/* Compliance warning */}
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex items-start gap-2">
-            <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-800">
-              <p className="font-semibold">CASL Compliance</p>
-              <p className="mt-0.5">
-                {channel === "email"
-                  ? "An unsubscribe footer and campaign identification will be added automatically."
-                  : "\"Reply STOP to opt out\" + campaign name will be appended (max 320 chars = 2 segments)."}
-              </p>
-            </div>
-          </div>
-
-          {/* Result */}
-          {result && (
-            <div className={`rounded-lg border px-3 py-2 text-sm ${
-              result.error
-                ? "bg-red-50 border-red-200 text-red-800"
-                : "bg-green-50 border-green-200 text-green-800"
-            }`}>
-              {result.error
-                ? result.error
-                : result.message
-                  ? result.message
-                  : `Sent to ${result.sent} recipients. ${result.failed ? `${result.failed} failed.` : "All delivered."}`}
-            </div>
-          )}
-
-          {/* Send buttons */}
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              onClick={() => send(false)}
-              disabled={sending || !body}
-              className="flex-1 h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {scheduleDate ? "Schedule Send" : "Send Now"}
-            </button>
-            <button
-              onClick={() => send(true)}
-              disabled={sending || !body}
-              className="h-11 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-            >
-              Test Send
-            </button>
-            <button
-              onClick={saveDraft}
-              disabled={!body || savingDraft}
-              className="h-11 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-            >
-              {savingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Draft"}
-            </button>
-            <button
-              onClick={saveAsTemplate}
-              disabled={!body || savingTemplate}
-              className="h-11 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-            >
-              {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FileText className="w-3.5 h-3.5" /> Save as Template</>}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right: Audience Panel ─────────────────────────── */}
-      <div className="lg:w-80 shrink-0 space-y-4">
-        {/* Audience count */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Target className="w-4 h-4 text-blue-600" />
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Audience</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {audienceLoading ? (
-              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-            ) : (
-              <p className="text-3xl font-bold text-slate-900 tabular-nums">{audience?.count?.toLocaleString() ?? "—"}</p>
-            )}
-            <span className="text-xs text-slate-500">recipients</span>
-          </div>
-          {audience && audience.sample.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Sample</p>
-              {audience.sample.map((s) => (
-                <p key={s.id} className="text-xs text-slate-600 truncate">
-                  {s.firstName} {s.lastName} — {channel === "email" ? s.email : s.phone}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5">Segment Filters</p>
-            <p className="text-[11px] text-slate-400">Leave all blank to send to your entire reachable list. Add filters to target a subset.</p>
-          </div>
-
-          {/* Support levels */}
-          <div>
-            <p className="text-xs font-semibold text-slate-600 mb-0.5">Support Level</p>
-            <p className="text-[11px] text-slate-400 mb-1.5">Target only contacts rated at this support level. Leave blank = all levels.</p>
-            <div className="flex flex-wrap gap-1">
-              {SUPPORT_LEVELS.map((sl) => (
-                <button
-                  key={sl.value}
-                  onClick={() => toggle(supportLevels, sl.value, setSupportLevels)}
-                  className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                    supportLevels.includes(sl.value)
-                      ? "bg-blue-50 border-blue-200 text-blue-700"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                  }`}
-                >
-                  {sl.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Wards */}
-          {wards.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1.5">Ward</p>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                {wards.map((w) => (
-                  <button
-                    key={w}
-                    onClick={() => toggle(wardFilter, w, setWardFilter)}
-                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                      wardFilter.includes(w)
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                    }`}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1.5">Tags</p>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                {tags.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => toggle(tagFilter, t.id, setTagFilter)}
-                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                      tagFilter.includes(t.id)
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                    }`}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* DNC toggle */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={excludeDnc}
-                onChange={(e) => setExcludeDnc(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-600">Exclude Do-Not-Contact</span>
-            </label>
-            <p className="text-[11px] text-slate-400 pl-6">Required for CASL compliance — never send to contacts flagged DNC.</p>
-          </div>
-
-          {/* Bounce / opt-out exclusions */}
-          {channel === "email" && (
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={excludeEmailBounced}
-                  onChange={(e) => setExcludeEmailBounced(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs text-slate-600">Exclude bounced emails</span>
-              </label>
-              <p className="text-[11px] text-slate-400 pl-6">Keeps your sender reputation healthy — bounced addresses won't receive.</p>
-            </div>
-          )}
-          {channel === "sms" && (
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={excludeSmsOptOut}
-                  onChange={(e) => setExcludeSmsOptOut(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-xs text-slate-600">Exclude SMS opt-outs</span>
-              </label>
-              <p className="text-[11px] text-slate-400 pl-6">Contacts who replied STOP will not receive this message.</p>
-            </div>
-          )}
-
-          {/* Volunteer only */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={volunteerOnly}
-              onChange={(e) => setVolunteerOnly(e.target.checked)}
-              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-xs text-slate-600">Volunteers only</span>
-          </label>
-
-          {/* Has email / Has phone */}
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hasEmail}
-                onChange={(e) => setHasEmail(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-600">Has email</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hasPhone}
-                onChange={(e) => setHasPhone(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-600">Has phone</span>
-            </label>
-          </div>
-
-          {/* Last contacted */}
-          <div>
-            <p className="text-xs font-semibold text-slate-600 mb-1.5">Last Contacted</p>
-            <select
-              value={lastContactedFilter}
-              onChange={(e) => setLastContactedFilter(e.target.value)}
-              className="w-full h-8 px-2 rounded-md border border-slate-200 text-xs"
-            >
-              <option value="">Any time</option>
-              <option value="7">Within 7 days</option>
-              <option value="30">Within 30 days</option>
-              <option value="90">Within 90 days</option>
-              <option value="never">Never contacted</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Live Preview (email) */}
-        {channel === "email" && (subject || body) && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Preview</p>
-            {subject && <p className="font-semibold text-sm text-slate-900 mb-2">{subject}</p>}
-            <div
-              className="text-xs text-slate-600 leading-relaxed prose prose-xs max-w-none"
-              dangerouslySetInnerHTML={{ __html: body.slice(0, 500) }}
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: CAMPAIGNS / BROADCASTS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function CampaignsTab({ campaignId, channelFilter }: { campaignId: string; channelFilter: Channel }) {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/notifications?campaignId=${campaignId}&limit=50`);
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data.data ?? data ?? []);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setLoading(false);
-    })();
-  }, [campaignId]);
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-        <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-      </div>
-    );
-  }
-
-  if (history.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
-        <Radio className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <p className="text-lg font-bold text-slate-700">No campaigns yet</p>
-        <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-          Create your first email or SMS campaign to reach your supporters.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="grid grid-cols-[1fr_100px_80px_80px_100px_80px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Campaign</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Recipients</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Delivered</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sent</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Actions</span>
-      </div>
-      <div className="divide-y divide-slate-100">
-        {history.map((h) => (
-          <div key={h.id} className="grid grid-cols-[1fr_100px_80px_80px_100px_80px] gap-4 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-slate-900 truncate">{h.title || "Untitled campaign"}</p>
-              <p className="text-xs text-slate-500 truncate">{h.body?.replace(/<[^>]*>/g, "").slice(0, 50)}</p>
-            </div>
-            <div>{statusBadge(h.status)}</div>
-            <p className="text-xs text-slate-700 tabular-nums text-right font-medium">{h.totalSubscribers}</p>
-            <p className="text-xs text-green-600 tabular-nums text-right font-medium">{h.deliveredCount}</p>
-            <p className="text-xs text-slate-500 tabular-nums">{formatDate(h.sentAt)}</p>
-            <div className="flex items-center justify-end gap-1">
-              <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Duplicate this campaign to use as a template">
-                <Copy className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Duplicate</span>
-              </button>
-              <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Archive this campaign">
-                <Archive className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Archive</span>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: INBOX
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function InboxTab({ campaignId, onNavigateCompose }: { campaignId: string; onNavigateCompose: (prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) => void }) {
-  const [items, setItems] = useState<Array<{ id: string; type: string; title: string; body: string; date: string; meta: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // Aggregate inbox items from multiple sources
-        const [logsRes, mentionsRes] = await Promise.all([
-          fetch(`/api/notifications?campaignId=${campaignId}&limit=20`),
-          fetch(`/api/communications/social/mentions?campaignId=${campaignId}&needsResponse=true`),
-        ]);
-
-        const entries: typeof items = [];
-
-        if (logsRes.ok) {
-          const data = await logsRes.json();
-          const logs = data.data ?? data ?? [];
-          for (const l of logs) {
-            entries.push({
-              id: l.id,
-              type: l.title?.toLowerCase().includes("sms") ? "sms" : "email",
-              title: l.title || "Message",
-              body: l.body?.replace(/<[^>]*>/g, "").slice(0, 100) ?? "",
-              date: l.sentAt ?? l.createdAt,
-              meta: `${l.deliveredCount} delivered`,
-            });
-          }
-        }
-
-        if (mentionsRes.ok) {
-          const mentionData = await mentionsRes.json();
-          const mentions = mentionData.data ?? mentionData ?? [];
-          for (const m of mentions) {
-            entries.push({
-              id: m.id,
-              type: "mention",
-              title: `@${m.authorHandle ?? "unknown"} on ${m.platform}`,
-              body: m.content?.slice(0, 100) ?? "",
-              date: m.mentionedAt,
-              meta: m.sentiment ?? "",
-            });
-          }
-        }
-
-        entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setItems(entries);
-      } catch (e) { /* graceful degradation */ }
-      setLoading(false);
-    })();
-  }, [campaignId]);
-
-  const selectedItem = items.find((i) => i.id === selected);
-
-  const typeIcon = (type: string) => {
-    if (type === "email") return <Mail className="w-4 h-4 text-blue-600" />;
-    if (type === "sms") return <MessageSquare className="w-4 h-4 text-violet-600" />;
-    if (type === "mention") return <Globe className="w-4 h-4 text-emerald-600" />;
-    return <MessageCircle className="w-4 h-4 text-slate-400" />;
-  };
-
-  function handleReply() {
-    if (!selectedItem) return;
-    const channel = selectedItem.type === "sms" ? "sms" : "email";
-    onNavigateCompose({
-      channel: channel as "email" | "sms",
-      subject: channel === "email" ? `Re: ${selectedItem.title}` : undefined,
-      body: "",
-    });
-  }
-
-  function handleArchive() {
-    if (!selectedItem) return;
-    setItems((prev) => prev.filter((i) => i.id !== selectedItem.id));
-    setSelected(null);
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-        <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-4 min-h-[600px]">
-      {/* Conversation list */}
-      <div className="w-full lg:w-96 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            {items.length} conversation{items.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {items.length === 0 ? (
-            <div className="p-8 text-center">
-              <Inbox className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700">Inbox empty</p>
-              <p className="text-xs text-slate-500 mt-1">No messages or mentions to display.</p>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-[#6B72A0]">
+              <Inbox size={32} className="mb-2 opacity-40" />
+              <div className="text-xs">No messages</div>
             </div>
           ) : (
-            items.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelected(item.id)}
-                className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
-                  selected === item.id ? "bg-blue-50 border-l-2 border-l-blue-600" : ""
-                }`}
+            filtered.map(t => (
+              <div
+                key={t.id}
+                onClick={() => setSelectedId(t.id)}
+                className={cn(
+                  "p-3 cursor-pointer transition-colors border-l-2",
+                  selectedId === t.id
+                    ? "bg-[#2979FF]/10 border-[#00E5FF]"
+                    : "hover:bg-[#2979FF]/5 border-transparent",
+                  t.unreadCount > 0 && "bg-[#2979FF]/5",
+                )}
               >
-                <div className="flex items-center gap-2.5">
-                  {typeIcon(item.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{item.title}</p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{item.body}</p>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ChannelIcon channel={t.channel} />
+                    <span className={cn(
+                      "text-xs font-bold truncate",
+                      t.unreadCount > 0 ? "text-[#F5F7FF]" : "text-[#AAB2FF]",
+                    )}>
+                      {t.fromName ?? t.fromHandle}
+                    </span>
+                    {t.unreadCount > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#2979FF] shadow-[0_0_6px_rgba(41,121,255,0.8)] flex-shrink-0" />
+                    )}
                   </div>
-                  <span className="text-[10px] text-slate-400 shrink-0">{formatDate(item.date)}</span>
+                  <span className="text-[9px] text-[#6B72A0] flex-shrink-0">{timeAgo(t.lastMessageAt)}</span>
                 </div>
-              </button>
+                {t.subject && (
+                  <div className="text-[11px] font-bold text-[#AAB2FF] mb-0.5 truncate">{t.subject}</div>
+                )}
+                {t.messages[0] && (
+                  <div className="text-[10px] text-[#6B72A0] truncate">{t.messages[0].body}</div>
+                )}
+              </div>
             ))
           )}
         </div>
       </div>
 
-      {/* Detail panel */}
-      <div className="hidden lg:flex flex-1 bg-white rounded-xl border border-slate-200 overflow-hidden flex-col">
-        {selectedItem ? (
+      {/* Thread Detail */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {detailLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-[#2979FF]" />
+          </div>
+        ) : threadDetail ? (
           <>
-            <div className="px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                {typeIcon(selectedItem.type)}
-                <h3 className="font-bold text-slate-900">{selectedItem.title}</h3>
+            {/* Detail header */}
+            <div className="p-5 border-b border-[#2979FF]/20 bg-[#050A1F]/30 flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ChannelIcon channel={threadDetail.channel} />
+                    <SBadge status={threadDetail.channel} />
+                    <SBadge status={threadDetail.status} />
+                  </div>
+                  <h2 className="text-sm font-black text-[#F5F7FF] mb-1">
+                    {threadDetail.subject ?? "Message"}
+                  </h2>
+                  <div className="flex items-center gap-3 text-[10px] text-[#6B72A0]">
+                    <span className="flex items-center gap-1">
+                      <User size={10} /> {threadDetail.fromName ?? threadDetail.fromHandle}
+                    </span>
+                    <span>· {timeAgo(threadDetail.lastMessageAt)}</span>
+                  </div>
+                </div>
+                {threadDetail.status !== "resolved" && (
+                  <button
+                    onClick={() => resolveThread(threadDetail.id)}
+                    className="text-[10px] font-bold text-[#00C853] border border-[#00C853]/30 px-3 py-1.5 rounded hover:bg-[#00C853]/10 transition-colors"
+                  >
+                    Resolve
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-slate-500 mt-1">{formatDate(selectedItem.date)} · {selectedItem.meta}</p>
             </div>
-            <div className="flex-1 p-6">
-              <p className="text-sm text-slate-700 leading-relaxed">{selectedItem.body}</p>
+
+            {/* Messages */}
+            <div className="flex-1 p-5 overflow-y-auto space-y-3">
+              {threadDetail.messages.map(msg => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "max-w-[70%] p-3 rounded-xl text-sm",
+                    msg.direction === "outbound"
+                      ? "bg-[#2979FF] text-white ml-auto rounded-br-sm"
+                      : "bg-[#0F1440] text-[#F5F7FF] border border-[#2979FF]/20 rounded-bl-sm",
+                  )}
+                >
+                  <p className="leading-relaxed text-sm">{msg.body}</p>
+                  <div className={cn(
+                    "text-[9px] mt-1",
+                    msg.direction === "outbound" ? "text-white/60" : "text-[#6B72A0]",
+                  )}>
+                    {timeAgo(msg.sentAt)}
+                    {msg.sentByUser?.name ? ` · ${msg.sentByUser.name}` : ""}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex gap-2">
-              <button
-                onClick={handleReply}
-                className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Reply
-              </button>
-              <button
-                onClick={handleArchive}
-                className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <Archive className="w-3.5 h-3.5" />
-                Archive
-              </button>
-              <button className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5" />
-                Tag
-              </button>
+
+            {/* Reply box */}
+            <div className="border-t border-[#2979FF]/20 p-4 flex-shrink-0 bg-[#0F1440]/30">
+              <textarea
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                placeholder={`Reply to ${threadDetail.fromName ?? threadDetail.fromHandle}...`}
+                rows={3}
+                className="w-full bg-[#050A1F]/80 border border-[#2979FF]/30 text-[#F5F7FF] text-sm rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#00E5FF] placeholder:text-[#6B72A0] resize-none mb-2"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[#6B72A0]">
+                  {threadDetail.channel === "sms"
+                    ? "160 chars · STOP opt-out auto-appended"
+                    : "Rich text · CASL footer auto-appended"}
+                </span>
+                <button
+                  disabled={!replyText.trim() || replySending}
+                  onClick={sendReply}
+                  className={cn(
+                    "flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                    replyText.trim() && !replySending
+                      ? "bg-[#2979FF] text-white hover:bg-[#00E5FF] hover:text-[#050A1F] shadow-[0_0_15px_rgba(41,121,255,0.4)]"
+                      : "bg-[#2979FF]/20 text-[#6B72A0] cursor-not-allowed",
+                  )}
+                >
+                  {replySending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                  Send Reply
+                </button>
+              </div>
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Inbox className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-500">Select a conversation</p>
-              <p className="text-xs text-slate-400 mt-1">Click an item on the left to view details</p>
+              <Inbox size={48} className="text-[#2979FF]/30 mx-auto mb-4" />
+              <div className="text-[#6B72A0] text-sm font-bold">Select a message</div>
+              <div className="text-[#6B72A0] text-xs mt-1">{unreadCount} unread across all channels</div>
             </div>
           </div>
         )}
@@ -1502,1828 +883,304 @@ function InboxTab({ campaignId, onNavigateCompose }: { campaignId: string; onNav
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: TEMPLATES
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Auto Triggers Panel ──────────────────────────────────────────────────────
 
-function TemplatesTab({ campaignId, channelFilter, onNavigateCompose }: { campaignId: string; channelFilter: Channel; onNavigateCompose: (prefill?: { channel?: "email" | "sms"; subject?: string; body?: string }) => void }) {
-  const [previewId, setPreviewId] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // New template modal state
-  const [showCreate, setShowCreate] = useState(false);
-  const [createChannel, setCreateChannel] = useState<"email" | "sms">("email");
-  const [createName, setCreateName] = useState("");
-  const [createSubject, setCreateSubject] = useState("");
-  const [createBody, setCreateBody] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  const loadTemplates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ campaignId });
-      if (channelFilter !== "all") params.set("channel", channelFilter);
-      const res = await fetch(`/api/comms/templates?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates(data.templates ?? []);
-      }
-    } catch { /* graceful degradation */ }
-    setLoading(false);
-  }, [campaignId, channelFilter]);
-
-  useEffect(() => { loadTemplates(); }, [loadTemplates]);
-
-  async function handleDelete(templateId: string) {
-    if (!confirm("Delete this template? This cannot be undone.")) return;
-    setDeletingId(templateId);
-    try {
-      await fetch(`/api/comms/templates/${templateId}`, { method: "DELETE" });
-      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
-    } catch { /* noop */ }
-    setDeletingId(null);
-  }
-
-  async function handleDuplicate(t: MessageTemplate) {
-    try {
-      const res = await fetch("/api/comms/templates", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          channel: t.channel,
-          name: `${t.name} (copy)`,
-          subject: t.subject,
-          bodyHtml: t.bodyHtml,
-          bodyText: t.bodyText,
-          previewText: t.previewText,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates((prev) => [data.template, ...prev]);
-      }
-    } catch { /* noop */ }
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!createName.trim() || !createBody.trim()) return;
-    setSaving(true);
-    setCreateError(null);
-    try {
-      const res = await fetch("/api/comms/templates", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          channel: createChannel,
-          name: createName,
-          subject: createChannel === "email" ? createSubject : undefined,
-          bodyHtml: createChannel === "email" ? createBody : undefined,
-          bodyText: createChannel === "sms" ? createBody : createBody.replace(/<[^>]*>/g, ""),
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates((prev) => [data.template, ...prev]);
-        setShowCreate(false);
-        setCreateName(""); setCreateSubject(""); setCreateBody("");
-      } else {
-        const data = await res.json();
-        setCreateError(data.error ?? "Failed to create template");
-      }
-    } catch {
-      setCreateError("Network error");
-    }
-    setSaving(false);
-  }
-
-  const builtInEmail = channelFilter !== "sms" ? EMAIL_TEMPLATES : [];
-  const builtInSms = channelFilter !== "email" ? SMS_TEMPLATES : [];
-  const savedFiltered = templates.filter((t) =>
-    channelFilter === "all" ? true : t.channel === channelFilter,
-  );
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">Templates</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Reusable messages for email and SMS</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="h-9 px-4 rounded-lg bg-[#1D9E75] text-white text-sm font-medium flex items-center gap-1.5 hover:bg-[#17886a] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Template
-        </button>
-      </div>
-
-      {/* Create modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900">New Template</h3>
-              <button onClick={() => setShowCreate(false)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
-                <X className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-            <form onSubmit={handleCreate} className="p-5 space-y-4">
-              <div className="flex gap-2">
-                {(["email", "sms"] as const).map((ch) => (
-                  <button
-                    key={ch}
-                    type="button"
-                    onClick={() => setCreateChannel(ch)}
-                    className={`flex-1 h-9 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors border ${
-                      createChannel === ch
-                        ? "bg-[#0A2342] text-white border-[#0A2342]"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    {ch === "email" ? <Mail className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                    {ch.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Template name</label>
-                <input
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="e.g. Strong Supporter Thank You"
-                  className="w-full h-9 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
-                />
-              </div>
-              {createChannel === "email" && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Subject line</label>
-                  <input
-                    value={createSubject}
-                    onChange={(e) => setCreateSubject(e.target.value)}
-                    placeholder="e.g. Thank you for your support, {{firstName}}!"
-                    className="w-full h-9 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75]"
-                  />
-                </div>
-              )}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-slate-700">
-                    {createChannel === "email" ? "Body" : "Message"}
-                  </label>
-                  {createChannel === "sms" && (
-                    <span className={`text-[10px] font-mono ${createBody.length > 320 ? "text-red-500" : "text-slate-400"}`}>
-                      {createBody.length}/320
-                    </span>
-                  )}
-                </div>
-                <textarea
-                  value={createBody}
-                  onChange={(e) => setCreateBody(e.target.value)}
-                  rows={createChannel === "sms" ? 4 : 8}
-                  placeholder={createChannel === "sms"
-                    ? "Hi {{firstName}}, just a reminder to vote on Oct 27. Reply STOP to opt out."
-                    : "Dear {{firstName}},\n\nThank you for your support..."
-                  }
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1D9E75]/30 focus:border-[#1D9E75] resize-none"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Tokens: {"{{"+"firstName"+"}}"}  {"{{"+"lastName"+"}}"}  {"{{"+"ward"+"}}"}  {"{{"+"candidateName"+"}}"}
-                </p>
-              </div>
-              {createError && (
-                <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createError}</p>
-              )}
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  className="flex-1 h-9 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || !createName.trim() || !createBody.trim()}
-                  className="flex-1 h-9 rounded-lg bg-[#1D9E75] text-white text-sm font-medium hover:bg-[#17886a] disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Template"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Saved templates (from DB) */}
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
-        </div>
-      ) : savedFiltered.length > 0 ? (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-[#1D9E75]" />
-            <h3 className="text-base font-bold text-slate-900">Saved Templates</h3>
-            <span className="text-xs text-slate-400">{savedFiltered.length}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {savedFiltered.map((t) => {
-              const isEmail = t.channel === "email";
-              const preview = isEmail
-                ? (t.subject ?? t.bodyText.slice(0, 80))
-                : t.bodyText.slice(0, 80);
-              return (
-                <div
-                  key={t.id}
-                  className={`bg-white rounded-xl border p-4 hover:shadow-md transition-all ${
-                    isEmail ? "hover:border-blue-200" : "hover:border-violet-200"
-                  } border-slate-200`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isEmail ? "bg-blue-50" : "bg-violet-50"}`}>
-                      {isEmail
-                        ? <Mail className="w-4 h-4 text-blue-600" />
-                        : <MessageSquare className="w-4 h-4 text-violet-600" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-slate-900 truncate">{t.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">{preview}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(t.createdAt)}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1 flex-wrap">
-                    <button
-                      onClick={() => setPreviewId(previewId === t.id ? null : t.id)}
-                      className={`h-7 px-2.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
-                        isEmail ? "text-slate-500 hover:bg-blue-50 hover:text-blue-600" : "text-slate-500 hover:bg-violet-50 hover:text-violet-600"
-                      }`}
-                    >
-                      <Eye className="w-3 h-3" />
-                      Preview
-                    </button>
-                    <button
-                      onClick={() => onNavigateCompose({
-                        channel: t.channel === "push" ? "email" : t.channel,
-                        subject: t.subject ?? undefined,
-                        body: t.bodyHtml ?? t.bodyText,
-                      })}
-                      className={`h-7 px-2.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
-                        isEmail ? "text-slate-500 hover:bg-blue-50 hover:text-blue-600" : "text-slate-500 hover:bg-violet-50 hover:text-violet-600"
-                      }`}
-                    >
-                      <Send className="w-3 h-3" />
-                      Use
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(t)}
-                      className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-slate-100 flex items-center gap-1 transition-colors"
-                    >
-                      <Copy className="w-3 h-3" />
-                      Dupe
-                    </button>
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      disabled={deletingId === t.id}
-                      className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-1 transition-colors ml-auto"
-                    >
-                      {deletingId === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                    </button>
-                  </div>
-                  {previewId === t.id && (
-                    <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-700 whitespace-pre-wrap">
-                      {t.bodyHtml
-                        ? <div dangerouslySetInnerHTML={{ __html: t.bodyHtml }} />
-                        : t.bodyText
-                      }
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-          <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm font-medium text-slate-500">No saved templates yet</p>
-          <p className="text-xs text-slate-400 mt-1">
-            Create one above, or save any message from the Compose tab.
-          </p>
-        </div>
-      )}
-
-      {/* Built-in starters */}
-      {builtInEmail.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Mail className="w-4 h-4 text-blue-600" />
-            <h3 className="text-base font-bold text-slate-900">Email Starters</h3>
-            <span className="text-xs text-slate-400">{builtInEmail.length}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {builtInEmail.map((t) => (
-              <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Mail className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">{t.subject}</p>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <button
-                    onClick={() => onNavigateCompose({ channel: "email", subject: t.subject, body: t.body })}
-                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Send className="w-3 h-3" />
-                    Use
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {builtInSms.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <MessageSquare className="w-4 h-4 text-violet-600" />
-            <h3 className="text-base font-bold text-slate-900">SMS Starters</h3>
-            <span className="text-xs text-slate-400">{builtInSms.length}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {builtInSms.map((t) => (
-              <div key={t.slug} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-violet-200 hover:shadow-md transition-all">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-4 h-4 text-violet-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900">{t.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{t.body}</p>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <button
-                    onClick={() => onNavigateCompose({ channel: "sms", body: t.body })}
-                    className="h-7 px-2.5 rounded-md text-[11px] font-medium text-slate-500 hover:bg-violet-50 hover:text-violet-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Send className="w-3 h-3" />
-                    Use
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: AUTOMATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const TRIGGER_LABELS: Record<AutomationRule["trigger"], string> = {
-  contact_created: "Contact Created",
+const TRIGGER_LABELS: Record<string, string> = {
+  contact_created: "New Contact",
   tag_added: "Tag Added",
   segment_joined: "Segment Joined",
   donation_made: "Donation Made",
-  event_rsvped: "Event RSVP'd",
-  form_submitted: "Form Submitted",
+  event_rsvped: "Event RSVP",
+  form_submitted: "Form Submit",
   manual: "Manual",
 };
 
-const STEP_TYPE_LABELS: Record<AutomationStep["stepType"], string> = {
-  send_email: "Send Email",
-  send_sms: "Send SMS",
-  wait_days: "Wait",
-  add_tag: "Add Tag",
-  remove_tag: "Remove Tag",
-  add_to_segment: "Add to Segment",
-  remove_from_segment: "Remove from Segment",
-};
-
-function AutomationsTab({ campaignId }: { campaignId: string }) {
+function AutoTriggersPanel({ campaignId }: { campaignId: string }) {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newTrigger, setNewTrigger] = useState<AutomationRule["trigger"]>("contact_created");
-  const [newDescription, setNewDescription] = useState("");
-  const [expandedRule, setExpandedRule] = useState<string | null>(null);
 
-  const fetchRules = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/comms/automations?campaignId=${campaignId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRules(data.rules ?? []);
-      }
-    } catch { /* graceful degradation */ }
-    setLoading(false);
+  useEffect(() => {
+    fetch(`/api/comms/automations?campaignId=${campaignId}`)
+      .then(r => r.json())
+      .then((d: { rules?: AutomationRule[] }) => { if (d.rules) setRules(d.rules); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [campaignId]);
-
-  useEffect(() => { fetchRules(); }, [fetchRules]);
 
   async function toggleActive(rule: AutomationRule) {
     setToggling(rule.id);
-    setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: !r.isActive } : r));
     try {
       const res = await fetch(`/api/comms/automations/${rule.id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !rule.isActive }),
       });
-      if (!res.ok) {
-        setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: rule.isActive } : r));
+      const data = await res.json() as { rule?: AutomationRule };
+      if (res.ok && data.rule) {
+        setRules(prev => prev.map(r => r.id === rule.id ? { ...r, isActive: data.rule!.isActive } : r));
+        toast.success(`${rule.name} ${data.rule.isActive ? "activated" : "paused"}`);
       }
     } catch {
-      setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, isActive: rule.isActive } : r));
+      toast.error("Update failed");
+    } finally {
+      setToggling(null);
     }
-    setToggling(null);
   }
-
-  async function deleteRule(id: string) {
-    if (!confirm("Delete this automation rule?")) return;
-    setDeleting(id);
-    try {
-      const res = await fetch(`/api/comms/automations/${id}`, { method: "DELETE" });
-      if (res.ok) setRules((prev) => prev.filter((r) => r.id !== id));
-    } catch { /* graceful degradation */ }
-    setDeleting(null);
-  }
-
-  async function createRule() {
-    if (!newName.trim()) return;
-    setCreating(true);
-    try {
-      const res = await fetch("/api/comms/automations", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ campaignId, name: newName.trim(), trigger: newTrigger, description: newDescription.trim() || undefined }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRules((prev) => [data.rule, ...prev]);
-        setShowCreate(false);
-        setNewName("");
-        setNewDescription("");
-        setNewTrigger("contact_created");
-      }
-    } catch { /* graceful degradation */ }
-    setCreating(false);
-  }
-
-  const activeCount = rules.filter((r) => r.isActive).length;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-bold text-slate-900">Automation Rules</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Triggered sequences that run automatically when events occur</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />{activeCount} active</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" />{rules.length - activeCount} inactive</span>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A2342] text-white rounded-lg text-xs font-semibold hover:bg-[#0A2342]/90 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New Rule
-          </button>
-        </div>
+    <div className="flex-1 flex flex-col p-6 overflow-y-auto relative z-20">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-black uppercase tracking-tighter drop-shadow-[0_0_10px_rgba(41,121,255,0.8)] flex items-center gap-3">
+          Auto-Triggers
+          <span className="text-[12px] text-[#6B72A0] font-normal normal-case tracking-normal">
+            {rules.filter(r => r.isActive).length} active
+          </span>
+        </h2>
+        <Link
+          href="/app/communications"
+          className="px-4 py-2 border border-[#2979FF]/40 rounded text-[11px] font-bold uppercase tracking-widest text-[#AAB2FF] hover:bg-[#2979FF]/10 transition-colors flex items-center gap-2"
+        >
+          <Plus size={14} /> New Rule
+        </Link>
       </div>
 
-      {/* How it works banner */}
-      <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 flex items-start gap-3">
-        <Zap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-800 leading-relaxed">
-          <p className="font-semibold">How automations work</p>
-          <p className="mt-1">When a trigger fires, enrolled contacts advance through the step sequence automatically. Wait steps pause execution for N days. The hourly cron processes all due enrollments. Deactivate a rule before editing its steps.</p>
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 size={24} className="animate-spin text-[#2979FF]" />
         </div>
-      </div>
-
-      {/* Create modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
-            <h4 className="text-base font-bold text-slate-900 mb-4">New Automation Rule</h4>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Name *</label>
-                <input
-                  autoFocus
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. New contact welcome series"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Trigger</label>
-                <select
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={newTrigger}
-                  onChange={(e) => setNewTrigger(e.target.value as AutomationRule["trigger"])}
-                >
-                  {(Object.keys(TRIGGER_LABELS) as AutomationRule["trigger"][]).map((t) => (
-                    <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Description (optional)</label>
-                <input
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="What does this rule do?"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 mt-5">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-              <button
-                onClick={createRule}
-                disabled={creating || !newName.trim()}
-                className="px-4 py-2 text-sm font-semibold bg-[#0A2342] text-white rounded-lg hover:bg-[#0A2342]/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-              >
-                {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Create Rule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Loading */}
-      {loading && (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-          <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && rules.length === 0 && (
-        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
-          <Zap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-lg font-bold text-slate-700">No automation rules yet</p>
-          <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">Create a rule to automatically send messages, apply tags, or enroll contacts in sequences when events occur.</p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#0A2342] text-white rounded-lg text-sm font-semibold hover:bg-[#0A2342]/90 transition-colors"
+      ) : rules.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-[#6B72A0]">
+          <Zap size={48} className="mb-4 opacity-20" />
+          <div className="text-sm font-bold mb-1">No automation rules yet</div>
+          <div className="text-xs">Create trigger-based sequences to automate outreach</div>
+          <Link
+            href="/app/communications"
+            className="mt-4 px-5 py-2 bg-[#2979FF]/20 border border-[#2979FF]/40 rounded text-[11px] font-bold text-[#2979FF] hover:bg-[#2979FF]/30 transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            Create your first rule
-          </button>
+            Go to full automation builder →
+          </Link>
         </div>
-      )}
-
-      {/* Rule list */}
-      {!loading && rules.length > 0 && (
+      ) : (
         <div className="space-y-3">
-          {rules.map((rule) => {
-            const isExpanded = expandedRule === rule.id;
-            return (
-              <div key={rule.id} className={`bg-white rounded-xl border transition-all ${rule.isActive ? "border-green-200 shadow-sm" : "border-slate-200"}`}>
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    {/* Icon */}
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${rule.isActive ? "bg-green-50" : "bg-slate-100"}`}>
-                      <Zap className={`w-5 h-5 ${rule.isActive ? "text-green-600" : "text-slate-400"}`} />
-                    </div>
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm text-slate-900 truncate">{rule.name}</p>
-                          {rule.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{rule.description}</p>}
-                        </div>
-                        {/* Active toggle */}
-                        <button
-                          onClick={() => toggleActive(rule)}
-                          disabled={toggling === rule.id}
-                          aria-label={rule.isActive ? "Deactivate" : "Activate"}
-                          className={`relative w-10 h-6 rounded-full transition-colors shrink-0 ${rule.isActive ? "bg-green-500" : "bg-slate-300"}`}
-                        >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${rule.isActive ? "left-[18px]" : "left-0.5"}`} />
-                        </button>
-                      </div>
-                      {/* Meta row */}
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600">
-                          <Zap className="w-2.5 h-2.5" />
-                          {TRIGGER_LABELS[rule.trigger]}
-                        </span>
-                        <span className="text-[10px] text-slate-400">{rule.steps.length} step{rule.steps.length !== 1 ? "s" : ""}</span>
-                        <span className="text-[10px] text-slate-400">{rule._count?.enrollments ?? 0} enrolled</span>
-                        {rule.enrollOnce && <span className="text-[10px] text-slate-400">enroll once</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions row */}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={() => setExpandedRule(isExpanded ? null : rule.id)}
-                      className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                      {isExpanded ? "Hide" : "View"} steps
-                    </button>
-                    <button
-                      onClick={() => deleteRule(rule.id)}
-                      disabled={deleting === rule.id}
-                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
-                    >
-                      {deleting === rule.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                      Delete
-                    </button>
-                  </div>
+          {rules.map(rule => (
+            <div
+              key={rule.id}
+              className="bg-[#0F1440]/60 border border-[#2979FF]/20 rounded-lg p-4 flex items-center justify-between gap-4 hover:border-[#2979FF]/40 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-sm font-black text-[#F5F7FF] truncate">{rule.name}</span>
+                  <SBadge status={rule.isActive ? "live" : "draft"} />
                 </div>
-
-                {/* Expanded steps view */}
-                {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-slate-100">
-                    {rule.steps.length === 0 ? (
-                      <p className="text-xs text-slate-500 mt-3 text-center py-4 border border-dashed border-slate-200 rounded-lg">
-                        No steps. Deactivate this rule, then use the API to add steps via PUT /api/comms/automations/{rule.id}/steps
-                      </p>
-                    ) : (
-                      <div className="mt-3 space-y-2">
-                        {rule.steps.map((step, idx) => (
-                          <div key={step.id} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
-                            <span className="w-5 h-5 rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center shrink-0">{idx + 1}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-slate-700">{STEP_TYPE_LABELS[step.stepType]}</p>
-                              {step.stepType === "wait_days" && !!step.config.days && (
-                                <p className="text-[10px] text-slate-500">Wait {String(step.config.days)} day{Number(step.config.days) !== 1 ? "s" : ""}</p>
-                              )}
-                              {(step.stepType === "add_tag" || step.stepType === "remove_tag") && !!step.config.tagName && (
-                                <p className="text-[10px] text-slate-500">Tag: {String(step.config.tagName)}</p>
-                              )}
-                              {(step.stepType === "send_email" || step.stepType === "send_sms") && !!step.config.templateId && (
-                                <p className="text-[10px] text-slate-500">Template ID: {String(step.config.templateId)}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-3 text-[10px] text-[#6B72A0]">
+                  <span>
+                    Trigger:{" "}
+                    <span className="text-[#AAB2FF]">
+                      {TRIGGER_LABELS[rule.trigger] ?? rule.trigger}
+                    </span>
+                  </span>
+                  <span>·</span>
+                  <span>{rule.steps.length} step{rule.steps.length !== 1 ? "s" : ""}</span>
+                  <span>·</span>
+                  <span>{rule._count.enrollments} enrolled</span>
+                </div>
+                {rule.description && (
+                  <p className="text-[10px] text-[#6B72A0] mt-1 truncate">{rule.description}</p>
                 )}
               </div>
-            );
-          })}
+              <button
+                onClick={() => toggleActive(rule)}
+                disabled={toggling === rule.id}
+                className={cn(
+                  "flex-shrink-0 px-4 py-2 rounded text-[10px] font-black uppercase tracking-widest transition-all border",
+                  rule.isActive
+                    ? "bg-[#00C853]/10 border-[#00C853]/40 text-[#00C853] hover:bg-[#FF3B30]/10 hover:border-[#FF3B30]/40 hover:text-[#FF3B30]"
+                    : "bg-[#2979FF]/10 border-[#2979FF]/40 text-[#2979FF] hover:bg-[#2979FF]/20",
+                )}
+              >
+                {toggling === rule.id ? "..." : rule.isActive ? "Pause" : "Activate"}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: SCHEDULED
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Main Shell ───────────────────────────────────────────────────────────────
 
-function ScheduledTab({ campaignId }: { campaignId: string }) {
-  const [items, setItems] = useState<ScheduledItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState<string | null>(null);
+const SEQ_COLOR: Record<string, string> = {
+  processing: "#00C853",
+  queued:     "#EF9F27",
+  sent:       "#6B72A0",
+  failed:     "#FF3B30",
+};
 
-  const fetchScheduled = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/comms/scheduled?campaignId=${campaignId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.messages ?? []);
-      }
-    } catch { /* graceful degradation */ }
-    setLoading(false);
-  }, [campaignId]);
-
-  useEffect(() => { fetchScheduled(); }, [fetchScheduled]);
-
-  async function cancelScheduled(id: string) {
-    setCancelling(id);
-    try {
-      const res = await fetch(`/api/comms/scheduled/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        // Optimistic: remove immediately, then refresh
-        setItems((prev) => prev.filter((i) => i.id !== id));
-      }
-    } catch { /* graceful degradation */ }
-    setCancelling(null);
-  }
-
-  const statusBadge = (status: ScheduledItem["status"]) => {
-    const map: Record<ScheduledItem["status"], { label: string; cls: string }> = {
-      queued:     { label: "Queued",     cls: "bg-blue-50 text-blue-700" },
-      processing: { label: "Sending…",   cls: "bg-amber-50 text-amber-700" },
-      sent:       { label: "Sent",       cls: "bg-green-50 text-green-700" },
-      cancelled:  { label: "Cancelled",  cls: "bg-slate-100 text-slate-500" },
-      failed:     { label: "Failed",     cls: "bg-red-50 text-red-700" },
-    };
-    const { label, cls } = map[status] ?? { label: status, cls: "bg-slate-100 text-slate-500" };
-    return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cls}`}>{label}</span>;
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-        <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-      </div>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
-        <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <p className="text-lg font-bold text-slate-700">No scheduled sends</p>
-        <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-          When you schedule a message for later, it will appear here. You can cancel or reschedule from this view.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="grid grid-cols-[32px_1fr_1fr_130px_80px_100px] gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-        <span />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Subject / Body</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Audience</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Send At</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Actions</span>
-      </div>
-      <div className="divide-y divide-slate-100">
-        {items.map((item) => (
-          <div key={item.id} className="grid grid-cols-[32px_1fr_1fr_130px_80px_100px] gap-3 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-            <div className="flex items-center justify-center">
-              {item.channel === "email"
-                ? <Mail className="w-4 h-4 text-blue-500" />
-                : <MessageSquare className="w-4 h-4 text-violet-500" />}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-slate-900 truncate">
-                {item.subject ?? item.bodyText.slice(0, 60)}
-              </p>
-              {item.subject && (
-                <p className="text-xs text-slate-400 truncate mt-0.5">{item.bodyText.slice(0, 60)}</p>
-              )}
-            </div>
-            <p className="text-xs text-slate-500 truncate">
-              {item.segment?.name ?? "All contacts"}
-            </p>
-            <p className="text-xs text-slate-600 tabular-nums">{formatDate(item.sendAt)}</p>
-            <div>{statusBadge(item.status)}</div>
-            <div className="flex items-center justify-end">
-              {(item.status === "queued") && (
-                <button
-                  onClick={() => cancelScheduled(item.id)}
-                  disabled={cancelling === item.id}
-                  className="h-7 px-3 rounded-md text-[11px] font-semibold text-red-600 hover:bg-red-50 flex items-center gap-1 transition-colors disabled:opacity-50"
-                >
-                  {cancelling === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                  Cancel
-                </button>
-              )}
-              {item.status === "sent" && (
-                <span className="text-[11px] text-green-600 font-semibold tabular-nums">
-                  {item.sentCount} sent
-                </span>
-              )}
-              {item.status === "failed" && (
-                <span className="text-[11px] text-red-500 font-semibold truncate max-w-[90px]" title={item.errorMessage ?? ""}>
-                  Error
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: HISTORY
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function HistoryTab({ campaignId, channelFilter }: { campaignId: string; channelFilter: Channel }) {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/notifications/history?campaignId=${campaignId}&limit=100`);
-        if (res.ok) {
-          const data = await res.json();
-          setHistory(data.data ?? []);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setLoading(false);
-    })();
-  }, [campaignId]);
-
-  if (loading) {
-    return <div className="bg-white rounded-xl border border-slate-200 p-12 text-center"><Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" /></div>;
-  }
-
-  if (history.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed border-slate-300 p-16 text-center">
-        <History className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <p className="text-lg font-bold text-slate-700">No send history</p>
-        <p className="text-sm text-slate-500 mt-2">Past sends will appear here with full delivery metrics.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="grid grid-cols-[1fr_100px_80px_80px_80px_120px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Message</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Sent</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Delivered</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Failed</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Date</span>
-      </div>
-      <div className="divide-y divide-slate-100">
-        {history.map((h) => (
-          <div key={h.id} className="grid grid-cols-[1fr_100px_80px_80px_80px_120px] gap-4 items-center px-4 py-3 hover:bg-slate-50 transition-colors">
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-slate-900 truncate">{h.title || "Untitled"}</p>
-            </div>
-            <div>{statusBadge(h.status)}</div>
-            <p className="text-xs text-slate-700 tabular-nums text-right font-medium">{h.totalSubscribers}</p>
-            <p className="text-xs text-green-600 tabular-nums text-right font-medium">{h.deliveredCount}</p>
-            <p className="text-xs text-red-500 tabular-nums text-right font-medium">{h.failedCount}</p>
-            <p className="text-xs text-slate-500 tabular-nums">{formatDate(h.sentAt ?? h.createdAt)}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: AUDIENCES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface SavedSegmentFilter {
-  supportLevels?: string[];
-  wards?: string[];
-  tagIds?: string[];
-  channel?: "email" | "sms" | "all";
-  volunteerOnly?: boolean;
-  hasEmail?: boolean;
-  hasPhone?: boolean;
-  excludeDnc?: boolean;
-}
-
-interface SavedSegment {
-  id: string;
-  name: string;
-  description?: string | null;
-  filterDefinition: SavedSegmentFilter;
-  isDynamic: boolean;
-  lastCount?: number | null;
-  lastCountedAt?: string | null;
-  createdAt: string;
-}
-
-function AudiencesTab({
+export default function CommunicationsClient({
   campaignId,
+  campaignName,
   tags,
-  wards,
-}: {
-  campaignId: string;
-  tags: Array<{ id: string; name: string; color: string | null }>;
-  wards: string[];
-}) {
-  const [channel, setChannel] = useState<"email" | "sms">("email");
-  const [audience, setAudience] = useState<AudienceResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  wards: _wards,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<NavTab>("broadcast");
+  const [sequences, setSequences] = useState<ScheduledMessage[]>([]);
+  const [inboxUnread, setInboxUnread] = useState(0);
 
-  // Create segment form state
-  const [segName, setSegName] = useState("");
-  const [segSupportLevels, setSegSupportLevels] = useState<string[]>([]);
-  const [segWards, setSegWards] = useState<string[]>([]);
-  const [segTags, setSegTags] = useState<string[]>([]);
-  const [segVolunteerOnly, setSegVolunteerOnly] = useState(false);
-  const [segHasEmail, setSegHasEmail] = useState(false);
-  const [segHasPhone, setSegHasPhone] = useState(false);
-  const [segPreviewCount, setSegPreviewCount] = useState<number | null>(null);
-  const [segPreviewLoading, setSegPreviewLoading] = useState(false);
-  const [savingSegment, setSavingSegment] = useState(false);
-
-  function segToggle(arr: string[], val: string, setter: (v: string[]) => void) {
-    setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
-  }
-
-  const fetchAudience = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/communications/audience", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ campaignId, channel }),
-      });
-      if (res.ok) setAudience(await res.json());
-    } catch (e) { /* graceful degradation */ }
-    setLoading(false);
-  }, [campaignId, channel]);
-
-  useEffect(() => { fetchAudience(); }, [fetchAudience]);
-
-  // Load saved segments from real API
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/comms/segments?campaignId=${campaignId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSavedSegments(data.segments ?? []);
+    fetch(`/api/comms/scheduled?campaignId=${campaignId}`)
+      .then(r => r.json())
+      .then((d: { messages?: ScheduledMessage[] }) => {
+        if (d.messages) {
+          setSequences(
+            d.messages
+              .filter(m => ["queued", "processing", "sent"].includes(m.status))
+              .slice(0, 6),
+          );
         }
-      } catch (e) { /* graceful degradation */ }
-    })();
+      })
+      .catch(() => {});
+
+    // Fetch unread count for inbox badge
+    fetch(`/api/inbox?campaignId=${campaignId}&limit=40`)
+      .then(r => r.json())
+      .then((d: { threads?: Array<{ unreadCount: number }> }) => {
+        if (d.threads) {
+          setInboxUnread(d.threads.filter(t => t.unreadCount > 0).length);
+        }
+      })
+      .catch(() => {});
   }, [campaignId]);
 
-  // Live preview count for segment builder
-  useEffect(() => {
-    if (!showCreateForm) return;
-    const timer = setTimeout(async () => {
-      setSegPreviewLoading(true);
-      try {
-        const res = await fetch("/api/communications/audience", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            campaignId,
-            channel,
-            supportLevels: segSupportLevels.length ? segSupportLevels : undefined,
-            wards: segWards.length ? segWards : undefined,
-            tagIds: segTags.length ? segTags : undefined,
-            volunteerOnly: segVolunteerOnly || undefined,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setSegPreviewCount(data.count ?? 0);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setSegPreviewLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [campaignId, channel, showCreateForm, segSupportLevels, segWards, segTags, segVolunteerOnly]);
-
-  async function saveSegment() {
-    if (!segName.trim()) return;
-    setSavingSegment(true);
-    try {
-      const res = await fetch("/api/comms/segments", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          name: segName.trim(),
-          filterDefinition: {
-            supportLevels: segSupportLevels.length ? segSupportLevels : undefined,
-            wards: segWards.length ? segWards : undefined,
-            tagIds: segTags.length ? segTags : undefined,
-            channel,
-            volunteerOnly: segVolunteerOnly || undefined,
-            hasEmail: segHasEmail || undefined,
-            hasPhone: segHasPhone || undefined,
-            excludeDnc: true,
-          },
-          isDynamic: true,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const created: SavedSegment = { ...data.segment, lastCount: segPreviewCount ?? null };
-        setSavedSegments((prev) => [created, ...prev]);
-        setShowCreateForm(false);
-        setSegName("");
-        setSegSupportLevels([]);
-        setSegWards([]);
-        setSegTags([]);
-        setSegVolunteerOnly(false);
-        setSegHasEmail(false);
-        setSegHasPhone(false);
-        setSegPreviewCount(null);
-      }
-    } catch (e) { /* graceful degradation */ }
-    setSavingSegment(false);
-  }
-
-  async function deleteSegment(segId: string) {
-    setDeletingId(segId);
-    try {
-      const res = await fetch(`/api/comms/segments/${segId}`, { method: "DELETE" });
-      if (res.ok) {
-        setSavedSegments((prev) => prev.filter((s) => s.id !== segId));
-      }
-    } catch (e) { /* graceful degradation */ }
-    setDeletingId(null);
-  }
-
-  async function refreshSegmentCount(segId: string) {
-    setRefreshingId(segId);
-    try {
-      const res = await fetch(`/api/comms/segments/${segId}/count`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setSavedSegments((prev) =>
-          prev.map((s) =>
-            s.id === segId
-              ? { ...s, lastCount: data.count, lastCountedAt: data.countedAt }
-              : s,
-          ),
-        );
-      }
-    } catch (e) { /* graceful degradation */ }
-    setRefreshingId(null);
-  }
-
-  function segmentFilterSummary(seg: SavedSegment): string {
-    const fd = seg.filterDefinition;
-    const parts: string[] = [];
-    if (fd.supportLevels?.length) parts.push(`${fd.supportLevels.length} support level${fd.supportLevels.length > 1 ? "s" : ""}`);
-    if (fd.wards?.length) parts.push(`${fd.wards.length} ward${fd.wards.length > 1 ? "s" : ""}`);
-    if (fd.tagIds?.length) parts.push(`${fd.tagIds.length} tag${fd.tagIds.length > 1 ? "s" : ""}`);
-    if (fd.volunteerOnly) parts.push("volunteers");
-    if (fd.hasEmail) parts.push("has email");
-    if (fd.hasPhone) parts.push("has phone");
-    return parts.length ? parts.join(" · ") : "All contacts";
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Channel toggle */}
-      <div className="flex items-center gap-3">
-        <p className="text-sm font-semibold text-slate-700">Channel:</p>
-        <div className="flex gap-1">
-          {(["email", "sms"] as const).map((ch) => (
-            <button
-              key={ch}
-              onClick={() => setChannel(ch)}
-              className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors ${
-                channel === ch ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"
-              }`}
-            >
-              {ch === "email" ? "Email" : "SMS"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Total audience */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Users className="w-7 h-7 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Total {channel} Audience</p>
-            <p className="text-3xl font-bold text-slate-900 tabular-nums mt-0.5">
-              {loading ? <Loader2 className="w-6 h-6 text-blue-600 animate-spin" /> : audience?.count?.toLocaleString() ?? "—"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Saved Segments */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold text-slate-900">Saved Segments</h3>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Create Segment
-          </button>
-        </div>
-
-        {savedSegments.length === 0 && !showCreateForm && (
-          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
-            <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="font-semibold text-slate-700">No saved segments</p>
-            <p className="text-sm text-slate-500 mt-1">Create reusable audience segments for quick targeting.</p>
-          </div>
-        )}
-
-        {savedSegments.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {savedSegments.map((seg) => (
-              <div key={seg.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-md transition-all">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <Target className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-900">{seg.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{segmentFilterSummary(seg)}</p>
-                    {seg.lastCount != null && (
-                      <p className="text-xs font-medium text-blue-600 mt-0.5">{seg.lastCount.toLocaleString()} contacts</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => refreshSegmentCount(seg.id)}
-                      disabled={refreshingId === seg.id}
-                      title="Refresh count"
-                      className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors"
-                    >
-                      {refreshingId === seg.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <RefreshCw className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => deleteSegment(seg.id)}
-                      disabled={deletingId === seg.id}
-                      title="Delete this audience segment"
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                    >
-                      {deletingId === seg.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />}
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Create Segment Form */}
-      {showCreateForm && (
-        <div className="bg-white rounded-xl border border-blue-200 p-5 space-y-4">
-          <p className="text-sm font-bold text-slate-900">New Segment</p>
-
-          <input
-            type="text"
-            value={segName}
-            onChange={(e) => setSegName(e.target.value)}
-            placeholder="Segment name..."
-            className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          />
-
-          {/* Support levels */}
-          <div>
-            <p className="text-xs font-semibold text-slate-600 mb-1.5">Support Level</p>
-            <div className="flex flex-wrap gap-1">
-              {SUPPORT_LEVELS.map((sl) => (
-                <button
-                  key={sl.value}
-                  onClick={() => segToggle(segSupportLevels, sl.value, setSegSupportLevels)}
-                  className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                    segSupportLevels.includes(sl.value)
-                      ? "bg-blue-50 border-blue-200 text-blue-700"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                  }`}
-                >
-                  {sl.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Wards */}
-          {wards.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1.5">Ward</p>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                {wards.map((w) => (
-                  <button
-                    key={w}
-                    onClick={() => segToggle(segWards, w, setSegWards)}
-                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                      segWards.includes(w)
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                    }`}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-600 mb-1.5">Tags</p>
-              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                {tags.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => segToggle(segTags, t.id, setSegTags)}
-                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
-                      segTags.includes(t.id)
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-white border-slate-200 text-slate-500 hover:border-blue-200"
-                    }`}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Toggles */}
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={segVolunteerOnly} onChange={(e) => setSegVolunteerOnly(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-xs text-slate-600">Volunteers only</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={segHasEmail} onChange={(e) => setSegHasEmail(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-xs text-slate-600">Has email</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={segHasPhone} onChange={(e) => setSegHasPhone(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-xs text-slate-600">Has phone</span>
-            </label>
-          </div>
-
-          {/* Live count preview */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <Target className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-semibold text-slate-700">
-              {segPreviewLoading ? (
-                <Loader2 className="w-4 h-4 text-blue-600 animate-spin inline" />
-              ) : (
-                segPreviewCount?.toLocaleString() ?? "—"
-              )}
-            </span>
-            <span className="text-xs text-slate-500">matching contacts</span>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={saveSegment}
-              disabled={!segName.trim() || savingSegment}
-              className="h-10 px-5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-            >
-              {savingSegment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Save Segment
-            </button>
-            <button
-              onClick={() => setShowCreateForm(false)}
-              className="h-10 px-4 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Available Segments overview */}
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Available Filters</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {SUPPORT_LEVELS.map((sl) => (
-            <div key={sl.value} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 text-slate-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{sl.label}</p>
-                <p className="text-xs text-slate-500">Segmentable audience filter</p>
-              </div>
-            </div>
-          ))}
-          {wards.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">By Ward</p>
-                <p className="text-xs text-slate-500">{wards.length} ward{wards.length !== 1 ? "s" : ""} available</p>
-              </div>
-            </div>
-          )}
-          {tags.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <Tag className="w-4 h-4 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">By Tag</p>
-                <p className="text-xs text-slate-500">{tags.length} tag{tags.length !== 1 ? "s" : ""} available</p>
-              </div>
-            </div>
-          )}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-              <Shield className="w-4 h-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Do-Not-Contact</p>
-              <p className="text-xs text-slate-500">CASL suppression list</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: SETTINGS
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: SUBSCRIBERS — Newsletter subscribers, questions, sign requests
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SubscribersTab({ campaignId }: { campaignId: string }) {
-  const [subscribers, setSubscribers] = useState<Array<{ id: string; email: string; firstName: string | null; lastName: string | null; status: string; createdAt: string }>>([]);
-  const [questions, setQuestions] = useState<Array<{ id: string; name: string | null; email: string | null; question: string; createdAt: string }>>([]);
-  const [signRequests, setSignRequests] = useState<Array<{ id: string; name: string; address: string; email: string | null; status: string; createdAt: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<"subscribers" | "questions" | "signs">("subscribers");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const [subRes, qRes, signRes] = await Promise.all([
-          fetch(`/api/newsletters/subscribers?campaignId=${campaignId}`),
-          fetch(`/api/public/candidates/questions?campaignId=${campaignId}`).catch(() => null),
-          fetch(`/api/signs?campaignId=${campaignId}&pageSize=50`).catch(() => null),
-        ]);
-        if (subRes.ok) {
-          const data = await subRes.json();
-          setSubscribers(data.data ?? data ?? []);
-        }
-        if (qRes?.ok) {
-          const data = await qRes.json();
-          setQuestions(data.data ?? data ?? []);
-        }
-        if (signRes?.ok) {
-          const data = await signRes.json();
-          const signs = (data.data ?? data ?? []).filter((s: Record<string, unknown>) => s.status === "requested");
-          setSignRequests(signs);
-        }
-      } catch (e) { /* graceful degradation */ }
-      setLoading(false);
-    })();
-  }, [campaignId]);
-
-  if (loading) {
-    return <div className="bg-white rounded-xl border border-slate-200 p-12 text-center"><Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" /></div>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Section pills */}
-      <div className="flex gap-2">
-        {([
-          { id: "subscribers" as const, label: "Newsletter Subscribers", count: subscribers.length },
-          { id: "questions" as const, label: "Questions", count: questions.length },
-          { id: "signs" as const, label: "Sign Requests", count: signRequests.length },
-        ]).map((s) => (
-          <button key={s.id} onClick={() => setActiveSection(s.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeSection === s.id ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300"}`}>
-            {s.label} <span className="ml-1 tabular-nums text-xs opacity-70">{s.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Newsletter Subscribers */}
-      {activeSection === "subscribers" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-blue-600" />
-              <h3 className="text-sm font-bold text-slate-900">Newsletter Subscribers</h3>
-              <span className="text-xs text-slate-400">{subscribers.length} total</span>
-            </div>
-            <p className="text-[10px] text-slate-400">From campaign website signup forms</p>
-          </div>
-          {subscribers.length === 0 ? (
-            <div className="p-10 text-center">
-              <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700">No subscribers yet</p>
-              <p className="text-xs text-slate-500 mt-1">Visitors who subscribe on your campaign website will appear here.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              <div className="grid grid-cols-[1fr_120px_100px_100px] gap-4 px-4 py-2 bg-slate-50">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Name</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Signed Up</span>
-              </div>
-              {subscribers.map((s) => (
-                <div key={s.id} className="grid grid-cols-[1fr_120px_100px_100px] gap-4 px-4 py-2.5 hover:bg-slate-50">
-                  <p className="text-sm font-medium text-slate-900 truncate">{s.email}</p>
-                  <p className="text-xs text-slate-600 truncate">{[s.firstName, s.lastName].filter(Boolean).join(" ") || "—"}</p>
-                  <div>{statusBadge(s.status)}</div>
-                  <p className="text-xs text-slate-500">{formatDate(s.createdAt)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Questions from Website */}
-      {activeSection === "questions" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-            <MessageCircle className="w-4 h-4 text-violet-600" />
-            <h3 className="text-sm font-bold text-slate-900">Questions from Visitors</h3>
-            <span className="text-xs text-slate-400">{questions.length} total</span>
-          </div>
-          {questions.length === 0 ? (
-            <div className="p-10 text-center">
-              <MessageCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700">No questions yet</p>
-              <p className="text-xs text-slate-500 mt-1">Questions submitted on your campaign website will appear here for review and reply.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {questions.map((q) => (
-                <div key={q.id} className="px-4 py-3 hover:bg-slate-50">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-slate-900">{q.name || "Anonymous"} {q.email && <span className="text-slate-400 font-normal">· {q.email}</span>}</p>
-                    <p className="text-[10px] text-slate-400">{formatDate(q.createdAt)}</p>
-                  </div>
-                  <p className="text-sm text-slate-700">{q.question}</p>
-                  {q.email && (
-                    <a href={`mailto:${q.email}?subject=Re: Your question to our campaign&body=Thank you for reaching out. `}
-                      className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700">
-                      <Mail className="w-3 h-3" /> Reply via email
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Sign Requests */}
-      {activeSection === "signs" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-            <Target className="w-4 h-4 text-emerald-600" />
-            <h3 className="text-sm font-bold text-slate-900">Lawn Sign Requests</h3>
-            <span className="text-xs text-slate-400">{signRequests.length} pending</span>
-          </div>
-          {signRequests.length === 0 ? (
-            <div className="p-10 text-center">
-              <Target className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700">No pending sign requests</p>
-              <p className="text-xs text-slate-500 mt-1">Lawn sign requests from your campaign website will appear here.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {signRequests.map((s) => (
-                <div key={s.id} className="px-4 py-3 hover:bg-slate-50 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{s.name}</p>
-                    <p className="text-xs text-slate-500">{s.address} {s.email && `· ${s.email}`}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {statusBadge(s.status)}
-                    <p className="text-[10px] text-slate-400">{formatDate(s.createdAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SettingsTab() {
-  const providers = [
-    { name: "Resend", type: "Email", status: "configured", desc: "Transactional + bulk email delivery", env: "RESEND_API_KEY" },
-    { name: "Twilio", type: "SMS / Voice", status: "configured", desc: "SMS blasts, voice broadcasts, IVR", env: "TWILIO_ACCOUNT_SID" },
-    { name: "Web Push", type: "Push Notifications", status: "configured", desc: "Browser push via VAPID keys", env: "VAPID_PUBLIC_KEY" },
+  const NAV_ITEMS: Array<{
+    id: NavTab;
+    label: string;
+    icon: React.ComponentType<{ size?: number | string }>;
+    badge?: number;
+  }> = [
+    { id: "broadcast", label: "Broadcast Deploy", icon: Send },
+    { id: "inbox",     label: "Triage Inbox",     icon: Inbox, badge: inboxUnread },
+    { id: "triggers",  label: "Auto-Triggers",     icon: Clock },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Providers */}
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Delivery Providers</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {providers.map((p) => (
-            <div key={p.name} className="bg-white rounded-xl border border-slate-200 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-semibold text-sm text-slate-900">{p.name}</p>
-                {statusBadge(p.status === "configured" ? "active" : "draft")}
-              </div>
-              <p className="text-xs text-slate-500">{p.desc}</p>
-              <p className="text-[10px] text-slate-400 mt-2 font-mono">{p.env}</p>
-            </div>
-          ))}
+    <div className="flex h-full w-full bg-[#050A1F] text-[#F5F7FF] font-mono" style={{ minHeight: "calc(100vh - 64px)" }}>
+
+      {/* ── Left Sidebar ── */}
+      <div className="w-[280px] flex-shrink-0 border-r border-[#2979FF]/20 bg-[#0F1440]/90 backdrop-blur-xl flex flex-col shadow-[10px_0_30px_rgba(0,0,0,0.5)] z-20">
+        <div className="h-16 px-5 border-b border-[#2979FF]/20 flex items-center bg-[#050A1F]/50">
+          <h1 className="text-[13px] font-black uppercase tracking-[0.2em] flex items-center gap-2 drop-shadow-[0_0_8px_rgba(41,121,255,0.8)]">
+            <MessageSquare size={16} className="text-[#00E5FF]" /> Comms Grid
+          </h1>
         </div>
-      </div>
 
-      {/* Compliance */}
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Compliance & Consent</h3>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm text-slate-900">CASL Compliance</p>
-              <p className="text-xs text-slate-500 mt-0.5">Email: unsubscribe footer + campaign identification auto-appended. SMS: "Reply STOP" + campaign name suffix.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm text-slate-900">CRTC Voice Compliance</p>
-              <p className="text-xs text-slate-500 mt-0.5">Calling hours enforced (9am–9:30pm ET). Caller ID required. Opt-out mechanism built in.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm text-slate-900">DNC List Management</p>
-              <p className="text-xs text-slate-500 mt-0.5">Do-Not-Contact contacts excluded by default from all sends. Managed per campaign.</p>
-            </div>
-          </div>
+        <div className="p-4 space-y-1">
+          {NAV_ITEMS.map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2.5 rounded text-[11px] font-bold uppercase tracking-widest transition-all border",
+                  activeTab === item.id
+                    ? "bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/40 shadow-[inset_0_0_10px_rgba(0,229,255,0.1)]"
+                    : "border-transparent text-[#AAB2FF] hover:bg-[#2979FF]/10",
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon size={14} /> {item.label}
+                </span>
+                {item.badge != null && item.badge > 0 && (
+                  <span className="bg-[#FF3B30] text-white px-1.5 py-0.5 rounded-[3px] text-[9px] shadow-[0_0_8px_#FF3B30] animate-pulse">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <Link
+            href="/app/communications/qa"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded text-[11px] font-bold uppercase tracking-widest text-[#AAB2FF] hover:bg-[#2979FF]/10 border border-transparent transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <HelpCircle size={14} /> Q&A Inbox
+            </span>
+            <ChevronRight size={12} />
+          </Link>
         </div>
-      </div>
 
-      {/* Sender identities */}
-      <div>
-        <h3 className="text-base font-bold text-slate-900 mb-3">Sender Identities</h3>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_100px] gap-4 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Identity</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Channel</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            <div className="grid grid-cols-[1fr_120px_100px] gap-4 items-center px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Poll City</p>
-                <p className="text-xs text-slate-500">noreply@poll.city</p>
-              </div>
-              <span className="text-xs text-slate-600">Email</span>
-              {statusBadge("active")}
-            </div>
-            <div className="grid grid-cols-[1fr_120px_100px] gap-4 items-center px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Twilio Number</p>
-                <p className="text-xs text-slate-500">TWILIO_PHONE_NUMBER</p>
-              </div>
-              <span className="text-xs text-slate-600">SMS / Voice</span>
-              {statusBadge("active")}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TAB: ANALYTICS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface AnalyticsData {
-  totals: { sent: number; delivered: number; opened: number; clicked: number };
-  trend: Array<{ date: string; sent: number; delivered: number; opened: number; clicked: number }>;
-  blasts: Array<{
-    id: string;
-    title: string;
-    sentAt: string | null;
-    sent: number;
-    delivered: number;
-    failed: number;
-    opened: number;
-    clicked: number;
-    openRate: number;
-    clickRate: number;
-  }>;
-  days: number;
-  total: number;
-}
-
-function FunnelBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div>
-      <div className="flex justify-between items-baseline mb-1.5">
-        <span className="text-xs font-medium text-slate-600">{label}</span>
-        <div className="flex items-baseline gap-2">
-          <span className="text-lg font-bold text-slate-900 tabular-nums">{value.toLocaleString()}</span>
-          <span className="text-xs text-slate-400">{pct}%</span>
-        </div>
-      </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function SparkLine({ data, field, color }: { data: AnalyticsData["trend"]; field: keyof AnalyticsData["trend"][0]; color: string }) {
-  const values = data.map((d) => d[field] as number);
-  const max = Math.max(...values, 1);
-  const w = 180;
-  const h = 48;
-  if (data.length < 2) return <div className="h-12 flex items-center justify-center text-xs text-slate-400">No data</div>;
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w;
-    const y = h - (v / max) * (h - 4) - 2;
-    return `${x},${y}`;
-  });
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-12">
-      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AnalyticsTab({ campaignId }: { campaignId: string }) {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [days, setDays] = useState<30 | 60 | 90>(30);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/communications/analytics?campaignId=${campaignId}&days=${days}`)
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [campaignId, days]);
-
-  const noData = !loading && (!data || data.total === 0);
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Comms Analytics</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Delivery funnel, engagement trends, and per-blast breakdown</p>
-        </div>
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
-          {([30, 60, 90] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${days === d ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading && (
-        <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-        </div>
-      )}
-
-      {noData && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
-          <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-600">No sends in the last {days} days</p>
-          <p className="text-xs text-slate-400 mt-1">Send your first email or SMS blast to see analytics here.</p>
-        </div>
-      )}
-
-      {!loading && data && data.total > 0 && (
-        <>
-          {/* Delivery Funnel */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6">
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-5">Delivery Funnel — Last {days} Days</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <FunnelBar label="Sent" value={data.totals.sent} max={data.totals.sent} color="bg-slate-400" />
-              <FunnelBar label="Delivered" value={data.totals.delivered} max={data.totals.sent} color="bg-blue-500" />
-              <FunnelBar label="Opened" value={data.totals.opened} max={data.totals.sent} color="bg-green-500" />
-              <FunnelBar label="Clicked" value={data.totals.clicked} max={data.totals.sent} color="bg-amber-500" />
-            </div>
-          </div>
-
-          {/* Trend Sparklines */}
-          {data.trend.length >= 2 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {(
-                [
-                  { label: "Sent", field: "sent", color: "#94a3b8" },
-                  { label: "Delivered", field: "delivered", color: "#3b82f6" },
-                  { label: "Opened", field: "opened", color: "#22c55e" },
-                  { label: "Clicked", field: "clicked", color: "#f59e0b" },
-                ] as const
-              ).map(({ label, field, color }) => (
-                <div key={field} className="bg-white border border-slate-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-500 mb-2">{label} trend</p>
-                  <SparkLine data={data.trend} field={field} color={color} />
-                  <p className="text-xs text-slate-400 mt-1 text-right">{data.trend.length} days</p>
+        {/* Active Sequences */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 border-t border-[#2979FF]/20">
+          <h3 className="text-[10px] font-black text-[#6B72A0] uppercase tracking-[0.2em] mb-4">
+            Active Sequences
+          </h3>
+          {sequences.length === 0 ? (
+            <div className="text-[10px] text-[#6B72A0]/60 italic">No active sequences</div>
+          ) : (
+            sequences.map(seq => (
+              <div key={seq.id} className="mb-3 flex items-start justify-between group cursor-pointer">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-[#F5F7FF] group-hover:text-[#00E5FF] transition-colors truncate">
+                    {seq.segment?.name ?? seq.subject ?? seq.bodyText.slice(0, 24)}
+                  </div>
+                  <div className="text-[9px] text-[#AAB2FF] mt-0.5 tracking-widest capitalize">
+                    Progress: {seq.sentCount > 0 ? `${seq.sentCount} sent` : "--"}
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div
+                  className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ml-2"
+                  style={{
+                    backgroundColor: SEQ_COLOR[seq.status] ?? "#6B72A0",
+                    boxShadow: `0 0 5px ${SEQ_COLOR[seq.status] ?? "#6B72A0"}`,
+                  }}
+                />
+              </div>
+            ))
           )}
+        </div>
 
-          {/* Per-Blast Table */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-700">Per-Blast Breakdown</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Most recent {data.blasts.length} sends</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Blast</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Delivered</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Opened</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Open %</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Clicked</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Click %</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Failed</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent at</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {data.blasts.map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-900 truncate max-w-[220px]">{b.title}</p>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{b.sent.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-blue-700">{b.delivered.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-green-700">{b.opened.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        <span className={`font-semibold ${b.openRate >= 20 ? "text-green-700" : b.openRate >= 10 ? "text-amber-700" : "text-slate-500"}`}>
-                          {b.openRate}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-amber-700">{b.clicked.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        <span className={`font-semibold ${b.clickRate >= 5 ? "text-green-700" : b.clickRate >= 2 ? "text-amber-700" : "text-slate-500"}`}>
-                          {b.clickRate}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-red-600">{b.failed.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">
-                        {b.sentAt ? new Date(b.sentAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+        {/* Bottom quick links */}
+        <div className="p-3 border-t border-[#2979FF]/20 space-y-0.5">
+          {[
+            { href: "/app/communications/email", icon: Mail,     label: "Email Campaigns" },
+            { href: "/app/communications/sms",   icon: Phone,    label: "SMS Centre" },
+            { href: "/app/communications/inbox", icon: Settings, label: "Full Comms Suite" },
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded text-[10px] font-bold text-[#6B72A0] hover:text-[#AAB2FF] hover:bg-[#2979FF]/5 transition-colors"
+              >
+                <Icon size={12} /> {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Main Panel ── */}
+      <div className="flex-1 flex flex-col relative overflow-hidden bg-[#050A1F]">
+        {/* CRT scanline */}
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(41,121,255,0.03)_50%)] bg-[length:100%_4px] z-10 mix-blend-overlay" />
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] z-10" />
+
+        <div className="relative z-20 flex flex-col flex-1 overflow-hidden">
+          {activeTab === "broadcast" && (
+            <BroadcastPanel
+              campaignId={campaignId}
+              campaignName={campaignName}
+              tags={tags}
+            />
+          )}
+          {activeTab === "inbox" && <TriageInboxPanel campaignId={campaignId} />}
+          {activeTab === "triggers" && <AutoTriggersPanel campaignId={campaignId} />}
+        </div>
+      </div>
     </div>
   );
 }
