@@ -737,6 +737,8 @@ model User {
   // Poll City Social feed
   socialNotifications   SocialNotification[]
   civicGroupMemberships CivicGroupMember[]
+  postReactions         PostReaction[]
+  postComments          PostComment[]
 
   // CASL
   recordedConsentRecords ConsentRecord[] @relation("ConsentRecordedBy")
@@ -8783,6 +8785,8 @@ model PoliticianPost {
   externalUrl    String? // for op_ed posts — link to original publication
   municipalScope String? // "toronto" | "brampton" etc. for feed filtering
   isPublished    Boolean            @default(true)
+  reactionCount  Int                @default(0)
+  commentCount   Int                @default(0)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -8790,12 +8794,55 @@ model PoliticianPost {
   campaign      Campaign?            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   poll          Poll?                @relation(fields: [pollId], references: [id], onDelete: SetNull)
   notifications SocialNotification[]
+  reactions     PostReaction[]
+  comments      PostComment[]
 
   @@index([officialId, createdAt])
   @@index([campaignId, createdAt])
   @@index([municipalScope, createdAt])
   @@index([isPublished, createdAt])
   @@map("politician_posts")
+}
+
+enum PostReactionType {
+  heart
+}
+
+/// A voter's reaction (like) on a PoliticianPost. One per user per post.
+model PostReaction {
+  id        String          @id @default(cuid())
+  postId    String
+  userId    String
+  type      PostReactionType @default(heart)
+  createdAt DateTime        @default(now())
+
+  post PoliticianPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("post_reactions")
+}
+
+/// A voter's comment on a PoliticianPost. Supports one level of threading via parentId.
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  body      String   @db.Text
+  parentId  String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post    PoliticianPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  PostComment?   @relation("CommentReplies", fields: [parentId], references: [id])
+  replies PostComment[]  @relation("CommentReplies")
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@map("post_comments")
 }
 
 /// Notification for a social user — created when a followed official posts.

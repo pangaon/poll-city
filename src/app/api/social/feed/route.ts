@@ -75,6 +75,8 @@ export async function GET(req: NextRequest) {
       imageUrl: true,
       municipalScope: true,
       pollId: true,
+      reactionCount: true,
+      commentCount: true,
       createdAt: true,
       officialId: true,
       campaignId: true,
@@ -110,6 +112,22 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // Attach userReacted flag for authenticated users
+  let userReactedSet = new Set<string>();
+  if (userId && posts.length > 0) {
+    const postIds = posts.map((p) => p.id);
+    const reactions = await prisma.postReaction.findMany({
+      where: { userId, postId: { in: postIds } },
+      select: { postId: true },
+    });
+    userReactedSet = new Set(reactions.map((r) => r.postId));
+  }
+
+  const enriched = posts.map((p) => ({
+    ...p,
+    userReacted: userReactedSet.has(p.id),
+  }));
+
   const nextCursor =
     posts.length === limit ? posts[posts.length - 1].createdAt.toISOString() : null;
 
@@ -119,7 +137,7 @@ export async function GET(req: NextRequest) {
     : true;
 
   return NextResponse.json({
-    data: posts,
+    data: enriched,
     nextCursor,
     isDiscovery,
   });
