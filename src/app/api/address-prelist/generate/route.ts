@@ -7,6 +7,8 @@ import type { Feature, Polygon, MultiPolygon } from "geojson";
 import { Prisma } from "@prisma/client";
 import type { AddrRecord, GeneratePrelistRequest } from "@/lib/types/address";
 
+export const maxDuration = 60;
+
 // Cache TTLs in days
 const TTL: Record<string, number> = { osm: 30, mpac: 90, statcan: 365 };
 
@@ -127,7 +129,7 @@ async function fetchOsm(municipality: string): Promise<AddrRecord[]> {
     try {
       const r = await fetch(url, {
         headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)", "Accept": "application/json" },
-        signal: AbortSignal.timeout(35000),
+        signal: AbortSignal.timeout(15000),
       });
       if (r.ok) { ovRes = r; break; }
       lastStatus = r.status;
