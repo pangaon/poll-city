@@ -4,7 +4,7 @@ import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 
 // GET  /api/ops/social/officials — full officials list for George's ops panel
-// PATCH /api/ops/social/officials — toggle isActive, subscriptionStatus, isClaimed
+// PATCH /api/ops/social/officials — toggle isActive, subscriptionStatus, isClaimed, profileMode
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
       isActive: true,
       isClaimed: true,
       subscriptionStatus: true,
+      profileMode: true,
       website: true,
       _count: {
         select: {
@@ -66,6 +67,7 @@ const PatchSchema = z.object({
   isActive: z.boolean().optional(),
   subscriptionStatus: z.enum(["free", "verified", "premium"]).optional(),
   isClaimed: z.boolean().optional(),
+  profileMode: z.enum(["officeholder", "campaign"]).optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -86,7 +88,7 @@ export async function PATCH(req: NextRequest) {
   const updated = await prisma.official.update({
     where: { id },
     data,
-    select: { id: true, isActive: true, subscriptionStatus: true, isClaimed: true },
+    select: { id: true, isActive: true, subscriptionStatus: true, isClaimed: true, profileMode: true },
   });
 
   return NextResponse.json({ data: updated });

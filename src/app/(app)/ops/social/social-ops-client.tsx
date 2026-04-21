@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Users, MessageSquare, Megaphone, CheckCircle, XCircle,
-  Globe, Link2, RefreshCw, Shield, Star, AlertCircle,
+  Globe, Link2, RefreshCw, Shield, Star, AlertCircle, UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ interface Official {
   isActive: boolean;
   isClaimed: boolean;
   subscriptionStatus: string | null;
+  profileMode: string;
   website: string | null;
   _count: { follows: number; questions: number; politicianPosts: number; campaigns: number };
   linkedCampaign: LinkedCampaign | null;
@@ -207,6 +208,11 @@ export default function SocialOpsClient() {
                         <Link2 className="w-2.5 h-2.5" /> Paying
                       </Badge>
                     )}
+                    {o.profileMode === "campaign" && (
+                      <Badge color="bg-amber-50 text-amber-700 border border-amber-200">
+                        <UserCheck className="w-2.5 h-2.5" /> Candidate
+                      </Badge>
+                    )}
                     {!o.isActive && (
                       <Badge color="bg-red-50 text-red-600 border border-red-200">
                         <XCircle className="w-2.5 h-2.5" /> Inactive
@@ -284,6 +290,21 @@ export default function SocialOpsClient() {
                     )}
                   >
                     {o.isClaimed ? "Claimed" : "Mark Claimed"}
+                  </button>
+
+                  {/* Candidate mode toggle — flips official → running as candidate */}
+                  <button
+                    onClick={() => patch(o.id, { profileMode: o.profileMode === "campaign" ? "officeholder" : "campaign" })}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1",
+                      o.profileMode === "campaign"
+                        ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        : "border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600"
+                    )}
+                    title={o.profileMode === "campaign" ? "Switch back to officeholder mode" : "Mark as running for election (candidate mode)"}
+                  >
+                    <UserCheck className="w-3 h-3" />
+                    {o.profileMode === "campaign" ? "Candidate" : "→ Candidate"}
                   </button>
 
                   {/* Active toggle */}

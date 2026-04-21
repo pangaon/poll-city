@@ -154,6 +154,7 @@ const CANDIDATE_SECTION: NavSection = {
   id: "candidate",
   label: "Candidate",
   items: [
+    { href: "/my-website",         icon: Globe,    label: "My Website",        isNew: true },
     { href: "/calendar/candidate", icon: Mic2,    label: "Candidate Schedule" },
     { href: "/officials",          icon: Landmark, label: "Officials"          },
     { href: "/social",             icon: Globe,    label: "Poll City Social"   },

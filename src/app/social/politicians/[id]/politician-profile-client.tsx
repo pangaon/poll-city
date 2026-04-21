@@ -456,6 +456,21 @@ export default function PoliticianProfileClient() {
             </button>
           </div>
 
+          {/* Campaign website CTA — shown when candidate has an active campaign */}
+          {p.campaigns.length > 0 && p.campaigns[0].slug && (
+            <a
+              href={`/candidates/${p.campaigns[0].slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-black mb-2 transition-all"
+              style={{ background: "linear-gradient(135deg, #1D9E75, #15816a)", color: "white", boxShadow: "0 4px 20px rgba(29,158,117,0.35)" }}
+            >
+              <Globe className="w-4 h-4" />
+              View Campaign Website
+              <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+            </a>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
             {[
