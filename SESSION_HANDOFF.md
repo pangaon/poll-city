@@ -72,12 +72,31 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-21 session 4 — overnight autonomous build)
+## CURRENT PLATFORM STATE (as of 2026-04-21 session 5 — autocomplete + news scanner + full audit)
 
 ### Build
-- **GREEN** — latest commit `8a6454d` pushed to main, Vercel deploying
-- 5 new models in schema NOT yet pushed to Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`
+- **GREEN** — latest commit `399f206` pushed to main, Vercel deploying
+- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`
 - George MUST run `npx prisma db push` before demo
+
+### Session 5 — What shipped this session
+
+**Municipality autocomplete** (Atlas Command → Address Pre-List):
+- 400ms debounced input → `GET /api/address-prelist/autocomplete?q=...` → Nominatim proxy → animated dropdown
+- Dropdown closes on outside click, click-to-fill sets municipality
+- Previously dead — now fully live
+
+**OSM fetch bug fixed** (the "Unknown error" toast):
+- `POST /api/address-prelist/generate` now wrapped in try/catch → returns proper JSON error messages
+- Previously any Overpass/Nominatim timeout caused HTML 500 → client JSON parse failure → "Unknown error"
+
+**Live News Scanner** (Reputation → Alerts):
+- New `GET /api/reputation/scan-news` → `lib/reputation/news-scanner.ts`
+- Fetches real Canadian news from Google News RSS (`news.google.com/rss/search`)
+- Classifies sentiment (negative/positive/neutral/mixed) and severity (critical/high/medium/low)
+- Deduplicates by URL against existing alerts
+- UI: "Simulate Ingest" → "Scan Live News" with search term modal + result summary
+- Works without any API key (Google News RSS is public)
 
 ### Session 4 — What shipped overnight (autonomous)
 
