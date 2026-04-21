@@ -30,66 +30,77 @@ export default async function CompliancePage() {
     where: { campaignId, deletedAt: null, isDeceased: false, email: { not: null }, doNotContact: false },
   });
 
-  // Contacts with at least one valid email consent record
-  const now = new Date();
-  const consentedContactIds = await prisma.consentRecord.findMany({
-    where: {
-      campaignId,
-      channel: "email",
-      OR: [
-        { consentType: "explicit" },
-        { consentType: "implied", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-      ],
-    },
-    select: { contactId: true },
-    distinct: ["contactId"],
-  });
+  type ConsentType = "explicit" | "implied" | "express_withdrawal";
+  type ConsentChannel = "email" | "sms" | "push";
+  type ConsentSource = "import" | "form" | "qr" | "manual" | "social_follow" | "donation" | "event_signup";
+  type ConsentRecordSafe = {
+    id: string; consentType: ConsentType; channel: ConsentChannel; source: ConsentSource;
+    collectedAt: string; expiresAt: string | null; notes: string | null;
+    contact: { id: string; firstName: string; lastName: string; email: string | null };
+    recordedBy: { id: string; name: string | null } | null;
+  };
 
-  // Contacts with express_withdrawal
-  const withdrawnContactIds = await prisma.consentRecord.findMany({
-    where: { campaignId, channel: "email", consentType: "express_withdrawal" },
-    select: { contactId: true },
-    distinct: ["contactId"],
-  });
+  // Consent stats — table may not exist until npx prisma db push is run
+  let consentedCount = 0;
+  let withdrawnCount = 0;
+  let recentRecords: ConsentRecordSafe[] = [];
 
-  const consentedCount = consentedContactIds.length;
-  const withdrawnCount = withdrawnContactIds.length;
+  try {
+    const now = new Date();
+    const [consentedContactIds, withdrawnContactIds, rawRecords] = await Promise.all([
+      prisma.consentRecord.findMany({
+        where: {
+          campaignId, channel: "email",
+          OR: [
+            { consentType: "explicit" },
+            { consentType: "implied", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+          ],
+        },
+        select: { contactId: true },
+        distinct: ["contactId"],
+      }),
+      prisma.consentRecord.findMany({
+        where: { campaignId, channel: "email", consentType: "express_withdrawal" },
+        select: { contactId: true },
+        distinct: ["contactId"],
+      }),
+      prisma.consentRecord.findMany({
+        where: { campaignId },
+        orderBy: { collectedAt: "desc" },
+        take: 25,
+        select: {
+          id: true, consentType: true, channel: true, source: true,
+          collectedAt: true, expiresAt: true, notes: true,
+          contact: { select: { id: true, firstName: true, lastName: true, email: true } },
+          recordedBy: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+    consentedCount = consentedContactIds.length;
+    withdrawnCount = withdrawnContactIds.length;
+    recentRecords = rawRecords
+      .filter((r) => r.contact !== null)
+      .map((r) => ({
+        ...r,
+        contact: r.contact!,
+        consentType: r.consentType as ConsentType,
+        channel: r.channel as ConsentChannel,
+        source: r.source as ConsentSource,
+        collectedAt: r.collectedAt.toISOString(),
+        expiresAt: r.expiresAt?.toISOString() ?? null,
+      }));
+  } catch {
+    // ConsentRecord table may not exist until npx prisma db push is run
+  }
+
   const noConsentCount = Math.max(0, totalWithEmail - consentedCount - withdrawnCount);
   const coveragePct = totalWithEmail > 0 ? Math.round((consentedCount / totalWithEmail) * 100) : 0;
-
-  // Recent consent events
-  const recentRecords = await prisma.consentRecord.findMany({
-    where: { campaignId },
-    orderBy: { collectedAt: "desc" },
-    take: 25,
-    select: {
-      id: true,
-      consentType: true,
-      channel: true,
-      source: true,
-      collectedAt: true,
-      expiresAt: true,
-      notes: true,
-      contact: { select: { id: true, firstName: true, lastName: true, email: true } },
-      recordedBy: { select: { id: true, name: true } },
-    },
-  });
 
   return (
     <ComplianceClient
       campaignId={campaignId}
-      stats={{
-        totalWithEmail,
-        consentedCount,
-        withdrawnCount,
-        noConsentCount,
-        coveragePct,
-      }}
-      recentRecords={recentRecords.map((r) => ({
-        ...r,
-        collectedAt: r.collectedAt.toISOString(),
-        expiresAt: r.expiresAt?.toISOString() ?? null,
-      }))}
+      stats={{ totalWithEmail, consentedCount, withdrawnCount, noConsentCount, coveragePct }}
+      recentRecords={recentRecords}
     />
   );
 }
