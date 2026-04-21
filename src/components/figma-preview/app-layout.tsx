@@ -156,7 +156,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#2979FF]/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-[#00E5FF]/5 rounded-full blur-[100px] pointer-events-none" />
 
-        <header className="h-14 flex items-center justify-between px-6 border-b border-[#2979FF]/20 bg-[#0F1440]/70 backdrop-blur-md flex-shrink-0 z-10 relative">
+        <header className="h-14 flex items-center justify-between px-6 border-b border-[#2979FF]/20 bg-[#0F1440]/70 backdrop-blur-md flex-shrink-0 z-50 relative">
           <div className="flex-1 flex items-center gap-6">
             <div className="hidden md:block">
               <AppSwitcher />
