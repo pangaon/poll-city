@@ -22,6 +22,7 @@ import {
   Twitter,
   Facebook,
   Instagram,
+  Linkedin,
   ChevronDown,
   ChevronUp,
   Star,
@@ -37,6 +38,9 @@ import {
   ExternalLink,
   Shield,
   Video,
+  Target,
+  Award,
+  Image as ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -53,7 +57,8 @@ type PostType =
   | "announcement"
   | "civic_update"
   | "bill_update"
-  | "project_update";
+  | "project_update"
+  | "op_ed";
 
 interface Post {
   id: string;
@@ -62,6 +67,7 @@ interface Post {
   body: string;
   pollId: string | null;
   imageUrl: string | null;
+  externalUrl: string | null;
   createdAt: string;
   poll: {
     id: string;
@@ -134,6 +140,30 @@ interface Event {
   campaignSlug: string | null;
 }
 
+interface Priority {
+  id: string;
+  title: string;
+  body: string;
+  icon: string | null;
+  category: string | null;
+}
+
+interface Accomplishment {
+  id: string;
+  title: string;
+  description: string;
+  year: number | null;
+  category: string | null;
+}
+
+interface GalleryPhoto {
+  id: string;
+  url: string;
+  caption: string | null;
+  context: string | null;
+  altText: string | null;
+}
+
 interface Politician {
   id: string;
   name: string;
@@ -153,9 +183,13 @@ interface Politician {
   twitter: string | null;
   facebook: string | null;
   instagram: string | null;
+  linkedIn: string | null;
   province: string | null;
   termStart: string | null;
   termEnd: string | null;
+  tagline: string | null;
+  committeeRoles: unknown;
+  profileMode: string;
   _count: { follows: number; questions: number; politicianPosts: number };
   campaigns: Campaign[];
   campaignConsents: CampaignConsent[];
@@ -164,6 +198,9 @@ interface Politician {
   questions: Question[];
   promises: Promise[];
   events: Event[];
+  priorities: Priority[];
+  accomplishments: Accomplishment[];
+  galleryPhotos: GalleryPhoto[];
   isFollowing: boolean;
   notificationPreference: string | null;
   isSubscribedToNewsletter: boolean;
@@ -175,6 +212,7 @@ const POST_TYPE_ICONS: Record<PostType, React.ElementType> = {
   civic_update: Building2,
   bill_update: FileText,
   project_update: TrendingUp,
+  op_ed: Newspaper,
 };
 
 const POST_TYPE_LABELS: Record<PostType, string> = {
@@ -183,6 +221,7 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
   civic_update: "Civic Update",
   bill_update: "Bill Update",
   project_update: "Project Update",
+  op_ed: "Op-Ed",
 };
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -499,6 +538,11 @@ export default function PoliticianProfileClient() {
             </div>
             <p className="text-blue-200 text-sm">{p.title}</p>
             <p className="text-blue-300 text-xs">{p.district}</p>
+            {p.tagline && (
+              <p className="text-blue-100 text-xs italic mt-1 leading-relaxed opacity-85">
+                &ldquo;{p.tagline}&rdquo;
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <span
                 className={cn(
@@ -822,8 +866,115 @@ export default function PoliticianProfileClient() {
           </div>
         )}
 
+        {/* Priorities / Issues */}
+        {p.priorities.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm"
+          >
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5" /> Key Priorities
+            </p>
+            <div className="space-y-4">
+              {p.priorities.map((priority, idx) => (
+                <div key={priority.id} className="flex items-start gap-3">
+                  <div
+                    className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold"
+                    style={{ background: `${NAVY}15`, color: NAVY }}
+                  >
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">
+                      {priority.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      {priority.body}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Accomplishments */}
+        {p.accomplishments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm"
+          >
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5" /> Service Record
+            </p>
+            <div className="space-y-3">
+              {p.accomplishments.map((acc) => (
+                <div key={acc.id} className="flex items-start gap-3">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: `${GREEN}18` }}
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" style={{ color: GREEN }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-gray-900 leading-snug">
+                        {acc.title}
+                      </p>
+                      {acc.year && (
+                        <span className="text-xs text-gray-400 flex-shrink-0">{acc.year}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      {acc.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Photo Gallery */}
+        {p.galleryPhotos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm"
+          >
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" /> In the Community
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {p.galleryPhotos.map((photo) => (
+                <div key={photo.id} className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.altText ?? photo.caption ?? `${p.name} community photo`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  {photo.caption && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
+                      <p className="text-white text-[10px] leading-tight truncate">
+                        {photo.caption}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Contact + socials */}
-        {(p.email || p.phone || p.website || p.twitter) && (
+        {(p.email || p.phone || p.website || p.twitter || p.linkedIn) && (
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
               Contact
@@ -884,6 +1035,16 @@ export default function PoliticianProfileClient() {
                     className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     <Instagram className="w-4 h-4 text-gray-600" />
+                  </a>
+                )}
+                {p.linkedIn && (
+                  <a
+                    href={p.linkedIn}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <Linkedin className="w-4 h-4 text-gray-600" />
                   </a>
                 )}
               </div>
@@ -1139,6 +1300,19 @@ export default function PoliticianProfileClient() {
                                 {post.poll.totalResponses} votes
                               </span>
                             </Link>
+                          )}
+                          {post.externalUrl && (
+                            <a
+                              href={post.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="text-xs font-medium text-gray-600">
+                                Read full article
+                              </span>
+                            </a>
                           )}
                         </div>
                       );

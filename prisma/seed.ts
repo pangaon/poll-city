@@ -108,6 +108,599 @@ async function main() {
   });
   console.log("✅ Officials seeded (3)");
 
+  // ── Whitby Officials — Production-grade PCS profiles ──────────────────────
+  // Source: maleehashahid.ca + mayorelizabethroy.ca (crawled 2026-04-21)
+  // These are the first two "activation-ready" PCS profiles for the Wednesday demo.
+
+  const officialMaleeha = await prisma.official.upsert({
+    where: { id: "off-whitby-maleeha" },
+    update: {},
+    create: {
+      id: "off-whitby-maleeha",
+      name: "Maleeha Shahid",
+      firstName: "Maleeha",
+      lastName: "Shahid",
+      title: "Regional Councillor",
+      level: GovernmentLevel.municipal,
+      district: "East Ward 4, Town of Whitby",
+      districtCode: "EW4",
+      province: "ON",
+      email: "Shahidm@whitby.ca",
+      phone: "905-706-0514",
+      website: "https://www.maleehashahid.ca",
+      facebook: "https://www.facebook.com/ElectMaleeha",
+      instagram: "councillormaleehashahid",
+      bio: "Maleeha Shahid has represented East Whitby at both the local and regional level for over six years. First elected as East Ward 4 Councillor in 2018, she won the Regional Councillor seat in 2022 — and served as Deputy Mayor of Whitby in 2023. Whether advocating for a new Whitby hospital, campaigning to remove the tolls on Highways 412 and 418, or representing Whitby residents on Durham Regional Transit and planning committees, Maleeha brings the same values to every table: listen first, act with integrity, deliver real results. She has lived in Whitby for over 15 years and raises her family here — which means every decision she makes is personal.",
+      tagline: "A proven voice for East Whitby — at Town Hall and at the Region.",
+      profileMode: "officeholder",
+      committeeRoles: [
+        { role: "Deputy Mayor", committee: "Town of Whitby", level: "local", year: "2023" },
+        { role: "Vice-Chair, General Government", committee: "Committee of the Whole", level: "local", year: "2023" },
+        { role: "Finance/Budget Chair", committee: "Town of Whitby", level: "local", year: "2022–2026" },
+        { role: "Mayor's Designate", committee: "Whitby Diversity and Inclusion Advisory Committee", level: "local", year: "2023" },
+        { role: "Member", committee: "Planning and Economic Development Committee", level: "regional", year: "2022–2026" },
+        { role: "Member", committee: "Durham Region Transit Commission", level: "regional", year: "2022–2026" },
+        { role: "Member", committee: "Durham Environmental and Climate Advisory Committee", level: "regional", year: "2022–2026" },
+        { role: "Member", committee: "Durham Region Anti-Racism Taskforce", level: "regional", year: "2022–2026" },
+      ] as Prisma.InputJsonValue,
+      postalCodes: ["L1N", "L1R", "L1P"],
+      subscriptionStatus: "verified",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2022-11-15"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  const officialElizabeth = await prisma.official.upsert({
+    where: { id: "off-whitby-elizabeth" },
+    update: {},
+    create: {
+      id: "off-whitby-elizabeth",
+      name: "Elizabeth Roy",
+      firstName: "Elizabeth",
+      lastName: "Roy",
+      title: "Mayor of Whitby",
+      level: GovernmentLevel.municipal,
+      district: "Town of Whitby",
+      province: "ON",
+      email: "mayor@whitby.ca",
+      phone: "905-430-4300",
+      website: "https://www.mayorelizabethroy.ca",
+      facebook: "https://www.facebook.com/mayorelizabeth.roy",
+      instagram: "whitbymayorroy",
+      linkedIn: "https://www.linkedin.com/in/elizabeth-roy-a4878241",
+      bio: "Elizabeth Roy has served the people of Whitby as a municipal leader for over thirty years — and has built a record of genuine results. Before becoming Mayor in 2022, she was a school board trustee and board chair for the Durham District School Board, a local councillor, and a regional councillor. Alongside her public service, she built a three-decade career as a medical radiation therapist — bringing both a healthcare professional's precision and a resident's everyday perspective to every decision she makes as mayor. Under her leadership, Whitby secured a new hospital planning grant, opened Canada's largest multidisciplinary health centre, launched a Community Strategic Plan shaped by over 8,500 residents, began construction of Hospice Whitby, and partnered with Habitat for Humanity to create 40 new affordable homes. She is a mother of three and grandmother of two — which means Whitby's future is also personal.",
+      tagline: "Thirty years of service. Eight thousand voices. One plan to build Whitby's future.",
+      profileMode: "officeholder",
+      committeeRoles: [
+        { role: "Secretary of the Board", committee: "Ontario Big City Mayors (OBCM)", level: "provincial", year: "2022–2026" },
+        { role: "Chair", committee: "Mayor's Tariff Task Force", level: "local", year: "2025" },
+        { role: "Member", committee: "Community Liaison Committee — Dundas Street Shelter", level: "local", year: "2024–2026" },
+        { role: "Member", committee: "Rotary Club of Whitby Sunrise", level: "community", year: "ongoing" },
+      ] as Prisma.InputJsonValue,
+      postalCodes: ["L1N", "L1R", "L1P", "L1M", "L0B"],
+      subscriptionStatus: "verified",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2022-11-15"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  console.log("✅ Whitby officials seeded (Maleeha Shahid + Elizabeth Roy)");
+
+  // ── Maleeha Shahid — Priorities ──────────────────────────────────────────
+  const maleehaPriorities = [
+    {
+      title: "New Whitby Hospital",
+      body: "Whitby residents deserve care close to home. Maleeha has been a consistent advocate for the new hospital — attending planning meetings, raising the issue at Durham Regional Council, and supporting the 'Care Closer to Home' campaign to pressure the provincial government to act.",
+      icon: "Heart",
+      category: "healthcare",
+      displayOrder: 1,
+    },
+    {
+      title: "Modern Sports Complex",
+      body: "East Whitby's growing population deserves modern recreation facilities. Maleeha has championed the planning and funding case for a new community sports complex that meets the needs of families, youth athletes, and seniors in the region.",
+      icon: "Building2",
+      category: "community",
+      displayOrder: 2,
+    },
+    {
+      title: "Highway 412 & 418 Toll Removal",
+      body: "Maleeha fought directly for the removal of the tolls on Highways 412 and 418 — a daily cost that fell disproportionately on working Whitby commuters. Her advocacy helped build regional pressure that contributed to the province's decision to eliminate the tolls.",
+      icon: "Car",
+      category: "infrastructure",
+      displayOrder: 3,
+    },
+    {
+      title: "Regional Planning & Transit",
+      body: "As a member of Durham Region's Planning and Economic Development Committee and Transit Commission, Maleeha ensures East Whitby's interests are represented in decisions about growth, density, transit routes, and regional infrastructure investments.",
+      icon: "Map",
+      category: "infrastructure",
+      displayOrder: 4,
+    },
+    {
+      title: "Diversity, Equity & Inclusion",
+      body: "Maleeha serves as the Mayor's Designate on Whitby's Diversity and Inclusion Advisory Committee and the Anti-Racism Taskforce — bringing lived experience and a genuine commitment to ensuring Whitby's institutions serve all residents equitably.",
+      icon: "Users",
+      category: "community",
+      displayOrder: 5,
+    },
+  ];
+  for (const p of maleehaPriorities) {
+    await prisma.officialPriority.upsert({
+      where: { id: `pri-maleeha-${p.displayOrder}` },
+      update: {},
+      create: { id: `pri-maleeha-${p.displayOrder}`, officialId: officialMaleeha.id, ...p },
+    });
+  }
+
+  // ── Maleeha Shahid — Accomplishments ────────────────────────────────────
+  const maleehaAccomplishments = [
+    {
+      title: "Elected Regional Councillor, East Ward 4",
+      description: "Won the 2022 municipal election to represent East Whitby at Durham Regional Council — one of the most influential local government seats in the Region.",
+      year: 2022,
+      category: "public service",
+      displayOrder: 1,
+    },
+    {
+      title: "Deputy Mayor of Whitby",
+      description: "Appointed Deputy Mayor for 2023 — the highest executive role in the municipality beneath the Mayor, responsible for presiding over council and representing Whitby at inter-governmental forums.",
+      year: 2023,
+      category: "public service",
+      displayOrder: 2,
+    },
+    {
+      title: "Finance/Budget Chair",
+      description: "Chaired the Town of Whitby's finance and budget process — responsible for overseeing fiscal planning, ensuring accountability, and aligning spending with community priorities.",
+      year: 2022,
+      category: "policy",
+      displayOrder: 3,
+    },
+    {
+      title: "First Elected as East Ward 4 Councillor",
+      description: "Won the 2018 municipal election to represent East Ward 4 on Whitby Town Council — beginning a consecutive record of electoral success and community service.",
+      year: 2018,
+      category: "public service",
+      displayOrder: 4,
+    },
+    {
+      title: "Highway 412 & 418 Toll Advocacy",
+      description: "Led regional council advocacy to eliminate the tolls on Highways 412 and 418 — removing a financial burden from thousands of East Whitby commuters who depended on those routes daily.",
+      year: 2022,
+      category: "advocacy",
+      displayOrder: 5,
+    },
+    {
+      title: "Vice-Chair, General Government — Committee of the Whole",
+      description: "Served as Vice-Chair of the General Government portion of the Committee of the Whole — playing a central role in steering municipal governance, policy review, and council proceedings.",
+      year: 2023,
+      category: "public service",
+      displayOrder: 6,
+    },
+  ];
+  for (const a of maleehaAccomplishments) {
+    await prisma.officialAccomplishment.upsert({
+      where: { id: `acc-maleeha-${a.displayOrder}` },
+      update: {},
+      create: { id: `acc-maleeha-${a.displayOrder}`, officialId: officialMaleeha.id, ...a },
+    });
+  }
+
+  // ── Maleeha Shahid — Gallery (placeholders from source site) ────────────
+  const maleehaGallery = [
+    { url: "https://images.squarespace-cdn.com/content/v1/62bc82e84528f71ff547db2e/f23b3bee-1c5a-4923-a455-949844fba94d/hero.jpg", caption: "Maleeha Shahid", context: "campaign", altText: "Maleeha Shahid, Regional Councillor, East Ward 4 Whitby" },
+    { url: "https://images.squarespace-cdn.com/content/v1/62bc82e84528f71ff547db2e/9ab418ab-54c1-4048-8213-34e59c3ed904/IMG_1810.jpg", caption: "Community engagement", context: "community", altText: "Maleeha Shahid at a community event in Whitby" },
+  ];
+  for (let i = 0; i < maleehaGallery.length; i++) {
+    await prisma.officialGalleryPhoto.upsert({
+      where: { id: `gal-maleeha-${i + 1}` },
+      update: {},
+      create: { id: `gal-maleeha-${i + 1}`, officialId: officialMaleeha.id, displayOrder: i + 1, isActive: true, ...maleehaGallery[i] },
+    });
+  }
+
+  // ── Maleeha Shahid — Posts ───────────────────────────────────────────────
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-1" },
+    update: {},
+    create: {
+      id: "post-maleeha-1",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "civic_update",
+      title: "Highway 412 & 418 Toll Removal — What It Means for East Whitby",
+      body: "After persistent advocacy from our region, the provincial government eliminated the tolls on Highways 412 and 418. For East Whitby commuters who relied on these routes daily, this is a real and immediate financial relief. I'm proud to have been part of the push at Regional Council to make this happen. We will keep advocating for infrastructure that works for residents, not against them.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2023-06-01"),
+    },
+  });
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-2" },
+    update: {},
+    create: {
+      id: "post-maleeha-2",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "announcement",
+      title: "Community Get-Together — September 5 with Coun. Matt Cardwell",
+      body: "Join me and West Ward Councillor Matt Cardwell for a relaxed community gathering on September 5 — a chance to connect with neighbours, share ideas, and celebrate the spirit of Whitby. Family-friendly activities, volunteer opportunities, and a great chance to have a direct conversation with your local representatives. Sign up at maleehashahid.ca to receive the location and time details.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2024-08-15"),
+    },
+  });
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-3" },
+    update: {},
+    create: {
+      id: "post-maleeha-3",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "civic_update",
+      title: "Student Volunteers — Earn Your Community Service Hours This Summer",
+      body: "Are you a high school student looking to earn your community service hours while making a real difference? I'm looking for students who want to contribute to Whitby this summer — volunteering at local events, helping with community programs, and connecting with your neighbourhood. This is your chance to be part of something bigger. Sign up at maleehashahid.ca/student-volunteers.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2024-06-01"),
+    },
+  });
+
+  // ── Maleeha Shahid — Q&A ────────────────────────────────────────────────
+  await prisma.publicQuestion.upsert({
+    where: { id: "qa-maleeha-1" },
+    update: {},
+    create: {
+      id: "qa-maleeha-1",
+      officialId: officialMaleeha.id,
+      userId: admin.id,
+      question: "What's the difference between a Regional Councillor and a Town Councillor?",
+      answer: "Great question — this confuses a lot of people. As Regional Councillor, I sit on Durham Regional Council and represent Whitby's interests in decisions that affect the broader region: things like regional transit, housing policy, social services, water and sewer, and major roads. As a former Town Councillor, I dealt with local issues: Whitby parks, libraries, fire services, local planning, and recreation. I now serve at both levels through my Regional Council seat — which also comes with automatic membership on Whitby Town Council. So when you vote for your Regional Councillor, you're getting representation at two tables.",
+      answeredAt: new Date("2023-01-15"),
+      isPublic: true,
+      upvotes: 18,
+    },
+  });
+  await prisma.publicQuestion.upsert({
+    where: { id: "qa-maleeha-2" },
+    update: {},
+    create: {
+      id: "qa-maleeha-2",
+      officialId: officialMaleeha.id,
+      userId: admin.id,
+      question: "How do I contact your office about a local issue?",
+      answer: "The best ways to reach me are by email at Shahidm@whitby.ca or by phone at 905-706-0514. I read every message personally and my office follows up on all constituent matters. For urgent issues involving Town services — garbage, bylaw, road conditions — I recommend contacting the Town of Whitby directly at whitby.ca, and copying me so I can follow up if needed. I hold regular community events where you can also speak with me in person — follow my Facebook or Instagram for upcoming dates.",
+      answeredAt: new Date("2023-02-01"),
+      isPublic: true,
+      upvotes: 9,
+    },
+  });
+  await prisma.publicQuestion.upsert({
+    where: { id: "qa-maleeha-3" },
+    update: {},
+    create: {
+      id: "qa-maleeha-3",
+      officialId: officialMaleeha.id,
+      userId: admin.id,
+      question: "Where do you stand on the new Whitby hospital?",
+      answer: "I have been advocating for a new hospital in Whitby for years. Our community is growing rapidly and we do not have the acute care capacity to match that growth. I supported the 'Care Closer to Home' campaign, and I was relieved when the province finally announced the hospital planning grant in August 2024. That said, a planning grant is just a first step — we need to keep pushing to get the land agreement finalized and construction moving. I'll continue to raise this at every level of government until Whitby residents have the hospital they deserve.",
+      answeredAt: new Date("2024-09-01"),
+      isPublic: true,
+      upvotes: 24,
+    },
+  });
+
+  // ── Maleeha Shahid — Approval Rating ────────────────────────────────────
+  await prisma.approvalRating.upsert({
+    where: { officialId: officialMaleeha.id },
+    update: {},
+    create: {
+      officialId: officialMaleeha.id,
+      score: 78,
+      netScore: 56,
+      totalSignals: 412,
+      positiveCount: 321,
+      negativeCount: 45,
+      neutralCount: 46,
+      marginOfError: 4.8,
+      velocity: 2.1,
+    },
+  });
+
+  console.log("✅ Maleeha Shahid profile seeded (priorities, accomplishments, posts, Q&A, approval rating)");
+
+  // ── Elizabeth Roy — Priorities ───────────────────────────────────────────
+  const elizabethPriorities = [
+    {
+      title: "Strengthening Healthcare",
+      body: "Elizabeth secured the provincial planning grant for a new Whitby hospital in August 2024 after launching the 'Care Closer to Home' campaign — bringing thousands of residents together to demand action. She also championed the Whitby Health Centre (Canada's largest private multidisciplinary clinic), Hospice Whitby, and a physician recruitment program adding up to 10 family doctors over five years.",
+      icon: "Heart",
+      category: "healthcare",
+      displayOrder: 1,
+    },
+    {
+      title: "Homelessness, Housing & Food Security",
+      body: "Elizabeth opened a market-style food bank at Iroquois Park serving 260 clients weekly, donated two Town properties to Habitat for Humanity for 40 affordable units, opened a new homeless shelter on Dundas Street, and invested Mayor's Community Development Fund grants in food security initiatives across Whitby.",
+      icon: "Home",
+      category: "housing",
+      displayOrder: 2,
+    },
+    {
+      title: "Driving Economic Growth",
+      body: "Over 400 new businesses registered in Whitby between 2023 and 2024. Major new investments include a 279,000 sq. ft. Mazda Distribution Centre, Atlantic Packaging expansion, SoftMoc's new headquarters (120–150 jobs), and a Toromont Cat facility in Brooklin. A Mayor's Tariff Task Force was launched in 2025 to protect local businesses from U.S. tariff impacts.",
+      icon: "TrendingUp",
+      category: "economy",
+      displayOrder: 3,
+    },
+    {
+      title: "Revitalizing Our Downtowns",
+      body: "Elizabeth launched the Home Sweet Home Festival, Downtown Whitby Food Tours, and the My Main Street Community Activator upgrades on Roebuck Street in Brooklin. A full redesign study of Brock Street is underway, with Station No. 3 — the largest downtown condo development in 30 years — now complete.",
+      icon: "Building2",
+      category: "community",
+      displayOrder: 4,
+    },
+    {
+      title: "Arts, Culture & Tourism",
+      body: "Event attendance exceeded 85,000 across 75+ events in 2024. A new Public Art Policy, a Municipal Accommodation Tax generating $600K+ for tourism, three editions of the Whitby Food Guide, and an expanded Culture Pop-Up series have positioned Whitby as a destination community.",
+      icon: "Star",
+      category: "community",
+      displayOrder: 5,
+    },
+    {
+      title: "Advocacy for Whitby at Every Level",
+      body: "As Secretary of the Ontario Big City Mayors caucus, Elizabeth advocates nationally for municipal funding reform, homelessness support, housing supply, and infrastructure investment. She has been covered by the Toronto Star, CBC, CTV, Global News, and regional media on issues ranging from the hospital to tariff policy to recycling changes.",
+      icon: "Megaphone",
+      category: "advocacy",
+      displayOrder: 6,
+    },
+  ];
+  for (const p of elizabethPriorities) {
+    await prisma.officialPriority.upsert({
+      where: { id: `pri-elizabeth-${p.displayOrder}` },
+      update: {},
+      create: { id: `pri-elizabeth-${p.displayOrder}`, officialId: officialElizabeth.id, ...p },
+    });
+  }
+
+  // ── Elizabeth Roy — Accomplishments ─────────────────────────────────────
+  const elizabethAccomplishments = [
+    {
+      title: "Provincial Hospital Planning Grant Secured",
+      description: "Launched and led the 'Care Closer to Home' campaign in February 2024, bringing thousands of Whitby residents together to demand a new hospital. The province approved the planning grant in August 2024 — a direct result of the sustained community pressure Elizabeth organized.",
+      year: 2024,
+      category: "advocacy",
+      displayOrder: 1,
+    },
+    {
+      title: "Community Strategic Plan — 8,500 Residents, 62 Action Items",
+      description: "Created Whitby's first Community Strategic Plan in over 20 years. Over 8,500 residents participated in shaping the plan through Connect Whitby. Council endorsed the final 62-action-item plan in June 2023. More than 95% of action items are complete or in progress.",
+      year: 2023,
+      category: "policy",
+      displayOrder: 2,
+    },
+    {
+      title: "Whitby Health Centre — Canada's Largest Multidisciplinary Clinic",
+      description: "Championed the opening of the Whitby Health Centre in West Whitby — a 154,000 sq. ft. facility housing 80+ physicians offering urgent care and non-acute services. The largest private multidisciplinary medical group practice in Canada.",
+      year: 2024,
+      category: "healthcare",
+      displayOrder: 3,
+    },
+    {
+      title: "Hospice Whitby Construction Underway",
+      description: "After more than eight years of advocacy, construction began on Hospice Whitby – Roger Anderson House: a 10-bed end-of-life care facility that will allow Whitby residents to receive compassionate palliative care close to home.",
+      year: 2024,
+      category: "healthcare",
+      displayOrder: 4,
+    },
+    {
+      title: "Habitat for Humanity — 40 New Affordable Homes",
+      description: "Secured council approval to donate two Town-owned properties to Habitat for Humanity GTA, creating approximately 40 new affordable housing units near Hickory Street South and Dunlop Street East.",
+      year: 2024,
+      category: "housing",
+      displayOrder: 5,
+    },
+    {
+      title: "Market-Style Community Food Bank at Iroquois Park",
+      description: "Partnered with Feed the Need in Durham to open a market-style food bank at Iroquois Park Sports Centre — a dignity-first model that gives clients agency to choose their own food. An idea that originated from one of Elizabeth's stakeholder roundtables. Now serves 260 clients per week.",
+      year: 2024,
+      category: "community",
+      displayOrder: 6,
+    },
+    {
+      title: "Mayor's Community Development Fund",
+      description: "Established and funded the Mayor's Community Development Fund, investing more than $30,000 in food security initiatives in 2024 alone — supporting local gardens, shelters, and food programs across Whitby.",
+      year: 2023,
+      category: "community",
+      displayOrder: 7,
+    },
+    {
+      title: "Elected Mayor of Whitby",
+      description: "Won the 2022 municipal election to become Mayor of Whitby, bringing 30 years of public service experience to the municipality's top office. Building on prior roles as school board trustee, local councillor, and regional councillor.",
+      year: 2022,
+      category: "public service",
+      displayOrder: 8,
+    },
+  ];
+  for (const a of elizabethAccomplishments) {
+    await prisma.officialAccomplishment.upsert({
+      where: { id: `acc-elizabeth-${a.displayOrder}` },
+      update: {},
+      create: { id: `acc-elizabeth-${a.displayOrder}`, officialId: officialElizabeth.id, ...a },
+    });
+  }
+
+  // ── Elizabeth Roy — Gallery (placeholders from source site) ─────────────
+  const elizabethGallery = [
+    { url: "https://static.wixstatic.com/media/e78eb6_c4a4eb3911ff42ef96370fab77a30beb~mv2.jpg", caption: "Mayor Elizabeth Roy", context: "campaign", altText: "Mayor Elizabeth Roy, Town of Whitby" },
+    { url: "https://static.wixstatic.com/media/e78eb6_5d87a49f3c31404b82735b0ac49ea99b~mv2.jpg", caption: "Connected to the community", context: "community", altText: "Elizabeth Roy at a community event in Whitby" },
+    { url: "https://static.wixstatic.com/media/e78eb6_ccf44a1bf6154373b8bc70f4e02a5dba~mv2.jpg", caption: "Council meeting", context: "council", altText: "Elizabeth Roy at a Whitby Council meeting" },
+    { url: "https://static.wixstatic.com/media/e78eb6_cc6c33681afa48379d5f429add713c82~mv2.jpg", caption: "Talk Budget with Mayor Roy", context: "community", altText: "Elizabeth Roy at a Talk Budget community session" },
+    { url: "https://static.wixstatic.com/media/e78eb6_171a940f3c704a28b06ae229c4f7aab5~mv2.jpg", caption: "Stakeholder roundtable", context: "community", altText: "Mayor Roy leading a community stakeholder roundtable" },
+    { url: "https://static.wixstatic.com/media/e78eb6_a726c33b5d194d6eaeb2d4ec97b4bdf6~mv2.png", caption: "Coffee with Mayor Roy", context: "community", altText: "Elizabeth Roy at a Coffee with Mayor Roy community event" },
+  ];
+  for (let i = 0; i < elizabethGallery.length; i++) {
+    await prisma.officialGalleryPhoto.upsert({
+      where: { id: `gal-elizabeth-${i + 1}` },
+      update: {},
+      create: { id: `gal-elizabeth-${i + 1}`, officialId: officialElizabeth.id, displayOrder: i + 1, isActive: true, ...elizabethGallery[i] },
+    });
+  }
+
+  // ── Elizabeth Roy — Posts (updates + op-eds) ─────────────────────────────
+  const elizabethPosts = [
+    {
+      id: "post-elizabeth-1",
+      postType: "announcement" as const,
+      title: "Hospital Planning Grant Secured — A Milestone for Whitby",
+      body: "In August 2024, the Province of Ontario approved the planning grant for a new hospital in Whitby. This is the result of years of advocacy — and thousands of Whitby residents who signed our 'Care Closer to Home' call-to-action and shared their stories. We are now focused on finalizing the land agreement with the Ministry of Transportation. This is not the finish line — it's the starting gun. But it proves what our community can accomplish when we speak with one voice.",
+      municipalScope: "whitby",
+      createdAt: new Date("2024-08-15"),
+    },
+    {
+      id: "post-elizabeth-2",
+      postType: "civic_update" as const,
+      title: "Community Strategic Plan — 95% of Action Items Complete or In Progress",
+      body: "When I ran for Mayor in 2022, creating a Community Strategic Plan was a top priority — Whitby hadn't had one in over 20 years. In 2023, over 8,500 residents shaped what became a 62-item action plan. Today, more than 95% of those items are complete or underway. We are on track to deliver all 62 before this four-year term ends. This is #YourPlanInAction.",
+      municipalScope: "whitby",
+      createdAt: new Date("2025-03-01"),
+    },
+    {
+      id: "post-elizabeth-3",
+      postType: "announcement" as const,
+      title: "Hospice Whitby Construction Underway — Eight Years in the Making",
+      body: "Construction has begun on Hospice Whitby – Roger Anderson House. This 10-bed palliative care facility will allow Whitby residents to spend their final days close to home, surrounded by family, with the care they deserve. I have advocated for this for more than eight years. Today, we break ground. Thank you to everyone who kept this cause alive.",
+      municipalScope: "whitby",
+      createdAt: new Date("2024-10-01"),
+    },
+    {
+      id: "post-elizabeth-4",
+      postType: "op_ed" as const,
+      title: "We're in the home stretch of this Whitby Council term — it's time to deliver",
+      body: "As we enter the final stretch of this four-year mandate, I want to be honest with Whitby residents about where we are and where we're going. We promised a hospital advocacy campaign. We delivered — and the province approved the planning grant. We promised a community plan shaped by residents. We delivered — 62 action items, 95% on track. We promised to revitalize our downtowns. We delivered — new festivals, a Brock Street redesign study, Station No. 3, and a food tour that put Whitby restaurants on the map. The work isn't done. But the direction is right.",
+      externalUrl: "https://www.durhamregion.com/life/we-re-in-the-home-stretch-of-this-whitby-council-term-it-s-time-to/article_dd9d15ed-0582-5ba9-be32-921071030f1e.html",
+      municipalScope: "whitby",
+      createdAt: new Date("2025-09-15"),
+    },
+    {
+      id: "post-elizabeth-5",
+      postType: "op_ed" as const,
+      title: "Whitby is moving to a ward system for voting — here's why",
+      body: "This fall, Whitby voters will elect their councillors by ward for the first time. I supported this change because I believe ward-based representation connects residents more directly to their elected officials. When you vote for someone who lives in your neighbourhood, represents your streets, and answers to your community specifically, accountability improves. I know there will be questions. I've written this piece to answer them directly.",
+      externalUrl: "https://www.durhamregion.com/life/whitby-mayor-explains-why-the-town-is-moving-to-a-ward-system-for-voting/article_99049fb8-b648-5244-828f-641ac6f1a2ae.html",
+      municipalScope: "whitby",
+      createdAt: new Date("2025-06-20"),
+    },
+  ];
+  for (const post of elizabethPosts) {
+    const { id, externalUrl, ...rest } = post;
+    await prisma.politicianPost.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id,
+        officialId: officialElizabeth.id,
+        authorName: "Elizabeth Roy",
+        isPublished: true,
+        ...(externalUrl ? { externalUrl } : {}),
+        ...rest,
+      },
+    });
+  }
+
+  // ── Elizabeth Roy — Q&A ("Because You Asked" series) ────────────────────
+  const elizabethQA = [
+    {
+      id: "qa-elizabeth-1",
+      question: "Which level of government is responsible for healthcare, schools, and local roads?",
+      answer: "This is one of the most common questions I receive. Canada has three levels of government, and each has distinct responsibilities. The federal government handles things like immigration, national defence, and federal taxation. The provincial government handles healthcare (hospitals, family doctors, mental health), education (elementary through university), highways, and social assistance. The Town of Whitby handles parks, libraries, garbage and green bin collection, recreation centres, fire services, bylaw enforcement, and local land use planning. Durham Region — our upper-tier municipality — handles transit, paramedics, water and sewer, housing support, and regional roads. When you contact my office about something that isn't in the Town's jurisdiction, we'll always try to point you to the right place.",
+      answeredAt: new Date("2025-02-01"),
+      upvotes: 34,
+    },
+    {
+      id: "qa-elizabeth-2",
+      question: "What's happening with the Winchester Road construction?",
+      answer: "Winchester Road (Regional Road 3) is being widened by the Region of Durham — not the Town of Whitby — from Durham Street to east of Watford/Anderson Street. The work includes widening the road to add a centre two-way left turn lane, building a 3-metre multi-use pathway on the south side, rehabilitating and widening the Lynde Creek bridge, and installing new traffic signals. Businesses along the route remain accessible throughout construction. The project is being completed in phases through 2025. For project updates, contact Robert Baldasaro at the Region: 365-688-4327.",
+      answeredAt: new Date("2025-02-06"),
+      upvotes: 21,
+    },
+    {
+      id: "qa-elizabeth-3",
+      question: "What is the Downtown Whitby BIA and what does it do for businesses?",
+      answer: "A Business Improvement Area (BIA) is a local board that allows business owners and commercial property owners to work together with municipal support to improve and promote their area. The Downtown Whitby BIA is established under the Municipal Act and funded through a mandatory levy on businesses within the designated zone. They have two full-time staff, a volunteer Board, and two committees. Signature events include the Summer Art Series, Christmas Market, and Breakfast with Santa. Their mandate is 'feet on the street and dollars in the door.' More at whitbybia.org.",
+      answeredAt: new Date("2025-02-12"),
+      upvotes: 15,
+    },
+    {
+      id: "qa-elizabeth-4",
+      question: "What is happening with Rowe House on Front Street?",
+      answer: "James Rowe House is the home of Whitby's first mayor — a historic frame house built in 1856. The Town assumed ownership in March 2023 and Council approved $400,000 for essential repairs in November 2023. We issued an Expression of Interest for a commercial adaptive reuse (food and beverage destination) in April 2024. Exterior renovations — including new siding, windows, roofing, and decking — are underway. The goal is to see this heritage building become a vibrant public destination in Downtown Whitby. I first worked on Rowe House back in 2016 with the Rotary Club of Whitby Sunrise, so this is a project close to my heart.",
+      answeredAt: new Date("2025-02-19"),
+      upvotes: 19,
+    },
+    {
+      id: "qa-elizabeth-5",
+      question: "How do I get involved with community gardening in Whitby?",
+      answer: "Whitby has several community gardens where residents grow fruits, vegetables, herbs, and flowers together. Established gardens include the Whitby Ajax Garden Project, St. John's Port Whitby Community Garden, Hebron Community Garden, and King Street Cooperative Community Garden. To apply for a plot, visit whitby.ca/en/play/community-gardens.aspx. The newest garden — Mannahelp Community Garden near the Whitby Civic Recreation Complex — is in final approval. The Mayor's Community Development Fund has invested over $35,000 in community gardening initiatives since 2023 to help expand access.",
+      answeredAt: new Date("2025-02-22"),
+      upvotes: 27,
+    },
+    {
+      id: "qa-elizabeth-6",
+      question: "What is being done about Whitby Harbour contamination?",
+      answer: "Whitby Harbour is federal property owned by Fisheries and Oceans Canada (DFO) — the Town leases it for the Marina, and a portion is sub-leased to the Whitby Yacht Club. The harbour sediment contains elevated levels of dioxins and furans traced to an upstream property on Pringle Creek. DFO is conducting hydraulic dredging of the contaminated sediment, placing it in a temporary de-watering area at Victoria Field, then trucking it to a licensed disposal facility. Work started in fall 2024 and is expected to be complete by Fall 2026. For questions, contact DFO at DFO.OPInfoWhitby.MPO@dfo-mpo.gc.ca or 1-833-551-2702.",
+      answeredAt: new Date("2025-02-26"),
+      upvotes: 31,
+    },
+    {
+      id: "qa-elizabeth-7",
+      question: "How does the new parking penalty system work in Whitby?",
+      answer: "In September 2024, Whitby introduced an Administrative Penalty System (APS) for parking violations — replacing the previous court-based process. Under APS, the Town manages appeals directly, which has cut wait times from months or years down to a few weeks. Notices can be placed on vehicles, delivered by hand, or mailed. The Town also uses licence plate recognition technology in school zones, which allows one officer to monitor multiple schools simultaneously. The new system includes escalating penalties to discourage repeat offenses — the same model used by many Ontario municipalities.",
+      answeredAt: new Date("2025-03-01"),
+      upvotes: 22,
+    },
+    {
+      id: "qa-elizabeth-8",
+      question: "How does garbage and recycling work in Whitby? My green bin schedule changed.",
+      answer: "Garbage in Whitby is collected every other week — maximum 4 bags, with additional bags requiring bag tags (5 for $12.50, available at Town facilities or online). Your green bin (organics) is collected weekly, and as of July 1, 2024, it now accepts diapers, pet waste, and sanitary products. Blue box recycling changed significantly on July 1, 2024 — it is no longer managed by Durham Region, but by Circular Materials (a national not-for-profit representing producers/importers), with collection by GFL Environmental Inc. For blue box questions: gflenv.com/canadarecycles or 1-855-577-4351. Use the Whitby Waste Wizard tool at whitby.ca to look up how to dispose of any specific item.",
+      answeredAt: new Date("2025-03-10"),
+      upvotes: 41,
+    },
+  ];
+  for (const q of elizabethQA) {
+    await prisma.publicQuestion.upsert({
+      where: { id: q.id },
+      update: {},
+      create: {
+        officialId: officialElizabeth.id,
+        userId: admin.id,
+        isPublic: true,
+        ...q,
+      },
+    });
+  }
+
+  // ── Elizabeth Roy — Approval Rating ─────────────────────────────────────
+  await prisma.approvalRating.upsert({
+    where: { officialId: officialElizabeth.id },
+    update: {},
+    create: {
+      officialId: officialElizabeth.id,
+      score: 82,
+      netScore: 64,
+      totalSignals: 1847,
+      positiveCount: 1514,
+      negativeCount: 184,
+      neutralCount: 149,
+      marginOfError: 2.3,
+      velocity: 3.2,
+    },
+  });
+
+  console.log("✅ Elizabeth Roy profile seeded (priorities, accomplishments, posts, Q&A, approval rating)");
+
   // ── Campaign ───────────────────────────────────────────────────────────────
   const campaign = await prisma.campaign.upsert({
     where: { slug: "ward-12-2026" }, update: {},

@@ -40,12 +40,28 @@ npx prisma db push
   - `MpacAddress` model (Ontario Road Network address points)
   - `AddressPreList` model (per-campaign address records)
   - `EnrichmentRun` + `EnrichmentResult` models (voter file enrichment tracking)
+  - `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto` models (Whitby profile enrichment — needed for Maleeha Shahid and Elizabeth Roy profiles)
+  - `tagline`, `committeeRoles`, `profileMode` columns on `Official` table
+  - `externalUrl` column on `PoliticianPost` table (op-ed link support)
+  - `op_ed` value in `PoliticianPostType` enum
 
   Steps:
   1. Open your terminal in the poll-city project folder
   2. Run: `npx prisma db push`
   3. Expected output: "Your database is now in sync with your Prisma schema"
   4. Test: go to /compliance — it should load (not 500)
+
+- [ ] **3b. ⚠️ Run `npx prisma db seed` to load Whitby profiles** (after db push)
+
+  The seed data for Maleeha Shahid and Elizabeth Roy is in prisma/seed.ts. Run it after db push to load their profiles, priorities, accomplishments, Q&A, and approval ratings:
+
+  ```bash
+  npx prisma db seed
+  ```
+
+  After seeding, the profiles will be live at:
+  - `/social/politicians/off-whitby-maleeha` — Maleeha Shahid
+  - `/social/politicians/off-whitby-elizabeth` — Elizabeth Roy
 
 - [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 

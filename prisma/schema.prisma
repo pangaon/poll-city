@@ -1170,6 +1170,10 @@ model Official {
   externalSource     String? // "represent_opennorth" | "manual" | "open_north"
   termStart          DateTime?
   termEnd            DateTime?
+  // PCS profile enrichment fields
+  tagline            String?  // Short hero statement shown on profile
+  committeeRoles     Json?    // [{role, committee, level, year}]
+  profileMode        String   @default("officeholder") // "officeholder" | "campaign"
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -1186,6 +1190,9 @@ model Official {
   newsletterCampaigns   NewsletterCampaign[]
   politicianPosts       PoliticianPost[]
   socialNotifications   SocialNotification[]
+  priorities            OfficialPriority[]
+  accomplishments       OfficialAccomplishment[]
+  galleryPhotos         OfficialGalleryPhoto[]
 
   @@index([level, district])
   @@index([postalCodes])
@@ -4956,6 +4963,66 @@ model PromiseTracker {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PCS PROFILE ENRICHMENT — priorities, accomplishments, gallery
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A priority / issue area on an official's public profile.
+model OfficialPriority {
+  id          String   @id @default(cuid())
+  officialId  String
+  title       String
+  body        String   @db.Text
+  icon        String?  // lucide icon name or emoji
+  category    String?  // "healthcare" | "housing" | "economy" | "environment" | "infrastructure" | "community"
+  displayOrder Int     @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId, displayOrder])
+  @@map("official_priorities")
+}
+
+/// A career accomplishment / service achievement on an official's public profile.
+model OfficialAccomplishment {
+  id           String   @id @default(cuid())
+  officialId   String
+  title        String
+  description  String   @db.Text
+  year         Int?     // year of accomplishment (nullable for ongoing)
+  category     String?  // "advocacy" | "policy" | "community" | "healthcare" | "economy" | "housing"
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId, displayOrder])
+  @@map("official_accomplishments")
+}
+
+/// A photo gallery entry on an official's public profile.
+model OfficialGalleryPhoto {
+  id           String   @id @default(cuid())
+  officialId   String
+  url          String   // source URL or uploaded URL
+  caption      String?
+  context      String?  // "community" | "council" | "campaign" | "event"
+  altText      String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  official Official @relation(fields: [officialId], references: [id], onDelete: Cascade)
+
+  @@index([officialId, displayOrder])
+  @@map("official_gallery_photos")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PARTY ENTERPRISE — organization hierarchy, nominations, AGM voting
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -8688,6 +8755,7 @@ enum PoliticianPostType {
   civic_update
   bill_update
   project_update
+  op_ed
 }
 
 enum CivicGroupTopic {
@@ -8712,6 +8780,7 @@ model PoliticianPost {
   body           String             @db.Text
   pollId         String? // link to existing Poll if postType = poll
   imageUrl       String?
+  externalUrl    String? // for op_ed posts — link to original publication
   municipalScope String? // "toronto" | "brampton" etc. for feed filtering
   isPublished    Boolean            @default(true)
   createdAt      DateTime           @default(now())

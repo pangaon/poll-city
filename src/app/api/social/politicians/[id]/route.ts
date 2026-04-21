@@ -33,6 +33,9 @@ export async function GET(
       party: true,
       partyName: true,
       bio: true,
+      tagline: true,
+      committeeRoles: true,
+      profileMode: true,
       email: true,
       phone: true,
       website: true,
@@ -42,6 +45,7 @@ export async function GET(
       twitter: true,
       facebook: true,
       instagram: true,
+      linkedIn: true,
       province: true,
       termStart: true,
       termEnd: true,
@@ -91,6 +95,7 @@ export async function GET(
           body: true,
           pollId: true,
           imageUrl: true,
+          externalUrl: true,
           createdAt: true,
           poll: {
             select: {
@@ -158,6 +163,46 @@ export async function GET(
       status: true,
       evidence: true,
       _count: { select: { trackers: true } },
+    },
+  });
+
+  // Priorities — ordered by displayOrder
+  const priorities = await prisma.officialPriority.findMany({
+    where: { officialId: params.id, isActive: true },
+    orderBy: { displayOrder: "asc" },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      icon: true,
+      category: true,
+    },
+  });
+
+  // Accomplishments — ordered by displayOrder
+  const accomplishments = await prisma.officialAccomplishment.findMany({
+    where: { officialId: params.id, isActive: true },
+    orderBy: { displayOrder: "asc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      year: true,
+      category: true,
+    },
+  });
+
+  // Gallery photos — ordered by displayOrder, take 12 for initial render
+  const galleryPhotos = await prisma.officialGalleryPhoto.findMany({
+    where: { officialId: params.id, isActive: true },
+    orderBy: { displayOrder: "asc" },
+    take: 12,
+    select: {
+      id: true,
+      url: true,
+      caption: true,
+      context: true,
+      altText: true,
     },
   });
 
@@ -280,6 +325,9 @@ export async function GET(
         evidence: p.evidence,
         trackerCount: p._count.trackers,
       })),
+      priorities,
+      accomplishments,
+      galleryPhotos,
       isFollowing,
       notificationPreference,
       campaignConsents,
