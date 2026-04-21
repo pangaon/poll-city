@@ -101,21 +101,30 @@ async function fetchOsm(municipality: string): Promise<AddrRecord[]> {
   // 1. Geocode municipality to bounding box via Nominatim
   const geoRes = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(municipality + ", Ontario, Canada")}&format=json&limit=1`,
-    { headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)" } }
+    {
+      headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)" },
+      signal: AbortSignal.timeout(10000),
+    }
   );
+  if (!geoRes.ok) throw new Error(`Could not geocode "${municipality}" — try a simpler name like "Whitby" instead of "Town of Whitby".`);
   const geoData = (await geoRes.json()) as Array<{ boundingbox: string[] }>;
-  if (!geoData.length) return [];
+  if (!geoData.length) throw new Error(`Municipality "${municipality}" not found in Ontario. Try a simpler name (e.g. "Whitby" instead of "Town of Whitby").`);
 
   const [south, north, west, east] = geoData[0].boundingbox.map(Number);
 
   // 2. Query Overpass for address nodes/ways inside the bbox
-  const overpassQuery = `[out:json][timeout:60];(node["addr:housenumber"](${south},${west},${north},${east});way["addr:housenumber"](${south},${west},${north},${east}););out center 1000;`;
+  const overpassQuery = `[out:json][timeout:55];(node["addr:housenumber"](${south},${west},${north},${east});way["addr:housenumber"](${south},${west},${north},${east}););out center 1000;`;
 
   const ovRes = await fetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: `data=${encodeURIComponent(overpassQuery)}`,
+    signal: AbortSignal.timeout(60000),
   });
+  if (!ovRes.ok) {
+    if (ovRes.status === 429) throw new Error("OpenStreetMap is busy — please wait 60 seconds and try again.");
+    throw new Error(`OpenStreetMap returned HTTP ${ovRes.status} — please try again in a moment.`);
+  }
   const ovData = (await ovRes.json()) as {
     elements: Array<{
       id: number;
