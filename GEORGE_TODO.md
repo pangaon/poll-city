@@ -25,7 +25,7 @@ npx prisma db push
 - [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync"
 - [ ] **3. ⚠️ Run `npx prisma db push` AGAIN — NEW schema additions since item 2**
 
-  Since the last `db push`, three new schema additions have been committed. These features CRASH in production until you run this:
+  Since the last `db push`, new schema additions have been committed. These features CRASH in production until you run this:
 
   ```bash
   npx prisma db push
@@ -35,12 +35,46 @@ npx prisma db push
   - `intelligenceEnabled` column on Campaign (Analytics Historical tab crashes without it)
   - `ConsentRecord` model + 3 enums (CASL Compliance page and email consent filter crash without it)
   - `MuniScrapeRun` + `RawMuniCandidate` models (Scraper phase 1)
+  - `MunicipalityAddressCache` model (Address Pre-List Generator cache)
+  - `DisseminationArea` model (StatsCan 2021 DA demographics)
+  - `MpacAddress` model (Ontario Road Network address points)
 
   Steps:
   1. Open your terminal in the poll-city project folder
   2. Run: `npx prisma db push`
   3. Expected output: "Your database is now in sync with your Prisma schema"
   4. Test: go to /compliance — it should load (not 500)
+
+- [ ] **4. (Optional — run once) Import MPAC Ontario address points**
+
+  This populates the `MpacAddress` table with Ontario Road Network addresses.
+  Required for the `mpac` source in the Address Pre-List Generator.
+  OSM source works without this — MPAC adds official address data.
+
+  ⚠️ Large download (2–4 GB). Takes 30–90 min. Safe to re-run.
+
+  Steps:
+  1. Make sure `npx prisma db push` (item 3 above) has been run first
+  2. Run: `npx tsx scripts/import-mpac.ts`
+  3. Expected output: "Total inserted: X,XXX,XXX"
+
+- [ ] **5. (Optional — run once) Import StatsCan 2021 DA boundaries + demographics**
+
+  Populates `DisseminationArea` with Census 2021 income, age, language, renter data.
+  Required for demographic enrichment on address pre-lists.
+  Address pre-lists work without this — demographics add the enrichment layer.
+
+  Steps:
+  1. Run: `npx tsx scripts/import-statcan-da.ts`
+  2. If the script says "GeoJSON not found", run:
+     ```
+     cd .statcan-cache/boundaries
+     npx mapshaper lda_000b21a_e.shp -o format=geojson lda_000b21a_e.geojson
+     cd ../..
+     npx tsx scripts/import-statcan-da.ts
+     ```
+  3. Census profile CSV must be downloaded manually from StatsCan if you want income/age/language data.
+     The script prints exact instructions when it detects the file is missing.
 
 ---
 

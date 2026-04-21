@@ -8868,3 +8868,62 @@ model RawMuniCandidate {
   @@index([office])
   @@map("raw_muni_candidates")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADDRESS PRE-LIST GENERATOR
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Per-municipality address cache — avoids re-querying OSM/MPAC/StatsCan on every request
+model MunicipalityAddressCache {
+  id           String   @id @default(cuid())
+  municipality String
+  source       String   // "osm" | "mpac" | "statcan"
+  addressJson  Json     // AddrRecord[]
+  recordCount  Int
+  bbox         Json?    // { south, north, west, east }
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@unique([municipality, source])
+  @@index([municipality])
+  @@index([expiresAt])
+  @@map("municipality_address_cache")
+}
+
+/// Statistics Canada 2021 Dissemination Area demographics — one row per DA
+model DisseminationArea {
+  daCode        String  @id  // e.g. "35180118"
+  municipality  String
+  province      String  @default("ON")
+  medianIncome  Int     @default(0)
+  medianAge     Float   @default(0)
+  englishPct    Float   @default(0)
+  frenchPct     Float   @default(0)
+  immigrantPct  Float   @default(0)
+  renterPct     Float   @default(0)
+  population    Int     @default(0)
+  boundaryGeoJson Json?  // GeoJSON Feature (Polygon/MultiPolygon) for spatial join
+  updatedAt     DateTime @updatedAt
+
+  @@index([municipality, province])
+  @@index([province])
+  @@map("dissemination_areas")
+}
+
+/// Ontario Road Network address points (MPAC) — populated by scripts/import-mpac.ts
+model MpacAddress {
+  id           String @id @default(cuid())
+  civic        Int
+  street       String
+  municipality String
+  province     String @default("ON")
+  postalCode   String @default("")
+  lat          Float  @default(0)
+  lng          Float  @default(0)
+  fullAddress  String @default("")
+
+  @@index([municipality])
+  @@index([postalCode])
+  @@index([street])
+  @@map("mpac_addresses")
+}
