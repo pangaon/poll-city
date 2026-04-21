@@ -26,8 +26,12 @@ const MPAC_URL =
 const CACHE_PATH = path.join(process.cwd(), ".mpac-cache.csv");
 const BATCH_SIZE = 500;
 
-async function downloadFile(url: string, dest: string): Promise<void> {
-  console.log(`Downloading MPAC address file…`);
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function downloadFile(url: string, dest: string, attempt = 1): Promise<void> {
+  console.log(`Downloading MPAC address file… (attempt ${attempt}/4)`);
   console.log(`URL: ${url}`);
   console.log(`Destination: ${dest}`);
 
@@ -35,36 +39,67 @@ async function downloadFile(url: string, dest: string): Promise<void> {
     const file = createWriteStream(dest);
     const proto = url.startsWith("https") ? https : http;
 
-    const request = (redirectUrl: string) => {
-      proto.get(redirectUrl, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          file.close();
-          request(res.headers.location!);
-          return;
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode}`));
-          return;
-        }
-        const total = parseInt(res.headers["content-length"] ?? "0", 10);
-        let downloaded = 0;
-        res.on("data", (chunk: Buffer) => {
-          downloaded += chunk.length;
-          if (total > 0) {
-            const pct = ((downloaded / total) * 100).toFixed(1);
-            process.stdout.write(`\r  ${pct}% (${(downloaded / 1024 / 1024).toFixed(0)} MB)`);
+    const request = (redirectUrl: string, currentProto: typeof https | typeof http) => {
+      (currentProto as typeof https).get(
+        redirectUrl,
+        {
+          headers: {
+            "User-Agent": "PollCity/1.0 (contact@poll.city) Ontario open-data import",
+            "Accept": "text/csv, application/csv, */*",
+          },
+        },
+        (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            const loc = res.headers.location!;
+            file.close();
+            const nextProto = loc.startsWith("https") ? https : http;
+            const newFile = createWriteStream(dest);
+            request(loc, nextProto);
+            return;
           }
-        });
-        res.pipe(file);
-        res.on("end", () => {
-          console.log("\n  Download complete.");
-          resolve();
-        });
-        res.on("error", reject);
-      });
+
+          if (res.statusCode === 429 || res.statusCode === 503) {
+            file.close();
+            const retryAfter = parseInt(res.headers["retry-after"] ?? "0", 10);
+            const wait = retryAfter > 0 ? retryAfter * 1000 : Math.pow(2, attempt) * 5000;
+            if (attempt >= 4) {
+              reject(new Error(
+                `HTTP ${res.statusCode} — Ontario open data portal is rate-limiting bulk downloads.\n` +
+                `Try again in a few minutes, or download the file manually:\n` +
+                `  URL: ${MPAC_URL}\n` +
+                `  Save to: ${CACHE_PATH}\n` +
+                `Then re-run this script.`
+              ));
+              return;
+            }
+            console.log(`  HTTP ${res.statusCode} — waiting ${(wait / 1000).toFixed(0)}s before retry…`);
+            sleep(wait).then(() => downloadFile(url, dest, attempt + 1).then(resolve).catch(reject));
+            return;
+          }
+
+          if (res.statusCode !== 200) {
+            file.close();
+            reject(new Error(`HTTP ${res.statusCode} for ${redirectUrl}`));
+            return;
+          }
+
+          const total = parseInt(res.headers["content-length"] ?? "0", 10);
+          let downloaded = 0;
+          res.on("data", (chunk: Buffer) => {
+            downloaded += chunk.length;
+            if (total > 0) {
+              const pct = ((downloaded / total) * 100).toFixed(1);
+              process.stdout.write(`\r  ${pct}% (${(downloaded / 1024 / 1024).toFixed(0)} MB)`);
+            }
+          });
+          res.pipe(file);
+          res.on("end", () => { console.log("\n  Download complete."); resolve(); });
+          res.on("error", (e) => { file.close(); reject(e); });
+        }
+      ).on("error", (e) => { file.close(); reject(e); });
     };
 
-    request(url);
+    request(url, https);
     file.on("error", reject);
   });
 }

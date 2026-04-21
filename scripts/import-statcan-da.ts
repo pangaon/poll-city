@@ -17,6 +17,7 @@ import * as path from "path";
 import * as https from "https";
 import * as http from "http";
 import * as unzipper from "unzipper";
+import { execSync } from "child_process";
 import Papa from "papaparse";
 
 const prisma = new PrismaClient();
@@ -242,16 +243,84 @@ async function flushDaBatch(
 
 async function unzipBoundary(zipPath: string, outDir: string): Promise<string> {
   console.log("  Extracting boundary zip…");
-  await fs.createReadStream(zipPath)
-    .pipe(unzipper.Extract({ path: outDir }))
-    .promise();
+
+  // Try platform-native extraction first (more reliable for large ZIPs)
+  const isWindows = process.platform === "win32";
+  let extracted = false;
+
+  if (isWindows) {
+    try {
+      console.log("  Using PowerShell Expand-Archive (Windows)…");
+      execSync(
+        `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${outDir}' -Force"`,
+        { stdio: "inherit" }
+      );
+      extracted = true;
+    } catch (e) {
+      console.warn("  PowerShell extraction failed, trying unzipper fallback…");
+    }
+  }
+
+  if (!extracted) {
+    // Try unzipper (works on Linux/Mac; may fail on some large Windows ZIPs)
+    try {
+      await fs.createReadStream(zipPath)
+        .pipe(unzipper.Extract({ path: outDir }))
+        .promise();
+      extracted = true;
+    } catch (e) {
+      console.warn("  unzipper extraction failed:", (e as Error).message);
+    }
+  }
+
+  if (!extracted) {
+    console.error("\n  ❌ ZIP extraction failed with both methods.");
+    console.error("  Try extracting manually:");
+    if (isWindows) {
+      console.error(`  powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${outDir}' -Force"`);
+    } else {
+      console.error(`  unzip '${zipPath}' -d '${outDir}'`);
+    }
+    return "";
+  }
 
   const files = fs.readdirSync(outDir);
+  console.log(`  Extracted ${files.length} files: ${files.slice(0, 6).join(", ")}${files.length > 6 ? "…" : ""}`);
+
   const geojson = files.find((f) => f.endsWith(".geojson") || f.endsWith(".json"));
   if (geojson) return path.join(outDir, geojson);
 
-  // If only shapefile extracted, note that and return empty string (needs shapefile pkg)
-  console.warn("  No GeoJSON found in zip. Boundary import skipped.");
+  // StatsCan DA ZIP contains shapefiles — need mapshaper to convert
+  const shp = files.find((f) => f.endsWith(".shp"));
+  if (shp) {
+    const shpBase = path.basename(shp, ".shp");
+    const geojsonOut = path.join(outDir, `${shpBase}.geojson`);
+
+    console.log(`\n  Found shapefile: ${shp}`);
+    console.log("  Converting to GeoJSON with mapshaper…");
+
+    try {
+      execSync(
+        `npx mapshaper "${path.join(outDir, shp)}" -o format=geojson "${geojsonOut}"`,
+        { stdio: "inherit", cwd: process.cwd() }
+      );
+      if (fs.existsSync(geojsonOut)) {
+        console.log(`  ✅ Converted to: ${geojsonOut}`);
+        return geojsonOut;
+      }
+    } catch {
+      console.warn("  mapshaper conversion failed.");
+    }
+
+    console.warn("\n  Automatic conversion failed. Run this manually then re-run the script:");
+    console.warn(`  cd "${outDir}"`);
+    console.warn(`  npx mapshaper "${shp}" -o format=geojson "${shpBase}.geojson"`);
+    console.warn(`  cd "${process.cwd()}"`);
+    console.warn("  npx tsx scripts/import-statcan-da.ts");
+    return "";
+  }
+
+  console.warn("  No GeoJSON or shapefile found in extracted archive.");
   return "";
 }
 
@@ -266,10 +335,27 @@ async function main() {
 
   // 1. Download boundary file
   console.log("Step 1: DA Boundaries");
+
+  // Delete corrupt/incomplete ZIPs (< 10 MB is clearly truncated — full file is ~200 MB)
+  if (fs.existsSync(boundaryZip)) {
+    const { size } = fs.statSync(boundaryZip);
+    if (size < 10 * 1024 * 1024) {
+      console.log(`  Deleting incomplete ZIP (${(size / 1024 / 1024).toFixed(1)} MB) — will re-download.`);
+      fs.unlinkSync(boundaryZip);
+    }
+  }
+
   await downloadFile(BOUNDARY_URL, boundaryZip);
 
   if (!fs.existsSync(boundaryDir)) {
     fs.mkdirSync(boundaryDir, { recursive: true });
+  }
+
+  // Delete any existing partial extraction so we start fresh
+  const existingFiles = fs.existsSync(boundaryDir) ? fs.readdirSync(boundaryDir) : [];
+  if (existingFiles.length > 0 && !existingFiles.some((f) => f.endsWith(".geojson") || f.endsWith(".json") || f.endsWith(".shp"))) {
+    console.log("  Clearing incomplete extraction directory…");
+    for (const f of existingFiles) fs.unlinkSync(path.join(boundaryDir, f));
   }
 
   const geojsonPath = await unzipBoundary(boundaryZip, boundaryDir);
