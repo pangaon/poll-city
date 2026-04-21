@@ -24,6 +24,7 @@ import {
   AreaChart, Area, ResponsiveContainer, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar,
 } from "recharts";
+import MapGL, { Marker } from "react-map-gl/maplibre";
 import { cn } from "@/lib/utils";
 import {
   TC, DARK, LIGHT, partyColor, PARTY_COLOR,
@@ -1260,6 +1261,7 @@ export function SocialCommand() {
   const [mainTab, setMainTab] = useState<"field" | "command">("field");
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [rawStops, setRawStops] = useState<Stop[]>([]);
   const [stopIdx, setStopIdx] = useState(0);
   const [claimedSide, setClaimedSide] = useState<string | null>(null);
   const [teamData, setTeamData] = useState(INITIAL_TEAM);
@@ -1394,11 +1396,21 @@ export function SocialCommand() {
   const setPersonField = (pid: number, fid: string, val: PersonStatus["fieldValues"][string]) =>
     setPersonStatuses(p => ({ ...p, [pid]: { ...p[pid] ?? { contact: null, notPresent: null, fieldValues: {} }, fieldValues: { ...p[pid]?.fieldValues, [fid]: val } } }));
 
+  const filterStopsBySide = (raw: Stop[], side: string | null): Stop[] => {
+    if (!side || side === "full") return raw;
+    return raw.filter(s => {
+      const n = parseInt(s.address.split(" ")[0], 10);
+      return side === "odd" ? n % 2 !== 0 : n % 2 === 0;
+    });
+  };
+
   const acceptMission = (m: Mission) => {
     setActiveMission(m);
     const sliceEnd = Math.min(m.end, ALL_STOPS.length);
     const sliceStart = Math.min(m.start, sliceEnd);
-    setStops(ALL_STOPS.slice(sliceStart, sliceEnd).map(s => ({ ...s, status: "pending" })));
+    const raw = ALL_STOPS.slice(sliceStart, sliceEnd).map(s => ({ ...s, status: "pending" }));
+    setRawStops(raw);
+    setStops(raw);
     setStopIdx(0); setClaimedSide(null); setLitDropMode(false);
     setTeamData(INITIAL_TEAM.map(t => ({ ...t, side: null })));
     resetStop();
@@ -1408,6 +1420,10 @@ export function SocialCommand() {
     const ns = claimedSide === side ? null : side;
     setClaimedSide(ns);
     setTeamData(prev => prev.map(m => m.id === "t1" ? { ...m, side: ns } : m));
+    const filtered = filterStopsBySide(rawStops, ns).map(s => ({ ...s, status: "pending" }));
+    setStops(filtered);
+    setStopIdx(0);
+    resetStop();
   };
 
   /* ─── STEP: DOOR ─── */
@@ -1946,16 +1962,24 @@ export function SocialCommand() {
         </div>
       </div>
 
-      <div className="relative flex-shrink-0 overflow-hidden" style={{ height: atDoor ? 80 : 160, backgroundColor: isDark ? "#090D24" : T.deep, transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
-        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `linear-gradient(${T.gridLine} 1px,transparent 1px),linear-gradient(90deg,${T.gridLine} 1px,transparent 1px)`, backgroundSize: "40px 40px" }} />
-        <div className="absolute inset-0 flex items-center justify-center gap-6">
-          <Navigation size={20} className="-rotate-45" style={{ color: T.accent, filter: isDark ? `drop-shadow(0 0 10px ${T.accent})` : undefined }} />
-          {currentStop && (
-            <div className="flex flex-col items-center gap-1">
-              <MapPin size={18} style={{ color: "#FF3B30" }} />
-              <div className="text-[8px] font-black px-2 py-0.5 rounded whitespace-nowrap" style={{ backgroundColor: T.card, color: T.text, border: `1px solid ${T.border}` }}>{currentStop.address}</div>
-            </div>
-          )}
+      <div className="relative flex-shrink-0 overflow-hidden" style={{ height: atDoor ? 80 : 160, transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
+        <div className="absolute inset-0">
+          <MapGL
+            initialViewState={{ longitude: -79.3732 + (stopIdx * 0.0008), latitude: 43.6612 + (stopIdx * 0.0004), zoom: 16 }}
+            key={`map-${stopIdx}`}
+            mapStyle="https://tiles.openfreemap.org/styles/liberty"
+            style={{ width: "100%", height: "100%" }}
+            attributionControl={false}
+            interactive={false}
+            reuseMaps={false}
+          >
+            <Marker longitude={-79.3732 + (stopIdx * 0.0008)} latitude={43.6612 + (stopIdx * 0.0004)} anchor="bottom">
+              <MapPin size={22} style={{ color: "#FF3B30", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }} />
+            </Marker>
+          </MapGL>
+        </div>
+        <div className="absolute top-3 left-3 z-10">
+          <Navigation size={18} className="-rotate-45" style={{ color: T.accent, filter: isDark ? `drop-shadow(0 0 8px ${T.accent})` : undefined }} />
         </div>
         <div className="absolute top-2 left-2 right-2">
           <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg" style={{ backgroundColor: isDark ? "rgba(5,10,31,0.8)" : "rgba(255,255,255,0.85)", border: `1px solid ${T.border}` }}>
