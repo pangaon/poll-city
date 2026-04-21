@@ -20,10 +20,20 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as GeneratePrelistRequest;
-    const { municipality, source, postalFrom, postalTo } = body;
+    const { municipality, source, postalFrom, postalTo, campaignId } = body;
 
     if (!municipality || !source || !["osm", "mpac", "statcan"].includes(source)) {
       return NextResponse.json({ error: "municipality and source required" }, { status: 400 });
+    }
+
+    // Verify campaign membership when campaignId is provided
+    if (campaignId) {
+      const membership = await prisma.membership.findFirst({
+        where: { userId: session.user.id, campaignId, role: { not: "VIEWER" } },
+      });
+      if (!membership) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     // Check cache first
@@ -37,58 +47,81 @@ export async function POST(req: NextRequest) {
       // Table may not exist yet — skip cache
     }
 
+    let records: AddrRecord[];
+    let fromCache = false;
+
     if (cached && cached.expiresAt > now) {
-      return NextResponse.json({
-        records: cached.addressJson as unknown as AddrRecord[],
-        count: cached.recordCount,
-        source,
-        cached: true,
-      });
-    }
-
-    let records: AddrRecord[] = [];
-
-    if (source === "osm") {
-      records = await fetchOsm(municipality);
-    } else if (source === "mpac") {
-      records = await fetchMpac(municipality, postalFrom, postalTo);
+      records = cached.addressJson as unknown as AddrRecord[];
+      fromCache = true;
     } else {
-      records = await fetchStatcan(municipality);
+      if (source === "osm") {
+        records = await fetchOsm(municipality);
+      } else if (source === "mpac") {
+        records = await fetchMpac(municipality, postalFrom, postalTo);
+      } else {
+        records = await fetchStatcan(municipality);
+      }
+
+      // Attach DA demographics via spatial join (turf, no PostGIS required)
+      records = await attachDemographics(records, municipality);
+
+      if (records.length === 0) {
+        return NextResponse.json(
+          { error: `No addresses found for "${municipality}" via ${source}. Try a different municipality name (e.g. "Whitby" instead of "Town of Whitby").` },
+          { status: 404 }
+        );
+      }
+
+      const expiresAt = new Date(now.getTime() + TTL[source] * 24 * 60 * 60 * 1000);
+      const bbox = source === "osm" ? computeBbox(records) : null;
+      const jsonRecords = records as unknown as Prisma.InputJsonValue;
+      const jsonBbox = bbox as Prisma.InputJsonValue | null;
+
+      try {
+        await prisma.municipalityAddressCache.upsert({
+          where: { municipality_source: { municipality, source } },
+          create: {
+            municipality, source, addressJson: jsonRecords,
+            recordCount: records.length, bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
+          },
+          update: {
+            addressJson: jsonRecords, recordCount: records.length,
+            bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
+          },
+        });
+      } catch {
+        // Cache write failed (table may not exist) — still return results
+      }
     }
 
-    // Attach DA demographics via spatial join (turf, no PostGIS required)
-    records = await attachDemographics(records, municipality);
-
-    if (records.length === 0) {
-      return NextResponse.json(
-        { error: `No addresses found for "${municipality}" via ${source}. Try a different municipality name (e.g. "Whitby" instead of "Town of Whitby").` },
-        { status: 404 }
-      );
+    // Persist to campaign's AddressPreList so the map can display them
+    if (campaignId && records.length > 0) {
+      try {
+        await prisma.addressPreList.deleteMany({ where: { campaignId, source } });
+        await prisma.addressPreList.createMany({
+          data: records.map((r) => ({
+            campaignId,
+            civicNum: r.civic,
+            street: r.street,
+            unit: r.unit ?? null,
+            postalCode: r.postalCode,
+            pollDivId: r.pollDiv,
+            daCode: r.daCode,
+            lat: r.lat,
+            lng: r.lng,
+            households: r.households,
+            daMedianIncome: r.daMedianIncome || null,
+            daMedianAge: r.daMedianAge || null,
+            daLangPrimary: r.daLangPrimary || null,
+            source,
+          })),
+        });
+      } catch {
+        // AddressPreList table may not exist in prod yet — still return results
+      }
     }
 
-    const expiresAt = new Date(now.getTime() + TTL[source] * 24 * 60 * 60 * 1000);
-    const bbox = source === "osm" ? computeBbox(records) : null;
-
-    const jsonRecords = records as unknown as Prisma.InputJsonValue;
-    const jsonBbox = bbox as Prisma.InputJsonValue | null;
-
-    try {
-      await prisma.municipalityAddressCache.upsert({
-        where: { municipality_source: { municipality, source } },
-        create: {
-          municipality, source, addressJson: jsonRecords,
-          recordCount: records.length, bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
-        },
-        update: {
-          addressJson: jsonRecords, recordCount: records.length,
-          bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
-        },
-      });
-    } catch {
-      // Cache write failed (table may not exist) — still return results
-    }
-
-    return NextResponse.json({ records, count: records.length, source, cached: false });
+    return NextResponse.json({ records, count: records.length, source, cached: fromCache });
 
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to generate address list";

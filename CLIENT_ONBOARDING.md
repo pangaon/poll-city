@@ -143,7 +143,7 @@ Every campaign workflow starts here.
 |---|---|---|
 | Boundary stored in `Campaign.customization.boundaryGeoJSON` | ✅ | Via Atlas import or seed script |
 | Atlas import tool accepts GeoJSON | ✅ | Built 2026-04-21 |
-| **Boundary displays on canvassing map** | 🔶 | **PARTIALLY FIXED 2026-04-21** — API now prefers `customization.boundaryGeoJSON`; falls back to local files |
+| **Boundary displays on canvassing map** | ✅ | Fixed 2026-04-21 — API now prefers `customization.boundaryGeoJSON`; falls back to local files |
 | **Boundary displays on Atlas Command map** | ❌ | **GAP: Atlas map pages don't render the boundary at all** |
 | **Boundary displays on GOTV map** | ❌ | **GAP** |
 | Boundary on public candidate website | ✅ | `mapCustomization()` in `candidates/[slug]/page.tsx` |
@@ -197,7 +197,7 @@ Connection chain: Contact.pollNumber → PollingStation.pollNumbers[] → map pi
 | Smart import CSV (voter file) | ✅ | |
 | Address geocoding (Google Maps / Nominatim) | ✅ | |
 | Address points as contact pins on map | ✅ | |
-| **Address Pre-List Generator** | 🔶 | Built — needs `AddressPreList` schema pushed to Railway |
+| **Address Pre-List Generator** | 🔶 | Fixed 2026-04-21 — now saves to `AddressPreList` DB + shows on map; needs `npx prisma db push` on Railway |
 | OSM address source in Atlas | ✅ | |
 | **Elections Canada voter file format** | ❌ | **GAP: Specific column mapping not defined** |
 

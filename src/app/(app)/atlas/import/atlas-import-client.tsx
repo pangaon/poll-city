@@ -204,7 +204,7 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
       const res = await fetch("/api/address-prelist/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ municipality: municipality.trim(), source }),
+        body: JSON.stringify({ municipality: municipality.trim(), source, campaignId }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));

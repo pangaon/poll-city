@@ -57,6 +57,7 @@ function computeAreaStats(pointCount: number): AreaStats {
 interface LayerToggles {
   heat: boolean;
   doors: boolean;
+  universe: boolean;
   turfs: boolean;
   signs: boolean;
   volunteers: boolean;
@@ -111,6 +112,7 @@ export default function CampaignMap({
   const [layer, setLayer] = useState<LayerToggles>({
     heat: mode === "gotv" || mode === "dashboard" || mode === "canvassing",
     doors: true,
+    universe: mode === "canvassing",
     turfs: mode !== "public",
     signs: mode === "signs" || mode === "dashboard" || mode === "canvassing",
     volunteers: mode !== "public",
@@ -118,6 +120,7 @@ export default function CampaignMap({
   });
 
   const [contacts, setContacts] = useState<GeoFC | null>(null);
+  const [addressUniverse, setAddressUniverse] = useState<GeoFC | null>(null);
   const [turfs, setTurfs] = useState<GeoFC | null>(null);
   const [signs, setSigns] = useState<GeoFC | null>(null);
   const [volunteers, setVolunteers] = useState<GeoFC | null>(null);
@@ -135,12 +138,14 @@ export default function CampaignMap({
       fetchGeoJSON(`/api/maps/turfs-geojson?campaignId=${cid}`),
       fetchGeoJSON(`/api/maps/signs-geojson?campaignId=${cid}`),
       fetchGeoJSON(`/api/maps/volunteer-locations?campaignId=${cid}`),
+      fetchGeoJSON(`/api/maps/address-prelist?campaignId=${cid}`),
       fetch(`/api/geodata/ward-boundary?campaignId=${cid}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d: { data?: GeoFC | GeoFeat } | null) => d?.data ?? null)
         .catch(() => null),
-    ]).then(([contactGeo, turfGeo, signGeo, volunteerGeo, boundary]) => {
+    ]).then(([contactGeo, turfGeo, signGeo, volunteerGeo, universeGeo, boundary]) => {
       setContacts(contactGeo);
+      setAddressUniverse(universeGeo);
       setTurfs(turfGeo);
       setSigns(signGeo);
       setVolunteers(volunteerGeo);
@@ -257,6 +262,21 @@ export default function CampaignMap({
           </Source>
         )}
 
+        {/* Address universe — all doors in the ward (grey, beneath contacts) */}
+        {layer.universe && addressUniverse && (addressUniverse.features?.length ?? 0) > 0 && (
+          <Source id="cm-universe" type="geojson" data={addressUniverse}>
+            <Layer
+              id="cm-universe-dots"
+              type="circle"
+              paint={{
+                "circle-color": "#94a3b8",
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 4] as never,
+                "circle-opacity": 0.5,
+              }}
+            />
+          </Source>
+        )}
+
         {/* Contact dots (with optional heatmap) */}
         {layer.doors && contacts && mode !== "signs" && (
           <Source id="cm-contacts" type="geojson" data={contacts}>
@@ -358,6 +378,7 @@ export default function CampaignMap({
             {([
               ["heat", "Support heat map"],
               ["doors", "Doors knocked"],
+              ["universe", "Address universe"],
               ["turfs", "Turf boundaries"],
               ["signs", "Signs"],
               ["volunteers", "Volunteers live"],
