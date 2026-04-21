@@ -229,7 +229,8 @@ function formatDate(d: string | null): string {
   return new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string | undefined | null) {
+  if (!status) return null;
   const map: Record<string, { bg: string; text: string; dot: string }> = {
     draft: { bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
     scheduled: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500" },
