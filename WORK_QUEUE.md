@@ -78,7 +78,7 @@ Everything below is built, pushed, and accessible in the app.
 
 ## REMAINING WORK
 
-### ACTIVE BUILD (2026-04-18)
+### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 
 | Task | Status | Notes |
 |---|---|---|
@@ -87,6 +87,9 @@ Everything below is built, pushed, and accessible in the app.
 | Poll City Social — Phase 1 rebuild: home feed, unified politician profile, interest groups, notification engine | DONE — commit 0e5ff04 | PoliticianPost + SocialNotification + CivicInterestGroup schema, home feed, /social/politicians/[id], /social/groups, /social/notifications |
 | Visual Website Builder — template gallery + 4 distinct hero layouts + split-screen editor rebuild | DONE — commit b805fc4 | Rebuilt settings/public-page: InlineGallery (24 templates), 4 distinct LivePreview heroes, showGallery state wired. 4 layout variants in candidates/[slug] and candidate-page-client.tsx. |
 | Electron Desktop App — Mac (.dmg) + Windows (.exe) installer, system tray, auto-updates, deep links | DONE — commit pending push | desktop/ folder: Electron shell → app.poll.city, electron-builder, electron-updater, system tray, deep links (pollcity://), offline page, macOS entitlements. George needs icon files + code signing certs — see GEORGE_TODO.md items 67–73. |
+| Address Pre-List Generator — 3-source backend (OSM/MPAC/StatsCan) + DB cache + import scripts | DONE — commit 9affca2 | POST /api/address-prelist/generate, MunicipalityAddressCache/DisseminationArea/MpacAddress schema, scripts/import-mpac.ts, scripts/import-statcan-da.ts. George must run `npx prisma db push`. OSM source works immediately without backend. |
+| Atlas Command — Data Import Pipeline page | DONE — commit 64b717f | /atlas/import: 5-source cards, Address Pre-List wizard wired to live API, import history table. Polling Atlas section added to sidebar. All 4 atlas stub routes (boundaries/results/calculator/demographics) resolve with meaningful coming-soon pages. |
+| Canadian terminology sweep | DONE — commit 64b717f | precinct → poll division in GOTV war room map, GOTV client, media demo, design-preview dashboard screen. |
 
 ---
 

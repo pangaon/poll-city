@@ -35,9 +35,11 @@ npx prisma db push
   - `intelligenceEnabled` column on Campaign (Analytics Historical tab crashes without it)
   - `ConsentRecord` model + 3 enums (CASL Compliance page and email consent filter crash without it)
   - `MuniScrapeRun` + `RawMuniCandidate` models (Scraper phase 1)
-  - `MunicipalityAddressCache` model (Address Pre-List Generator cache)
+  - `MunicipalityAddressCache` model (Address Pre-List Generator cache — needed for /atlas/import)
   - `DisseminationArea` model (StatsCan 2021 DA demographics)
   - `MpacAddress` model (Ontario Road Network address points)
+  - `AddressPreList` model (per-campaign address records)
+  - `EnrichmentRun` + `EnrichmentResult` models (voter file enrichment tracking)
 
   Steps:
   1. Open your terminal in the poll-city project folder

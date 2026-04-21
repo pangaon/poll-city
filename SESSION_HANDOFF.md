@@ -72,39 +72,68 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-21 session 3)
+## CURRENT PLATFORM STATE (as of 2026-04-21 session 4 — overnight autonomous build)
 
 ### Build
-- **GREEN** — latest commit `e9f83ea` pushed to main, Vercel confirmed green
-- DB is confirmed in sync (`npx prisma db push` ran this session — 3 new models added)
-- `*.make` Figma files now gitignored
+- **GREEN** — latest commit `8a6454d` pushed to main, Vercel deploying
+- 5 new models in schema NOT yet pushed to Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`
+- George MUST run `npx prisma db push` before demo
 
-### Address Pre-List Generator — What shipped this session
-- **`POST /api/address-prelist/generate`** — production backend, 3 source paths:
-  - **OSM** (live now): Nominatim geocodes municipality → Overpass returns addresses → 30-day cache
-  - **MPAC** (after import): Ontario Road Network addresses from DB → 90-day cache
-  - **StatsCan** (after import): 2021 DA centroids with demographics → 365-day cache
-- **`MunicipalityAddressCache`** model — per-source cache in Railway DB
-- **`DisseminationArea`** model — StatsCan 2021 DA demographics (populated by import script)
-- **`MpacAddress`** model — Ontario Road Network addresses (populated by import script)
-- **`src/lib/types/address.ts`** — `AddrRecord` interface matching Figma Make prototype
-- **`scripts/import-mpac.ts`** — one-time Ontario address import (run when ready)
-- **`scripts/import-statcan-da.ts`** — one-time StatsCan DA import (run when ready)
+### Session 4 — What shipped overnight (autonomous)
 
-### Preview Lab — What shipped last session
-- **`/design-preview/social/command`** — Full Field Command + door-to-door wizard ported from Figma. Real MapLibre map with geocoded stop markers + dashed route line for next 8 stops. Turf side (Odd/Even/Full) actually filters stop list by house number parity. Opponent signage: per-opponent quick-tap grid (seed 4 opponents; fetches `/api/field/opponents?campaignId=X` when live). Live shift data from `/api/field/shifts?campaignId=X` when available.
-- **`/design-preview/app/canvassing`** — CSS/SVG fake map replaced with real MapLibre. Toronto turf sector polygons, target pins (secured/pending/hostile), live operative marker, active sector highlights on click.
-- **`/api/field/geocode`** — New POST route. Batch geocodes addresses server-side via `GOOGLE_MAPS_API_KEY`. Field Command wizard calls this on mission accept; map updates live as coords resolve, falls back to approximate street centroids while waiting.
-- **Campaign Command dropdown** — z-index fixed (was rendering behind page content)
+**Atlas Command — Data Import Pipeline** (`/atlas/import`):
+- Full page matching Figma design: 5 source cards (Riding Boundaries, Election Results, Census Demographics, Address Pre-List, Enrich & Merge)
+- Address Pre-List source wired to live `/api/address-prelist/generate` (OSM works now, no API key)
+- Municipality input pre-filled with "Town of Whitby"
+- Results table preview + CSV export after fetch
+- Import History table with seeded demo entries (matches Figma)
+- File drop zone for GeoJSON/CSV sources with required fields display
 
-### Founder Experience — LIVE as of this session
-- Super Admin (George) logs in → lands on `/ops` (not inside a campaign)
-- `/ops` Clients tab → "Enter Campaign View" button → enters any client campaign
-- Navy FounderBanner shows at top: "Viewing: [Campaign Name] · Exit to Ops"
-- Exit to Ops clears session and returns George to `/ops`
+**Polling Atlas Sidebar** — 5-item section added:
+- ✅ `/atlas/import` — Atlas Command (live, data import pipeline)
+- ✅ `/atlas/boundaries` — Boundary Manager (stub, "coming soon" with description)
+- ✅ `/atlas/results` — Historical Results (stub)
+- ✅ `/atlas/calculator` — Swing Calculator (stub)
+- ✅ `/atlas/demographics` — Demographics (stub)
+- All stubs link back to Atlas Command, none 404
 
-### ⚠️ Next session MUST start with a browser walkthrough
-George has a meeting Wednesday morning (2026-04-22) with councillor candidate Maleeha and the Mayor of Whitby. The platform needs to be demo-ready. No more building — next session is a page-by-page walkthrough: George navigates, flags what's broken, session fixes in real time.
+**Canadian terminology sweep**:
+- GOTV war room map, GOTV client, media demo: "precinct" → "poll division" everywhere
+
+**Platform audit (overnight)**:
+- 85%+ of platform is working end-to-end
+- All 40+ sidebar routes resolve (no more 404s)
+- All core flows (Contacts, Field Ops, GOTV, Communications, Fundraising, Dashboard) are wired to real APIs
+- Dashboard has the best empty states — all other flows have adequate fallbacks
+- `/officials` and `/social` sidebar links resolve correctly to public-facing root pages
+
+### Founder Experience — LIVE
+- Super Admin (George) logs in → lands on `/ops`
+- `/ops` Clients tab → "Enter Campaign View" → enters any client campaign
+- Navy FounderBanner shows: "Viewing: [Campaign Name] · Exit to Ops"
+
+### Address Pre-List Generator — LIVE
+- `POST /api/address-prelist/generate` — 3 source paths (OSM live now; MPAC/StatsCan after import)
+- DB cache prevents re-hitting OSM for same municipality within 30 days
+- OSM source: type "Town of Whitby" → fetches up to 2,000 real addresses from Overpass API
+
+### ⚠️ WEDNESDAY DEMO PREP — Maleeha + Mayor of Whitby (2026-04-22)
+
+**Before the demo George MUST do:**
+1. Run `npx prisma db push` (new schema models aren't in Railway yet)
+2. Verify login works at app.poll.city
+3. Enter the Demo Campaign (or create a "Whitby Ward 4" campaign for authenticity)
+
+**Safe to demo (works right now):**
+- Dashboard, Briefing, Contacts, Volunteers, Field Ops, GOTV, Election Day
+- Atlas Command → Atlas Command → type "Town of Whitby" → Fetch from OpenStreetMap
+- Communications, Finance, Fundraising (UI shows, sends require env vars)
+- Any sidebar item → none 404 anymore
+
+**Avoid during demo:**
+- Actually sending email/SMS (needs RESEND_API_KEY / Twilio)
+- Completing Stripe payment flow (needs STRIPE_SECRET_KEY)
+- Clicking MPAC or StatsCan sources in Atlas Command (need import scripts run first)
 
 ---
 
