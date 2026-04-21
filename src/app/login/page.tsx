@@ -11,7 +11,10 @@ import { toast } from "sonner";
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [oauth, setOauth] = useState({ googleEnabled: false, appleEnabled: false, loaded: false });
+  const [oauth, setOauth] = useState({
+    googleEnabled: false, appleEnabled: false,
+    facebookEnabled: false, twitterEnabled: false, loaded: false,
+  });
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -20,22 +23,22 @@ export default function LoginPage() {
   useEffect(() => {
     let mounted = true;
     fetch("/api/auth/providers-status", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { data: { googleEnabled: false, appleEnabled: false } }))
+      .then((r) => (r.ok ? r.json() : { data: {} }))
       .then((d) => {
         if (!mounted) return;
         setOauth({
-          googleEnabled: Boolean(d.data?.googleEnabled),
-          appleEnabled: Boolean(d.data?.appleEnabled),
+          googleEnabled:   Boolean(d.data?.googleEnabled),
+          appleEnabled:    Boolean(d.data?.appleEnabled),
+          facebookEnabled: Boolean(d.data?.facebookEnabled),
+          twitterEnabled:  Boolean(d.data?.twitterEnabled),
           loaded: true,
         });
       })
       .catch(() => {
         if (!mounted) return;
-        setOauth({ googleEnabled: false, appleEnabled: false, loaded: true });
+        setOauth({ googleEnabled: false, appleEnabled: false, facebookEnabled: false, twitterEnabled: false, loaded: true });
       });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   async function onSubmit(data: LoginInput) {
@@ -88,7 +91,7 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mb-6">Enter your credentials to access your campaign</p>
 
           {/* OAuth Buttons — only shown when configured */}
-          {oauth.loaded && (oauth.googleEnabled || oauth.appleEnabled) && (
+          {oauth.loaded && (oauth.googleEnabled || oauth.appleEnabled || oauth.facebookEnabled || oauth.twitterEnabled) && (
             <div className="space-y-3 mb-6">
               {oauth.googleEnabled && (
                 <button
@@ -102,6 +105,28 @@ export default function LoginPage() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                   Continue with Google
+                </button>
+              )}
+              {oauth.facebookEnabled && (
+                <button
+                  onClick={() => signIn("facebook", { callbackUrl: "/dashboard" })}
+                  className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Continue with Facebook
+                </button>
+              )}
+              {oauth.twitterEnabled && (
+                <button
+                  onClick={() => signIn("twitter", { callbackUrl: "/dashboard" })}
+                  className="w-full bg-black hover:bg-gray-900 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                  Continue with X
                 </button>
               )}
               {oauth.appleEnabled && (
