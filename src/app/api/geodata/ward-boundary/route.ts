@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { jurisdiction: true, officialId: true },
+    select: { jurisdiction: true, officialId: true, customization: true },
   });
 
   if (!campaign) {
@@ -79,6 +79,17 @@ export async function GET(req: NextRequest) {
   }
 
   const isSuperAdmin = session!.user.role === "SUPER_ADMIN";
+
+  // Prefer boundary imported via Atlas or seeded directly — highest fidelity
+  const cx = (campaign.customization && typeof campaign.customization === "object")
+    ? campaign.customization as Record<string, unknown>
+    : {};
+  if (cx.boundaryGeoJSON && typeof cx.boundaryGeoJSON === "object") {
+    return NextResponse.json(
+      { data: cx.boundaryGeoJSON },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const municipality = detectMunicipality(campaign.jurisdiction);
   if (!municipality) {
