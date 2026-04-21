@@ -54,6 +54,9 @@ import {
   GitMerge,
   Calculator,
   BookOpen,
+  AlertTriangle,
+  Gauge,
+  FileSearch,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -132,9 +135,11 @@ const INTELLIGENCE_SECTION: NavSection = {
   id: "intelligence",
   label: "Intelligence",
   items: [
-    { href: "/analytics",  icon: BarChart2, label: "Analytics"                        },
-    { href: "/intel",      icon: Brain,     label: "Candidate Intel", isNew: true     },
-    { href: "/reputation", icon: Shield,    label: "Reputation",      isNew: true     },
+    { href: "/analytics",          icon: BarChart2,      label: "Analytics"                             },
+    { href: "/intel",              icon: Brain,          label: "Candidate Intel",   isNew: true        },
+    { href: "/reputation/alerts",  icon: AlertTriangle,  label: "Rep: Alerts",       isNew: true        },
+    { href: "/reputation/command", icon: Gauge,          label: "Rep: Command",      isNew: true        },
+    { href: "/reputation/pages",   icon: FileSearch,     label: "Rep: Monitored",    isNew: true        },
   ],
 };
 
