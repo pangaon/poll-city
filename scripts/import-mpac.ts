@@ -1,12 +1,21 @@
 /**
- * One-time import: Ontario Road Network Address Points (MPAC)
+ * One-time import: Ontario Road Network Address Points
  *
- * Source: https://data.ontario.ca/dataset/ontario-road-network-address-points
- * Run:    npx tsx scripts/import-mpac.ts
+ * ⚠️  STATUS: The old Ontario Open Data CSV dump (resource ID 31f8e45e) was
+ * removed from data.ontario.ca. The data is now on Ontario GeoHub as a
+ * Shapefile / File Geodatabase — no direct CSV download exists.
  *
- * This downloads the full Ontario address CSV and bulk-upserts into MpacAddress.
- * Takes 30-90 min on first run depending on connection speed (~2-4 GB CSV).
- * Safe to re-run — upserts by civic+street+municipality.
+ * MANUAL OPTION (if you need MPAC data):
+ *   1. Go to: https://geohub.lio.gov.on.ca/datasets/923cb3294384488e8a4ffbeb3b8f6cb2
+ *   2. Click "Download" → GeoJSON or CSV if available
+ *   3. Save as .mpac-cache.csv in the project root with columns:
+ *      CIVIC_NUMBER, STREET_FULL_NAME, MUNICIPALITY, POSTAL_CODE, LATITUDE, LONGITUDE
+ *   4. Re-run this script — it will detect the file and import it
+ *
+ * NOTE: OSM via Atlas Command → "Fetch from OpenStreetMap" already works
+ * for individual municipalities and is the recommended path for now.
+ *
+ * Run: npx tsx scripts/import-mpac.ts
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -19,7 +28,8 @@ import { createWriteStream } from "fs";
 
 const prisma = new PrismaClient();
 
-// Ontario Open Data — Road Network Address Points CSV (direct dump)
+// Ontario Open Data CSV dump — this URL is now 404 (data moved to GeoHub)
+// See script header for manual download instructions
 const MPAC_URL =
   "https://data.ontario.ca/datastore/dump/31f8e45e-a151-4e35-8b2c-08d4e4ce5c43?bom=True";
 
@@ -108,12 +118,38 @@ async function importMpac() {
   console.log("=== MPAC Ontario Address Import ===\n");
 
   if (!fs.existsSync(CACHE_PATH)) {
-    await downloadFile(MPAC_URL, CACHE_PATH);
+    console.log("No local cache found. Attempting download…");
+    console.log("⚠️  NOTE: The Ontario Open Data CSV URL is no longer active (HTTP 404).");
+    console.log("    See script header for manual download instructions from Ontario GeoHub.");
+    console.log("    OSM via Atlas Command works now for per-municipality address lists.\n");
+
+    try {
+      await downloadFile(MPAC_URL, CACHE_PATH);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("404") || msg.includes("404")) {
+        console.error("\n❌ Download failed: Ontario Open Data resource has moved.");
+        console.error("   Manual steps:");
+        console.error("   1. Go to: https://geohub.lio.gov.on.ca/datasets/923cb3294384488e8a4ffbeb3b8f6cb2");
+        console.error("   2. Download as CSV and save to: " + CACHE_PATH);
+        console.error("   3. Re-run this script.");
+        console.error("\n   OR use OSM in Atlas Command → Address Pre-List → OpenStreetMap source.");
+      } else {
+        console.error("\n❌ Download failed:", msg);
+      }
+      await prisma.$disconnect();
+      process.exit(1);
+    }
   } else {
     console.log(`Using cached file: ${CACHE_PATH}`);
   }
 
   const stat = fs.statSync(CACHE_PATH);
+  if (stat.size === 0) {
+    console.error("❌ Cache file is empty. Delete it and re-run to re-download.");
+    await prisma.$disconnect();
+    process.exit(1);
+  }
   console.log(`File size: ${(stat.size / 1024 / 1024).toFixed(0)} MB`);
 
   let inserted = 0;

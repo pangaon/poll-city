@@ -47,18 +47,19 @@ npx prisma db push
   3. Expected output: "Your database is now in sync with your Prisma schema"
   4. Test: go to /compliance — it should load (not 500)
 
-- [ ] **4. (Optional — run once) Import MPAC Ontario address points**
+- [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 
-  This populates the `MpacAddress` table with Ontario Road Network addresses.
-  Required for the `mpac` source in the Address Pre-List Generator.
-  OSM source works without this — MPAC adds official address data.
+  The Ontario Open Data CSV dump (resource `31f8e45e`) was removed. The data is now on
+  Ontario GeoHub as Shapefile / File Geodatabase — no direct CSV URL exists.
 
-  ⚠️ Large download (2–4 GB). Takes 30–90 min. Safe to re-run.
+  **OSM source in Atlas Command works now** — use that for per-municipality lists.
+  MPAC is only needed for province-wide bulk coverage (not required for demos).
 
-  Steps:
-  1. Make sure `npx prisma db push` (item 3 above) has been run first
-  2. Run: `npx tsx scripts/import-mpac.ts`
-  3. Expected output: "Total inserted: X,XXX,XXX"
+  If you want MPAC data:
+  1. Go to: https://geohub.lio.gov.on.ca/datasets/923cb3294384488e8a4ffbeb3b8f6cb2
+  2. Download → GeoJSON or CSV (if available), columns needed: CIVIC_NUMBER, STREET_FULL_NAME, MUNICIPALITY, POSTAL_CODE, LATITUDE, LONGITUDE
+  3. Save as `.mpac-cache.csv` in the project root
+  4. Run: `npx tsx scripts/import-mpac.ts`
 
 - [ ] **5. (Optional — run once) Import StatsCan 2021 DA boundaries + demographics**
 
