@@ -31,12 +31,15 @@ export default async function CommunicationsPage() {
     // DB error — render with empty segmentation data rather than crashing
   }
 
+  // Negative margins cancel the app layout's padding so comms fills edge-to-edge
   return (
-    <CommunicationsClient
-      campaignId={campaignId}
-      campaignName={campaignName}
-      tags={tags}
-      wards={wards}
-    />
+    <div className="-m-3 sm:-m-4 md:-m-6">
+      <CommunicationsClient
+        campaignId={campaignId}
+        campaignName={campaignName}
+        tags={tags}
+        wards={wards}
+      />
+    </div>
   );
 }
