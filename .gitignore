@@ -64,3 +64,4 @@ tsconfig.tsbuildinfo
 
 # Figma Make project files
 *.make
+.make-extract/
