@@ -63,6 +63,32 @@ npx prisma db push
   - `/social/politicians/off-whitby-maleeha` — Maleeha Shahid
   - `/social/politicians/off-whitby-elizabeth` — Elizabeth Roy
 
+- [ ] **3c. ⚠️ RUN THIS — Creates Maleeha + Elizabeth as real paid clients** (after db push + db seed)
+
+  This is the most important step. It creates their User accounts, Subscriptions, Campaigns, and Memberships.
+  Their public campaign websites go live the moment this runs.
+
+  ```bash
+  npx tsx scripts/provision-whitby-clients.ts
+  ```
+
+  **Run order (must be in this sequence):**
+  1. `npx prisma db push` ← item 3 above
+  2. `npx prisma db seed` ← item 3b above (creates Official records the script depends on)
+  3. `npx tsx scripts/provision-whitby-clients.ts` ← THIS ITEM
+
+  **What it creates:**
+  - Maleeha Shahid: User (`shahidm@whitby.ca` / `MaleehaWhitby2026!`), Pro subscription, Campaign with full customization (platform, bio, endorsements, FAQ), Admin memberships
+  - Elizabeth Roy: User (`elizabeth.roy@whitby.ca` / `ElizabethWhitby2026!`), Pro subscription, Campaign with full customization, Admin memberships
+  - George (you) added as Admin on both campaigns automatically
+
+  **After running, their campaign websites are live at:**
+  - `https://poll.city/candidates/maleeha-shahid` ← Maleeha's standalone website
+  - `https://poll.city/candidates/elizabeth-roy-whitby` ← Elizabeth's standalone website
+
+  **If it errors "Official not found":** item 3b (db seed) didn't run yet. Run it first.
+  **The script is safe to re-run** — it uses upsert throughout, won't create duplicates.
+
 - [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 
   The Ontario Open Data CSV dump (resource `31f8e45e`) was removed. The data is now on
