@@ -118,7 +118,7 @@ export default function MediaDemoClient({ prospectName }: Props) {
                 <p className="text-sm font-black text-white">Mayor</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span>{election.reportingPct}% precincts reporting</span>
+                <span>{election.reportingPct}% poll divisions reporting</span>
               </div>
             </div>
             <div className="p-5 space-y-4">

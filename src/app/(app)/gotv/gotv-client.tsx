@@ -270,8 +270,8 @@ export default function GotvClient({ campaignId }: Props) {
         ) : racePrecincts.length === 0 ? (
           <EmptyState
             icon="🏁"
-            title="No precinct race data yet"
-            description="Sync contact wards and turnout records to start live precinct ranking."
+            title="No poll division race data yet"
+            description="Sync contact wards and turnout records to start live poll division ranking."
             actionLabel="Open Priority List"
             onAction={() => setActive("priority")}
           />

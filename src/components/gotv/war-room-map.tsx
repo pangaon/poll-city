@@ -43,9 +43,9 @@ export function WarRoomMapPanel({ precincts }: { precincts: PrecinctSnapshot[] }
     const topGap = [...precincts].sort((a, b) => b.gapVotes - a.gapVotes)[0];
 
     return [
-      `Critical precincts: ${critical}`,
-      `Watch precincts: ${watch}`,
-      `Stable precincts: ${stable}`,
+      `Critical poll divisions: ${critical}`,
+      `Watch poll divisions: ${watch}`,
+      `Stable poll divisions: ${stable}`,
       topGap ? `Largest gap: ${topGap.name} (${topGap.gapVotes})` : "Largest gap: n/a",
       "Dispatch cadence: 90-second updates",
     ].join("  •  ");
@@ -86,7 +86,7 @@ export function WarRoomMapPanel({ precincts }: { precincts: PrecinctSnapshot[] }
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Election Night Board</p>
-          <h2 className={`${projectionMode ? "text-2xl md:text-3xl" : "text-xl"} font-black text-white`}>Interactive Precinct Map</h2>
+          <h2 className={`${projectionMode ? "text-2xl md:text-3xl" : "text-xl"} font-black text-white`}>Interactive Poll Division Map</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -116,8 +116,8 @@ export function WarRoomMapPanel({ precincts }: { precincts: PrecinctSnapshot[] }
         <div className="md:col-span-8">
           <div className="rounded-xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-800 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Precinct Status Map</p>
-              <p className="text-[11px] text-slate-400">Tap precinct to drill into gap and dispatch.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Poll Division Status Map</p>
+              <p className="text-[11px] text-slate-400">Tap poll division to drill into gap and dispatch.</p>
             </div>
             <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${projectionMode ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
               {precincts.map((precinct) => {
@@ -141,7 +141,7 @@ export function WarRoomMapPanel({ precincts }: { precincts: PrecinctSnapshot[] }
 
         <div className="md:col-span-4">
           <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">Selected Precinct</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-300">Selected Poll Division</p>
             {selectedPrecinct ? (
               <>
                 <p className="text-lg font-black text-white">{selectedPrecinct.name}</p>
@@ -159,7 +159,7 @@ export function WarRoomMapPanel({ precincts }: { precincts: PrecinctSnapshot[] }
                 </div>
               </>
             ) : (
-              <p className="text-sm text-slate-300">No precinct data available.</p>
+              <p className="text-sm text-slate-300">No poll division data available.</p>
             )}
           </div>
         </div>

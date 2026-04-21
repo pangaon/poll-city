@@ -1024,6 +1024,10 @@ model Campaign {
   // CASL
   consentRecords ConsentRecord[]
 
+  // Address Pre-List + Voter Enrichment
+  addressPreLists AddressPreList[]
+  enrichmentRuns  EnrichmentRun[]
+
   @@unique([customDomain])
   @@index([slug])
   @@index([isPublic, isActive])
@@ -8926,4 +8930,69 @@ model MpacAddress {
   @@index([postalCode])
   @@index([street])
   @@map("mpac_addresses")
+}
+
+/// Per-campaign address pre-list — built before official voters list arrives
+model AddressPreList {
+  id             String   @id @default(cuid())
+  campaignId     String
+  civicNum       Int
+  street         String
+  unit           String?
+  postalCode     String
+  pollDivId      String
+  daCode         String
+  lat            Float
+  lng            Float
+  households     Int      @default(1)
+  daMedianIncome Int?
+  daMedianAge    Float?
+  daLangPrimary  String?
+  source         String   // "osm" | "mpac" | "statcan"
+  generatedAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([postalCode])
+  @@map("address_pre_lists")
+}
+
+/// Voter list enrichment run — one per CSV upload
+model EnrichmentRun {
+  id                  String             @id @default(cuid())
+  campaignId          String
+  fileName            String
+  totalRecords        Int
+  enrichedCount       Int
+  partialCount        Int
+  netNewCount         Int
+  overwrittenCount    Int                @default(0)
+  confidenceThreshold Int
+  runAt               DateTime           @default(now())
+
+  campaign Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  results  EnrichmentResult[]
+
+  @@index([campaignId])
+  @@map("enrichment_runs")
+}
+
+/// Individual match result from a voter enrichment run
+model EnrichmentResult {
+  id         String  @id @default(cuid())
+  runId      String
+  matchType  String  // "exact" | "partial" | "net-new"
+  confidence Int
+  flag       String?
+  electrId   String
+  firstName  String
+  lastName   String
+  dobYear    Int?
+
+  run EnrichmentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([matchType])
+  @@map("enrichment_results")
 }

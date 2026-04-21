@@ -48,6 +48,12 @@ import {
   Tv,
   MessageSquare,
   Smartphone,
+  MapPinned,
+  FolderSearch,
+  Compass,
+  GitMerge,
+  Calculator,
+  BookOpen,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -153,6 +159,18 @@ const PLATFORM_SECTION: NavSection = {
   ],
 };
 
+const POLLING_ATLAS_SECTION: NavSection = {
+  id: "polling_atlas",
+  label: "Polling Atlas",
+  items: [
+    { href: "/atlas/import",    icon: Compass,       label: "Atlas Command",     isNew: true },
+    { href: "/atlas/boundaries", icon: MapPinned,    label: "Boundary Manager",  isNew: true },
+    { href: "/atlas/results",    icon: BarChart2,    label: "Historical Results", isNew: true },
+    { href: "/atlas/calculator", icon: Calculator,   label: "Swing Calculator",  isNew: true },
+    { href: "/atlas/demographics", icon: BookOpen,   label: "Demographics",      isNew: true },
+  ],
+};
+
 // ── Canvasser / Finance role sections ─────────────────────────────────────────
 
 const CANVASSER_SECTIONS: NavSection[] = [
@@ -245,6 +263,7 @@ export default function Sidebar() {
       MONEY_SECTION,
       INTELLIGENCE_SECTION,
       CANDIDATE_SECTION,
+      POLLING_ATLAS_SECTION,
       { ...PLATFORM_SECTION, items: platformItems },
     ];
   }, [isCanvasserOnly, isFinanceOnly, isSuperAdmin]);

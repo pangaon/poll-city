@@ -115,9 +115,9 @@ export function Dashboard() {
             </div>
             <div className="divide-y divide-[#FF3B30]/10">
               {[
-                { title: "Precinct 12 completion critical.", desc: "Re-assign 4 units immediately.", time: "2m ago" },
+                { title: "Poll Division 12 completion critical.", desc: "Re-assign 4 units immediately.", time: "2m ago" },
                 { title: "Print order #4922 delayed.", desc: "Vendor stock short.", time: "14m ago" },
-                { title: "Sentiment spike: District 4.", desc: "Social keyword 'taxes' trending negative.", time: "1h ago" },
+                { title: "Sentiment spike: Ward 4.", desc: "Social keyword 'taxes' trending negative.", time: "1h ago" },
               ].map((alert, i) => (
                 <div key={i} className="p-4 hover:bg-[#FF3B30]/5 transition-colors cursor-pointer border-l-2 border-transparent hover:border-[#FF3B30]">
                   <div className="flex justify-between items-start mb-1">
