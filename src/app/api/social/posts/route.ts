@@ -3,6 +3,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { pushFanOut } from "@/lib/social/push-notify";
 
 const CreatePostSchema = z.object({
   officialId: z.string().cuid().optional(),
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
 
   // Fan-out notifications to all followers (fire-and-forget)
   if (data.officialId && post.isPublished) {
-    void fanOutNotifications(data.officialId, post.id, post.postType, post.title);
+    void fanOutNotifications(data.officialId, authorName, post.id, post.postType, post.title);
   }
 
   return NextResponse.json({ data: post }, { status: 201 });
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
 
 async function fanOutNotifications(
   officialId: string,
+  officialName: string,
   postId: string,
   postType: string,
   postTitle: string
@@ -141,6 +143,11 @@ async function fanOutNotifications(
       postType === "announcement" ? "announcement" :
       "new_post";
 
+    const notifBody = postType === "poll"
+      ? `${officialName} posted a new poll — vote now`
+      : `New ${postType.replace(/_/g, " ")} from ${officialName}`;
+
+    // Create in-app notifications
     await prisma.socialNotification.createMany({
       data: followers.map((f) => ({
         userId: f.userId,
@@ -148,12 +155,21 @@ async function fanOutNotifications(
         officialId,
         type: typeLabel,
         title: postTitle,
-        body: `New ${postType.replace(/_/g, " ")} posted`,
+        body: notifBody,
         isRead: false,
       })),
       skipDuplicates: true,
     });
+
+    // Dispatch real push notifications
+    const followerIds = followers.map((f) => f.userId);
+    await pushFanOut(followerIds, {
+      title: officialName,
+      body: postTitle.length > 80 ? `${postTitle.slice(0, 77)}…` : postTitle,
+      url: `/social/politicians/${officialId}`,
+      tag: `post-${postId}`,
+    });
   } catch {
-    // Non-fatal — notification delivery failure doesn't block post creation
+    // Non-fatal — notification failure does not block post creation
   }
 }

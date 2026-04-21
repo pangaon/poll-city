@@ -148,9 +148,58 @@ export async function GET(req: NextRequest) {
     campaignSlug: campaignByOfficial.get(o.id) ?? null,
   }));
 
+  // Fetch active candidates for the current election — only on municipal/all filter
+  const showCandidates = !level || level === "municipal";
+  let candidates: Array<{
+    id: string;
+    fullName: string;
+    office: string;
+    wardOrRiding: string | null;
+    jurisdictionRef: string;
+    party: string | null;
+    campaignStatus: string;
+    officialId: string | null;
+  }> = [];
+
+  if (showCandidates) {
+    try {
+      candidates = await prisma.candidateProfile.findMany({
+        where: {
+          campaignStatus: { in: ["announced", "nominated", "certified"] },
+          office: { in: ["councillor", "mayor", "regional_councillor"] },
+          ...(search
+            ? {
+                OR: [
+                  { fullName: { contains: search, mode: "insensitive" } },
+                  { jurisdictionRef: { contains: search, mode: "insensitive" } },
+                  { wardOrRiding: { contains: search, mode: "insensitive" } },
+                ],
+              }
+            : {}),
+          ...(municipality ? { jurisdictionRef: { contains: municipality, mode: "insensitive" } } : {}),
+        },
+        orderBy: [{ jurisdictionRef: "asc" }, { fullName: "asc" }],
+        take: 50,
+        select: {
+          id: true,
+          fullName: true,
+          office: true,
+          wardOrRiding: true,
+          jurisdictionRef: true,
+          party: true,
+          campaignStatus: true,
+          officialId: true,
+        },
+      });
+    } catch {
+      // Non-fatal — candidates section is additive
+    }
+  }
+
   return NextResponse.json(
     {
       officials: mapped,
+      candidates,
       total,
       pageSize,
       hasMore,
@@ -162,7 +211,7 @@ export async function GET(req: NextRequest) {
       },
     },
     {
-      headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "s-maxage=120, stale-while-revalidate=300" },
     }
   );
 }

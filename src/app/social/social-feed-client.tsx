@@ -7,7 +7,7 @@ import {
   ChevronRight, ArrowRight, CheckCircle,
   Clock, TrendingUp, Sparkles, Vote, Sun, Moon,
   Heart, MessageCircle, Share2, Zap, Send, X,
-  Smartphone,
+  Smartphone, MapPin,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -527,6 +527,7 @@ export default function SocialFeedClient() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDiscovery, setIsDiscovery] = useState(false);
+  const [needsLocation, setNeedsLocation] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ postId: string; count: number } | null>(null);
@@ -546,6 +547,7 @@ export default function SocialFeedClient() {
       } else {
         setPosts(data.data ?? []);
         setIsDiscovery(data.isDiscovery ?? false);
+        setNeedsLocation(data.needsLocation ?? false);
       }
       setNextCursor(data.nextCursor ?? null);
     } catch {
@@ -612,6 +614,30 @@ export default function SocialFeedClient() {
 
         {/* ── Feed content ── */}
         <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+
+          {/* LOCAL — needs location prompt */}
+          <AnimatePresence>
+            {needsLocation && !loading && tab === "local" && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-2xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/[0.06] p-4 flex items-start gap-3"
+              >
+                <MapPin className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">Set your location to see local posts</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">Enter your postal code so we can show you what is happening in your ward and city.</p>
+                  <Link
+                    href="/social/onboarding"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                  >
+                    Set my location <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Discovery CTA */}
           <AnimatePresence>

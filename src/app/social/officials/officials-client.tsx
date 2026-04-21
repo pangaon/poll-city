@@ -48,6 +48,25 @@ interface Official {
   _count: { follows: number; questions: number };
 }
 
+interface Candidate {
+  id: string;
+  fullName: string;
+  office: string;
+  wardOrRiding: string | null;
+  jurisdictionRef: string;
+  party: string | null;
+  campaignStatus: string;
+  officialId: string | null;
+}
+
+const OFFICE_LABEL: Record<string, string> = {
+  councillor: "City Councillor",
+  mayor: "Mayor",
+  mp: "MP",
+  mpp: "MPP",
+  regional_councillor: "Regional Councillor",
+};
+
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 function initials(name: string) {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
@@ -175,6 +194,86 @@ function OfficialCard({
   );
 }
 
+/* ── Candidate card ──────────────────────────────────────────────────────── */
+function CandidateCard({
+  candidate,
+  isSupporting,
+  onToggleSupport,
+}: {
+  candidate: Candidate;
+  isSupporting: boolean;
+  onToggleSupport: (id: string, officialId: string | null, currently: boolean) => void;
+}) {
+  const profileHref = candidate.officialId
+    ? `/social/politicians/${candidate.officialId}`
+    : `/social/candidates/${candidate.id}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-white dark:bg-[#0F1923] overflow-hidden"
+    >
+      <Link href={profileHref} className="flex items-center gap-3 px-4 pt-4 pb-3 group">
+        <div className="w-12 h-12 rounded-full bg-[#EF9F27]/20 flex items-center justify-center text-[#EF9F27] font-black text-sm flex-shrink-0">
+          {candidate.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-gray-900 dark:text-white text-sm group-hover:text-[#EF9F27] transition-colors truncate">
+              {candidate.fullName}
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-500 dark:text-white/40 truncate mt-0.5">
+            {OFFICE_LABEL[candidate.office] ?? candidate.office}
+          </p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded-full border border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10">
+              CANDIDATE
+            </span>
+            {candidate.wardOrRiding ? (
+              <span className="text-[11px] text-gray-400 dark:text-white/30 truncate max-w-[140px]">
+                {candidate.wardOrRiding}
+              </span>
+            ) : (
+              <span className="text-[11px] text-gray-400 dark:text-white/30 truncate max-w-[140px]">
+                {candidate.jurisdictionRef}
+              </span>
+            )}
+            {candidate.party && (
+              <span className="text-[11px] text-gray-400 dark:text-white/25 truncate">
+                {candidate.party}
+              </span>
+            )}
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300 dark:text-white/20 group-hover:text-[#EF9F27] transition-colors flex-shrink-0" />
+      </Link>
+
+      <div className="flex gap-2 px-4 pb-4">
+        <button
+          onClick={() => onToggleSupport(candidate.id, candidate.officialId, isSupporting)}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all active:scale-[0.97] border",
+            isSupporting
+              ? "bg-[#EF9F27]/10 border-[#EF9F27]/30 text-[#EF9F27]"
+              : "bg-white dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/50 hover:border-[#EF9F27]/40 hover:text-[#EF9F27]"
+          )}
+        >
+          {isSupporting ? <><BellOff className="w-3.5 h-3.5" /> FOLLOWING</> : <><Bell className="w-3.5 h-3.5" /> FOLLOW</>}
+        </button>
+        <Link
+          href={profileHref}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black tracking-wider border border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/50 hover:border-[#EF9F27]/40 hover:text-[#EF9F27] transition-all active:scale-[0.97]"
+        >
+          VIEW PROFILE
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────────────────────── */
 export default function SocialOfficials() {
   const { data: session } = useSession();
@@ -186,6 +285,7 @@ export default function SocialOfficials() {
   const [showPostalBar, setShowPostalBar] = useState(false);
 
   const [officials, setOfficials]       = useState<Official[]>([]);
+  const [candidates, setCandidates]     = useState<Candidate[]>([]);
   const [localReps, setLocalReps]       = useState<Official[]>([]);
   const [loading, setLoading]           = useState(true);
   const [loadingLocal, setLoadingLocal] = useState(false);
@@ -194,6 +294,7 @@ export default function SocialOfficials() {
   const [loadingMore, setLoadingMore]   = useState(false);
 
   const [followed, setFollowed]         = useState<Set<string>>(new Set());
+  const [supported, setSupported]       = useState<Set<string>>(new Set());
 
   const debouncedSearch = useDebounce(search, 350);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -221,6 +322,7 @@ export default function SocialOfficials() {
         setOfficials(prev => [...prev, ...list]);
       } else {
         setOfficials(list);
+        setCandidates(data.candidates ?? []);
       }
 
       setHasMore(data.hasMore ?? false);
@@ -293,6 +395,57 @@ export default function SocialOfficials() {
         const next = new Set(prev);
         if (currently) next.add(officialId);
         else next.delete(officialId);
+        return next;
+      });
+      toast.error("Something went wrong. Try again.");
+    }
+  }
+
+  /* ── Support / unsupport a candidate ────────────────────────────────── */
+  async function toggleSupport(candidateId: string, officialId: string | null, currently: boolean) {
+    if (!session?.user) {
+      toast.error("Sign in to follow candidates.");
+      return;
+    }
+
+    // Optimistic update
+    setSupported(prev => {
+      const next = new Set(prev);
+      if (currently) next.delete(candidateId);
+      else next.add(candidateId);
+      return next;
+    });
+
+    // If candidate is linked to an official, use the official follow path
+    if (officialId) {
+      const method = currently ? "DELETE" : "POST";
+      try {
+        const res = await fetch(`/api/social/officials/${officialId}/follow`, { method });
+        if (!res.ok) throw new Error();
+        toast.success(currently ? "Unfollowed." : "Following! You will see their posts in your feed.");
+      } catch {
+        setSupported(prev => {
+          const next = new Set(prev);
+          if (currently) next.add(candidateId);
+          else next.delete(candidateId);
+          return next;
+        });
+        toast.error("Something went wrong. Try again.");
+      }
+      return;
+    }
+
+    // Candidate without an Official link — use support endpoint
+    const method = currently ? "DELETE" : "POST";
+    try {
+      const res = await fetch(`/api/social/candidates/${candidateId}/support`, { method });
+      if (!res.ok) throw new Error();
+      toast.success(currently ? "Unfollowed." : "Following — you will be notified of updates.");
+    } catch {
+      setSupported(prev => {
+        const next = new Set(prev);
+        if (currently) next.add(candidateId);
+        else next.delete(candidateId);
         return next;
       });
       toast.error("Something went wrong. Try again.");
@@ -512,6 +665,38 @@ export default function SocialOfficials() {
               </>
             )}
           </div>
+        )}
+
+        {/* Candidates — 2026 Election */}
+        {!loading && candidates.length > 0 && (level === "all" || level === "municipal") && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.06]" />
+              <span className="text-[10px] font-black tracking-widest text-amber-500/80 uppercase whitespace-nowrap">
+                2026 CANDIDATES
+              </span>
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.06]" />
+            </div>
+            {candidates.map(c => (
+              <CandidateCard
+                key={c.id}
+                candidate={c}
+                isSupporting={
+                  c.officialId
+                    ? followed.has(c.officialId)
+                    : supported.has(c.id)
+                }
+                onToggleSupport={toggleSupport}
+              />
+            ))}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.06]" />
+              <span className="text-[10px] font-black tracking-widest text-gray-400/60 uppercase whitespace-nowrap">
+                ELECTED OFFICIALS
+              </span>
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/[0.06]" />
+            </div>
+          </>
         )}
 
         {/* Officials list */}

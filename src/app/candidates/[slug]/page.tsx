@@ -97,6 +97,16 @@ function mapCustomization(raw: unknown): CandidatePageCustomization {
     issues,
     endorsements,
     faqs,
+    showSocialProof: typeof cx.showSocialProof === "boolean" ? cx.showSocialProof : true,
+    showCountdown: typeof cx.showCountdown === "boolean" ? cx.showCountdown : true,
+    showLivePoll: typeof cx.showLivePoll === "boolean" ? cx.showLivePoll : false,
+    showDoorCounter: typeof cx.showDoorCounter === "boolean" ? cx.showDoorCounter : true,
+    showSupporterWall: typeof cx.showSupporterWall === "boolean" ? cx.showSupporterWall : false,
+    showEmailCapture: typeof cx.showEmailCapture === "boolean" ? cx.showEmailCapture : false,
+    emailCaptureHeadline: typeof cx.emailCaptureHeadline === "string" ? cx.emailCaptureHeadline : "Stay in the loop",
+    emailCaptureButtonText: typeof cx.emailCaptureButtonText === "string" ? cx.emailCaptureButtonText : "Subscribe",
+    showDonation: typeof cx.showDonation === "boolean" ? cx.showDonation : false,
+    donationAmounts: typeof cx.donationAmounts === "string" ? cx.donationAmounts : "25, 50, 100, 250",
   };
 }
 

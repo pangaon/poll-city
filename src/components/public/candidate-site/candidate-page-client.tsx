@@ -86,6 +86,17 @@ export type CandidatePageCustomization = {
   faqs: CandidateFaq[];
   layout?: "professional" | "modern" | "bold" | "minimal";
   theme?: string;
+  // Visibility toggles — controlled from /settings/public-page
+  showSocialProof?: boolean;
+  showCountdown?: boolean;
+  showLivePoll?: boolean;
+  showDoorCounter?: boolean;
+  showSupporterWall?: boolean;
+  showEmailCapture?: boolean;
+  emailCaptureHeadline?: string;
+  emailCaptureButtonText?: string;
+  showDonation?: boolean;
+  donationAmounts?: string;
 };
 
 export type CandidateEvent = {
@@ -1025,7 +1036,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
               <p className="mt-6 text-xl text-white/75 max-w-xl leading-relaxed">
                 {candidateTagline}
               </p>
-              {countdown ? (
+              {countdown && campaign.customization.showCountdown !== false ? (
                 <div className="mt-6 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white/80">
                   <Clock3 size={16} />{countdown} until election day
                 </div>
@@ -1096,7 +1107,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                 <p className="mt-5 text-lg md:text-xl text-white/70 max-w-2xl leading-relaxed">
                   {candidateTagline}
                 </p>
-                {countdown ? (
+                {countdown && campaign.customization.showCountdown !== false ? (
                   <div className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-white/10 px-5 py-3 text-sm font-medium text-white/80">
                     <Clock3 size={16} />{countdown} until election day
                   </div>
@@ -1174,7 +1185,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                 {candidateTagline}
               </p>
 
-              {countdown ? (
+              {countdown && campaign.customization.showCountdown !== false ? (
                 <p className="mt-5 text-sm font-medium text-white/40 uppercase tracking-widest">
                   {countdown} until election day
                 </p>
@@ -1250,7 +1261,7 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
                   &ldquo;{candidateTagline}&rdquo;
                 </p>
 
-                {countdown ? (
+                {countdown && campaign.customization.showCountdown !== false ? (
                   <div className="mt-6 inline-flex items-center gap-2 text-sm text-slate-400 font-sans">
                     <Clock3 size={14} />{countdown} until election day
                   </div>
@@ -1446,22 +1457,31 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
       {/* ============================================================ */}
       {/*  Live Widgets - Supporter count, poll, activity                */}
       {/* ============================================================ */}
-      <section className="py-20 md:py-28" style={{ backgroundColor: hexToTint(primary, 0.03) }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5 }}
-          className="max-w-6xl mx-auto px-4 sm:px-6"
-        >
-          <div className={`grid gap-6 ${campaign.activePoll ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3"}`}>
-            <AnimatedNumber value={campaign.supporterCount} label="Supporters" icon={Users} accentColor={accent} />
-            <AnimatedNumber value={campaign.volunteerCount} label="Volunteers" icon={Handshake} accentColor={accent} />
-            <AnimatedNumber value={campaign.doorsKnockedCount} label="Doors Knocked" icon={DoorOpen} accentColor={accent} />
-            {campaign.activePoll ? <PollWidget poll={campaign.activePoll} accent={accent} /> : null}
-          </div>
-        </motion.div>
-      </section>
+      {campaign.customization.showSocialProof !== false ? (
+        <section className="py-20 md:py-28" style={{ backgroundColor: hexToTint(primary, 0.03) }}>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5 }}
+            className="max-w-6xl mx-auto px-4 sm:px-6"
+          >
+            {(() => {
+              const showPoll = campaign.customization.showLivePoll !== false && campaign.activePoll;
+              const showDoors = campaign.customization.showDoorCounter !== false;
+              const cols = [true, true, showDoors, !!showPoll].filter(Boolean).length;
+              return (
+                <div className={`grid gap-6 ${cols === 4 ? "md:grid-cols-2 lg:grid-cols-4" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+                  <AnimatedNumber value={campaign.supporterCount} label="Supporters" icon={Users} accentColor={accent} />
+                  <AnimatedNumber value={campaign.volunteerCount} label="Volunteers" icon={Handshake} accentColor={accent} />
+                  {showDoors ? <AnimatedNumber value={campaign.doorsKnockedCount} label="Doors Knocked" icon={DoorOpen} accentColor={accent} /> : null}
+                  {showPoll ? <PollWidget poll={campaign.activePoll!} accent={accent} /> : null}
+                </div>
+              );
+            })()}
+          </motion.div>
+        </section>
+      ) : null}
 
       {/* ============================================================ */}
       {/*  Quote Banner                                                 */}
@@ -1485,6 +1505,141 @@ export default function CandidatePageClient({ campaign }: CandidatePageClientPro
           </button>
         </div>
       </section>
+
+      {/* ============================================================ */}
+      {/*  EMAIL CAPTURE BANNER                                          */}
+      {/* ============================================================ */}
+      {campaign.customization.showEmailCapture ? (
+        <section className="py-16 md:py-20 bg-white border-b border-slate-100">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="max-w-2xl mx-auto px-4 sm:px-6 text-center"
+          >
+            <Mail className="h-8 w-8 mx-auto mb-4" style={{ color: accent }} />
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-2">
+              {campaign.customization.emailCaptureHeadline || "Stay in the loop"}
+            </h2>
+            <p className="text-slate-500 mb-6">Get campaign updates delivered directly to your inbox.</p>
+            <form
+              onSubmit={onSubscribeSubmit}
+              className="flex flex-col sm:flex-row gap-3 justify-center"
+            >
+              <input
+                required
+                type="text"
+                value={subscribeForm.name}
+                onChange={(e) => setSubscribeForm((s) => ({ ...s, name: e.target.value }))}
+                className={inputClass + " sm:w-48"}
+                style={inputRingStyle}
+                placeholder="Your name"
+              />
+              <input
+                required
+                type="email"
+                value={subscribeForm.email}
+                onChange={(e) => setSubscribeForm((s) => ({ ...s, email: e.target.value }))}
+                className={inputClass + " sm:flex-1"}
+                style={inputRingStyle}
+                placeholder="Email address"
+              />
+              <button
+                type="submit"
+                disabled={submitting === "subscribe"}
+                className="rounded-lg text-white px-6 py-3 font-semibold min-h-[44px] transition-all hover:opacity-90 disabled:opacity-60 whitespace-nowrap"
+                style={{ backgroundColor: accent }}
+              >
+                {submitting === "subscribe" ? "Subscribing..." : (campaign.customization.emailCaptureButtonText || "Subscribe")}
+              </button>
+            </form>
+            <label className="mt-4 inline-flex items-start gap-2 text-sm text-slate-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={subscribeForm.consent}
+                onChange={(e) => setSubscribeForm((s) => ({ ...s, consent: e.target.checked }))}
+                className="mt-0.5 h-4 w-4 rounded"
+              />
+              I consent to receiving campaign updates via email.
+            </label>
+          </motion.div>
+        </section>
+      ) : null}
+
+      {/* ============================================================ */}
+      {/*  DONATION HIGHLIGHT                                            */}
+      {/* ============================================================ */}
+      {campaign.customization.showDonation && campaign.donationsEnabled ? (
+        <section className="py-16 md:py-20" style={{ backgroundColor: hexToTint(accent, 0.06) }}>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="max-w-3xl mx-auto px-4 sm:px-6 text-center"
+          >
+            <DollarSign className="h-8 w-8 mx-auto mb-4" style={{ color: accent }} />
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 mb-2">Fund This Campaign</h2>
+            <p className="text-slate-500 mb-8">Every contribution makes a difference on election day.</p>
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              {(campaign.customization.donationAmounts || "25, 50, 100, 250")
+                .split(",")
+                .map((a) => a.trim())
+                .filter(Boolean)
+                .map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    onClick={() => openInlineForm("donate")}
+                    className="rounded-lg border-2 px-8 py-3 font-bold text-lg min-h-[52px] transition-all hover:text-white"
+                    style={{ borderColor: accent, color: accent }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = accent; (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = accent; }}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+            </div>
+            <button
+              onClick={() => openInlineForm("donate")}
+              className="rounded-full text-white font-semibold px-10 py-4 text-base transition-all hover:opacity-90"
+              style={{ backgroundColor: accent }}
+            >
+              Donate Now
+            </button>
+          </motion.div>
+        </section>
+      ) : null}
+
+      {/* ============================================================ */}
+      {/*  SUPPORTER WALL                                               */}
+      {/* ============================================================ */}
+      {campaign.customization.showSupporterWall && campaign.supporterCount > 0 ? (
+        <section className="py-16 md:py-20 bg-white">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="max-w-4xl mx-auto px-4 sm:px-6 text-center"
+          >
+            <SectionTitle
+              eyebrow="Community"
+              title={`${campaign.supporterCount.toLocaleString()} Supporters and Counting`}
+              subtitle={`Join the community backing ${campaign.candidateName.split(" ")[0] || campaign.candidateName} for ${electionYear(campaign)}`}
+              accentColor={accent}
+            />
+            <button
+              onClick={() => openInlineForm("support")}
+              className="mt-2 rounded-full text-white font-semibold px-10 py-4 text-base transition-all hover:opacity-90"
+              style={{ backgroundColor: primary }}
+            >
+              Add My Support
+            </button>
+          </motion.div>
+        </section>
+      ) : null}
 
       {/* ============================================================ */}
       {/*  PLATFORM                                                     */}
