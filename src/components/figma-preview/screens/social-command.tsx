@@ -24,15 +24,22 @@ import {
   AreaChart, Area, ResponsiveContainer, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar,
 } from "recharts";
-import MapGL, { Marker } from "react-map-gl/maplibre";
+import MapGL, { Marker, Source, Layer } from "react-map-gl/maplibre";
+import type { LineLayerSpecification } from "maplibre-gl";
 import { cn } from "@/lib/utils";
 import {
   TC, DARK, LIGHT, partyColor, PARTY_COLOR,
   Person, Stop, PersonStatus, CampaignField, WizardStep, getStepFlow,
   SIGN_TYPES, LIT_PIECES, NOT_PRESENT_OPTS, CONTACT_OUTCOMES, DOOR_OUTCOMES,
   TURF_SIDES, INITIAL_TEAM, MISSIONS, AREA_DATA, RADAR_DATA, ALL_STOPS,
-  DEFAULT_CAMPAIGN_FIELDS, SignType,
+  DEFAULT_CAMPAIGN_FIELDS, SignType, SEED_OPPONENTS, Opponent, getStopCoords,
 } from "./sc-data";
+
+const routeLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "route-line", type: "line",
+  paint: { "line-color": "#00E5FF", "line-width": 2, "line-dasharray": [2, 2], "line-opacity": 0.7 },
+  layout: { "line-cap": "round", "line-join": "round" },
+};
 
 /* ─── MISSION TYPE ───────────────────────────────────────────────────── */
 type Mission = {
@@ -1308,6 +1315,19 @@ export function SocialCommand() {
 
   const displayMissions = liveMissions ?? MISSIONS;
 
+  /* ─── Live opponents from /api/field/opponents ──────────────────────── */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const campaignId = params.get("campaignId");
+    if (!campaignId) return;
+    fetch(`/api/field/opponents?campaignId=${encodeURIComponent(campaignId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((body: { data?: Array<{ id: string; name: string; party: string; color: string }> } | null) => {
+        if (body?.data?.length) setOpponents(body.data);
+      })
+      .catch(() => {});
+  }, []);
+
   // Wizard state
   const [wizardStep, setWizardStep] = useState<WizardStep>("door");
   const [slideDir, setSlideDir] = useState(1);
@@ -1324,6 +1344,8 @@ export function SocialCommand() {
   const [stopNote, setStopNote] = useState("");
   const [inviteSent, setInviteSent] = useState(false);
   const [opponentCaptured, setOpponentCaptured] = useState(false);
+  const [opponentLogs, setOpponentLogs] = useState<Record<number, string[]>>({});
+  const [opponents, setOpponents] = useState<Opponent[]>(SEED_OPPONENTS);
   const [shareTarget, setShareTarget] = useState<{ label: string; color: string } | null>(null);
 
   // Candidate on street
@@ -1800,21 +1822,46 @@ export function SocialCommand() {
       </div>
 
       <div className="rounded-xl p-3" style={{ backgroundColor: T.card, border: "1px solid rgba(255,59,48,0.25)" }}>
-        <div className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 mb-2" style={{ color: "#FF3B30" }}>
-          <ShieldAlert size={11} /> Opponent Intel
+        <div className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 mb-2.5" style={{ color: "#FF3B30" }}>
+          <ShieldAlert size={11} /> Opponent Signage
+          {currentStop && opponentLogs[currentStop.id]?.length > 0 && (
+            <span className="ml-auto text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,59,48,0.15)", color: "#FF3B30" }}>
+              {opponentLogs[currentStop.id].length} logged
+            </span>
+          )}
         </div>
-        <button onClick={() => {
-          if (currentStop) {
-            const ns = [...stops];
-            ns[stopIdx] = { ...currentStop, hasOpponentSign: !currentStop.hasOpponentSign };
-            setStops(ns);
-            setOpponentCaptured(!opponentCaptured);
-          }
-        }}
-          className="w-full py-2.5 rounded-lg font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all"
-          style={{ backgroundColor: opponentCaptured ? "#FF3B3022" : "transparent", border: `1px solid ${opponentCaptured ? "#FF3B30" : "rgba(255,59,48,0.35)"}`, color: "#FF3B30" }}>
-          <Camera size={13} /> {opponentCaptured ? "Opponent Sign Logged ✓" : "Log Opponent Signage"}
-        </button>
+        <div className="grid grid-cols-2 gap-1.5">
+          {opponents.map(opp => {
+            const logged = currentStop ? (opponentLogs[currentStop.id] ?? []).includes(opp.id) : false;
+            return (
+              <motion.button key={opp.id} whileTap={{ scale: 0.93 }}
+                onClick={() => {
+                  if (!currentStop) return;
+                  setOpponentLogs(prev => {
+                    const cur = prev[currentStop.id] ?? [];
+                    const next = logged ? cur.filter(x => x !== opp.id) : [...cur, opp.id];
+                    return { ...prev, [currentStop.id]: next };
+                  });
+                  if (!logged) {
+                    const ns = [...stops];
+                    ns[stopIdx] = { ...currentStop, hasOpponentSign: true };
+                    setStops(ns);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[9px] font-black uppercase tracking-wide transition-all"
+                style={{
+                  backgroundColor: logged ? `${opp.color}18` : T.input,
+                  border: `1.5px solid ${logged ? opp.color : "rgba(255,59,48,0.2)"}`,
+                  color: logged ? opp.color : "#FF3B30",
+                }}>
+                <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: opp.color }} />
+                <span className="truncate">{opp.name}</span>
+                <span className="ml-auto text-[7px] opacity-60">{opp.party}</span>
+                {logged && <Check size={9} className="flex-shrink-0" />}
+              </motion.button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="rounded-xl p-3" style={{ backgroundColor: T.card, border: `1px solid ${T.border}` }}>
@@ -1963,23 +2010,46 @@ export function SocialCommand() {
       </div>
 
       <div className="relative flex-shrink-0 overflow-hidden" style={{ height: atDoor ? 80 : 160, transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
-        <div className="absolute inset-0">
-          <MapGL
-            initialViewState={{ longitude: -79.3732 + (stopIdx * 0.0008), latitude: 43.6612 + (stopIdx * 0.0004), zoom: 16 }}
-            key={`map-${stopIdx}`}
-            mapStyle="https://tiles.openfreemap.org/styles/liberty"
-            style={{ width: "100%", height: "100%" }}
-            attributionControl={false}
-            interactive={false}
-            reuseMaps={false}
-          >
-            <Marker longitude={-79.3732 + (stopIdx * 0.0008)} latitude={43.6612 + (stopIdx * 0.0004)} anchor="bottom">
-              <MapPin size={22} style={{ color: "#FF3B30", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }} />
-            </Marker>
-          </MapGL>
-        </div>
-        <div className="absolute top-3 left-3 z-10">
-          <Navigation size={18} className="-rotate-45" style={{ color: T.accent, filter: isDark ? `drop-shadow(0 0 8px ${T.accent})` : undefined }} />
+        {(() => {
+          const currentCoords = currentStop ? getStopCoords(currentStop.address) : { lat: 43.6612, lng: -79.3832 };
+          const routeCoords = stops.slice(stopIdx, Math.min(stopIdx + 8, stops.length)).map(s => getStopCoords(s.address));
+          const routeGeoJSON: GeoJSON.Feature = {
+            type: "Feature", properties: {},
+            geometry: { type: "LineString", coordinates: routeCoords.map(c => [c.lng, c.lat]) },
+          };
+          return (
+            <div className="absolute inset-0">
+              <MapGL
+                key={`map-${stopIdx}`}
+                initialViewState={{ longitude: currentCoords.lng, latitude: currentCoords.lat, zoom: 15 }}
+                mapStyle="https://tiles.openfreemap.org/styles/liberty"
+                style={{ width: "100%", height: "100%" }}
+                attributionControl={false}
+                interactive={false}
+                reuseMaps={false}
+              >
+                {routeCoords.length > 1 && (
+                  <Source id="route" type="geojson" data={routeGeoJSON}>
+                    <Layer {...routeLineLayer} />
+                  </Source>
+                )}
+                {stops.slice(stopIdx, Math.min(stopIdx + 8, stops.length)).map((s, i) => {
+                  const c = getStopCoords(s.address);
+                  return (
+                    <Marker key={s.id} longitude={c.lng} latitude={c.lat} anchor="bottom">
+                      {i === 0
+                        ? <MapPin size={20} style={{ color: "#FF3B30", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))" }} />
+                        : <div className="w-2 h-2 rounded-full border border-white/60" style={{ backgroundColor: i === 1 ? "#FFD600" : "#6B72A0" }} />
+                      }
+                    </Marker>
+                  );
+                })}
+              </MapGL>
+            </div>
+          );
+        })()}
+        <div className="absolute top-3 left-3 z-10 pointer-events-none">
+          <Navigation size={16} className="-rotate-45" style={{ color: T.accent, filter: `drop-shadow(0 0 6px ${T.accent})` }} />
         </div>
         <div className="absolute top-2 left-2 right-2">
           <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg" style={{ backgroundColor: isDark ? "rgba(5,10,31,0.8)" : "rgba(255,255,255,0.85)", border: `1px solid ${T.border}` }}>

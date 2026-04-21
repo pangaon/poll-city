@@ -1,7 +1,47 @@
 "use client";
 import React, { useState } from "react";
 import { Search, Layers, Navigation, Plus, User, Crosshair, Zap } from "lucide-react";
+import MapGL, { Marker, Source, Layer } from "react-map-gl/maplibre";
+import type { FillLayerSpecification, LineLayerSpecification } from "maplibre-gl";
 import { cn } from "@/lib/utils";
+
+/* Toronto turf sector polygons (approximate) */
+const SECTORS_GEOJSON: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    { type: "Feature", properties: { id: 1, priority: "CRITICAL" },
+      geometry: { type: "Polygon", coordinates: [[
+        [-79.3920, 43.6720], [-79.3780, 43.6720], [-79.3780, 43.6660], [-79.3920, 43.6660], [-79.3920, 43.6720]
+      ]] } },
+    { type: "Feature", properties: { id: 2, priority: "ELEVATED" },
+      geometry: { type: "Polygon", coordinates: [[
+        [-79.3980, 43.6680], [-79.3840, 43.6680], [-79.3840, 43.6610], [-79.3980, 43.6610], [-79.3980, 43.6680]
+      ]] } },
+    { type: "Feature", properties: { id: 3, priority: "CRITICAL" },
+      geometry: { type: "Polygon", coordinates: [[
+        [-79.3870, 43.6610], [-79.3720, 43.6610], [-79.3720, 43.6540], [-79.3870, 43.6540], [-79.3870, 43.6610]
+      ]] } },
+  ],
+};
+
+const sectorFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "sector-fill", type: "fill",
+  paint: { "fill-color": "#0F1440", "fill-opacity": 0.5 },
+};
+const sectorLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "sector-line", type: "line",
+  paint: { "line-color": "#2979FF", "line-width": 1.5, "line-opacity": 0.8 },
+};
+const activeSectorFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "sector-active-fill", type: "fill",
+  filter: ["==", ["get", "id"], 1],
+  paint: { "fill-color": "#FF3B30", "fill-opacity": 0.12 },
+};
+const activeSectorLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "sector-active-line", type: "line",
+  filter: ["==", ["get", "id"], 1],
+  paint: { "line-color": "#FF3B30", "line-width": 2, "line-dasharray": [4, 2] },
+};
 
 export function Canvassing() {
   const [activeTurf, setActiveTurf] = useState(1);
@@ -58,28 +98,50 @@ export function Canvassing() {
         </div>
       </div>
 
-      {/* Map Area */}
-      <div className="flex-1 relative bg-[#0B0B15]">
-        <div className="absolute inset-0 opacity-60 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(41,121,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(41,121,255,0.2) 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
-        <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: "linear-gradient(rgba(41,121,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(41,121,255,0.4) 1px, transparent 1px)", backgroundSize: "250px 250px" }} />
-        <svg className="absolute inset-0 w-full h-full opacity-40">
-          <path d="M100 100 L300 120 L320 400 L80 380 Z" fill="#0F1440" stroke="#2979FF" strokeWidth="2"/>
-          <path d="M350 150 L600 100 L650 350 L400 380 Z" fill="#0F1440" stroke="#2979FF" strokeWidth="2"/>
-          <path d="M150 450 L450 420 L500 700 L120 720 Z" fill="#0F1440" stroke="#2979FF" strokeWidth="2"/>
-          {activeTurf === 1 && <path d="M350 150 L600 100 L650 350 L400 380 Z" fill="#FF3B30" fillOpacity="0.1" stroke="#FF3B30" strokeWidth="2" strokeDasharray="4 4" style={{ filter: "drop-shadow(0 0 10px rgba(255,59,48,0.8))" }} />}
-        </svg>
-        <div className="absolute top-[200px] left-[450px] transform -translate-x-1/2 -translate-y-1/2 z-10"><div className="w-4 h-4 bg-[#00C853] rounded-sm transform rotate-45 border border-[#00C853] shadow-[0_0_15px_#00C853] hover:scale-125 transition-transform" /></div>
-        <div className="absolute top-[280px] left-[520px] transform -translate-x-1/2 -translate-y-1/2 z-10"><div className="w-4 h-4 bg-[#FFD600] rounded-sm transform rotate-45 border border-[#FFD600] shadow-[0_0_15px_#FFD600] hover:scale-125 transition-transform" /></div>
-        <div className="absolute top-[180px] left-[580px] transform -translate-x-1/2 -translate-y-1/2 z-10"><div className="w-4 h-4 bg-[#FF3B30] rounded-sm transform rotate-45 border border-[#FF3B30] shadow-[0_0_15px_#FF3B30] hover:scale-125 transition-transform" /></div>
-        <div className="absolute top-[240px] left-[480px] z-10">
-          <div className="w-5 h-5 bg-[#00E5FF] rounded-full border-2 border-[#050A1F] shadow-[0_0_20px_#00E5FF] pin-pulse cursor-crosshair" />
-          <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-[#00E5FF]/20 backdrop-blur-md border border-[#00E5FF] px-3 py-1 rounded text-[9px] font-black uppercase tracking-[0.2em] text-[#00E5FF] whitespace-nowrap">OP-M (LIVE)</div>
-        </div>
+      {/* Map Area — MapLibre (OpenFreeMap tiles, Toronto) */}
+      <div className="flex-1 relative">
+        <MapGL
+          initialViewState={{ longitude: -79.3860, latitude: 43.6630, zoom: 13.5 }}
+          mapStyle="https://tiles.openfreemap.org/styles/liberty"
+          style={{ width: "100%", height: "100%" }}
+          attributionControl={false}
+          reuseMaps
+        >
+          <Source id="sectors" type="geojson" data={SECTORS_GEOJSON}>
+            <Layer {...sectorFillLayer} />
+            <Layer {...sectorLineLayer} />
+            {activeTurf === 1 && <Layer {...activeSectorFillLayer} />}
+            {activeTurf === 1 && <Layer {...activeSectorLineLayer} />}
+          </Source>
+
+          {/* Target pins */}
+          <Marker longitude={-79.3840} latitude={43.6695} anchor="center">
+            <div className="w-4 h-4 rounded-sm rotate-45 border border-[#00C853] shadow-[0_0_12px_#00C853]" style={{ backgroundColor: "#00C853" }} />
+          </Marker>
+          <Marker longitude={-79.3900} latitude={43.6650} anchor="center">
+            <div className="w-4 h-4 rounded-sm rotate-45 border border-[#FFD600] shadow-[0_0_12px_#FFD600]" style={{ backgroundColor: "#FFD600" }} />
+          </Marker>
+          <Marker longitude={-79.3780} latitude={43.6710} anchor="center">
+            <div className="w-4 h-4 rounded-sm rotate-45 border border-[#FF3B30] shadow-[0_0_12px_#FF3B30]" style={{ backgroundColor: "#FF3B30" }} />
+          </Marker>
+
+          {/* Live operative */}
+          <Marker longitude={-79.3860} latitude={43.6672} anchor="center">
+            <div className="relative">
+              <div className="w-5 h-5 bg-[#00E5FF] rounded-full border-2 border-[#050A1F] shadow-[0_0_20px_#00E5FF] pin-pulse cursor-crosshair" />
+              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-[#00E5FF]/20 backdrop-blur-md border border-[#00E5FF] px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-[0.15em] text-[#00E5FF] whitespace-nowrap">OP-M (LIVE)</div>
+            </div>
+          </Marker>
+        </MapGL>
+
+        {/* Map controls overlay */}
         <div className="absolute top-6 right-6 flex flex-col gap-3 z-20">
           <button className="w-12 h-12 bg-[#0F1440]/80 backdrop-blur-md rounded border border-[#2979FF]/40 flex items-center justify-center text-[#00E5FF] hover:bg-[#2979FF]/20 hover:border-[#00E5FF] transition-all"><Layers size={20} /></button>
           <button className="w-12 h-12 bg-[#0F1440]/80 backdrop-blur-md rounded border border-[#2979FF]/40 flex items-center justify-center text-[#00E5FF] hover:bg-[#2979FF]/20 hover:border-[#00E5FF] transition-all"><Navigation size={20} /></button>
           <button className="w-12 h-12 bg-[#FF3B30]/10 backdrop-blur-md rounded border border-[#FF3B30]/40 flex items-center justify-center text-[#FF3B30] hover:bg-[#FF3B30] hover:text-white transition-all mt-4"><Zap size={20} /></button>
         </div>
+
+        {/* Tactical legend */}
         <div className="absolute bottom-8 right-8 bg-[#0F1440]/90 backdrop-blur-xl border border-[#2979FF]/40 p-5 rounded shadow-[0_0_30px_rgba(0,0,0,0.8)] z-20 w-64">
           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#AAB2FF] mb-4 flex items-center gap-2"><Crosshair size={12} className="text-[#00E5FF]" /> Tactical Legend</h4>
           <div className="space-y-4">

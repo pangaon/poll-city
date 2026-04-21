@@ -168,6 +168,16 @@ export const TURF_SIDES = [
   { id: "full", label: "Full Block", desc: "Both sides" },
 ];
 
+export type Opponent = { id: string; name: string; party: string; color: string };
+
+/* Seed opponents — in prod each campaign fetches their own via /api/field/opponents?campaignId=X */
+export const SEED_OPPONENTS: Opponent[] = [
+  { id: "o1", name: "R. Morrison",  party: "CON",  color: "#1A4B8C" },
+  { id: "o2", name: "T. Okafor",    party: "NDP",  color: "#F37021" },
+  { id: "o3", name: "G. Lavoie",    party: "GRN",  color: "#3D9B35" },
+  { id: "o4", name: "D. Walsh",     party: "IND",  color: "#7B84B8" },
+];
+
 export const INITIAL_TEAM = [
   { id: "t1", initials: "ME", name: "You",         side: null as string | null, color: "#2979FF", status: "active" },
   { id: "t2", initials: "SB", name: "S. Bouchard", side: null as string | null, color: "#00C853", status: "active" },
@@ -197,6 +207,45 @@ export const RADAR_DATA = [
   { subject: "Conversion", A: 79,  fullMark: 150 },
   { subject: "Velocity",   A: 67,  fullMark: 150 },
 ];
+
+/* ─── STREET BASE COORDINATES (approximate Toronto centroids) ────────── */
+type StreetBase = { lat: number; lng: number; latStep: number; lngStep: number };
+const STREET_COORDS: Record<string, StreetBase> = {
+  "Bloor St E":    { lat: 43.6712, lng: -79.3650, latStep: 0,       lngStep:  0.00007 },
+  "Bloor St W":    { lat: 43.6712, lng: -79.4010, latStep: 0,       lngStep: -0.00007 },
+  "King St E":     { lat: 43.6497, lng: -79.3680, latStep: 0,       lngStep:  0.00007 },
+  "King St W":     { lat: 43.6466, lng: -79.3980, latStep: 0,       lngStep: -0.00007 },
+  "Queen St E":    { lat: 43.6490, lng: -79.3680, latStep: 0,       lngStep:  0.00007 },
+  "Queen St W":    { lat: 43.6490, lng: -79.3940, latStep: 0,       lngStep: -0.00007 },
+  "Spadina Ave":   { lat: 43.6420, lng: -79.4002, latStep:  0.00005, lngStep: 0       },
+  "Yonge St":      { lat: 43.6440, lng: -79.3832, latStep:  0.00005, lngStep: 0       },
+  "Danforth Ave":  { lat: 43.6782, lng: -79.3400, latStep: 0,       lngStep:  0.00007 },
+  "Dundas St W":   { lat: 43.6525, lng: -79.3940, latStep: 0,       lngStep: -0.00007 },
+  "Dundas St E":   { lat: 43.6524, lng: -79.3660, latStep: 0,       lngStep:  0.00007 },
+  "College St":    { lat: 43.6594, lng: -79.3940, latStep: 0,       lngStep: -0.00007 },
+  "St Clair Ave E":{ lat: 43.6882, lng: -79.3640, latStep: 0,       lngStep:  0.00007 },
+  "St Clair Ave W":{ lat: 43.6882, lng: -79.4100, latStep: 0,       lngStep: -0.00007 },
+  "Eglinton Ave E":{ lat: 43.7056, lng: -79.3640, latStep: 0,       lngStep:  0.00007 },
+  "Parliament St": { lat: 43.6540, lng: -79.3618, latStep:  0.00005, lngStep: 0       },
+  "Broadview Ave": { lat: 43.6618, lng: -79.3563, latStep:  0.00005, lngStep: 0       },
+  "Pape Ave":      { lat: 43.6680, lng: -79.3446, latStep:  0.00005, lngStep: 0       },
+  "Bathurst St":   { lat: 43.6420, lng: -79.4131, latStep:  0.00005, lngStep: 0       },
+  "Ossington Ave": { lat: 43.6420, lng: -79.4268, latStep:  0.00005, lngStep: 0       },
+  "Dufferin St":   { lat: 43.6340, lng: -79.4312, latStep:  0.00005, lngStep: 0       },
+  "Christie St":   { lat: 43.6520, lng: -79.4190, latStep:  0.00005, lngStep: 0       },
+  "Avenue Rd":     { lat: 43.6720, lng: -79.4010, latStep:  0.00005, lngStep: 0       },
+  "Jarvis St":     { lat: 43.6520, lng: -79.3762, latStep:  0.00005, lngStep: 0       },
+  "Gerrard St E":  { lat: 43.6618, lng: -79.3680, latStep: 0,       lngStep:  0.00007 },
+};
+
+export function getStopCoords(address: string): { lat: number; lng: number } {
+  const parts = address.split(" ");
+  const num = parseInt(parts[0], 10) || 1;
+  const street = parts.slice(1).join(" ");
+  const base = STREET_COORDS[street];
+  if (!base) return { lat: 43.6532, lng: -79.3832 };
+  return { lat: base.lat + base.latStep * num, lng: base.lng + base.lngStep * num };
+}
 
 /* ─── SEED DATA — 200 HOUSEHOLDS ≈ 490 VOTERS ───────────────────────── */
 function generateAllStops(): Stop[] {
