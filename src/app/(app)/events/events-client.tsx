@@ -1185,16 +1185,22 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
               </div>
 
               <div className="grid gap-4 p-5 md:grid-cols-2">
-                <FormField label="Event name">
+                <FormField
+                  label="Event name"
+                  help={{ content: "What this event is called. Appears in volunteer notifications and your campaign calendar.", example: "Ward 3 Canvass Launch — Oct 4" }}
+                >
                   <input
                     value={form.name}
                     onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                     className="input-base"
-                    placeholder="Canvass launch at City Hall"
+                    placeholder="Ward 3 Canvass Launch — Oct 4"
                   />
                 </FormField>
 
-                <FormField label="Event type">
+                <FormField
+                  label="Event type"
+                  help={{ content: "The category of this event. Used to filter your calendar and group events in reports.", example: "Canvass Launch, Fundraiser, Phone Banking" }}
+                >
                   <select
                     value={form.eventType}
                     onChange={(e) => setForm((p) => ({ ...p, eventType: e.target.value as EventType }))}
@@ -1208,7 +1214,10 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                   </select>
                 </FormField>
 
-                <FormField label="Date and time">
+                <FormField
+                  label="Date and time"
+                  help={{ content: "When the event starts. Volunteers receive this in their reminder emails so they know exactly when to show up." }}
+                >
                   <input
                     type="datetime-local"
                     value={form.eventDate}
@@ -1217,44 +1226,63 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                   />
                 </FormField>
 
-                <FormField label="Timezone">
+                <FormField
+                  label="Timezone"
+                  help={{ content: "The local timezone for this event. Important if your campaign spans multiple time zones.", example: "America/Toronto" }}
+                >
                   <input
                     value={form.timezone}
                     onChange={(e) => setForm((p) => ({ ...p, timezone: e.target.value }))}
                     className="input-base"
+                    placeholder="America/Toronto"
                   />
                 </FormField>
 
-                <FormField label="Location" className="md:col-span-2">
+                <FormField
+                  label="Location"
+                  className="md:col-span-2"
+                  help={{ content: "Where this event takes place. Volunteers receive this address when they RSVP.", example: "123 Main St, Community Centre, Room 4, Toronto" }}
+                >
                   <input
                     value={form.location}
                     onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
                     className="input-base"
-                    placeholder="123 Main St, Toronto"
+                    placeholder="123 Main St, Community Centre, Room 4"
                   />
                 </FormField>
 
-                <FormField label="Capacity (0 = unlimited)">
+                <FormField
+                  label="Capacity (0 = unlimited)"
+                  help={{ content: "Maximum number of attendees. Set this to prevent overbooking. Anyone beyond this limit is automatically added to the waitlist.", tip: "Leave at 0 for open events with no cap." }}
+                >
                   <input
                     type="number"
                     min={0}
                     value={form.capacity}
                     onChange={(e) => setForm((p) => ({ ...p, capacity: Number(e.target.value) }))}
                     className="input-base"
+                    placeholder="0"
                   />
                 </FormField>
 
-                <FormField label="Waitlist cap (0 = unlimited)">
+                <FormField
+                  label="Waitlist cap (0 = unlimited)"
+                  help={{ content: "Maximum number of people allowed on the waitlist after capacity is reached. Set to 0 for an unlimited waitlist.", tip: "A waitlist lets you fill cancellations quickly." }}
+                >
                   <input
                     type="number"
                     min={0}
                     value={form.maxWaitlist}
                     onChange={(e) => setForm((p) => ({ ...p, maxWaitlist: Number(e.target.value) }))}
                     className="input-base"
+                    placeholder="0"
                   />
                 </FormField>
 
-                <FormField label="Status">
+                <FormField
+                  label="Status"
+                  help={{ content: "Controls visibility and functionality. Draft = not yet visible. Scheduled = visible to RSVPs. Live = event is happening now. Completed/Cancelled = locked." }}
+                >
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
@@ -1268,7 +1296,10 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                   </select>
                 </FormField>
 
-                <FormField label="Visibility">
+                <FormField
+                  label="Visibility"
+                  help={{ content: "Public events appear on your campaign page. Public RSVP allows anyone to sign up, not just people you invite directly." }}
+                >
                   <div className="flex items-center gap-4 pt-2">
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input
@@ -1312,22 +1343,31 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                 </label>
 
                 {form.isVirtual && (
-                  <FormField label="Virtual URL" className="md:col-span-2">
+                  <FormField
+                    label="Virtual URL"
+                    className="md:col-span-2"
+                    help={{ content: "The link attendees use to join the virtual event. Included in RSVP confirmation emails.", example: "https://zoom.us/j/123456789" }}
+                  >
                     <input
                       value={form.virtualUrl}
                       onChange={(e) => setForm((p) => ({ ...p, virtualUrl: e.target.value }))}
                       className="input-base"
-                      placeholder="https://zoom.us/j/..."
+                      placeholder="https://zoom.us/j/123456789"
                     />
                   </FormField>
                 )}
 
-                <FormField label="Description" className="md:col-span-2">
+                <FormField
+                  label="Description"
+                  className="md:col-span-2"
+                  help={{ content: "Details attendees see on the event page and in confirmation emails. Include parking info, what to wear, what to bring, and what to expect.", example: "Join us to kick off our canvassing effort. Wear comfortable shoes. Snacks provided." }}
+                  hint="Shown in confirmation emails and on the event page."
+                >
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                     className="input-base min-h-24 resize-y"
-                    placeholder="What should attendees know?"
+                    placeholder="Include parking info, what to bring, and what to expect at this event."
                   />
                 </FormField>
 
@@ -1386,26 +1426,38 @@ export default function EventsClient({ campaignId }: { campaignId: string }) {
                 </p>
               )}
               <div className="mt-4 space-y-3">
-                <FormField label="Name">
+                <FormField
+                  label="Name"
+                  help={{ content: "The full name of the attendee. Used on the sign-in sheet and in reminder emails.", example: "Sarah Okafor" }}
+                >
                   <input
                     value={rsvpForm.name}
                     onChange={(e) => setRsvpForm((p) => ({ ...p, name: e.target.value }))}
                     className="input-base"
+                    placeholder="Full name"
                   />
                 </FormField>
-                <FormField label="Email">
+                <FormField
+                  label="Email"
+                  help={{ content: "The attendee's email address. Used to send confirmation and reminder messages.", example: "sarah@example.com" }}
+                >
                   <input
                     type="email"
                     value={rsvpForm.email}
                     onChange={(e) => setRsvpForm((p) => ({ ...p, email: e.target.value }))}
                     className="input-base"
+                    placeholder="email@example.com"
                   />
                 </FormField>
-                <FormField label="Phone (optional)">
+                <FormField
+                  label="Phone (optional)"
+                  help={{ content: "A phone number to reach the attendee if plans change last minute. Shown on the sign-in sheet.", example: "416-555-0100" }}
+                >
                   <input
                     value={rsvpForm.phone}
                     onChange={(e) => setRsvpForm((p) => ({ ...p, phone: e.target.value }))}
                     className="input-base"
+                    placeholder="416-555-0100"
                   />
                 </FormField>
                 <div className="flex justify-end gap-2 pt-2">
@@ -1599,20 +1651,56 @@ function EmptyState({
   );
 }
 
+function FieldHelpTooltip({ content, example, tip }: { content: string; example?: string; tip?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-block align-middle ml-1">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-500 hover:bg-gray-300"
+        aria-label="Field help"
+      >
+        ?
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-1/2 z-50 mb-1.5 w-56 -translate-x-1/2 rounded-xl bg-gray-900 p-3 shadow-xl">
+          <p className="text-xs text-white leading-snug">{content}</p>
+          {example && <p className="mt-1.5 text-[10px] text-gray-300"><span className="font-semibold text-gray-200">e.g.</span> {example}</p>}
+          {tip && <p className="mt-1 text-[10px] text-amber-300">{tip}</p>}
+        </div>
+      )}
+    </span>
+  );
+}
+
+interface FieldHelpConfig { content: string; example?: string; tip?: string }
+
 function FormField({
   label,
   className = "",
+  help,
+  hint,
   children,
 }: {
   label: string;
   className?: string;
+  help?: FieldHelpConfig;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
-    <label className={`block text-sm font-medium text-gray-600 ${className}`}>
-      {label}
+    <div className={`block ${className}`}>
+      <span className="text-sm font-medium text-gray-600">
+        {label}
+        {help && <FieldHelpTooltip {...help} />}
+      </span>
       <div className="mt-1">{children}</div>
-    </label>
+      {hint && <p className="mt-1 text-[11px] text-gray-400">{hint}</p>}
+    </div>
   );
 }
 

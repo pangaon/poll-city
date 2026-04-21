@@ -471,7 +471,13 @@ export default function NewCampaignPage() {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField label="Primary Color">
+                  <FormField
+                    label="Primary Color"
+                    help={{
+                      content: "Your main campaign colour. Used on signs, materials, and your public profile. Pick one that photographs well.",
+                      example: "#0A2342 (navy)",
+                    }}
+                  >
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
@@ -483,10 +489,17 @@ export default function NewCampaignPage() {
                         value={setupColors.primary}
                         onChange={(e) => setSetupColors((c) => ({ ...c, primary: e.target.value }))}
                         className="font-mono text-xs flex-1"
+                        placeholder="#0A2342"
                       />
                     </div>
                   </FormField>
-                  <FormField label="Accent Color">
+                  <FormField
+                    label="Accent Color"
+                    help={{
+                      content: "A complementary colour used for highlights, buttons, and call-to-action elements.",
+                      example: "#1D9E75 (green)",
+                    }}
+                  >
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
@@ -498,6 +511,7 @@ export default function NewCampaignPage() {
                         value={setupColors.accent}
                         onChange={(e) => setSetupColors((c) => ({ ...c, accent: e.target.value }))}
                         className="font-mono text-xs flex-1"
+                        placeholder="#1D9E75"
                       />
                     </div>
                   </FormField>
@@ -585,7 +599,14 @@ export default function NewCampaignPage() {
       <Card>
         <CardContent className="pt-6 space-y-5">
           {/* Campaign name */}
-          <FormField label="Campaign Name" required>
+          <FormField
+            label="Campaign Name"
+            required
+            help={{
+              content: "Your official campaign name. Appears on all communications and your public Poll City profile.",
+              example: "Jane Smith for Ward 3 — 2026",
+            }}
+          >
             <Input
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
@@ -595,14 +616,26 @@ export default function NewCampaignPage() {
 
           {/* Election type + date */}
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Election Type" required>
+            <FormField
+              label="Election Type"
+              required
+              help={{
+                content: "Choose the level of government you are running in. This affects how your canvassing data and analytics are organized.",
+              }}
+            >
               <Select value={form.electionType} onChange={(e) => set("electionType", e.target.value)}>
                 {ELECTION_TYPES.map(({ value, label }) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </Select>
             </FormField>
-            <FormField label="Election Date">
+            <FormField
+              label="Election Date"
+              help={{
+                content: "The official voting day. This drives your canvassing countdown, GOTV priorities, and advance vote scheduling.",
+                tip: "Check your municipality's election office for the official date.",
+              }}
+            >
               <Input
                 type="date"
                 value={form.electionDate}
@@ -614,7 +647,14 @@ export default function NewCampaignPage() {
           {/* ── Party + riding flow for nomination / leadership races ── */}
           {isPartyRace && (
             <>
-              <FormField label="Party" required>
+              <FormField
+                label="Party"
+                required
+                help={{
+                  content: "The party you are seeking the nomination or leadership of.",
+                  example: isLeadership ? "Ontario Liberal Party" : "NDP, Liberal, Conservative",
+                }}
+              >
                 <Input
                   value={form.partyName}
                   onChange={(e) => set("partyName", e.target.value)}
@@ -622,7 +662,13 @@ export default function NewCampaignPage() {
                 />
               </FormField>
               {isNomination && (
-                <FormField label="Province" required>
+                <FormField
+                  label="Province"
+                  required
+                  help={{
+                    content: "The province where the riding or riding association is located.",
+                  }}
+                >
                   <Select
                     value={selectedProvince}
                     onChange={(e) => {
@@ -637,7 +683,15 @@ export default function NewCampaignPage() {
                   </Select>
                 </FormField>
               )}
-              <FormField label={isLeadership ? "Level" : "Riding / Constituency"}>
+              <FormField
+                label={isLeadership ? "Level" : "Riding / Constituency"}
+                help={{
+                  content: isLeadership
+                    ? "Whether this is a federal or provincial leadership contest."
+                    : "The riding or constituency where you are seeking the nomination.",
+                  example: isLeadership ? "Federal, Ontario" : "Riding 42 — Parkdale–High Park",
+                }}
+              >
                 <Input
                   value={isLeadership ? selectedProvince : selectedWard}
                   onChange={(e) => {
@@ -658,7 +712,13 @@ export default function NewCampaignPage() {
           {isMunicipal && (
             <>
               {/* Step 1: Province */}
-              <FormField label="Province" required>
+              <FormField
+                label="Province"
+                required
+                help={{
+                  content: "The province your municipality is in. This narrows the municipality list and connects your campaign to provincial election data.",
+                }}
+              >
                 <Select
                   value={selectedProvince}
                   onChange={(e) => {
@@ -676,7 +736,14 @@ export default function NewCampaignPage() {
 
               {/* Step 2: Municipality */}
               {selectedProvince && (
-                <FormField label="Municipality" required>
+                <FormField
+                  label="Municipality"
+                  required
+                  help={{
+                    content: "The city or town you are running in. This links your campaign to voter data, ward boundaries, and historical election results.",
+                    tip: "Select the municipality that appears on your official ballot papers.",
+                  }}
+                >
                   {loadingMunicipalities ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Loading municipalities…
@@ -700,7 +767,14 @@ export default function NewCampaignPage() {
 
               {/* Step 3: Ward / District */}
               {selectedMunicipality && (
-                <FormField label="Ward / District">
+                <FormField
+                  label="Ward / District"
+                  help={{
+                    content: "The specific ward or district within the municipality. This sets your canvassing boundaries and voter data. Leave blank if you are running city-wide.",
+                    example: "Ward 3 — Etobicoke North",
+                    tip: "Make sure this matches the official ward name from Elections Ontario exactly.",
+                  }}
+                >
                   {loadingWards ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Loading wards…
@@ -745,7 +819,13 @@ export default function NewCampaignPage() {
           )}
 
           {/* Jurisdiction (free text — auto-filled from ward/municipality) */}
-          <FormField label="Jurisdiction">
+          <FormField
+            label="Jurisdiction"
+            help={{
+              content: "Auto-filled from your province, municipality, and ward selections above. Edit only if you need to customize it.",
+              example: "Ward 12 — Toronto",
+            }}
+          >
             <Input
               value={form.jurisdiction}
               onChange={(e) => set("jurisdiction", e.target.value)}
@@ -754,7 +834,13 @@ export default function NewCampaignPage() {
           </FormField>
 
           {/* Candidate name with live official search */}
-          <FormField label="Candidate Name">
+          <FormField
+            label="Candidate Name"
+            help={{
+              content: "The candidate's full name exactly as it will appear on the ballot. We'll search for an existing Poll City profile as you type.",
+              tip: "If a profile is found, you can import the official data to pre-fill your campaign.",
+            }}
+          >
             <div className="relative">
               <Input
                 value={form.candidateName}
@@ -773,7 +859,13 @@ export default function NewCampaignPage() {
 
           {/* Party — only show when not already captured above in the party-race flow */}
           {!isPartyRace && (
-            <FormField label="Party or Organisation">
+            <FormField
+              label="Party or Organisation"
+              help={{
+                content: "The party or organisation the candidate is affiliated with. Leave blank if running as an independent.",
+                example: "Independent, Liberal, NDP, Conservative",
+              }}
+            >
               <Input
                 value={form.partyName}
                 onChange={(e) => set("partyName", e.target.value)}

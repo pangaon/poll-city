@@ -243,13 +243,13 @@ export default function FieldAuditClient({ campaignId, campaignName, logs }: Pro
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              title="From date"
+              title="From date — filter entries on or after this date"
             />
             <Input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              title="To date"
+              title="To date — filter entries on or before this date"
             />
           </div>
 

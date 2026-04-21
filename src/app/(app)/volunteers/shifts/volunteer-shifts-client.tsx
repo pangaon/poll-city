@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   Button, Card, CardContent, CardHeader, CardTitle, Input, Label,
-  Textarea, Badge, EmptyState, PageHeader, Modal, Select,
+  Textarea, Badge, EmptyState, PageHeader, Modal, Select, FieldHelp,
 } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -357,43 +357,43 @@ export default function VolunteerShiftsClient({ campaignId }: Props) {
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label required>Shift Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} placeholder="e.g. Evening Canvass" className="min-h-[44px]" />
+              <Label required className="inline-flex items-center gap-1">Shift Name <FieldHelp content="A descriptive name for this shift so volunteers know what they are signing up for." example="Evening Canvass — Ward 5 North" /></Label>
+              <Input value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} placeholder="e.g. Evening Canvass — Ward 5 North" className="min-h-[44px]" />
             </div>
             <div>
-              <Label required>Date</Label>
+              <Label required className="inline-flex items-center gap-1">Date <FieldHelp content="The date this shift takes place. Shifts appear on the calendar on this date." /></Label>
               <Input type="date" value={form.shiftDate} onChange={(e) => setForm((s) => ({ ...s, shiftDate: e.target.value }))} className="min-h-[44px]" />
             </div>
             <div>
-              <Label required>Start Time</Label>
+              <Label required className="inline-flex items-center gap-1">Start Time <FieldHelp content="When volunteers should arrive and be ready to begin. Reminder emails use this time." example="17:00 (5:00 PM)" /></Label>
               <Input type="time" value={form.startTime} onChange={(e) => setForm((s) => ({ ...s, startTime: e.target.value }))} className="min-h-[44px]" />
             </div>
             <div>
-              <Label required>End Time</Label>
+              <Label required className="inline-flex items-center gap-1">End Time <FieldHelp content="When the shift wraps up. Used to calculate hours credited to each volunteer." /></Label>
               <Input type="time" value={form.endTime} onChange={(e) => setForm((s) => ({ ...s, endTime: e.target.value }))} className="min-h-[44px]" />
             </div>
           </div>
           <div>
-            <Label required>Meeting Location</Label>
-            <Input value={form.meetingLocation} onChange={(e) => setForm((s) => ({ ...s, meetingLocation: e.target.value }))} placeholder="Address or description" className="min-h-[44px]" />
+            <Label required className="inline-flex items-center gap-1">Meeting Location <FieldHelp content="Where volunteers should gather before heading out. Be specific — include an address or landmark." example="45 Elm St, Unit 2 (community centre side entrance)" /></Label>
+            <Input value={form.meetingLocation} onChange={(e) => setForm((s) => ({ ...s, meetingLocation: e.target.value }))} placeholder="e.g. 45 Elm St — community centre side entrance" className="min-h-[44px]" />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <Label>Target Turf</Label>
-              <Input value={form.targetTurfArea} onChange={(e) => setForm((s) => ({ ...s, targetTurfArea: e.target.value }))} placeholder="Ward / area" className="min-h-[44px]" />
+              <Label className="inline-flex items-center gap-1">Target Turf <FieldHelp content="The streets or area this shift will canvass. Shown to volunteers so they know where they are going." example="Maple Ave to Oak St, north of King" /></Label>
+              <Input value={form.targetTurfArea} onChange={(e) => setForm((s) => ({ ...s, targetTurfArea: e.target.value }))} placeholder="e.g. Maple Ave to Oak St" className="min-h-[44px]" />
             </div>
             <div>
-              <Label>Max Volunteers</Label>
+              <Label className="inline-flex items-center gap-1">Max Volunteers <FieldHelp content="The maximum number of volunteers who can sign up. The shift is marked full once this is reached." example="12" /></Label>
               <Input type="number" value={form.maxVolunteers} onChange={(e) => setForm((s) => ({ ...s, maxVolunteers: e.target.value }))} className="min-h-[44px]" />
             </div>
             <div>
-              <Label>Min Volunteers</Label>
+              <Label className="inline-flex items-center gap-1">Min Volunteers <FieldHelp content="The minimum number of volunteers needed for this shift to run. Used to flag under-staffed shifts." example="3" /></Label>
               <Input type="number" value={form.minVolunteers} onChange={(e) => setForm((s) => ({ ...s, minVolunteers: e.target.value }))} className="min-h-[44px]" />
             </div>
           </div>
           <div>
-            <Label>Notes</Label>
-            <Textarea value={form.notes} onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))} placeholder="Instructions for volunteers..." />
+            <Label className="inline-flex items-center gap-1">Notes <FieldHelp content="Instructions or context for volunteers joining this shift. Shown on the shift detail page." example="Park on Elm St. Bring your phone and wear comfortable shoes. Pizza after!" /></Label>
+            <Textarea value={form.notes} onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))} placeholder="e.g. Bring your phone and wear comfortable shoes. Park on Elm St." />
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
             <Button variant="outline" onClick={() => setShowCreate(false)} className="min-h-[44px]">Cancel</Button>
@@ -474,16 +474,16 @@ export default function VolunteerShiftsClient({ campaignId }: Props) {
         {showCheckin && (
           <div className="space-y-4">
             <div>
-              <Label required>Check-in Code</Label>
+              <Label required className="inline-flex items-center gap-1">Check-in Code <FieldHelp content="The 4-character code displayed on the shift detail page. Each shift has a unique code to verify attendance." tip="The shift leader can find this code on the shift card." /></Label>
               <Input
                 value={checkinCode}
                 onChange={(e) => setCheckinCode(e.target.value.toUpperCase())}
-                placeholder="Enter check-in code"
+                placeholder="e.g. A3K9"
                 className="min-h-[44px] font-mono text-center text-lg tracking-widest"
               />
             </div>
             <div>
-              <Label required>Select Volunteer</Label>
+              <Label required className="inline-flex items-center gap-1">Select Volunteer <FieldHelp content="Choose the volunteer who is checking in. Only volunteers who signed up for this shift are shown." /></Label>
               <Select value={checkinSignupId} onChange={(e) => setCheckinSignupId(e.target.value)} className="min-h-[44px]">
                 <option value="">Choose a signup...</option>
                 {showCheckin.signups

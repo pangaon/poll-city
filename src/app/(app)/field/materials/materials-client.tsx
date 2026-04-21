@@ -317,7 +317,13 @@ export default function MaterialsClient({
           <Card>
             <CardContent className="p-4 space-y-4">
               <h3 className="font-semibold text-sm">Assign Materials to Shift</h3>
-              <FormField label="Target Shift">
+              <FormField
+                label="Target Shift"
+                help={{
+                  content: "The canvassing or field shift these materials will be assigned to. Canvassers on this shift will receive the quantities you specify.",
+                  tip: "Only upcoming shifts in the next 14 days are shown.",
+                }}
+              >
                 <Select value={selectedShift} onChange={(e) => setSelectedShift(e.target.value)}>
                   <option value="">Select a shift…</option>
                   {shifts.map((s) => (

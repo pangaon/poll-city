@@ -772,18 +772,30 @@ export default function VolunteersClient({ campaignId }: Props) {
       <Modal open={openEdit} onClose={() => setOpenEdit(false)} title={selectedProfile ? `Edit ${selectedName}` : "New volunteer"} size="lg">
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Availability"><Textarea value={formState.availability} onChange={(e) => setFormState((s) => ({ ...s, availability: e.target.value }))} placeholder="e.g. Weeknights, weekends" /></FormField>
-            <FormField label="Skills"><Input value={formState.skills} onChange={(e) => setFormState((s) => ({ ...s, skills: e.target.value }))} placeholder="Organizing, canvassing, data entry" className="min-h-[44px]" /></FormField>
+            <FormField label="Availability" help={{ content: "When this volunteer is free to help. Used to schedule shifts and send targeted asks.", example: "Weekday evenings, Saturday mornings" }} hint="Be specific — it helps you schedule the right people.">
+              <Textarea value={formState.availability} onChange={(e) => setFormState((s) => ({ ...s, availability: e.target.value }))} placeholder="e.g. Weekday evenings and Saturdays" />
+            </FormField>
+            <FormField label="Skills" help={{ content: "What this volunteer can do for your campaign. Used to match them to the right tasks and shifts.", example: "Canvassing, phone banking, signs crew, driving, data entry" }} hint="Comma-separated. Add as many as apply.">
+              <Input value={formState.skills} onChange={(e) => setFormState((s) => ({ ...s, skills: e.target.value }))} placeholder="Canvassing, phone banking, data entry" className="min-h-[44px]" />
+            </FormField>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            <FormField label="Max hours/week"><Input type="number" value={formState.maxHoursPerWeek} onChange={(e) => setFormState((s) => ({ ...s, maxHoursPerWeek: e.target.value }))} placeholder="0" className="min-h-[44px]" /></FormField>
-            <FormField label="Vehicle"><Checkbox label="Has vehicle" checked={formState.hasVehicle} onChange={(e) => setFormState((s) => ({ ...s, hasVehicle: e.target.checked }))} /></FormField>
-            <FormField label="Status"><Select value={formState.isActive ? "active" : "inactive"} onChange={(e) => setFormState((s) => ({ ...s, isActive: e.target.value === "active" }))} className="min-h-[44px]">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </Select></FormField>
+            <FormField label="Max hours/week" help={{ content: "The most hours per week this volunteer can commit. Helps you avoid burning out your best people.", example: "8" }} hint="Leave blank if no limit.">
+              <Input type="number" value={formState.maxHoursPerWeek} onChange={(e) => setFormState((s) => ({ ...s, maxHoursPerWeek: e.target.value }))} placeholder="8" className="min-h-[44px]" />
+            </FormField>
+            <FormField label="Vehicle" help={{ content: "Does this volunteer have a car? Drivers are valuable for GOTV day — transporting voters to the polls.", tip: "Even one driver per poll can flip the result." }}>
+              <Checkbox label="Has vehicle" checked={formState.hasVehicle} onChange={(e) => setFormState((s) => ({ ...s, hasVehicle: e.target.checked }))} />
+            </FormField>
+            <FormField label="Status" help={{ content: "Active volunteers appear in shift assignments and bulk messaging. Set to Inactive to keep the record but exclude them from operations.", example: "Active" }}>
+              <Select value={formState.isActive ? "active" : "inactive"} onChange={(e) => setFormState((s) => ({ ...s, isActive: e.target.value === "active" }))} className="min-h-[44px]">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </Select>
+            </FormField>
           </div>
-          <FormField label="Notes"><Textarea value={formState.notes} onChange={(e) => setFormState((s) => ({ ...s, notes: e.target.value }))} /></FormField>
+          <FormField label="Notes" help={{ content: "Anything the team should know about working with this volunteer — special skills, constraints, or context.", example: "Can only work west of Yonge. Great with seniors." }}>
+            <Textarea value={formState.notes} onChange={(e) => setFormState((s) => ({ ...s, notes: e.target.value }))} placeholder="e.g. Prefers evening shifts. Has sign-installation experience." />
+          </FormField>
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setOpenEdit(false)} className="min-h-[44px]"><XCircle className="w-4 h-4" /> Cancel</Button>
             <Button onClick={saveProfile} className="bg-[#1D9E75] hover:bg-[#1D9E75]/90 min-h-[44px]"><CheckCircle2 className="w-4 h-4" /> Save</Button>
@@ -885,19 +897,19 @@ export default function VolunteersClient({ campaignId }: Props) {
           <p className="text-sm text-gray-600">
             Sending to {messageTargets.length} volunteer{messageTargets.length !== 1 ? "s" : ""}.
           </p>
-          <FormField label="Subject">
+          <FormField label="Subject" help={{ content: "The email subject line your volunteers will see in their inbox. Keep it short and clear.", example: "Canvassing this Saturday — we need you!" }}>
             <Input
               value={messageForm.subject}
               onChange={(e) => setMessageForm((s) => ({ ...s, subject: e.target.value }))}
-              placeholder="Subject line"
+              placeholder="e.g. Canvassing this Saturday — we need you!"
               className="min-h-[44px]"
             />
           </FormField>
-          <FormField label="Message">
+          <FormField label="Message" help={{ content: "The body of your message. Tell your volunteers what you need, when and where to show up, and what to bring.", tip: "Keep it to 3–5 sentences. Volunteers skim — be direct." }}>
             <Textarea
               value={messageForm.body}
               onChange={(e) => setMessageForm((s) => ({ ...s, body: e.target.value }))}
-              placeholder="Write your message here..."
+              placeholder="Hi team, we're canvassing Ward 5 this Saturday from 10am–1pm. Meet at 45 Elm St. Bring comfortable shoes and your phone."
               rows={5}
             />
           </FormField>
@@ -916,23 +928,23 @@ export default function VolunteersClient({ campaignId }: Props) {
           <p className="text-sm text-gray-600">
             Creating task for {taskTargets.length} volunteer{taskTargets.length !== 1 ? "s" : ""}.
           </p>
-          <FormField label="Title">
+          <FormField label="Title" help={{ content: "A short, clear description of what needs to be done. One task per action.", example: "Call to confirm Saturday shift", tip: "Tasks assigned to volunteers show up on their dashboard." }}>
             <Input
               value={taskForm.title}
               onChange={(e) => setTaskForm((s) => ({ ...s, title: e.target.value }))}
-              placeholder="Task title"
+              placeholder="e.g. Call to confirm Saturday shift"
               className="min-h-[44px]"
             />
           </FormField>
-          <FormField label="Description">
+          <FormField label="Description" help={{ content: "Any extra context the assignee needs to complete this task.", example: "Confirm they have the meeting location and know to bring their phone." }}>
             <Textarea
               value={taskForm.description}
               onChange={(e) => setTaskForm((s) => ({ ...s, description: e.target.value }))}
-              placeholder="Task description (optional)"
+              placeholder="Any extra instructions or context for this task…"
               rows={3}
             />
           </FormField>
-          <FormField label="Due Date">
+          <FormField label="Due Date" help={{ content: "When this task must be completed by. Overdue tasks are flagged in red on the Tasks page.", tip: "Set a real deadline — it creates accountability." }}>
             <Input
               type="date"
               value={taskForm.dueDate}

@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { forwardRef, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
 import React from "react";
+import { FieldHelp } from "./field-help";
+import type { FieldHelpProps } from "./field-help";
 
 // ─── Button ──────────────────────────────────────────────────────────────────
 
@@ -419,22 +421,35 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
 
 // ─── Form Field wrapper ───────────────────────────────────────────────────────
 
-export function FormField({ label, error, required, children }: {
+export function FormField({ label, error, required, help, hint, children }: {
   label: string;
   error?: string;
   required?: boolean;
+  /** Tooltip guidance shown via the ? icon next to the label. */
+  help?: FieldHelpProps;
+  /** Inline grey hint text shown below the input (e.g. format guidance). */
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <Label required={required}>{label}</Label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {required && <span className="text-red-500">*</span>}
+          {help && <FieldHelp {...help} />}
+        </span>
+      </label>
       {children}
+      {hint && !error && <p className="text-gray-400 text-xs mt-1">{hint}</p>}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
 
 // Re-export new components
+export { FieldHelp } from "./field-help";
+export type { FieldHelpProps } from "./field-help";
 export { ContactAutocomplete } from "./contact-autocomplete";
 export { MultiSelect } from "./multi-select";
 export { AddressAutocomplete } from "./address-autocomplete";

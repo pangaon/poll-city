@@ -257,10 +257,19 @@ export default function NewPrintJobClient({ campaignId }: Props) {
           <CardHeader><h3 className="font-semibold">Step 2: Specifications</h3></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Quantity">
-                <Input type="number" min={1} value={form.quantity} onChange={(e) => setForm((prev) => ({ ...prev, quantity: Number(e.target.value || 1) }))} />
+              <FormField
+                label="Quantity"
+                help={{
+                  content: "The number of pieces to print. More pieces = lower cost per unit. See the pricing guide below.",
+                  tip: "Order a little extra — you'll always use them and reordering costs more.",
+                }}
+              >
+                <Input type="number" min={1} value={form.quantity} onChange={(e) => setForm((prev) => ({ ...prev, quantity: Number(e.target.value || 1) }))} placeholder="e.g. 500" />
               </FormField>
-              <FormField label="Size">
+              <FormField
+                label="Size"
+                help={{ content: "The physical dimensions of the printed piece. Choose the size that works for your intended use." }}
+              >
                 <Select value={form.size} onChange={(e) => setForm((prev) => ({ ...prev, size: e.target.value }))}>
                   {product.sizes.map((size) => <option key={size} value={size}>{size}</option>)}
                 </Select>
@@ -268,8 +277,19 @@ export default function NewPrintJobClient({ campaignId }: Props) {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Paper Stock"><Input value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} /></FormField>
-              <FormField label="Turnaround">
+              <FormField
+                label="Paper Stock"
+                help={{ content: "The type and weight of paper. Standard is suitable for most campaign materials.", example: "Standard, Premium Gloss, Recycled" }}
+              >
+                <Input value={form.stock} onChange={(e) => setForm((prev) => ({ ...prev, stock: e.target.value }))} placeholder="Standard" />
+              </FormField>
+              <FormField
+                label="Turnaround"
+                help={{
+                  content: "How quickly you need the job completed. Rush adds 40% to the cost; Economy saves 10% but takes two weeks.",
+                  tip: "Standard 7-day turnaround is suitable for most campaign timelines.",
+                }}
+              >
                 <Select value={form.turnaround} onChange={(e) => setForm((prev) => ({ ...prev, turnaround: e.target.value }))}>
                   <option value="rush">Rush 3 days (+40%)</option>
                   <option value="standard">Standard 7 days</option>
@@ -286,18 +306,20 @@ export default function NewPrintJobClient({ campaignId }: Props) {
 
             {/* Budget fields */}
             <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-gray-100">
-              <div>
-                <FormField label="Budget Min ($)">
-                  <Input type="number" min={0} value={form.budgetMin} onChange={(e) => setForm((prev) => ({ ...prev, budgetMin: e.target.value }))} placeholder="e.g. 500" />
-                </FormField>
-                <p className="text-xs text-gray-400 mt-1">Optional — minimum you want to spend</p>
-              </div>
-              <div>
-                <FormField label="Budget Max ($)">
-                  <Input type="number" min={0} value={form.budgetMax} onChange={(e) => setForm((prev) => ({ ...prev, budgetMax: e.target.value }))} placeholder="e.g. 1500" />
-                </FormField>
-                <p className="text-xs text-gray-400 mt-1">Optional — cap for this job</p>
-              </div>
+              <FormField
+                label="Budget Min ($)"
+                help={{ content: "Optional. The minimum you want to spend on this job. Helps print shops submit relevant bids." }}
+                hint="Optional — minimum you want to spend"
+              >
+                <Input type="number" min={0} value={form.budgetMin} onChange={(e) => setForm((prev) => ({ ...prev, budgetMin: e.target.value }))} placeholder="e.g. 500" />
+              </FormField>
+              <FormField
+                label="Budget Max ($)"
+                help={{ content: "Optional. The maximum you are willing to spend. We'll warn you if the estimate exceeds this amount." }}
+                hint="Optional — hard cap for this print job"
+              >
+                <Input type="number" min={0} value={form.budgetMax} onChange={(e) => setForm((prev) => ({ ...prev, budgetMax: e.target.value }))} placeholder="e.g. 1500" />
+              </FormField>
             </div>
 
             {/* Pricing table */}
@@ -404,8 +426,21 @@ export default function NewPrintJobClient({ campaignId }: Props) {
 
             {form.designMethod === "designer" && (
               <div className="space-y-3">
-                <FormField label="Designer Contact Email"><Input value={form.designerEmail} onChange={(e) => setForm((prev) => ({ ...prev, designerEmail: e.target.value }))} /></FormField>
-                <FormField label="Design Brief"><Textarea rows={4} value={form.designerBrief} onChange={(e) => setForm((prev) => ({ ...prev, designerBrief: e.target.value }))} /></FormField>
+                <FormField
+                  label="Designer Contact Email"
+                  help={{ content: "Your designer's email address. We'll include this in the job specs so the print shop knows who to coordinate with." }}
+                >
+                  <Input value={form.designerEmail} onChange={(e) => setForm((prev) => ({ ...prev, designerEmail: e.target.value }))} placeholder="designer@studio.ca" type="email" />
+                </FormField>
+                <FormField
+                  label="Design Brief"
+                  help={{
+                    content: "Describe the design you need. Include key messages, colours, and any mandatory elements (such as election disclaimer text).",
+                    tip: "Include your candidate name, tagline, website, and any required legal disclosures.",
+                  }}
+                >
+                  <Textarea rows={4} value={form.designerBrief} onChange={(e) => setForm((prev) => ({ ...prev, designerBrief: e.target.value }))} placeholder="e.g. Full-colour front with candidate photo, name, and 'Vote October 27'. Back with platform highlights and contact details. Colours: navy #0A2342 and green #1D9E75." />
+                </FormField>
               </div>
             )}
           </CardContent>
@@ -417,18 +452,46 @@ export default function NewPrintJobClient({ campaignId }: Props) {
         <Card>
           <CardHeader><h3 className="font-semibold">Step 4: Delivery Details</h3></CardHeader>
           <CardContent className="space-y-4">
-            <FormField label="Street Address"><Input value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} /></FormField>
+            <FormField
+              label="Street Address"
+              help={{ content: "The delivery address for your print order. Use your campaign office or a safe address where someone can sign for the delivery.", example: "123 Main St" }}
+            >
+              <Input value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="123 Main St" />
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-3">
-              <FormField label="City"><Input value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))} /></FormField>
-              <FormField label="Province">
+              <FormField label="City">
+                <Input value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))} placeholder="e.g. Toronto" />
+              </FormField>
+              <FormField
+                label="Province"
+                help={{ content: "The province for delivery. Shipping rates vary by province." }}
+              >
                 <Select value={form.province} onChange={(e) => setForm((prev) => ({ ...prev, province: e.target.value }))}>
                   {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
                 </Select>
               </FormField>
-              <FormField label="Postal Code"><Input value={form.postalCode} onChange={(e) => setForm((prev) => ({ ...prev, postalCode: e.target.value }))} /></FormField>
+              <FormField label="Postal Code" hint="Format: A1A 1A1">
+                <Input value={form.postalCode} onChange={(e) => setForm((prev) => ({ ...prev, postalCode: e.target.value }))} placeholder="K1A 0A9" />
+              </FormField>
             </div>
-            <FormField label="Requested Delivery Date"><Input type="date" value={form.requestedDate} onChange={(e) => setForm((prev) => ({ ...prev, requestedDate: e.target.value }))} /></FormField>
-            <FormField label="Special Instructions"><Textarea rows={3} value={form.specialInstructions} onChange={(e) => setForm((prev) => ({ ...prev, specialInstructions: e.target.value }))} /></FormField>
+            <FormField
+              label="Requested Delivery Date"
+              help={{
+                content: "The date you need the materials delivered by. Allow enough time for production based on your chosen turnaround.",
+                tip: "Standard 7-day production + transit time means ordering at least 10 days before you need it.",
+              }}
+            >
+              <Input type="date" value={form.requestedDate} onChange={(e) => setForm((prev) => ({ ...prev, requestedDate: e.target.value }))} />
+            </FormField>
+            <FormField
+              label="Special Instructions"
+              help={{
+                content: "Any additional requirements for this print job — folding, packaging, labelling, or specific delivery instructions.",
+                example: "Please box in quantities of 100. Deliver to loading dock at rear.",
+              }}
+            >
+              <Textarea rows={3} value={form.specialInstructions} onChange={(e) => setForm((prev) => ({ ...prev, specialInstructions: e.target.value }))} placeholder="e.g. Please box in quantities of 100. Deliver to loading dock at rear." />
+            </FormField>
           </CardContent>
         </Card>
       )}

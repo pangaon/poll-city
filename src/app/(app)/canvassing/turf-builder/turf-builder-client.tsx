@@ -6,6 +6,7 @@ import {
   Circle, Loader2, X, Zap, Navigation, RefreshCw, AlertTriangle,
   MapPin, User, Clock, Route,
 } from "lucide-react";
+import { FieldHelp } from "@/components/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { MapStop, CanvasserPin } from "@/components/maps/turf-map";
@@ -575,21 +576,30 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
           <h2 className="font-bold text-gray-900">Define your turf</h2>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Turf name <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              Turf name <span className="text-red-500">*</span>
+              <FieldHelp content="A short name for this canvassing zone. Used when assigning canvassers and on the printed walk list." example="Ward 4 North — Odd side" />
+            </label>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ward 4 North — Odd side"
               className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ward</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                Ward
+                <FieldHelp content="Filter contacts by electoral ward. Leave blank to include all wards in your contact list." example="Ward 4" />
+              </label>
               <select value={ward} onChange={(e) => setWard(e.target.value)} className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <option value="">All wards</option>
                 {availableWards.map((w) => <option key={w} value={w ?? ""}>{w}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Poll number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                Poll number
+                <FieldHelp content="Filter contacts to a specific polling division. Useful for targeted canvassing of a single poll." example="Poll 023" tip="Poll numbers come from your voter file import." />
+              </label>
               <select value={pollNumber} onChange={(e) => setPollNumber(e.target.value)} className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <option value="">All polls</option>
                 {availablePolls.map((p) => <option key={p} value={p ?? ""}>{p}</option>)}
@@ -598,7 +608,10 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Street side</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+              Street side
+              <FieldHelp content="Canvass only odd-numbered addresses, only even, or both sides of the street. Splitting a street by side is a common technique to divide a turf between two canvassers." />
+            </label>
             <div className="flex bg-gray-100 rounded-xl p-1 gap-1 w-fit">
               {(["all", "odd", "even"] as const).map((v) => (
                 <button key={v} onClick={() => setOddEven(v)}
@@ -612,8 +625,9 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
 
           {availableStreets.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                 Streets ({selectedStreets.length === 0 ? "all" : selectedStreets.length + " selected"})
+                <FieldHelp content="Select specific streets to include in this turf. Leave all unchecked to include every street in the selected ward/poll." tip="Picking 2–3 streets makes a manageable 2-hour turf." />
               </label>
               <div className="max-h-40 overflow-y-auto border rounded-xl p-2 space-y-0.5">
                 {availableStreets.map((street) => (
@@ -628,7 +642,10 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              Assign to
+              <FieldHelp content="The volunteer responsible for this turf. They will see it in their walk list app and receive the optimised route. You can change this at any time." tip="Leave blank to assign later from the Turfs list." />
+            </label>
             <select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="">Assign later</option>
               {teamMembers.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.email}</option>)}
@@ -636,8 +653,11 @@ function CreateTurfTab({ campaignId, teamMembers, onCreated }: {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional notes for the canvasser..."
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+              Notes
+              <FieldHelp content="Route instructions or context for the canvasser — parking spots, locked buildings, or anything worth knowing before they start." example="Park on Oak Ave. Building at 42 has intercom code 1234." />
+            </label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Parking tips, building codes, or anything the canvasser should know…"
               className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
 

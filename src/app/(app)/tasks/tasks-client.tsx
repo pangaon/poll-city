@@ -641,28 +641,28 @@ function CreateTaskModal({
     <Modal open={open} onClose={onClose} title="New Task" size="md">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <input type="hidden" {...register("campaignId")} />
-        <FormField label="Task Title" error={errors.title?.message} required>
-          <Input {...register("title")} placeholder="Follow up with Jane Smith about transit concerns" />
+        <FormField label="Task Title" error={errors.title?.message} required help={{ content: "A short, clear description of the action that needs to happen. One task = one action.", example: "Follow up with Jane Smith about transit concerns" }}>
+          <Input {...register("title")} placeholder="e.g. Follow up with Jane Smith about transit concerns" />
         </FormField>
-        <FormField label="Notes">
+        <FormField label="Notes" help={{ content: "Extra context to help the assignee complete this task. Not visible to the contact.", example: "She mentioned she uses the 504 daily. Call before 6pm." }}>
           <textarea
             {...register("description")}
             rows={3}
-            placeholder="Additional context…"
+            placeholder="Any extra context or instructions for the assignee…"
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Priority">
+          <FormField label="Priority" help={{ content: "How urgently this task needs to be done. Urgent tasks appear at the top of the task list in red.", example: "Urgent, High, Medium, Low" }}>
             <select {...register("priority")} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
               {Object.entries(TASK_PRIORITY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </FormField>
-          <FormField label="Due Date">
+          <FormField label="Due Date" help={{ content: "The deadline for this task. Overdue tasks are flagged in red on the task list.", tip: "Set a real deadline — it creates accountability." }}>
             <Input {...register("dueDate")} type="date" />
           </FormField>
         </div>
-        <FormField label="Assign To">
+        <FormField label="Assign To" help={{ content: "Who on your team is responsible for completing this task. They will see it on their task list.", tip: "Unassigned tasks can get missed — assign them to someone." }}>
           <select {...register("assignedToId")} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Unassigned</option>
             {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name ?? m.email}</option>)}

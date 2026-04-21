@@ -6,7 +6,7 @@ import {
   Mail, Send, Users, Check, Loader2, Eye, History,
   FileText, AlertTriangle, Clock, X,
 } from "lucide-react";
-import { WriteAssistTextarea } from "@/components/ui";
+import { FieldHelp, WriteAssistTextarea } from "@/components/ui";
 
 interface Props {
   campaignId: string;
@@ -279,20 +279,25 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                 {/* Subject */}
                 <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5">
                   <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                       Subject <span className="text-red-500">*</span>
+                      <FieldHelp
+                        content="The subject line supporters see in their inbox. Keep it under 50 characters for mobile."
+                        example="Can I count on your support, {{firstName}}?"
+                        tip="Questions and personal names in subject lines increase open rates significantly."
+                      />
                     </span>
                     <input
                       type="text"
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      placeholder="e.g. Can you help us this Saturday?"
+                      placeholder="e.g. Can I count on your support, {{firstName}}?"
                       className="mt-1.5 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
                       maxLength={150}
                       spellCheck={true}
                     />
                     <span className="text-xs text-slate-400 mt-1 block text-right tabular-nums">
-                      {subject.length}/150
+                      {subject.length}/150 · aim for under 50 characters on mobile
                     </span>
                   </label>
                 </section>
@@ -300,8 +305,13 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                 {/* Body */}
                 <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-semibold text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                       Email body (HTML) <span className="text-red-500">*</span>
+                      <FieldHelp
+                        content="The main content of your email. You can use HTML tags for formatting. Use {{firstName}}, {{ward}}, and {{candidateName}} to personalise each message automatically."
+                        example="<p>Hi {{firstName}},</p><p>Election day is Oct 26. I need your vote in {{ward}}.</p>"
+                        tip="Short, personal emails outperform long ones. 3–5 paragraphs is usually ideal."
+                      />
                     </span>
                     <button
                       type="button"
@@ -359,7 +369,7 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                       onChange={setBody}
                       context="email-body"
                       campaignId={campaignId}
-                      placeholder="<p>Hi {{firstName}},</p><p>...</p>"
+                      placeholder="<p>Hi {{firstName}},</p>&#10;<p>Write your message here. Use {{ward}} and {{candidateName}} to personalise.</p>&#10;<p>-- {{candidateName}}</p>"
                       className="border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 font-mono text-sm min-h-[80px]"
                       maxLength={50_000}
                     />
@@ -385,6 +395,10 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                     <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[#1D9E75]" /> Schedule Send
                       (optional)
+                      <FieldHelp
+                        content="Set a date and time to send this email automatically. Leave blank to send immediately when you click the Send button."
+                        tip="Tuesday and Thursday mornings between 8–10 AM typically see the highest open rates for campaign emails."
+                      />
                     </span>
                     <input
                       type="datetime-local"

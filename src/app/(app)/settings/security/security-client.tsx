@@ -20,6 +20,7 @@ import {
   XCircle,
   LogOut,
 } from "lucide-react";
+import { FieldHelp } from "@/components/ui";
 
 interface Props {
   twoFactorEnabled: boolean;
@@ -369,6 +370,7 @@ export default function SecurityClient(props: Props) {
               </button>
             ) : (
               <div className="space-y-2 border-t border-slate-200 pt-4">
+                <p className="text-sm text-slate-600">Enter your current password and the 6-digit code from your authenticator app to confirm.</p>
                 <input
                   type="password"
                   placeholder="Current password"
@@ -381,7 +383,7 @@ export default function SecurityClient(props: Props) {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder="6-digit code"
+                  placeholder="6-digit authenticator code"
                   maxLength={6}
                   value={disableToken}
                   onChange={(e) => setDisableToken(e.target.value.replace(/\D/g, ""))}
@@ -564,7 +566,10 @@ export default function SecurityClient(props: Props) {
         {/* New key form */}
         {showNewKeyForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-            <label className="block text-sm font-semibold text-slate-700">Key name</label>
+            <label className="block text-sm font-semibold text-slate-700 inline-flex items-center gap-1">
+              Key name
+              <FieldHelp content="A label for this API key so you remember what it's used for. Only you see this." example="Zapier integration, Reporting script, Mobile app" />
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"

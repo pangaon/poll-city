@@ -6,7 +6,7 @@ import {
   MessageSquare, Send, Users, Check, Loader2, History,
   AlertTriangle, Clock, X, FileText,
 } from "lucide-react";
-import { WriteAssistTextarea } from "@/components/ui";
+import { FieldHelp, WriteAssistTextarea } from "@/components/ui";
 
 interface Props {
   campaignId: string;
@@ -287,8 +287,13 @@ export default function SmsClient({ campaignId, tags, wards }: Props) {
                 {/* Message */}
                 <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5">
                   <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
+                    <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                       Message <span className="text-red-500">*</span>
+                      <FieldHelp
+                        content="Your text message to supporters. Must include your name and an opt-out option per CASL. The platform adds 'Reply STOP to opt out' automatically."
+                        example="Hi, it's Jane Smith running for Ward 3. Can we count on your vote Oct 26? Reply STOP to opt out."
+                        tip="160 characters or less sends as a single message. Over 160 splits into two — cost doubles. The opt-out suffix is ~40 characters."
+                      />
                     </span>
                     <WriteAssistTextarea
                       rows={6}
@@ -296,7 +301,7 @@ export default function SmsClient({ campaignId, tags, wards }: Props) {
                       onChange={setBody}
                       context="sms"
                       campaignId={campaignId}
-                      placeholder="Hi {{firstName}}, ..."
+                      placeholder="Hi {{firstName}}, it's {{candidateName}} running for {{ward}}. Can we count on your vote Oct 26?"
                       className="mt-1.5 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 min-h-[80px]"
                       maxLength={1000}
                     />
@@ -344,6 +349,10 @@ export default function SmsClient({ campaignId, tags, wards }: Props) {
                     <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[#1D9E75]" /> Schedule Send
                       (optional)
+                      <FieldHelp
+                        content="Set a future date and time to send this SMS automatically. CRTC rules prohibit sends before 9 AM or after 9 PM local time — the platform enforces this."
+                        tip="Schedule SMS for evenings between 6–8 PM or weekend mornings between 10 AM–12 PM for best response rates."
+                      />
                     </span>
                     <input
                       type="datetime-local"

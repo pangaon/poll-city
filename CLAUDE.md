@@ -98,6 +98,28 @@ George has mandated that every user-facing flow must meet Stripe's standard of g
 
 This applies to: onboarding, settings, integrations, fundraising setup, any guided multi-step flow.
 
+### CONTEXTUAL HELP — MANDATORY ON EVERY FORM FIELD
+
+Every `<FormField>` must have a `help` prop. Every `<Input>` and `<Textarea>` must have a meaningful `placeholder`. No exceptions.
+
+**The components:**
+- `FormField` from `@/components/ui` accepts `help?: { content: string; example?: string; tip?: string; side?: "top"|"bottom"|"left"|"right" }` — renders a ? icon tooltip next to the label
+- `FormField` also accepts `hint?: string` — renders grey text below the input for format guidance
+- `FieldHelp` from `@/components/ui` — use inline next to any label that doesn't use `FormField`
+
+**Content rules for every tooltip:**
+1. `content` answers: "What is this field for and why does it matter to my campaign?"
+2. `example` shows a realistic value (not "e.g. foo" — a real campaign example)
+3. `tip` warns about a gotcha (legal limit, CASL rule, Ontario election law, etc.)
+4. Write for a first-time city council candidate — not a developer
+
+**When building any new form field, you are not done until:**
+- `FormField` has a `help` prop with a real `content` string
+- The input has a meaningful `placeholder` (a realistic example, not just the field name)
+- Any legal/compliance limits are noted in `tip`
+
+**This is a quality gate, not a suggestion. A form field without a tooltip is an incomplete feature.**
+
 ---
 
 ## GEORGE'S MANUAL ACTION FILE

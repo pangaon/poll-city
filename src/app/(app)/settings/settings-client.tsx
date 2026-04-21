@@ -160,13 +160,22 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
       <Card>
         <CardHeader><h3 className="font-semibold text-gray-900">My Profile</h3></CardHeader>
         <CardContent className="space-y-4">
-          <FormField label="Full Name">
+          <FormField
+            label="Full Name"
+            help={{ content: "Your name as it appears to other team members in this campaign." }}
+          >
             <Input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} placeholder="Your full name" />
           </FormField>
-          <FormField label="Email">
+          <FormField
+            label="Email"
+            help={{ content: "Your sign-in email address. Contact support to change this." }}
+          >
             <Input value={user.email} disabled className="opacity-60" />
           </FormField>
-          <FormField label="Phone">
+          <FormField
+            label="Phone"
+            help={{ content: "Your personal contact number. Used for two-factor authentication and team communications.", example: "416-555-0100" }}
+          >
             <Input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="416-555-0100" type="tel" />
           </FormField>
           <div className="flex items-center gap-2">
@@ -189,28 +198,43 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
           {canEditCampaign ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Campaign Name">
+                <FormField
+                  label="Campaign Name"
+                  help={{
+                    content: "Your official campaign name. Appears on all communications and your public Poll City profile.",
+                    example: "Jane Smith for Ward 3 — 2026",
+                  }}
+                >
                   <Input
                     value={campaignProfile.name}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, name: e.target.value })}
-                    placeholder="Campaign name"
+                    placeholder="Jane Smith for Ward 3 — 2026"
                   />
                 </FormField>
-                <FormField label="Candidate Name">
+                <FormField
+                  label="Candidate Name"
+                  help={{ content: "The candidate's full name as it appears on the ballot." }}
+                >
                   <Input
                     value={campaignProfile.candidateName}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateName: e.target.value })}
                     placeholder="Jane Smith"
                   />
                 </FormField>
-                <FormField label="Candidate Title">
+                <FormField
+                  label="Candidate Title"
+                  help={{ content: "The position being sought. Shown on your public profile.", example: "Councillor, Ward 3 or MPP for Ottawa Centre" }}
+                >
                   <Input
                     value={campaignProfile.candidateTitle}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateTitle: e.target.value })}
                     placeholder="Councillor, Ward 3"
                   />
                 </FormField>
-                <FormField label="Candidate Email">
+                <FormField
+                  label="Candidate Email"
+                  help={{ content: "The public contact email for the campaign. Shown on the candidate's public profile.", example: "jane@campaign.ca" }}
+                >
                   <Input
                     value={campaignProfile.candidateEmail}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateEmail: e.target.value })}
@@ -218,7 +242,10 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
                     type="email"
                   />
                 </FormField>
-                <FormField label="Candidate Phone">
+                <FormField
+                  label="Candidate Phone"
+                  help={{ content: "The public contact phone number for the campaign.", example: "416-555-0100" }}
+                >
                   <Input
                     value={campaignProfile.candidatePhone}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, candidatePhone: e.target.value })}
@@ -226,21 +253,33 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
                     type="tel"
                   />
                 </FormField>
-                <FormField label="Election Type">
+                <FormField
+                  label="Election Type"
+                  help={{ content: "The level of government this campaign is for.", example: "municipal, provincial, federal" }}
+                >
                   <Input
                     value={campaignProfile.electionType}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, electionType: e.target.value })}
                     placeholder="municipal"
                   />
                 </FormField>
-                <FormField label="Jurisdiction">
+                <FormField
+                  label="Jurisdiction"
+                  help={{
+                    content: "The ward, riding, or district you are running in. Used to scope your canvassing data and public profile.",
+                    example: "Ward 3, Toronto",
+                  }}
+                >
                   <Input
                     value={campaignProfile.jurisdiction}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, jurisdiction: e.target.value })}
                     placeholder="Ward 3, Toronto"
                   />
                 </FormField>
-                <FormField label="Election Date">
+                <FormField
+                  label="Election Date"
+                  help={{ content: "The official voting day. Drives your canvassing countdown and GOTV priorities." }}
+                >
                   <Input
                     value={campaignProfile.electionDate}
                     onChange={(e) => setCampaignProfile({ ...campaignProfile, electionDate: e.target.value })}
@@ -248,16 +287,22 @@ export default function SettingsClient({ campaign, user, userRole, integrations 
                   />
                 </FormField>
               </div>
-              <FormField label="Candidate Bio">
+              <FormField
+                label="Candidate Bio"
+                help={{
+                  content: "A short biography of the candidate. Shown on the public profile. Write in the third person.",
+                  example: "Jane Smith is a community advocate running for Ward 3 Councillor...",
+                }}
+                hint={`${campaignProfile.candidateBio.length}/1000 characters`}
+              >
                 <textarea
                   value={campaignProfile.candidateBio}
                   onChange={(e) => setCampaignProfile({ ...campaignProfile, candidateBio: e.target.value })}
-                  placeholder="A few sentences about the candidate..."
+                  placeholder="A few sentences about the candidate — who they are and why they are running..."
                   rows={3}
                   maxLength={1000}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none resize-none"
                 />
-                <p className="text-xs text-gray-400 mt-1">{campaignProfile.candidateBio.length}/1000</p>
               </FormField>
               <Button onClick={saveCampaignProfile} loading={savingCampaign}>
                 Save Campaign Profile

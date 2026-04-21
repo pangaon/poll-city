@@ -397,36 +397,65 @@ export default function FieldsSettingsClient({ campaignId }: Props) {
       {/* ── Add Field Modal ── */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Custom Field" size="md">
         <div className="space-y-4">
-          <FormField label="Display Label" required>
+          <FormField
+            label="Display Label"
+            required
+            help={{
+              content: "The label your team sees in the contact record and canvassing card.",
+              example: "Lawn Sign Requested, Called Back, Donor Tier",
+            }}
+          >
             <Input
               value={newField.label}
               onChange={(e) => setNewField({ ...newField, label: e.target.value, key: labelToKey(e.target.value) })}
               placeholder="e.g. Hydro Concern, Member Since, Yard Sign Size"
             />
           </FormField>
-          <FormField label="Field Key (auto-generated)">
+          <FormField
+            label="Field Key (auto-generated)"
+            help={{
+              content: "The internal identifier for this field. Auto-generated from the label — only change it if you need a specific key for integrations.",
+              example: "hydro_concern, member_since",
+            }}
+            hint="Lowercase letters, numbers, underscores only. Used in CSV exports."
+          >
             <Input
               value={newField.key}
               onChange={(e) => setNewField({ ...newField, key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
               placeholder="hydro_concern"
               className="font-mono text-xs"
             />
-            <p className="text-xs text-gray-400 mt-1">Lowercase letters, numbers, underscores only. Used in CSV exports.</p>
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Field Type">
+            <FormField
+              label="Field Type"
+              help={{
+                content: "Choose how this data is captured. Text for open responses, Yes/No for checkboxes, Dropdown for fixed options.",
+              }}
+            >
               <Select value={newField.fieldType} onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}>
                 {FIELD_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </Select>
             </FormField>
-            <FormField label="Category">
+            <FormField
+              label="Category"
+              help={{
+                content: "Groups this field with similar fields in the contact record. Canvassing fields appear on the door-knocking card.",
+              }}
+            >
               <Select value={newField.category} onChange={(e) => setNewField({ ...newField, category: e.target.value })}>
                 {CATEGORIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </Select>
             </FormField>
           </div>
           {(newField.fieldType === "select" || newField.fieldType === "multiselect") && (
-            <FormField label="Options (comma-separated)">
+            <FormField
+              label="Options (comma-separated)"
+              help={{
+                content: "The choices available in the dropdown or multi-select. Add as many as you need.",
+                example: "Strong Support, Leaning Support, Undecided, Opposed",
+              }}
+            >
               <Input value={newField.options} onChange={(e) => setNewField({ ...newField, options: e.target.value })} placeholder="Option 1, Option 2, Option 3" />
             </FormField>
           )}

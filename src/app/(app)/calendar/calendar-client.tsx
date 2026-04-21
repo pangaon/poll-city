@@ -61,6 +61,7 @@ import {
   Label,
   Textarea,
   EmptyState,
+  FieldHelp,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -621,17 +622,23 @@ function QuickCreateModal({
     <Modal open={open} onClose={onClose} title="Add to Calendar" size="md">
       <div className="space-y-4">
         <div>
-          <Label>Title *</Label>
+          <Label className="flex items-center gap-1">
+            Title *
+            <FieldHelp content="The name of this calendar item. Shown in the monthly and weekly views and in volunteer notifications." example="Candidate Door Knock — Bloor St corridor" />
+          </Label>
           <Input
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="What's happening?"
+            placeholder="e.g. Candidate appearance — Ward 3 community meeting"
             autoFocus
           />
         </div>
 
         <div>
-          <Label>Type</Label>
+          <Label className="flex items-center gap-1">
+            Type
+            <FieldHelp content="The kind of activity this is. Determines which colour it appears on the calendar and which reports it feeds into." example="Canvassing Run, Fundraiser, Internal Deadline" />
+          </Label>
           <Select
             value={form.itemType}
             onChange={(e) => setForm((f) => ({ ...f, itemType: e.target.value }))}
@@ -650,12 +657,18 @@ function QuickCreateModal({
             onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))}
             className="h-4 w-4 rounded border-gray-300"
           />
-          <Label htmlFor="allDay" className="!mb-0">All day</Label>
+          <Label htmlFor="allDay" className="!mb-0 flex items-center gap-1">
+            All day
+            <FieldHelp content="Check this for items without a specific time — deadlines, travel days, voting days." />
+          </Label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Start</Label>
+            <Label className="flex items-center gap-1">
+              Start
+              <FieldHelp content="When this item begins. For all-day items, just the date matters." />
+            </Label>
             <Input
               type={form.allDay ? "date" : "datetime-local"}
               value={form.allDay ? form.startAt.split("T")[0] : form.startAt}
@@ -666,7 +679,10 @@ function QuickCreateModal({
             />
           </div>
           <div>
-            <Label>End</Label>
+            <Label className="flex items-center gap-1">
+              End
+              <FieldHelp content="When this item ends. Used to calculate duration and check for scheduling conflicts." />
+            </Label>
             <Input
               type={form.allDay ? "date" : "datetime-local"}
               value={form.allDay ? form.endAt.split("T")[0] : form.endAt}
@@ -679,17 +695,23 @@ function QuickCreateModal({
         </div>
 
         <div>
-          <Label>Location</Label>
+          <Label className="flex items-center gap-1">
+            Location
+            <FieldHelp content="Where this item takes place. Shown to any staff or volunteers assigned to it." example="123 Main St, Community Centre, Room 4" />
+          </Label>
           <Input
             value={form.locationName}
             onChange={(e) => setForm((f) => ({ ...f, locationName: e.target.value }))}
-            placeholder="Meeting location"
+            placeholder="123 Main St, Community Centre, Room 4"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Ward</Label>
+            <Label className="flex items-center gap-1">
+              Ward
+              <FieldHelp content="The ward this item belongs to. Used for filtering and field ops reporting." example="Ward 5" />
+            </Label>
             <Input
               value={form.ward}
               onChange={(e) => setForm((f) => ({ ...f, ward: e.target.value }))}
@@ -697,21 +719,27 @@ function QuickCreateModal({
             />
           </div>
           <div>
-            <Label>Virtual URL</Label>
+            <Label className="flex items-center gap-1">
+              Virtual URL
+              <FieldHelp content="A Zoom, Google Meet, or Teams link for remote participants. Included in calendar invites." example="https://zoom.us/j/123456789" />
+            </Label>
             <Input
               value={form.virtualUrl}
               onChange={(e) => setForm((f) => ({ ...f, virtualUrl: e.target.value }))}
-              placeholder="https://..."
+              placeholder="https://zoom.us/j/123456789"
             />
           </div>
         </div>
 
         <div>
-          <Label>Notes</Label>
+          <Label className="flex items-center gap-1">
+            Notes
+            <FieldHelp content="Any additional context for this item — prep instructions, parking notes, or what to bring." example="Parking available behind the building. Bring canvass kits." />
+          </Label>
           <Textarea
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Optional description…"
+            placeholder="Parking notes, what to bring, prep instructions…"
             rows={2}
           />
         </div>

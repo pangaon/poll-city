@@ -3,6 +3,7 @@ import { useState, useMemo, useRef } from "react";
 import { Palette, Check, Upload, Wand2, Loader2, X } from "lucide-react";
 import { AVAILABLE_FONTS, fontCss, PARTY_PRESETS, type BrandKit } from "@/lib/brand/brand-kit";
 import { toast } from "sonner";
+import { FieldHelp } from "@/components/ui";
 
 interface Props {
   campaignId: string;
@@ -144,9 +145,27 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
           {/* Colours */}
           <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 space-y-4">
             <h2 className="font-bold text-slate-900">Colours</h2>
-            <ColourInput label="Primary" value={brand.primaryColor} onChange={(v) => update("primaryColor", v)} />
-            <ColourInput label="Secondary" value={brand.secondaryColor} onChange={(v) => update("secondaryColor", v)} />
-            <ColourInput label="Accent" value={brand.accentColor} onChange={(v) => update("accentColor", v)} />
+            <ColourInput
+              label="Primary"
+              value={brand.primaryColor}
+              onChange={(v) => update("primaryColor", v)}
+              helpContent="Your main campaign colour. Used on signs, email headers, and your public profile. Pick one that photographs well."
+              helpExample="#0A2342 (navy)"
+            />
+            <ColourInput
+              label="Secondary"
+              value={brand.secondaryColor}
+              onChange={(v) => update("secondaryColor", v)}
+              helpContent="Used for backgrounds and less prominent elements. Often a lighter version of your primary colour."
+              helpExample="#FFFFFF (white)"
+            />
+            <ColourInput
+              label="Accent"
+              value={brand.accentColor}
+              onChange={(v) => update("accentColor", v)}
+              helpContent="A bold highlight colour for buttons and call-to-action elements. Should contrast well against both primary and secondary."
+              helpExample="#1D9E75 (green)"
+            />
           </section>
 
           {/* Logo */}
@@ -197,7 +216,7 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
               <input
                 type="url"
                 inputMode="url"
-                placeholder="Paste logo URL…"
+                placeholder="https://yoursite.ca/logo.png"
                 value={brand.logoUrl ?? ""}
                 onChange={(e) => update("logoUrl", e.target.value)}
                 className="flex-1 h-11 px-3 border-2 border-slate-300 rounded-lg focus:border-blue-600 focus:outline-none text-sm"
@@ -230,12 +249,52 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
           {/* Identity */}
           <section className="bg-white rounded-2xl border border-slate-200 p-4 md:p-5 space-y-3">
             <h2 className="font-bold text-slate-900">Identity & contact</h2>
-            <TextField label="Candidate name" value={brand.candidateName ?? ""} onChange={(v) => update("candidateName", v)} placeholder="Jane Smith" />
-            <TextField label="Tagline / slogan" value={brand.tagline ?? ""} onChange={(v) => update("tagline", v)} placeholder="A fresh voice for our community" maxLength={80} />
-            <TextField label="Website" value={brand.websiteUrl ?? ""} onChange={(v) => update("websiteUrl", v)} placeholder="https://mycampaign.ca" inputMode="url" />
-            <TextField label="Twitter / X handle" value={brand.twitter ?? ""} onChange={(v) => update("twitter", v)} placeholder="@handle" />
-            <TextField label="Facebook page URL" value={brand.facebook ?? ""} onChange={(v) => update("facebook", v)} placeholder="https://facebook.com/..." inputMode="url" />
-            <TextField label="Instagram handle" value={brand.instagram ?? ""} onChange={(v) => update("instagram", v)} placeholder="@handle" />
+            <TextField
+              label="Candidate name"
+              value={brand.candidateName ?? ""}
+              onChange={(v) => update("candidateName", v)}
+              placeholder="Jane Smith"
+              helpContent="The candidate's name as it appears on printed materials and your public profile."
+            />
+            <TextField
+              label="Tagline / slogan"
+              value={brand.tagline ?? ""}
+              onChange={(v) => update("tagline", v)}
+              placeholder="A fresh voice for our community"
+              maxLength={80}
+              helpContent="A short, memorable phrase that summarizes your campaign. Appears on door hangers, emails, and your public profile."
+              hint="Maximum 80 characters"
+            />
+            <TextField
+              label="Website"
+              value={brand.websiteUrl ?? ""}
+              onChange={(v) => update("websiteUrl", v)}
+              placeholder="https://mycampaign.ca"
+              inputMode="url"
+              helpContent="Your campaign website URL. Printed on materials and shown on your public profile."
+            />
+            <TextField
+              label="Twitter / X handle"
+              value={brand.twitter ?? ""}
+              onChange={(v) => update("twitter", v)}
+              placeholder="@handle"
+              helpContent="Your campaign's X handle, including the @. Shown on materials and your public profile."
+            />
+            <TextField
+              label="Facebook page URL"
+              value={brand.facebook ?? ""}
+              onChange={(v) => update("facebook", v)}
+              placeholder="https://facebook.com/..."
+              inputMode="url"
+              helpContent="Link to your campaign's Facebook page. Shown on your public profile."
+            />
+            <TextField
+              label="Instagram handle"
+              value={brand.instagram ?? ""}
+              onChange={(v) => update("instagram", v)}
+              placeholder="@handle"
+              helpContent="Your campaign's Instagram handle, including the @."
+            />
           </section>
 
           {/* Save */}
@@ -264,10 +323,19 @@ export default function BrandClient({ campaignId, campaignName, initialBrand }: 
   );
 }
 
-function ColourInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColourInput({ label, value, onChange, helpContent, helpExample }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  helpContent?: string;
+  helpExample?: string;
+}) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 inline-flex items-center gap-1">
+        {label}
+        {helpContent && <FieldHelp content={helpContent} example={helpExample} />}
+      </span>
       <div className="mt-1.5 flex items-center gap-2">
         <input
           type="color"
@@ -295,6 +363,9 @@ function TextField({
   placeholder,
   maxLength,
   inputMode,
+  helpContent,
+  helpExample,
+  hint,
 }: {
   label: string;
   value: string;
@@ -302,10 +373,16 @@ function TextField({
   placeholder?: string;
   maxLength?: number;
   inputMode?: "text" | "url" | "email" | "tel";
+  helpContent?: string;
+  helpExample?: string;
+  hint?: string;
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 inline-flex items-center gap-1">
+        {label}
+        {helpContent && <FieldHelp content={helpContent} example={helpExample} />}
+      </span>
       <input
         type="text"
         inputMode={inputMode}
@@ -315,6 +392,7 @@ function TextField({
         onChange={(e) => onChange(e.target.value)}
         className="mt-1.5 w-full h-12 px-3 border-2 border-slate-300 rounded-lg focus:border-blue-600 focus:outline-none"
       />
+      {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
     </label>
   );
 }

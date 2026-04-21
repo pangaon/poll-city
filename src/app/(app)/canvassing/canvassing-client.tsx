@@ -1208,17 +1208,30 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
                         </div>
                       </div>
                     )}
-                    <FormField label="Turf name">
-                      <Input value={activeTurfName} onChange={(e) => setActiveTurfName(e.target.value)} placeholder="Ward 3 North…" />
+                    <FormField
+                      label="Turf name"
+                      help={{ content: "A short name for this canvassing zone. Used when assigning canvassers to routes and shown on the walk list.", example: "North Grid — Streets 10–25" }}
+                    >
+                      <Input value={activeTurfName} onChange={(e) => setActiveTurfName(e.target.value)} placeholder="North Grid — Streets 10–25" />
                     </FormField>
-                    <FormField label="Assign volunteer">
+                    <FormField
+                      label="Assign volunteer"
+                      help={{ content: "The canvasser responsible for this turf. They will see it in their walk list app and receive GPS routing.", tip: "You can reassign at any time from the turf detail panel." }}
+                    >
                       <MultiSelect value={turfAssigneeIds} onChange={setTurfAssigneeIds} options={teamOptions} placeholder="Select volunteer…" />
                     </FormField>
-                    <FormField label="Canvass date">
+                    <FormField
+                      label="Canvass date"
+                      help={{ content: "The scheduled date for canvassing this turf. Helps your team plan shifts and track whether a turf has been worked recently." }}
+                    >
                       <Input type="date" value={turfCanvassDate} onChange={(e) => setTurfCanvassDate(e.target.value)} />
                     </FormField>
-                    <FormField label="Notes">
-                      <Textarea rows={3} value={turfNotes} onChange={(e) => setTurfNotes(e.target.value)} placeholder="Route notes…" />
+                    <FormField
+                      label="Notes"
+                      help={{ content: "Route notes or instructions for the canvasser — parking spots, locked buildings, dogs to watch out for.", example: "Park on Oak Ave. Building at 42 has a code: 1234." }}
+                      hint="Only visible to the assigned volunteer and campaign managers."
+                    >
+                      <Textarea rows={3} value={turfNotes} onChange={(e) => setTurfNotes(e.target.value)} placeholder="Parking tips, building codes, or anything the canvasser should know…" />
                     </FormField>
                     <div className="flex gap-3 pt-2 mt-auto border-t border-gray-100">
                       <Button variant="outline" onClick={() => { setTurfPanelOpen(false); setSavedTurf(null); }} className="flex-1">Cancel</Button>
@@ -1272,7 +1285,10 @@ export default function CanvassingClient({ campaignId, currentUserId, teamMember
       {/* ── Bulk Assign Modal ── */}
       <Modal open={!!showAssign} onClose={() => { setShowAssign(null); setAssignUserIds([]); }} title="Assign Volunteers" size="sm">
         <div className="space-y-4">
-          <FormField label="Select volunteers">
+          <FormField
+            label="Select volunteers"
+            help={{ content: "Choose one or more team members to assign to this walk list. Each assigned volunteer will see it in their walk list app.", tip: "You can assign the entire team at once using the link below." }}
+          >
             <MultiSelect value={assignUserIds} onChange={setAssignUserIds} options={teamOptions} placeholder="Choose team members…" />
           </FormField>
           {teamOptions.length > 0 && (
@@ -1357,18 +1373,32 @@ function CreateCanvassWizard({ open, onClose, campaignId, teamMembers, onCreated
     <Modal open={open} onClose={handleClose} title={`New Walk List — ${stepTitles[step - 1]}`} size="md">
       {step === 1 && (
         <div className="space-y-4">
-          <FormField label="List name" required>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ward 3 Saturday Canvass" autoFocus />
+          <FormField
+            label="List name"
+            required
+            help={{ content: "A clear name your volunteers will recognise when they open the walk list app. Include the ward and date if running multiple lists.", example: "Ward 3 Saturday Canvass — Oct 11" }}
+          >
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ward 3 Saturday Canvass — Oct 11" autoFocus />
           </FormField>
-          <FormField label="Description">
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Notes for volunteers…" />
+          <FormField
+            label="Description"
+            help={{ content: "Optional notes for volunteers assigned to this list — what to focus on, what to avoid, any special instructions.", example: "Focus on the apartment buildings on Bloor. Avoid the north end — already worked." }}
+            hint="Only visible to assigned volunteers and campaign managers."
+          >
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Focus areas, special instructions, or notes for volunteers…" />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Ward">
+            <FormField
+              label="Ward"
+              help={{ content: "The electoral ward this list covers. Used to group and filter lists by area in your reports.", example: "Ward 3" }}
+            >
               <Input value={ward} onChange={(e) => setWard(e.target.value)} placeholder="Ward 3" />
             </FormField>
-            <FormField label="Target area">
-              <Input value={targetArea} onChange={(e) => setTargetArea(e.target.value)} placeholder="Bloor St – Ossington" />
+            <FormField
+              label="Target area"
+              help={{ content: "A more specific description of the area within the ward. Helps volunteers understand the geography at a glance.", example: "Bloor St – Ossington to Bathurst" }}
+            >
+              <Input value={targetArea} onChange={(e) => setTargetArea(e.target.value)} placeholder="Bloor St — Ossington to Bathurst" />
             </FormField>
           </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
@@ -1406,7 +1436,10 @@ function CreateCanvassWizard({ open, onClose, campaignId, teamMembers, onCreated
       {step === 3 && (
         <div className="space-y-4">
           <p className="text-sm text-gray-600">Assign volunteers to this walk list (optional).</p>
-          <FormField label="Assign volunteers">
+          <FormField
+            label="Assign volunteers"
+            help={{ content: "Choose the team members who will work this list. Each person receives a notification and sees the walk list in their app.", tip: "You can add or remove volunteers after the list is created." }}
+          >
             <MultiSelect value={assignUserIds} onChange={setAssignUserIds} options={teamOptions} placeholder="Select team members…" />
           </FormField>
           {teamOptions.length > 0 && (

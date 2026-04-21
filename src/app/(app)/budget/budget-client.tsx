@@ -731,7 +731,10 @@ function SuggestionsTab({
             : "No rules set — using recommended template. Apply a template on the Rules tab for custom distributions."}
         </p>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Total budget:</label>
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 whitespace-nowrap">
+            Total budget:
+            <FieldHelp content="Enter your campaign's total spending budget. Poll City will distribute it across categories based on your rules or our default template." example="50000 for a typical ward-level municipal race" />
+          </label>
           <input
             type="number"
             value={total}
@@ -740,6 +743,7 @@ function SuggestionsTab({
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             min={0}
             step={1000}
+            placeholder="50000"
           />
           <button
             onClick={onReload}
@@ -1225,7 +1229,7 @@ function ItemModal({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Type">
+          <Field label="Type" help="Allocation = money you plan to spend in a category. Expense = money you have actually spent or committed.">
             <select
               value={form.itemType}
               onChange={(e) => setForm({ ...form, itemType: e.target.value as ItemType })}
@@ -1235,7 +1239,7 @@ function ItemModal({
               <option value="expense">Expense</option>
             </select>
           </Field>
-          <Field label="Status">
+          <Field label="Status" help="Track where this item is in your approval or payment process. Use Reconciled once confirmed against your bank statement.">
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as ItemStatus })}
@@ -1248,15 +1252,15 @@ function ItemModal({
               <option value="reconciled">Reconciled</option>
             </select>
           </Field>
-          <Field label="Category" required help="e.g. Signs, Print, Events, Digital Ads">
+          <Field label="Category" required help="The spending category this item belongs to. Keep categories consistent so your budget overview stays readable.">
             <input
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="Signs"
+              placeholder="Signs, Digital Ads, Events"
             />
           </Field>
-          <Field label="Amount (CAD)" required>
+          <Field label="Amount (CAD)" required help="The dollar value of this allocation or expense. For allocations, this is your planned spend. For expenses, this is the actual amount paid.">
             <input
               type="number"
               value={form.amount}
@@ -1264,6 +1268,7 @@ function ItemModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               min={0}
               step="0.01"
+              placeholder="0.00"
             />
           </Field>
           <Field label="Vendor" help="Who was paid / where the allocation came from">
@@ -1274,7 +1279,7 @@ function ItemModal({
               placeholder="SignShop Inc."
             />
           </Field>
-          <Field label="Payment method">
+          <Field label="Payment method" help="How this item was or will be paid. Useful for reconciling bank statements and tracking payment types across your campaign.">
             <select
               value={form.paymentMethod}
               onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
@@ -1288,7 +1293,7 @@ function ItemModal({
               <option value="invoice">Invoice</option>
             </select>
           </Field>
-          <Field label="Incurred date" required>
+          <Field label="Incurred date" required help="The date the expense was incurred or the allocation was set. Use the invoice date, not the payment date.">
             <input
               type="date"
               value={form.incurredAt}
@@ -1296,12 +1301,12 @@ function ItemModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             />
           </Field>
-          <Field label="Receipt number">
+          <Field label="Receipt number" help="Your internal reference for this receipt. Makes audits and reimbursement requests easier to trace.">
             <input
               value={form.receiptNumber}
               onChange={(e) => setForm({ ...form, receiptNumber: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              placeholder="INV-2026-0042"
+              placeholder="EXP-2026-047"
             />
           </Field>
           <Field label="Receipt URL" help="Link to uploaded receipt file (PDF or image)">
@@ -1313,11 +1318,12 @@ function ItemModal({
             />
           </Field>
           <div className="md:col-span-2">
-            <Field label="Description">
+            <Field label="Description" help="Additional context about this item — what it was for, who approved it, or any notes for your financial officer.">
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-20"
+                placeholder="e.g. 500 lawn signs for Ward 6 canvass weekend"
               />
             </Field>
           </div>
@@ -1438,7 +1444,7 @@ function RuleModal({
         </div>
 
         <div className="space-y-3">
-          <Field label="Category" required>
+          <Field label="Category" required help="The spending category this rule applies to. Must match the category name you use when adding budget items.">
             <input
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -1471,7 +1477,7 @@ function RuleModal({
           </div>
 
           {form.targetType === "percent" ? (
-            <Field label={`Percent of total: ${form.percentOfTotal}%`}>
+            <Field label={`Percent of total: ${form.percentOfTotal}%`} help="What share of your total campaign budget should go to this category. The Suggestions tab will multiply this by your total to recommend an allocation.">
               <input
                 type="range"
                 min={1}
@@ -1482,13 +1488,14 @@ function RuleModal({
               />
             </Field>
           ) : (
-            <Field label="Fixed amount (CAD)">
+            <Field label="Fixed amount (CAD)" help="A fixed dollar target for this category regardless of total budget size. Useful for costs with a predictable price tag.">
               <input
                 type="number"
                 value={form.fixedAmount}
                 onChange={(e) => setForm({ ...form, fixedAmount: Number(e.target.value) })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 min={0}
+                placeholder="5000"
               />
             </Field>
           )}
@@ -1504,7 +1511,7 @@ function RuleModal({
             />
           </Field>
 
-          <Field label={`Warn at: ${form.warnAtPercent}% utilization`}>
+          <Field label={`Warn at: ${form.warnAtPercent}% utilization`} help="When actual spending in this category hits this percentage of the allocation, you will see a warning flag. Set lower for categories where overspending is risky.">
             <input
               type="range"
               min={50}
@@ -1515,12 +1522,12 @@ function RuleModal({
             />
           </Field>
 
-          <Field label="Notes">
+          <Field label="Notes" help="Explain the rationale for this rule — useful when you hand off financial management to a deputy or treasurer.">
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-16"
-              placeholder="Why this category matters..."
+              placeholder="e.g. Signs are the single biggest impact item in a municipal race"
             />
           </Field>
         </div>

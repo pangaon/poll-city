@@ -259,7 +259,7 @@ function Step1({
         <Input
           value={data.candidateName}
           onChange={(v) => onChange("candidateName", v)}
-          placeholder="Full name as it appears on the ballot"
+          placeholder="Full name as it appears on the ballot (e.g. Jane Smith)"
         />
       </div>
 
@@ -461,6 +461,7 @@ function Step3({
           onChange={(v) => onChange("officeAddress", v)}
           placeholder="123 Main St, Ottawa, ON K1A 0A9"
         />
+        <p className="text-slate-500 text-xs mt-1">Where volunteers meet and the team operates from.</p>
       </div>
       <div>
         <Label>Campaign phone</Label>
@@ -470,6 +471,7 @@ function Step3({
           onChange={(v) => onChange("candidatePhone", v)}
           placeholder="613-555-0123"
         />
+        <p className="text-slate-500 text-xs mt-1">The public phone number for your campaign office.</p>
       </div>
       <div>
         <Label>Campaign email</Label>
@@ -479,6 +481,7 @@ function Step3({
           onChange={(v) => onChange("candidateEmail", v)}
           placeholder="info@johncampbell.ca"
         />
+        <p className="text-slate-500 text-xs mt-1">Used on your public profile and for supporter replies.</p>
       </div>
     </div>
   );
@@ -517,6 +520,7 @@ function Step4({
             onChange={(v) => onChange("websiteUrl", v)}
             placeholder="https://johncampbell.ca"
           />
+          <p className="text-slate-500 text-xs mt-1">Your campaign website, if you have one.</p>
         </div>
         <div>
           <Label>X / Twitter</Label>
@@ -525,6 +529,7 @@ function Step4({
             onChange={(v) => onChange("twitterHandle", v)}
             placeholder="@johnforward5"
           />
+          <p className="text-slate-500 text-xs mt-1">Your campaign&apos;s X handle, including the @.</p>
         </div>
         <div>
           <Label>Instagram</Label>
@@ -533,6 +538,7 @@ function Step4({
             onChange={(v) => onChange("instagramHandle", v)}
             placeholder="@johnforward5"
           />
+          <p className="text-slate-500 text-xs mt-1">Your campaign&apos;s Instagram handle.</p>
         </div>
         <div>
           <Label>Facebook URL</Label>
@@ -541,6 +547,7 @@ function Step4({
             onChange={(v) => onChange("facebookUrl", v)}
             placeholder="facebook.com/johncampbell"
           />
+          <p className="text-slate-500 text-xs mt-1">Link to your campaign&apos;s Facebook page.</p>
         </div>
       </div>
 
@@ -557,7 +564,7 @@ function Step4({
               placeholder='e.g. "John Smith for Ward 5"'
             />
             <p className="text-slate-500 text-xs mt-1">
-              Shows as the sender in your supporters&apos; inboxes.
+              Shows as the sender in your supporters&apos; inboxes. Use your name or campaign name.
             </p>
           </div>
           <div>
@@ -568,6 +575,9 @@ function Step4({
               onChange={(v) => onChange("replyToEmail", v)}
               placeholder="john@johncampbell.ca"
             />
+            <p className="text-slate-500 text-xs mt-1">
+              Replies from supporters go here. Use an address you check regularly.
+            </p>
           </div>
         </div>
       </div>

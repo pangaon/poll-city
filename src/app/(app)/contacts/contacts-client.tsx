@@ -2022,22 +2022,22 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <input type="hidden" {...register("campaignId")} />
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="First Name" error={errors.firstName?.message} required>
+          <FormField label="First Name" error={errors.firstName?.message} required help={{ content: "The voter's legal first name as it appears on the electoral roll.", example: "Jane" }}>
             <Input {...register("firstName")} placeholder="Jane" />
           </FormField>
-          <FormField label="Last Name" error={errors.lastName?.message} required>
+          <FormField label="Last Name" error={errors.lastName?.message} required help={{ content: "The voter's last name. Together with first name, this is how they appear in your contact list and on walk lists.", example: "Smith" }}>
             <Input {...register("lastName")} placeholder="Smith" />
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Phone" error={errors.phone?.message}>
+          <FormField label="Phone" error={errors.phone?.message} help={{ content: "The best number to reach this person. Used for calls, texts, and GOTV reminders.", example: "416-555-0123" }} hint="Include area code. Canadian numbers only.">
             <Input {...register("phone")} placeholder="416-555-0100" type="tel" />
           </FormField>
-          <FormField label="Email" error={errors.email?.message}>
+          <FormField label="Email" error={errors.email?.message} help={{ content: "Used for email blasts and receipts. Never shared publicly.", tip: "Add it now — you can't email them later without it." }}>
             <Input {...register("email")} placeholder="jane@email.com" type="email" />
           </FormField>
         </div>
-        <FormField label="Address search">
+        <FormField label="Address search" help={{ content: "Type a street address to automatically fill in the fields below. Saves time and reduces typos.", tip: "Start with the street number for best results." }}>
           <AddressAutocomplete
             value={addressSearch}
             onChange={setAddressSearch}
@@ -2052,23 +2052,23 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
           />
         </FormField>
         <div className="grid grid-cols-3 gap-3">
-          <FormField label="Street #">
+          <FormField label="Street #" help={{ content: "The house or building number on the street.", example: "302" }}>
             <Input {...register("streetNumber")} placeholder="302" />
           </FormField>
           <div className="col-span-2">
-            <FormField label="Street Name">
+            <FormField label="Street Name" help={{ content: "The street name without the number. Used for walk lists and canvassing.", example: "Maple Avenue" }}>
               <Input {...register("address1")} placeholder="Maple Avenue" />
             </FormField>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <FormField label="City"><Input {...register("city")} placeholder="Toronto" /></FormField>
-          <FormField label="Province"><Input {...register("province")} placeholder="ON" /></FormField>
-          <FormField label="Postal Code"><Input {...register("postalCode")} placeholder="M4C 1A1" /></FormField>
+          <FormField label="City" help={{ content: "The city or municipality where this voter lives.", example: "Toronto" }}><Input {...register("city")} placeholder="Toronto" /></FormField>
+          <FormField label="Province" help={{ content: "Two-letter province code.", example: "ON" }} hint="e.g. ON, BC, AB"><Input {...register("province")} placeholder="ON" /></FormField>
+          <FormField label="Postal Code" help={{ content: "Canadian postal code. Used to group contacts by neighbourhood.", example: "M4C 1A1" }} hint="Format: A1A 1A1"><Input {...register("postalCode")} placeholder="M4C 1A1" /></FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Ward"><Input {...register("ward")} placeholder="Ward 12" /></FormField>
-          <FormField label="Support Level">
+          <FormField label="Ward" help={{ content: "The municipal ward this voter lives in. Critical for targeting your canvassing efforts.", example: "Ward 12" }}><Input {...register("ward")} placeholder="Ward 12" /></FormField>
+          <FormField label="Support Level" help={{ content: "How strongly this person supports your campaign, based on what you know so far. You can update this after every interaction.", example: "Strong Support, Undecided, Strong Opposition" }}>
             <Select {...register("supportLevel")}>
               <option value="">— Not assessed —</option>
               {Object.entries(SUPPORT_LEVEL_LABELS).filter(([v]) => v !== "unknown").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -2076,7 +2076,7 @@ function AddContactModal({ open, onClose, campaignId, onCreated }: { open: boole
             </Select>
           </FormField>
         </div>
-        <FormField label="Notes"><Textarea {...register("notes")} placeholder="Any notes about this contact…" rows={3} /></FormField>
+        <FormField label="Notes" help={{ content: "Anything important to remember about this contact — their concerns, how they heard about you, or context for the next conversation.", tip: "Keep it factual. Your volunteers will see this on the walk list." }}><Textarea {...register("notes")} placeholder="e.g. Concerned about transit. Attended your town hall in March." rows={3} /></FormField>
         <div className="flex gap-3">
           <Checkbox label="Follow-up needed" {...register("followUpNeeded")} />
           <Checkbox label="Sign requested" {...register("signRequested")} />

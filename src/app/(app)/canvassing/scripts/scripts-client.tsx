@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { FieldHelp } from "@/components/ui";
 
 /* ─── Brand colours ─────────────────────────────────────────────────────────── */
 const NAVY = "#0A2342";
@@ -263,17 +264,23 @@ export default function ScriptsClient({ campaignId }: { campaignId: string }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Script Name <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Script Name <span className="text-red-500">*</span>
+                  <FieldHelp content="The name canvassers will see when they open their door-knock app. Keep it short and recognisable." example="General Introduction" tip="Keep it short — canvassers see this on a phone screen." />
+                </label>
                 <input
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. Standard Door Script"
+                  placeholder="e.g. General Introduction"
                   value={form.name}
                   onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Support Level</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                  Support Level
+                  <FieldHelp content="Which voters this script is designed for. The canvasser app automatically suggests the right script based on the voter's recorded support level." />
+                </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(Object.entries(SCRIPT_TYPE_CONFIG) as [ScriptType, typeof SCRIPT_TYPE_CONFIG[ScriptType]][]).map(([type, config]) => (
                     <button
@@ -294,18 +301,24 @@ export default function ScriptsClient({ campaignId }: { campaignId: string }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Opening Line <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Opening Line <span className="text-red-500">*</span>
+                  <FieldHelp content="The first thing the canvasser says at the door. Sets the tone for the entire conversation. Make it warm and personal." example="Hi, I'm [Name], a volunteer for [Candidate]. Can I take 2 minutes of your time?" />
+                </label>
                 <textarea
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={3}
-                  placeholder={`"Hi, my name is [Name] and I'm here on behalf of [Candidate]..."`}
+                  placeholder={`Hi, I'm [Name], a volunteer for [Candidate]. Can I take 2 minutes of your time?`}
                   value={form.openingLine}
                   onChange={(e) => setForm((s) => ({ ...s, openingLine: e.target.value }))}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Key Messages (one per line)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Key Messages (one per line)
+                  <FieldHelp content="The 2–4 main points the canvasser should communicate. These appear as a checklist during the conversation so nothing gets missed." example={"Lower property taxes\nBetter transit\nAffordable childcare"} tip="Keep each message to one sentence — canvassers need to say it out loud." />
+                </label>
                 <textarea
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={3}
@@ -316,7 +329,10 @@ export default function ScriptsClient({ campaignId }: { campaignId: string }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Issue Responses (issue:response, one per line)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Issue Responses (issue:response, one per line)
+                  <FieldHelp content="Pre-written responses to common voter concerns. The canvasser sees these if a voter raises a specific issue. Format: Issue: Your response." example={"Taxes: We plan to freeze property taxes for 2 years\nTransit: Our candidate supports expanding bus routes"} />
+                </label>
                 <textarea
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={3}
@@ -327,18 +343,24 @@ export default function ScriptsClient({ campaignId }: { campaignId: string }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Closing Ask <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Closing Ask <span className="text-red-500">*</span>
+                  <FieldHelp content="The specific ask the canvasser makes before leaving. This is the most important part of the conversation — be direct and confident." example="Can we count on your vote on election day?" tip="Ask for something specific: a vote, a sign, a volunteer shift." />
+                </label>
                 <textarea
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={2}
-                  placeholder={`"Can we count on your support on election day?"`}
+                  placeholder={`Can we count on your vote on election day?`}
                   value={form.closingAsk}
                   onChange={(e) => setForm((s) => ({ ...s, closingAsk: e.target.value }))}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Leave-behind Literature</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  Leave-behind Literature
+                  <FieldHelp content="What printed material the canvasser should leave at the door. Reminds them which piece to hand out for this voter type." example="Campaign brochure" tip="Use different literature for supporters vs. undecided voters." />
+                </label>
                 <input
                   className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Campaign brochure, platform summary card"

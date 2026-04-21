@@ -299,31 +299,31 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
                       <p className="text-xs text-amber-600">Looks like a full name in First Name — use Split name to fix.</p>
                     )}
                   </div>
-                  <FormField label="Phone">
+                  <FormField label="Phone" help={{ content: "The best number to reach this person. Used for calls, texts, and GOTV reminders.", example: "416-555-0123" }}>
                     <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="e.g. 416-555-1234" />
                   </FormField>
-                  <FormField label="Email">
+                  <FormField label="Email" help={{ content: "Used for email blasts and receipts. Never shared publicly.", tip: "Add it now — you can't email them later without it." }}>
                     <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="email@example.com" />
                   </FormField>
-                  <FormField label="Address">
+                  <FormField label="Address" help={{ content: "The voter's home address. Used for walk lists, canvassing, and placing lawn signs.", example: "302 Maple Avenue" }}>
                     <Input value={editForm.address1} onChange={(e) => setEditForm({ ...editForm, address1: e.target.value })} placeholder="123 Main St" />
                   </FormField>
                   <div className="flex gap-2">
-                    <div className="flex-1"><FormField label="City"><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Toronto" /></FormField></div>
-                    <div className="w-24"><FormField label="Province"><Input value={editForm.province} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} placeholder="ON" /></FormField></div>
-                    <div className="w-28"><FormField label="Postal"><Input value={editForm.postalCode} onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })} placeholder="M5V 1A1" /></FormField></div>
+                    <div className="flex-1"><FormField label="City" help={{ content: "The city or municipality where this voter lives.", example: "Toronto" }}><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Toronto" /></FormField></div>
+                    <div className="w-24"><FormField label="Province" hint="e.g. ON"><Input value={editForm.province} onChange={(e) => setEditForm({ ...editForm, province: e.target.value })} placeholder="ON" /></FormField></div>
+                    <div className="w-28"><FormField label="Postal" hint="A1A 1A1"><Input value={editForm.postalCode} onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })} placeholder="M5V 1A1" /></FormField></div>
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex-1"><FormField label="Ward"><Input value={editForm.ward} onChange={(e) => setEditForm({ ...editForm, ward: e.target.value })} placeholder="Ward 10" /></FormField></div>
-                    <div className="flex-1"><FormField label="Riding"><Input value={editForm.riding} onChange={(e) => setEditForm({ ...editForm, riding: e.target.value })} placeholder="Riding name" /></FormField></div>
+                    <div className="flex-1"><FormField label="Ward" help={{ content: "The municipal ward this voter lives in. Critical for targeting your canvassing efforts.", example: "Ward 10" }}><Input value={editForm.ward} onChange={(e) => setEditForm({ ...editForm, ward: e.target.value })} placeholder="Ward 10" /></FormField></div>
+                    <div className="flex-1"><FormField label="Riding" help={{ content: "The provincial or federal electoral riding. Useful if you are coordinating with a party candidate.", example: "Toronto Centre" }}><Input value={editForm.riding} onChange={(e) => setEditForm({ ...editForm, riding: e.target.value })} placeholder="Riding name" /></FormField></div>
                   </div>
-                  <FormField label="Support Level">
+                  <FormField label="Support Level" help={{ content: "How strongly this person supports your campaign. Update this after every door knock or call.", example: "Strong Support, Undecided, Strong Opposition" }}>
                     <Select value={editForm.supportLevel} onChange={(e) => setEditForm({ ...editForm, supportLevel: e.target.value as SupportLevel })}>
                       {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </Select>
                   </FormField>
-                  <FormField label="Notes">
-                    <WriteAssistTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} context="note" campaignId={campaignId} rows={4} />
+                  <FormField label="Notes" help={{ content: "Anything important to remember — their concerns, context for the next visit, or anything they told you at the door.", tip: "Volunteers will see this on the walk list." }}>
+                    <WriteAssistTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} context="note" campaignId={campaignId} rows={4} placeholder="e.g. Concerned about transit. Wants a sign in spring." />
                   </FormField>
                   <div className="space-y-2">
                     <Checkbox label="Follow-up needed" checked={editForm.followUpNeeded} onChange={(e) => setEditForm({ ...editForm, followUpNeeded: e.target.checked })} />
@@ -1122,18 +1122,18 @@ function LogInteractionModal({ open, onClose, contactId, contactName, onLogged }
     <Modal open={open} onClose={onClose} title={`Log Interaction — ${contactName}`} size="md">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <input type="hidden" {...register("contactId")} />
-        <FormField label="Interaction Type" error={errors.type?.message} required>
+        <FormField label="Interaction Type" error={errors.type?.message} required help={{ content: "How you made contact with this voter. Tracking the method helps you understand what's working.", example: "Door knock, Phone call, Email, Event" }}>
           <Select {...register("type")}>
             {Object.entries(INTERACTION_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </FormField>
-        <FormField label="Support Level">
+        <FormField label="Support Level" help={{ content: "Did this interaction change how you rate this voter's support? Update it here — your numbers depend on keeping this current.", tip: "Leave blank if nothing changed." }}>
           <Select {...register("supportLevel")}>
             <option value="">No change</option>
             {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </FormField>
-        <FormField label="Notes">
+        <FormField label="Notes" help={{ content: "What happened during this interaction? What did they say? What are their concerns? This goes into your contact history and informs future visits.", tip: "Even a few words help. 'Supportive, transit concerns' beats nothing." }}>
           <Controller
             name="notes"
             control={control}

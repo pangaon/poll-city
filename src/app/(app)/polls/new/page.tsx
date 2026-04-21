@@ -119,22 +119,38 @@ function Step1({ form, onChange }: { form: FormState; onChange: (k: keyof FormSt
         ))}
       </div>
 
-      <FormField label="Question" required>
+      <FormField
+        label="Question"
+        required
+        help={{
+          content: "The main question voters will answer. Write it neutrally — leading questions skew your data.",
+          example: "Do you support adding protected bike lanes on Main Street?",
+          tip: "Keep it to one clear question. Compound questions confuse voters and produce unreliable results.",
+        }}
+        hint="5–500 characters. Be specific about your ward or community."
+      >
         <Textarea
           value={form.question}
           onChange={(e) => onChange("question", e.target.value)}
-          placeholder="e.g. Do you support expanding public transit in our city?"
+          placeholder="e.g. Do you support expanding protected bike lanes on Main Street?"
           className="text-base resize-none"
           rows={3}
         />
         <p className="text-xs text-gray-400 mt-1 text-right">{form.question.length}/500</p>
       </FormField>
 
-      <FormField label="Description (optional)">
+      <FormField
+        label="Description (optional)"
+        help={{
+          content: "Extra context voters see below the question. Use this to explain why you're asking or provide relevant background.",
+          example: "The city is reviewing its cycling infrastructure plan this fall. Your input will be shared with the ward councillor.",
+        }}
+        hint="Keep it brief. 1–2 sentences is enough."
+      >
         <Textarea
           value={form.description}
           onChange={(e) => onChange("description", e.target.value)}
-          placeholder="Provide additional context..."
+          placeholder="e.g. The city is reviewing its 2026 cycling plan. Your answer helps shape our position."
           rows={2}
         />
       </FormField>
@@ -225,7 +241,7 @@ function Step2({ form, setOptions }: { form: FormState; setOptions: (opts: PollO
             <Input
               value={opt.text}
               onChange={(e) => updateText(opt.id, e.target.value)}
-              placeholder={`Option ${i + 1}`}
+              placeholder={i === 0 ? "e.g. Strongly support" : i === 1 ? "e.g. Strongly oppose" : `Option ${i + 1}`}
               className="flex-1"
             />
             <button
@@ -303,7 +319,14 @@ function Step3({ form, onChange, onToggle }: {
       </div>
 
       {/* End date */}
-      <FormField label="End date (optional)">
+      <FormField
+        label="End date (optional)"
+        help={{
+          content: "When the poll stops accepting votes. Leave blank to keep it open indefinitely.",
+          tip: "Closing a poll creates urgency. A 3–7 day window works well for most campaign polls.",
+        }}
+        hint="Voters will see a countdown once a closing date is set."
+      >
         <div className="relative">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
@@ -316,20 +339,35 @@ function Step3({ form, onChange, onToggle }: {
       </FormField>
 
       {/* Target region */}
-      <FormField label="Target region (optional)">
+      <FormField
+        label="Target region (optional)"
+        help={{
+          content: "Limit this poll to voters in a specific area. Useful if the issue only affects part of your ward.",
+          example: "Toronto Ward 12, Ottawa East, Scarborough North",
+        }}
+        hint="Free text — enter the area name as you want it displayed."
+      >
         <Input
           value={form.targetRegion}
           onChange={(e) => onChange("targetRegion", e.target.value)}
-          placeholder="e.g. Toronto Ward 12, Ottawa East"
+          placeholder="e.g. Toronto Ward 12"
         />
       </FormField>
 
       {/* Tags */}
-      <FormField label="Tags (optional)">
+      <FormField
+        label="Tags (optional)"
+        help={{
+          content: "Keywords that describe what this poll is about. Used to filter and group polls on your dashboard.",
+          example: "municipal, transit, infrastructure, housing",
+          tip: "Use consistent tags across polls so you can compare results on related topics.",
+        }}
+        hint="Separate tags with commas."
+      >
         <Input
           value={form.tags}
           onChange={(e) => onChange("tags", e.target.value)}
-          placeholder="municipal, transit, infrastructure (comma separated)"
+          placeholder="e.g. transit, infrastructure, ward-12 (comma separated)"
         />
       </FormField>
 

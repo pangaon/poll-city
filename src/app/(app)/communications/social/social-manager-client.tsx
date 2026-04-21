@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { WriteAssistTextarea } from "@/components/ui";
+import { FieldHelp, WriteAssistTextarea } from "@/components/ui";
 import {
   Share2, Plus, Send, Clock, CheckCircle2, XCircle, AlertCircle,
   MessageCircle, Loader2, Globe, Trash2, ChevronDown,
@@ -374,8 +374,12 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                     {/* linked account + status */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <label className="block">
-                        <span className="text-xs font-semibold text-slate-600">
+                        <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
                           Account
+                          <FieldHelp
+                            content="The social media account this post will be linked to. You can leave this blank and just select Target Platforms below."
+                            tip="Link a specific account if you manage multiple handles — useful for keeping constituency updates separate from personal posts."
+                          />
                         </span>
                         <select
                           className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
@@ -396,8 +400,12 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                         </select>
                       </label>
                       <label className="block">
-                        <span className="text-xs font-semibold text-slate-600">
+                        <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
                           Status
+                          <FieldHelp
+                            content="Controls whether this post needs approval before going out. Use Draft to save your work. Use Submit for Approval if another team member must review before publishing."
+                            tip="Set up an approval workflow when volunteers or staff are posting on your behalf — it prevents anything going out without your sign-off."
+                          />
                         </span>
                         <select
                           className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
@@ -416,8 +424,12 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
 
                     {/* target platforms */}
                     <div>
-                      <span className="text-xs font-semibold text-slate-600 block mb-1.5">
+                      <span className="text-xs font-semibold text-slate-600 flex items-center gap-1 mb-1.5">
                         Target Platforms
+                        <FieldHelp
+                          content="Choose which platforms this post is intended for. The character counter adjusts to the strictest limit across your selections."
+                          tip="X (Twitter) has the tightest limit at 280 characters. If you're cross-posting to X, write to that limit first."
+                        />
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {PLATFORMS.map((p) => (
@@ -447,20 +459,37 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                     </div>
 
                     {/* title */}
-                    <input
-                      className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
-                      placeholder="Post title (optional)"
-                      value={postForm.title}
-                      onChange={(e) =>
-                        setPostForm((c) => ({ ...c, title: e.target.value }))
-                      }
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                        Post title (optional)
+                        <FieldHelp
+                          content="An internal label for this post — only you and your team see it. Useful for organising your content calendar."
+                          example="GOTV Week 2 — Facebook reminder post"
+                        />
+                      </label>
+                      <input
+                        className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                        placeholder="e.g. GOTV Week 2 — Facebook reminder"
+                        value={postForm.title}
+                        onChange={(e) =>
+                          setPostForm((c) => ({ ...c, title: e.target.value }))
+                        }
+                      />
+                    </div>
 
                     {/* content */}
                     <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                        Post content <span className="text-red-500">*</span>
+                        <FieldHelp
+                          content="The text of your social media post. The character counter reflects the strictest limit of your selected platforms."
+                          example="Proud to support affordable housing in Ward 3. Tonight I met with residents who've been waiting years for action. This is why I'm running. 🏘️ #Ward3Votes"
+                          tip="Posts with a question or a clear call to action get more engagement. End with what you want people to do — share, comment, visit your website."
+                        />
+                      </label>
                       <WriteAssistTextarea
                         className="border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 text-sm min-h-[120px]"
-                        placeholder="Write your post..."
+                        placeholder="Write your post here. Keep it conversational — write the way you'd talk to a neighbour at the door."
                         value={postForm.content}
                         onChange={(v) =>
                           setPostForm((c) => ({ ...c, content: v }))
@@ -495,6 +524,10 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                     <label className="block">
                       <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Schedule (optional)
+                        <FieldHelp
+                          content="Set a date and time to publish this post automatically. Leave blank to save as a draft and publish manually later."
+                          tip="Social posts perform best between 7–9 AM, 12–1 PM, and 7–9 PM when voters are on their phones."
+                        />
                       </span>
                       <input
                         type="datetime-local"
@@ -674,35 +707,62 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                 Connect Account
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <select
-                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
-                  value={accountForm.platform}
-                  onChange={(e) =>
-                    setAccountForm((c) => ({ ...c, platform: e.target.value }))
-                  }
-                >
-                  {PLATFORMS.map((p) => (
-                    <option key={p} value={p}>
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
-                  placeholder="@handle"
-                  value={accountForm.handle}
-                  onChange={(e) =>
-                    setAccountForm((c) => ({ ...c, handle: e.target.value }))
-                  }
-                />
-                <input
-                  className="min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
-                  placeholder="Display name"
-                  value={accountForm.displayName}
-                  onChange={(e) =>
-                    setAccountForm((c) => ({ ...c, displayName: e.target.value }))
-                  }
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    Platform
+                    <FieldHelp
+                      content="The social media platform where your campaign account lives. Each platform has different character limits for posts."
+                      tip="Start with the platforms your target voters use most. For municipal candidates, Facebook and X are most common."
+                    />
+                  </label>
+                  <select
+                    className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                    value={accountForm.platform}
+                    onChange={(e) =>
+                      setAccountForm((c) => ({ ...c, platform: e.target.value }))
+                    }
+                  >
+                    {PLATFORMS.map((p) => (
+                      <option key={p} value={p}>
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    Handle
+                    <FieldHelp
+                      content="Your username on that platform, including the @ symbol. This is used to identify your account in posts and mentions."
+                      example="@janesmith_ward3"
+                    />
+                  </label>
+                  <input
+                    className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                    placeholder="@janesmith_ward3"
+                    value={accountForm.handle}
+                    onChange={(e) =>
+                      setAccountForm((c) => ({ ...c, handle: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    Display name
+                    <FieldHelp
+                      content="The friendly name shown on your profile — usually your full name or campaign name."
+                      example="Jane Smith for Ward 3"
+                    />
+                  </label>
+                  <input
+                    className="w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                    placeholder="Jane Smith for Ward 3"
+                    value={accountForm.displayName}
+                    onChange={(e) =>
+                      setAccountForm((c) => ({ ...c, displayName: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
               <button
                 disabled={addingAccount || !accountForm.handle.trim()}

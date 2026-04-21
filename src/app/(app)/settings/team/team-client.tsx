@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Users, UserPlus, X, Shield, Mail, Trash2, AlertCircle, Check, ChevronDown, ChevronUp, QrCode, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader, Badge } from "@/components/ui";
+import { PageHeader, Badge, FieldHelp } from "@/components/ui";
 
 interface Member {
   id: string;
@@ -398,8 +398,20 @@ export default function TeamClient({ campaignId, currentUserRole, globalUserRole
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2">
-                <input value={customRoleName} onChange={(e) => setCustomRoleName(e.target.value)} placeholder="Role name" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-                <input value={customRoleDesc} onChange={(e) => setCustomRoleDesc(e.target.value)} placeholder="Description" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                    Role name
+                    <FieldHelp content="The name your team sees when roles are assigned. Keep it clear and descriptive." example="Signs Crew Lead, Poll Captain" />
+                  </label>
+                  <input value={customRoleName} onChange={(e) => setCustomRoleName(e.target.value)} placeholder="e.g. Signs Crew Lead" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                    Description
+                    <FieldHelp content="A brief description of what this role does. Helps team members understand the responsibilities." />
+                  </label>
+                  <input value={customRoleDesc} onChange={(e) => setCustomRoleDesc(e.target.value)} placeholder="e.g. Manages sign placement in the north grid" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                </div>
               </div>
               <button onClick={createCustomRole} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Create custom role</button>
               <div className="space-y-2">
@@ -420,12 +432,36 @@ export default function TeamClient({ campaignId, currentUserRole, globalUserRole
       {activeTab === "join" && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <input value={joinLabel} onChange={(e) => setJoinLabel(e.target.value)} placeholder="Link label" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            <select value={joinRole} onChange={(e) => setJoinRole(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm">
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-            <input type="number" min={1} value={joinMaxUses} onChange={(e) => setJoinMaxUses(Number(e.target.value) || 1)} placeholder="Max uses" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-            <input type="number" min={1} value={joinExpiryDays} onChange={(e) => setJoinExpiryDays(Number(e.target.value) || 1)} placeholder="Expiry days" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                Link label
+                <FieldHelp content="An internal name for this join link. Helps you identify which link you sent to whom." example="Volunteer Night — April 24, Door Knock Crew" />
+              </label>
+              <input value={joinLabel} onChange={(e) => setJoinLabel(e.target.value)} placeholder="e.g. Volunteer Night — April 24" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                Role assigned on join
+                <FieldHelp content="The role new members receive when they use this link. Canvasser is typical for volunteers." />
+              </label>
+              <select value={joinRole} onChange={(e) => setJoinRole(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                Max uses
+                <FieldHelp content="How many people can use this link before it stops working. Set this to the number of volunteers you expect." example="50" />
+              </label>
+              <input type="number" min={1} value={joinMaxUses} onChange={(e) => setJoinMaxUses(Number(e.target.value) || 1)} placeholder="e.g. 50" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1 inline-flex items-center gap-1">
+                Expiry (days)
+                <FieldHelp content="How many days before this link expires. After this date, the link will no longer work." example="7" />
+              </label>
+              <input type="number" min={1} value={joinExpiryDays} onChange={(e) => setJoinExpiryDays(Number(e.target.value) || 1)} placeholder="e.g. 7" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={generateJoinLink} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white min-h-[44px] transition-colors" style={{ backgroundColor: "#1D9E75" }}>
@@ -529,8 +565,9 @@ export default function TeamClient({ campaignId, currentUserRole, globalUserRole
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5 inline-flex items-center gap-1">
                   Email address
+                  <FieldHelp content="They'll receive an invitation at this address. Make sure it's correct before sending." tip="They'll need to accept the invite to access the campaign." />
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   Button, Card, CardContent, CardHeader, CardTitle, Input, Label,
-  Textarea, Badge, EmptyState, PageHeader, Modal, Select,
+  Textarea, Badge, EmptyState, PageHeader, Modal, Select, FieldHelp,
 } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -272,20 +272,20 @@ export default function VolunteersGroupsClient({ campaignId }: Props) {
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create New Group" size="md">
         <div className="space-y-4">
           <div>
-            <Label required>Group Name</Label>
+            <Label required className="inline-flex items-center gap-1">Group Name <FieldHelp content="A short name for this volunteer team. Typically named by ward or area." example="Ward 12 Canvassers" /></Label>
             <Input value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} placeholder="e.g. Ward 12 Team" className="min-h-[44px]" />
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} placeholder="What is this group responsible for?" />
+            <Label className="inline-flex items-center gap-1">Description <FieldHelp content="What is this group responsible for? Helps volunteers understand the team's purpose." example="Handles all door-to-door canvassing in the north end of Ward 12." /></Label>
+            <Textarea value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} placeholder="e.g. Handles door-to-door canvassing in the north end of the ward." />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Target Ward</Label>
-              <Input value={form.targetWard} onChange={(e) => setForm((s) => ({ ...s, targetWard: e.target.value }))} placeholder="Ward name or number" className="min-h-[44px]" />
+              <Label className="inline-flex items-center gap-1">Target Ward <FieldHelp content="The ward or geographic area this group is focused on. Used for filtering and assignments." example="Ward 12, Downtown North" /></Label>
+              <Input value={form.targetWard} onChange={(e) => setForm((s) => ({ ...s, targetWard: e.target.value }))} placeholder="e.g. Ward 12" className="min-h-[44px]" />
             </div>
             <div>
-              <Label>Team Leader</Label>
+              <Label className="inline-flex items-center gap-1">Team Leader <FieldHelp content="The volunteer who leads this group. They receive group messages and are listed as the point of contact." tip="You can change this later." /></Label>
               <Select value={form.leaderProfileId} onChange={(e) => setForm((s) => ({ ...s, leaderProfileId: e.target.value }))} className="min-h-[44px]">
                 <option value="">No leader assigned</option>
                 {profiles.map((p) => (
@@ -306,7 +306,7 @@ export default function VolunteersGroupsClient({ campaignId }: Props) {
         {showAddMember && (
           <div className="space-y-4">
             <div>
-              <Label>Select Volunteer</Label>
+              <Label className="inline-flex items-center gap-1">Select Volunteer <FieldHelp content="Choose the volunteer you want to add to this group. Only active volunteers not already in the group are shown." /></Label>
               <Select value={addMemberId} onChange={(e) => setAddMemberId(e.target.value)} className="min-h-[44px]">
                 <option value="">Choose volunteer...</option>
                 {profiles
@@ -334,12 +334,12 @@ export default function VolunteersGroupsClient({ campaignId }: Props) {
               Send a notification to all {showMessage.members.length} member{showMessage.members.length !== 1 ? "s" : ""} of this group.
             </p>
             <div>
-              <Label required>Title</Label>
-              <Input value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} placeholder="Message title" className="min-h-[44px]" />
+              <Label required className="inline-flex items-center gap-1">Title <FieldHelp content="A short subject line for your message. Volunteers will see this as the notification title." example="Saturday canvass — meet at 10am" /></Label>
+              <Input value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} placeholder="e.g. Saturday canvass — meet at 10am" className="min-h-[44px]" />
             </div>
             <div>
-              <Label required>Message</Label>
-              <Textarea value={msgBody} onChange={(e) => setMsgBody(e.target.value)} placeholder="Type your message here..." className="min-h-[120px]" />
+              <Label required className="inline-flex items-center gap-1">Message <FieldHelp content="The full message your volunteers will receive. Include location, time, and what to bring." tip="3–5 sentences is ideal. Volunteers skim — be direct." /></Label>
+              <Textarea value={msgBody} onChange={(e) => setMsgBody(e.target.value)} placeholder="e.g. We're meeting at 45 Elm St at 10am this Saturday. Bring your phone and comfortable shoes. Pizza after!" className="min-h-[120px]" />
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
               <Button variant="outline" onClick={() => setShowMessage(null)} className="min-h-[44px]">Cancel</Button>

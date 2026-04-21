@@ -7,7 +7,7 @@ import {
   StarOff, Archive, ExternalLink, Copy, XCircle, Sparkles,
   Loader2, RefreshCw, CheckCircle, Pencil,
 } from "lucide-react";
-import { Button, Card, CardContent, Input, PageHeader } from "@/components/ui";
+import { Button, Card, CardContent, FieldHelp, Input, PageHeader } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/utils";
@@ -262,13 +262,22 @@ function AISuggestModal({
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="Optional: focus topic (e.g. housing, transit, budget)..."
-              className="flex-1"
-              onKeyDown={(e) => e.key === "Enter" && !loading && fetchSuggestions()}
-            />
+            <div className="flex-1 relative">
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="Optional: focus on a topic — e.g. housing affordability, transit, climate..."
+                className="w-full pr-8"
+                onKeyDown={(e) => e.key === "Enter" && !loading && fetchSuggestions()}
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <FieldHelp
+                  content="Tell the AI what local issue to focus on. Leave blank and it will pull from today's Canadian headlines automatically."
+                  example="housing affordability, protected bike lanes, downtown development"
+                  tip="The more specific you are, the more relevant the poll suggestions."
+                />
+              </span>
+            </div>
             <Button
               onClick={fetchSuggestions}
               disabled={loading}
@@ -499,7 +508,7 @@ export default function PollsClient({ campaignId }: Props) {
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search polls by question or region..."
+              placeholder="Search by question text, tag, or region (e.g. transit, Ward 12)..."
             />
           </div>
         </CardContent>

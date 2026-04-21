@@ -705,24 +705,49 @@ export default function DonationsClient({ campaignId }: Props) {
           {/* Donor info (if individual) */}
           {newForm.donorType === "individual" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="First Name" required error={newFormErrors.firstName}>
+              <FormField
+                label="First Name"
+                required
+                error={newFormErrors.firstName}
+                help={{ content: "The donor's legal first name as it will appear on their official receipt.", example: "Jane" }}
+              >
                 <Input value={newForm.firstName} onChange={e => setNewForm(f => ({ ...f, firstName: e.target.value }))} placeholder="Jane" />
               </FormField>
-              <FormField label="Last Name" required>
+              <FormField
+                label="Last Name"
+                required
+                help={{ content: "The donor's legal last name. Required for campaign finance reporting.", example: "Smith" }}
+              >
                 <Input value={newForm.lastName} onChange={e => setNewForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Smith" />
               </FormField>
-              <FormField label="Phone">
+              <FormField
+                label="Phone"
+                help={{ content: "Optional contact number for follow-up or thank-you calls.", example: "416-555-1234" }}
+                hint="Optional — used for thank-you outreach"
+              >
                 <Input value={newForm.phone} onChange={e => setNewForm(f => ({ ...f, phone: e.target.value }))} placeholder="416-555-1234" />
               </FormField>
-              <FormField label="Address">
-                <Input value={newForm.address} onChange={e => setNewForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Main St, Toronto" />
+              <FormField
+                label="Address"
+                help={{ content: "Donor's home address. Appears on the official receipt and is required if the donor requests one.", example: "123 Main St, Toronto, ON M5V 1A1" }}
+              >
+                <Input value={newForm.address} onChange={e => setNewForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Main St, Toronto, ON" />
               </FormField>
             </div>
           )}
 
           {/* Amount and method */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="Amount" required error={newFormErrors.amount}>
+            <FormField
+              label="Amount"
+              required
+              error={newFormErrors.amount}
+              help={{
+                content: "The amount received. Ontario municipal campaigns have a $1,200 per-donor annual limit.",
+                tip: "Exceeding the limit triggers reporting obligations — double-check before saving.",
+              }}
+              hint="Max $1,200/year per individual donor"
+            >
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
                 <Input
@@ -736,7 +761,10 @@ export default function DonationsClient({ campaignId }: Props) {
                 />
               </div>
             </FormField>
-            <FormField label="Method">
+            <FormField
+              label="Method"
+              help={{ content: "How the donation was received. This appears on the official receipt.", example: "Cash, Cheque, Credit Card, E-Transfer" }}
+            >
               <Select value={newForm.method} onChange={e => setNewForm(f => ({ ...f, method: e.target.value }))}>
                 <option value="cash">Cash</option>
                 <option value="cheque">Cheque</option>
@@ -746,8 +774,12 @@ export default function DonationsClient({ campaignId }: Props) {
             </FormField>
           </div>
 
-          <FormField label="Notes">
-            <Textarea value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} placeholder="Door knock, event, etc." rows={2} />
+          <FormField
+            label="Notes"
+            help={{ content: "Internal notes about this donation — not printed on receipts.", example: "Collected at ward BBQ, door knock on Elm St" }}
+            hint="Internal only — not shown on receipts"
+          >
+            <Textarea value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Collected at ward BBQ, door knock on Elm St" rows={2} />
           </FormField>
 
           {/* Legal limit info */}
@@ -768,7 +800,13 @@ export default function DonationsClient({ campaignId }: Props) {
       {/* ═══ EDIT MODAL ══════════════════════════════════════════════ */}
       <Modal open={openEdit} onClose={() => setOpenEdit(false)} title="Update Donation" size="md">
         <div className="space-y-4">
-          <FormField label="Status">
+          <FormField
+            label="Status"
+            help={{
+              content: "The current stage of this donation. Move to Processed once funds are received, then Receipted once the receipt has been issued.",
+              example: "Pledged → Processed → Receipted",
+            }}
+          >
             <Select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
               <option value="pledged">Pledged</option>
               <option value="processed">Processed</option>
@@ -777,7 +815,10 @@ export default function DonationsClient({ campaignId }: Props) {
               <option value="refunded">Refunded</option>
             </Select>
           </FormField>
-          <FormField label="Method">
+          <FormField
+            label="Method"
+            help={{ content: "How the donation was received. Correct this if the payment method changed from what was originally recorded.", example: "Cash, Cheque, Credit Card, E-Transfer" }}
+          >
             <Select value={editForm.method} onChange={e => setEditForm(f => ({ ...f, method: e.target.value }))}>
               <option value="cash">Cash</option>
               <option value="cheque">Cheque</option>
@@ -785,8 +826,12 @@ export default function DonationsClient({ campaignId }: Props) {
               <option value="e-transfer">E-Transfer</option>
             </Select>
           </FormField>
-          <FormField label="Notes">
-            <Textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+          <FormField
+            label="Notes"
+            help={{ content: "Internal notes — useful for tracking follow-ups, special circumstances, or audit notes.", example: "Cheque #4421, deposited April 20" }}
+            hint="Internal only — not shown on receipts"
+          >
+            <Textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Cheque #4421, deposited April 20" />
           </FormField>
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setOpenEdit(false)}>Cancel</Button>

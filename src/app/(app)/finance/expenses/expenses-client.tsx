@@ -7,6 +7,7 @@ import {
   Plus, Receipt, FileWarning, Search, X, ChevronRight, Check,
   AlertTriangle, Upload, XCircle, Download,
 } from "lucide-react";
+import { FieldHelp } from "@/components/ui";
 import Link from "next/link";
 
 interface ReceiptAsset { id: string; fileName: string; fileUrl: string }
@@ -473,17 +474,23 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Description *</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Description *
+                    <FieldHelp content="A clear description of what this expense was for. This appears in your finance report and approval workflow." example="500 lawn signs, door-knock printing — Ward 6" />
+                  </label>
                   <input
                     value={form.description}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="What was this expense for?"
+                    placeholder="e.g. 500 lawn signs for Ward 6 canvass"
                     className="mt-1 w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0A2342]"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Amount (CAD) *</label>
+                    <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                      Amount (CAD) *
+                      <FieldHelp content="The total amount paid, before or after tax — record whichever matches your receipt. Add HST separately in the Tax field." example="450.00" />
+                    </label>
                     <input
                       type="number" step="0.01"
                       value={form.amount}
@@ -493,7 +500,10 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Tax</label>
+                    <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                      Tax (HST)
+                      <FieldHelp content="The HST portion of this expense. Campaigns must track tax separately for financial reporting." example="58.50 (13% HST on $450)" />
+                    </label>
                     <input
                       type="number" step="0.01"
                       value={form.taxAmount}
@@ -504,7 +514,10 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Date *</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Date *
+                    <FieldHelp content="The date the expense was incurred — use the invoice or receipt date, not the payment date." />
+                  </label>
                   <input
                     type="date"
                     value={form.expenseDate}
@@ -513,7 +526,10 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Budget Line</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Budget Line
+                    <FieldHelp content="The budget category this expense is charged to. Helps you track spending vs. your plan." example="Signs & Print, Digital Advertising, Canvassing" />
+                  </label>
                   <select
                     value={form.budgetLineId}
                     onChange={(e) => setForm((p) => ({ ...p, budgetLineId: e.target.value }))}
@@ -526,7 +542,10 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Vendor</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Vendor
+                    <FieldHelp content="The supplier or person who was paid. Linking a vendor makes it easier to run spending-by-vendor reports." example="SignShop Inc., Staples Business Centre" />
+                  </label>
                   <select
                     value={form.vendorId}
                     onChange={(e) => setForm((p) => ({ ...p, vendorId: e.target.value }))}
@@ -539,7 +558,10 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Payment Method</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Payment Method
+                    <FieldHelp content="How this expense was paid. Useful for reconciling bank statements and for the financial officer's audit trail." example="Credit Card, Cheque, E-Transfer" />
+                  </label>
                   <select
                     value={form.paymentMethod}
                     onChange={(e) => setForm((p) => ({ ...p, paymentMethod: e.target.value }))}
@@ -549,18 +571,25 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Notes</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Notes
+                    <FieldHelp content="Any additional context for the approver or financial officer — purpose of the purchase, approval reference, etc." example="Approved by campaign manager on April 18 — urgent for GOTV week" />
+                  </label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                     rows={2}
+                    placeholder="e.g. Approved by campaign manager for GOTV weekend"
                     className="mt-1 w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0A2342] resize-none"
                   />
                 </div>
 
                 {/* Receipt upload */}
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-slate-400">Receipt</label>
+                  <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    Receipt
+                    <FieldHelp content="Attach the receipt or invoice. Required for expenses over $500 — missing receipts are flagged for review." tip="Accepted formats: JPG, PNG, PDF. Max 10 MB." />
+                  </label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -626,10 +655,14 @@ export default function ExpensesClient({ campaignId }: { campaignId: string }) {
               className="bg-white dark:bg-slate-900 rounded-xl p-5 w-full max-w-sm shadow-xl"
             >
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Reject Expense</h3>
+              <label className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">
+                Reason for rejection *
+                <FieldHelp content="Explain why this expense cannot be approved. The submitter will see this reason so they can correct and resubmit." example="Missing receipt — please attach the invoice from SignShop Inc." />
+              </label>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Reason for rejection..."
+                placeholder="e.g. Missing receipt — please attach the vendor invoice"
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
               />

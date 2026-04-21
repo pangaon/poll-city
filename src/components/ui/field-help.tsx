@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { HelpCircle } from "lucide-react";
 
-interface FieldHelpProps {
+export interface FieldHelpProps {
   /** Main explanation of the field. */
   content: string;
   /** Optional example values. */

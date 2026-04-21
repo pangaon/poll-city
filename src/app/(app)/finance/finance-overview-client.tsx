@@ -7,6 +7,7 @@ import {
   FileWarning, ShoppingCart, CheckCircle2, ArrowRight, Receipt,
   Shield, X, Loader2,
 } from "lucide-react";
+import { FieldHelp } from "@/components/ui";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -211,8 +212,9 @@ function QuickAddModal({
         </div>
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Description <span className="text-red-500">*</span>
+              <FieldHelp content="A brief, clear description of what this expense was for. Use something your financial officer will recognise on the report." example="Lawn signs — 500 units, Ward 6 canvass printing" />
             </label>
             <input
               ref={descRef}
@@ -220,15 +222,16 @@ function QuickAddModal({
               type="text"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="e.g. Lawn signs, door-knock printing"
+              placeholder="e.g. Lawn signs — 500 units, Ward 6"
               maxLength={500}
               className="w-full h-11 px-3 border-2 border-slate-300 rounded-lg focus:border-[#0A2342] focus:outline-none text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 Amount <span className="text-red-500">*</span>
+                <FieldHelp content="The total amount paid for this expense in Canadian dollars." example="450.00" />
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
@@ -245,8 +248,9 @@ function QuickAddModal({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+              <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
                 Date <span className="text-red-500">*</span>
+                <FieldHelp content="The date the expense was incurred — use the invoice or receipt date, not the payment date." />
               </label>
               <input
                 required
@@ -258,8 +262,9 @@ function QuickAddModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
+            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">
               Payment Method
+              <FieldHelp content="How this expense was paid. Helps reconcile your bank statements and tracks campaign spending by payment type." example="Credit Card, Cheque, E-Transfer" />
             </label>
             <select
               value={form.paymentMethod}
