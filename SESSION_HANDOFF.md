@@ -101,12 +101,34 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-21 session 5 — autocomplete + news scanner + full audit)
+## CURRENT PLATFORM STATE (as of 2026-04-21 session 6 — Whitby PCS profiles)
 
 ### Build
-- **GREEN** — latest commit `399f206` pushed to main, Vercel deploying
-- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`
-- George MUST run `npx prisma db push` before demo
+- **GREEN** — latest commit `3eaec7c` pushed to main, Vercel deploying
+- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`, **`OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`** (new this session)
+- George MUST run `npx prisma db push` then `npx prisma db seed` to activate Whitby profiles
+
+### Session 6 — What shipped this session (Whitby PCS Profiles)
+
+**Maleeha Shahid + Elizabeth Roy — production PCS profiles built and seeded:**
+
+**Schema (db push required):**
+- 3 new models: `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`
+- `tagline`, `committeeRoles` (JSON), `profileMode` added to `Official`
+- `op_ed` added to `PoliticianPostType` enum
+- `externalUrl` added to `PoliticianPost` (op-ed external links)
+
+**API:** `GET /api/social/politicians/[id]` now returns `priorities[]`, `accomplishments[]`, `galleryPhotos[]`, `linkedIn`, `tagline`, `profileMode`
+
+**Profile component** — new sections: Key Priorities, Service Record, Photo Gallery; LinkedIn icon; tagline in hero; op-ed external links
+
+**Seed data (activate with `npx prisma db seed` after db push):**
+- Maleeha Shahid (`off-whitby-maleeha`): 5 priorities, 6 accomplishments, 3 posts, 3 Q&As, approval 78%
+- Elizabeth Roy (`off-whitby-elizabeth`): 6 priorities, 8 accomplishments, 5 posts (2 op-eds), 8 "Because You Asked" Q&As, approval 82%
+
+**Live profile URLs after activation:**
+- `/social/politicians/off-whitby-maleeha`
+- `/social/politicians/off-whitby-elizabeth`
 
 ### Session 5 — What shipped this session
 
