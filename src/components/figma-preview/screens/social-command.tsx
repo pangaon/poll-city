@@ -1275,6 +1275,24 @@ export function SocialCommand() {
   const [atDoor, setAtDoor] = useState(false);
   const [litDropMode, setLitDropMode] = useState(false);
 
+  /* ─── Geocoded stop coordinates (Google Maps Geocoding API) ─────────── */
+  const [stopCoords, setStopCoords] = useState<Record<string, { lat: number; lng: number }>>({});
+
+  const geocodeStops = useCallback((addresses: string[]) => {
+    const missing = addresses.filter(a => !stopCoords[a]);
+    if (!missing.length) return;
+    fetch("/api/field/geocode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses: missing }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((body: { results?: Record<string, { lat: number; lng: number }> } | null) => {
+        if (body?.results) setStopCoords(prev => ({ ...prev, ...body.results }));
+      })
+      .catch(() => {});
+  }, [stopCoords]);
+
   /* ─── Live missions from /api/field/shifts ─────────────────────────── */
   const [liveMissions, setLiveMissions] = useState<Mission[] | null>(null);
 
@@ -1436,6 +1454,7 @@ export function SocialCommand() {
     setStopIdx(0); setClaimedSide(null); setLitDropMode(false);
     setTeamData(INITIAL_TEAM.map(t => ({ ...t, side: null })));
     resetStop();
+    geocodeStops(raw.map(s => s.address));
   };
 
   const claimTurf = (side: string) => {
@@ -2011,8 +2030,9 @@ export function SocialCommand() {
 
       <div className="relative flex-shrink-0 overflow-hidden" style={{ height: atDoor ? 80 : 160, transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
         {(() => {
-          const currentCoords = currentStop ? getStopCoords(currentStop.address) : { lat: 43.6612, lng: -79.3832 };
-          const routeCoords = stops.slice(stopIdx, Math.min(stopIdx + 8, stops.length)).map(s => getStopCoords(s.address));
+          const resolveCoords = (address: string) => stopCoords[address] ?? getStopCoords(address);
+          const currentCoords = currentStop ? resolveCoords(currentStop.address) : { lat: 43.6612, lng: -79.3832 };
+          const routeCoords = stops.slice(stopIdx, Math.min(stopIdx + 8, stops.length)).map(s => resolveCoords(s.address));
           const routeGeoJSON: GeoJSON.Feature = {
             type: "Feature", properties: {},
             geometry: { type: "LineString", coordinates: routeCoords.map(c => [c.lng, c.lat]) },
@@ -2034,7 +2054,7 @@ export function SocialCommand() {
                   </Source>
                 )}
                 {stops.slice(stopIdx, Math.min(stopIdx + 8, stops.length)).map((s, i) => {
-                  const c = getStopCoords(s.address);
+                  const c = resolveCoords(s.address);
                   return (
                     <Marker key={s.id} longitude={c.lng} latitude={c.lat} anchor="bottom">
                       {i === 0
