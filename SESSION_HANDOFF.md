@@ -1,29 +1,27 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-20
-**Updated by:** Claude Sonnet 4.6 (session-close — mobile preview lab wired, mobile nav parity, SocialCommand port queued)
+**Last updated:** 2026-04-20 (session 2)
+**Updated by:** Claude Sonnet 4.6 (SocialCommand ported, MapLibre everywhere in preview lab, Google geocoding wired, opponent sign grid, dropdown z-index fix)
 
 ---
 
-## 🚨 NEXT SESSION TASK — PORT SOCIALCOMMAND (door-to-door wizard) 🚨
+## 🚨 NEXT SESSION TASK — PORT NEW FIGMA PAGES 🚨
 
-**The one task queued for the next session:**
+**George has built ~50 new pages in Figma Make.** They have NOT arrived in the repo yet.
 
-Port the full `SocialCommand.tsx` from Figma Make into the design preview lab.
+**What to do when they land:**
+1. `git pull origin main` — Figma Make pushes to `figma_design_pollcity_iosapp/pages/`
+2. Check what's new: `git diff HEAD~1 --name-only -- figma_design_pollcity_iosapp/`
+3. For each new page: read Figma source → adapt imports → wire real API → add route in `src/app/(app)/design-preview/`
+4. Adaption rules: `motion/react` → `framer-motion` | `../../utils/cn` → `@/lib/utils`
 
-- **Figma source:** `figma_design_pollcity_iosapp/pages/Social/SocialCommand.tsx` (~42K tokens — read in chunks)
-- **Data/types:** `figma_design_pollcity_iosapp/pages/Social/sc-data.ts`
-- **Target component:** `src/components/figma-preview/screens/social-command.tsx` (currently a 170-line stub — replace entirely)
-- **Preview route:** `/design-preview/social/command`
-- **Adaption rules:** `motion/react` → `framer-motion` | react-router `Link`/`useLocation` → `next/link`/`usePathname` | inline cn util → `@/lib/utils`
-- **Real API to wire:** canvassing shifts from existing field ops API — check what `/api/field/shifts` returns before wiring
+**George needs to: Publish/Sync from Figma Make** to push new pages to GitHub. Once they appear, the next agent picks them up and ports them all.
 
-The screen contains: FIELD OPS / WAR ROOM tab split, gamified deployment mission cards (XP, CRITICAL/ELEVATED/STANDARD, ACCEPT), full door-by-door wizard (door → household → survey → extras → summary), theme toggle (dark/light), share drawer, QR stub, radar + area charts.
-
-This is George's primary test screen for the Wednesday demo follow-up and the iOS app field ops tool.
-
-**DO NOT touch any live web app pages. Preview lab only.**
+**What is already ported and live:**
+- `/design-preview/social/command` — full Field Command wizard (DONE ✓)
+- `/design-preview/app/canvassing` — Live Turf with real MapLibre (DONE ✓)
+- All other 25 preview screens as stubs or partial ports
 
 ---
 
@@ -74,13 +72,19 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-20)
+## CURRENT PLATFORM STATE (as of 2026-04-20 session 2)
 
 ### Build
-- **GREEN** — Vercel current deployment is green (5RRWk2TkD)
+- **GREEN** — latest commit `30e01f3` pushed to main, Vercel deploying
 - DB is confirmed in sync (`npx prisma db push` ran — "already in sync")
 - Google OAuth credentials: George confirmed added to Vercel this session
 - `client_secret*.json` is now git-ignored
+
+### Preview Lab — What shipped this session
+- **`/design-preview/social/command`** — Full Field Command + door-to-door wizard ported from Figma. Real MapLibre map with geocoded stop markers + dashed route line for next 8 stops. Turf side (Odd/Even/Full) actually filters stop list by house number parity. Opponent signage: per-opponent quick-tap grid (seed 4 opponents; fetches `/api/field/opponents?campaignId=X` when live). Live shift data from `/api/field/shifts?campaignId=X` when available.
+- **`/design-preview/app/canvassing`** — CSS/SVG fake map replaced with real MapLibre. Toronto turf sector polygons, target pins (secured/pending/hostile), live operative marker, active sector highlights on click.
+- **`/api/field/geocode`** — New POST route. Batch geocodes addresses server-side via `GOOGLE_MAPS_API_KEY`. Field Command wizard calls this on mission accept; map updates live as coords resolve, falls back to approximate street centroids while waiting.
+- **Campaign Command dropdown** — z-index fixed (was rendering behind page content)
 
 ### Founder Experience — LIVE as of this session
 - Super Admin (George) logs in → lands on `/ops` (not inside a campaign)
@@ -158,7 +162,7 @@ In priority order — these block real customers:
 7. **DATABASE_ENCRYPTION_KEY** → Vercel env vars. Encrypted field reads/writes broken without it.
 
 ### 🟡 MEDIUM
-8. **GOOGLE_MAPS_API_KEY** → Vercel. Geocoding works via Nominatim fallback (1/sec, slow). Google needed for 15k+ voter file imports.
+8. **GOOGLE_MAPS_API_KEY** → Vercel env vars. **Now critical for field command map.** Key is in `.env.local` — add it to Vercel so `/api/field/geocode` works in production. Without it the map shows approximate street centroids (still functional, just not exact).
 9. **Twilio** → SMS blast and two-way SMS broken without TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER.
 10. **Railway automated backups** — enable before first real customer.
 
@@ -171,14 +175,16 @@ In priority order — these block real customers:
 
 ## NEXT SESSION OPENER
 
-**Situation:** Build is green. Code is correct for all recent features. The platform looks broken because the DB schema and env vars haven't been applied to production. George needs to run `npx prisma db push` and add env vars to Vercel before any session confirms features as "working in production."
+**Situation:** Preview lab has real MapLibre on all map screens. Field Command wizard is the primary demo screen. Google geocoding is wired but needs `GOOGLE_MAPS_API_KEY` added to Vercel to work in production (fallback shows approximate coords if missing).
 
-**Recommended priority for next session:**
-1. George runs `npx prisma db push` and adds the critical env vars above
-2. Then a 30-minute browser walkthrough to identify what's actually broken vs. what just needed the migration
-3. Then tackle the PENDING items in WORK_QUEUE: Print vendor portal (P0), Volunteer reimbursement → payment (P1)
+George is building ~50 new Figma Make pages. When he publishes/syncs from Figma Make they land in `figma_design_pollcity_iosapp/pages/`. Next session should:
 
-**What NOT to build next:** Don't start new features until George can confirm the existing ones work in browser. The coordination problem is real — we've built a lot; we need to verify it before adding more.
+**Step 1:** `git pull origin main` — check if new Figma pages arrived
+**Step 2:** If they have: port them all to `/design-preview/` in one pass
+**Step 3:** Add `GOOGLE_MAPS_API_KEY` to Vercel (1 minute — key is in `.env.local`)
+**Step 4:** Browser walkthrough of field command wizard to confirm geocoding + route work end-to-end
+
+**What NOT to do next:** Don't start the opponent log backend (`/api/field/opponents`) until George confirms the preview UI is what he wants. The seed list works for demo.
 
 ---
 
