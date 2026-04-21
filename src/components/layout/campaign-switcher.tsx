@@ -1,11 +1,6 @@
 "use client";
-/**
- * Campaign Switcher
- * Shows in the topbar when a user belongs to more than one campaign.
- * Selecting a campaign calls /api/campaigns/switch then refreshes the page.
- */
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ChevronDown, Check, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +16,7 @@ export default function CampaignSwitcher() {
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const router = useRouter();
+  const { update } = useSession();
 
   useEffect(() => {
     fetch("/api/campaigns/switch")
@@ -38,13 +33,17 @@ export default function CampaignSwitcher() {
     if (switching || campaignId === active?.campaignId) { setOpen(false); return; }
     setSwitching(true);
     try {
-      await fetch("/api/campaigns/switch", {
+      const res = await fetch("/api/campaigns/switch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId }),
       });
+      if (!res.ok) return;
+      // Update the JWT so the server sees the new activeCampaignId immediately
+      await update({ activeCampaignId: campaignId });
       setOpen(false);
-      router.refresh();
+      // Hard navigate so all server components re-fetch with the new campaign
+      window.location.href = "/dashboard";
     } finally {
       setSwitching(false);
     }
