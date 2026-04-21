@@ -44,6 +44,10 @@ npx prisma db push
   - `tagline`, `committeeRoles`, `profileMode` columns on `Official` table
   - `externalUrl` column on `PoliticianPost` table (op-ed link support)
   - `op_ed` value in `PoliticianPostType` enum
+  - **`post_reactions` table** — PostReaction model (PCS likes system)
+  - **`post_comments` table** — PostComment model (PCS comments system)
+  - **`reactionCount` + `commentCount` columns** on `politician_posts` table
+  - **`PostReactionType` enum**
 
   Steps:
   1. Open your terminal in the poll-city project folder
