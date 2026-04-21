@@ -72,15 +72,26 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-20 session 2)
+## CURRENT PLATFORM STATE (as of 2026-04-21 session 3)
 
 ### Build
-- **GREEN** — latest commit `30e01f3` pushed to main, Vercel deploying
-- DB is confirmed in sync (`npx prisma db push` ran — "already in sync")
-- Google OAuth credentials: George confirmed added to Vercel this session
-- `client_secret*.json` is now git-ignored
+- **GREEN** — latest commit `e9f83ea` pushed to main, Vercel confirmed green
+- DB is confirmed in sync (`npx prisma db push` ran this session — 3 new models added)
+- `*.make` Figma files now gitignored
 
-### Preview Lab — What shipped this session
+### Address Pre-List Generator — What shipped this session
+- **`POST /api/address-prelist/generate`** — production backend, 3 source paths:
+  - **OSM** (live now): Nominatim geocodes municipality → Overpass returns addresses → 30-day cache
+  - **MPAC** (after import): Ontario Road Network addresses from DB → 90-day cache
+  - **StatsCan** (after import): 2021 DA centroids with demographics → 365-day cache
+- **`MunicipalityAddressCache`** model — per-source cache in Railway DB
+- **`DisseminationArea`** model — StatsCan 2021 DA demographics (populated by import script)
+- **`MpacAddress`** model — Ontario Road Network addresses (populated by import script)
+- **`src/lib/types/address.ts`** — `AddrRecord` interface matching Figma Make prototype
+- **`scripts/import-mpac.ts`** — one-time Ontario address import (run when ready)
+- **`scripts/import-statcan-da.ts`** — one-time StatsCan DA import (run when ready)
+
+### Preview Lab — What shipped last session
 - **`/design-preview/social/command`** — Full Field Command + door-to-door wizard ported from Figma. Real MapLibre map with geocoded stop markers + dashed route line for next 8 stops. Turf side (Odd/Even/Full) actually filters stop list by house number parity. Opponent signage: per-opponent quick-tap grid (seed 4 opponents; fetches `/api/field/opponents?campaignId=X` when live). Live shift data from `/api/field/shifts?campaignId=X` when available.
 - **`/design-preview/app/canvassing`** — CSS/SVG fake map replaced with real MapLibre. Toronto turf sector polygons, target pins (secured/pending/hostile), live operative marker, active sector highlights on click.
 - **`/api/field/geocode`** — New POST route. Batch geocodes addresses server-side via `GOOGLE_MAPS_API_KEY`. Field Command wizard calls this on mission accept; map updates live as coords resolve, falls back to approximate street centroids while waiting.
@@ -175,16 +186,20 @@ In priority order — these block real customers:
 
 ## NEXT SESSION OPENER
 
-**Situation:** Preview lab has real MapLibre on all map screens. Field Command wizard is the primary demo screen. Google geocoding is wired but needs `GOOGLE_MAPS_API_KEY` added to Vercel to work in production (fallback shows approximate coords if missing).
+**Situation:** Address Pre-List Generator backend is live (commit `9affca2`). OSM source works immediately for any Ontario municipality. MPAC and StatsCan sources need one-time import scripts run by George before they're usable.
 
-George is building ~50 new Figma Make pages. When he publishes/syncs from Figma Make they land in `figma_design_pollcity_iosapp/pages/`. Next session should:
+The frontend for the Address Pre-List Generator lives in the Figma Make prototype — it POSTs to `/api/address-prelist/generate`. The backend is waiting for it.
 
-**Step 1:** `git pull origin main` — check if new Figma pages arrived
-**Step 2:** If they have: port them all to `/design-preview/` in one pass
-**Step 3:** Add `GOOGLE_MAPS_API_KEY` to Vercel (1 minute — key is in `.env.local`)
-**Step 4:** Browser walkthrough of field command wizard to confirm geocoding + route work end-to-end
+Next session priorities (in order):
 
-**What NOT to do next:** Don't start the opponent log backend (`/api/field/opponents`) until George confirms the preview UI is what he wants. The seed list works for demo.
+**Step 1:** `git pull origin main`
+**Step 2:** Check if new Figma Make pages arrived in `figma_design_pollcity_iosapp/pages/` — port any new screens to `/design-preview/`
+**Step 3:** If the AtlasDataImportScreen is in the Figma pages, wire it to `POST /api/address-prelist/generate`
+**Step 4:** Add `GOOGLE_MAPS_API_KEY` to Vercel if not already done
+
+**George's optional imports (can run anytime, don't block anything):**
+- `npx tsx scripts/import-mpac.ts` — Ontario address data (30-90 min, large download)
+- `npx tsx scripts/import-statcan-da.ts` — StatsCan DA demographics (20-40 min)
 
 ---
 
