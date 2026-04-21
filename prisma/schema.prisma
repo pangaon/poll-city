@@ -1011,6 +1011,8 @@ model Campaign {
   reputationResponseActions ReputationResponseAction[]
   reputationResponsePages   ReputationResponsePage[]
   amplificationActions      AmplificationAction[]
+  repKeywords               RepKeyword[]
+  repMonitoredSources       RepMonitoredSource[]
 
   // Quick Capture
   captureEvents      CaptureEvent[]
@@ -8995,4 +8997,44 @@ model EnrichmentResult {
   @@index([runId])
   @@index([matchType])
   @@map("enrichment_results")
+}
+
+// ── Reputation Keywords ────────────────────────────────────────────────────────
+
+model RepKeyword {
+  id         String   @id @default(cuid())
+  campaignId String
+  text       String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, text])
+  @@index([campaignId])
+  @@map("rep_keywords")
+}
+
+// ── Reputation Monitored Sources ───────────────────────────────────────────────
+
+model RepMonitoredSource {
+  id               String    @id @default(cuid())
+  campaignId       String
+  name             String
+  url              String?
+  handle           String?
+  sourceType       String    @default("news_keyword") // twitter_handle | reddit_search | rss | news_keyword | facebook_group | youtube | other
+  alertThreshold   String    @default("all")           // all | negative_only | high_reach | critical_only
+  active           Boolean   @default(true)
+  alertCount       Int       @default(0)
+  lastCheckedAt    DateTime?
+  createdByUserId  String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([campaignId, active])
+  @@map("rep_monitored_sources")
 }

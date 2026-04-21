@@ -4,11 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  AlertTriangle, Bell, CheckCircle2, ChevronDown, Clock,
-  ExternalLink, Filter, Globe, Newspaper, MessageSquare,
-  Plus, RefreshCw, Search, Shield, Siren, TrendingUp, X, Zap,
+  AlertTriangle, Bell, ExternalLink, Filter, Globe, Newspaper,
+  MessageSquare, Plus, RefreshCw, Search, Shield, Siren,
+  TrendingUp, X, Zap, ChevronDown,
 } from "lucide-react";
-import { Button, FeatureGuide } from "@/components/ui";
 import type {
   RepAlertSeverity, RepAlertStatus, RepAlertSentiment, RepAlertSourceType,
 } from "@prisma/client";
@@ -41,26 +40,31 @@ interface Summary {
 
 interface Props { campaignId: string; }
 
-/* ── Constants ──────────────────────────────────────────────────────────────── */
-const NAVY = "#0A2342";
-const GREEN = "#1D9E75";
-const AMBER = "#EF9F27";
-const RED = "#E24B4A";
+/* ── Design tokens ──────────────────────────────────────────────────────────── */
+const CARD = "bg-[#0F1440]/60 backdrop-blur-md rounded-xl border border-[#2979FF]/20 shadow-xl";
 
-const SEV: Record<RepAlertSeverity, { label: string; color: string; bg: string; border: string }> = {
-  critical: { label: "Critical", color: RED,   bg: "bg-red-50",    border: "border-red-200" },
-  high:     { label: "High",     color: AMBER,  bg: "bg-amber-50",  border: "border-amber-200" },
-  medium:   { label: "Medium",   color: "#6366f1", bg: "bg-indigo-50", border: "border-indigo-200" },
-  low:      { label: "Low",      color: GREEN,  bg: "bg-emerald-50", border: "border-emerald-200" },
+const SEV: Record<RepAlertSeverity, { label: string; color: string; bg: string }> = {
+  critical: { label: "Critical", color: "#FF3B30", bg: "rgba(255,59,48,0.15)"   },
+  high:     { label: "High",     color: "#EF9F27", bg: "rgba(239,159,39,0.15)"  },
+  medium:   { label: "Medium",   color: "#AAB2FF", bg: "rgba(170,178,255,0.15)" },
+  low:      { label: "Low",      color: "#00C853", bg: "rgba(0,200,83,0.15)"    },
 };
 
-const SENT_ICON: Record<RepAlertSentiment, string> = {
-  negative: "😠", neutral: "😐", positive: "😊", mixed: "🔀", unknown: "❓",
+const SENT_BADGE: Record<RepAlertSentiment, { label: string; color: string }> = {
+  negative: { label: "Negative", color: "#FF3B30" },
+  neutral:  { label: "Neutral",  color: "#6B72A0" },
+  positive: { label: "Positive", color: "#00C853" },
+  mixed:    { label: "Mixed",    color: "#EF9F27" },
+  unknown:  { label: "Unknown",  color: "#6B72A0" },
 };
 
 const SOURCE_ICON: Record<RepAlertSourceType, typeof Newspaper> = {
   social_media: MessageSquare, news: Newspaper, blog: Globe,
   forum: MessageSquare, manual: Plus, internal_monitoring: Shield,
+};
+
+const LEFT_BAR: Record<RepAlertSeverity, string> = {
+  critical: "#FF3B30", high: "#EF9F27", medium: "#2979FF", low: "#00C853",
 };
 
 /* ── Component ──────────────────────────────────────────────────────────────── */
@@ -71,42 +75,36 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
-  // Filters
-  const [sevFilter, setSevFilter] = useState<string>("");
+  const [sevFilter, setSevFilter]       = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("new");
-  const [sentFilter, setSentFilter] = useState<string>("");
-  const [search, setSearch] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [showScan, setShowScan] = useState(false);
-  const [scanQuery, setScanQuery] = useState("");
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<{ created: number; skipped: number; total: number; query: string } | null>(null);
+  const [sentFilter, setSentFilter]     = useState<string>("");
+  const [search, setSearch]             = useState("");
+  const [showCreate, setShowCreate]     = useState(false);
+  const [showScan, setShowScan]         = useState(false);
+  const [scanQuery, setScanQuery]       = useState("");
+  const [scanning, setScanning]         = useState(false);
+  const [scanResult, setScanResult]     = useState<{ created: number; skipped: number; total: number; query: string } | null>(null);
+  const [submitting, setSubmitting]     = useState(false);
 
-  // New alert form
   const [form, setForm] = useState({
     title: "", description: "", severity: "medium" as RepAlertSeverity,
     sentiment: "unknown" as RepAlertSentiment, sourceType: "manual" as RepAlertSourceType,
-    sourceName: "", sourceUrl: "", geography: "", velocityScore: 0,
+    sourceName: "", sourceUrl: "", geography: "",
   });
-  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const qs = new URLSearchParams({ campaignId });
-    if (sevFilter) qs.set("severity", sevFilter);
-    if (statusFilter) qs.set("status", statusFilter);
-    if (sentFilter) qs.set("sentiment", sentFilter);
-    if (search) qs.set("search", search);
+    if (sevFilter)    qs.set("severity",  sevFilter);
+    if (statusFilter) qs.set("status",    statusFilter);
+    if (sentFilter)   qs.set("sentiment", sentFilter);
+    if (search)       qs.set("search",    search);
 
     const [alertsRes, sumRes] = await Promise.all([
       fetch(`/api/reputation/alerts?${qs}`),
       fetch(`/api/reputation/summary?campaignId=${campaignId}`),
     ]);
-    if (alertsRes.ok) {
-      const data = await alertsRes.json();
-      setAlerts(data.alerts);
-      setTotal(data.total);
-    }
+    if (alertsRes.ok) { const d = await alertsRes.json(); setAlerts(d.alerts); setTotal(d.total); }
     if (sumRes.ok) setSummary(await sumRes.json());
     setLoading(false);
   }, [campaignId, sevFilter, statusFilter, sentFilter, search]);
@@ -115,8 +113,7 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
 
   const acknowledge = async (id: string) => {
     await fetch(`/api/reputation/alerts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ campaignId, status: "acknowledged" }),
     });
     setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status: "acknowledged" } : a));
@@ -124,8 +121,7 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
 
   const dismiss = async (id: string) => {
     await fetch(`/api/reputation/alerts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ campaignId, status: "dismissed" }),
     });
     setAlerts((prev) => prev.filter((a) => a.id !== id));
@@ -133,12 +129,9 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
 
   const createIssueFromAlert = async (alertId: string, alertTitle: string) => {
     const res = await fetch("/api/reputation/issues", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        campaignId,
-        title: alertTitle,
-        category: "general",
+        campaignId, title: alertTitle, category: "general",
         severity: alerts.find((a) => a.id === alertId)?.severity ?? "medium",
         alertIds: [alertId],
       }),
@@ -153,12 +146,11 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
     e.preventDefault();
     setSubmitting(true);
     await fetch("/api/reputation/alerts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ campaignId, ...form }),
     });
     setShowCreate(false);
-    setForm({ title: "", description: "", severity: "medium", sentiment: "unknown", sourceType: "manual", sourceName: "", sourceUrl: "", geography: "", velocityScore: 0 });
+    setForm({ title: "", description: "", severity: "medium", sentiment: "unknown", sourceType: "manual", sourceName: "", sourceUrl: "", geography: "" });
     setSubmitting(false);
     await load();
   };
@@ -168,192 +160,198 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
     setScanResult(null);
     try {
       const res = await fetch("/api/reputation/scan-news", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId, query: scanQuery.trim() || undefined }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setScanResult(data);
-        await load();
-      }
-    } finally {
-      setScanning(false);
-    }
+      if (res.ok) { setScanResult(await res.json()); await load(); }
+    } finally { setScanning(false); }
   };
 
+  const kpis = summary ? [
+    { label: "New Alerts",     value: summary.newAlerts,      color: "#EF9F27" },
+    { label: "Critical",       value: summary.criticalAlerts,  color: "#FF3B30" },
+    { label: "Open Issues",    value: summary.openIssues,      color: "#2979FF" },
+    { label: "Overdue",        value: summary.overdueIssues,   color: "#FF3B30" },
+    { label: "Escalated",      value: summary.escalatedIssues, color: "#EF9F27" },
+  ] : [];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <FeatureGuide
-        featureKey="reputation-alerts"
-        title="Reputation Monitoring"
-        description="This dashboard watches the internet for mentions of your name, your opponents, and key campaign issues. You'll be alerted when something needs attention — before it becomes a story."
-        bullets={[
-          "Alerts surface social media, news articles, and online comments about your campaign",
-          "Set up keywords for your name, your opponents, and local issues you're campaigning on",
-          "High-priority alerts are flagged for immediate response",
-        ]}
-      />
+    <div className="min-h-full bg-[#050A1F] p-6 space-y-6">
+
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <Siren className="w-5 h-5 text-red-500" />
-              Reputation Alerts
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">Real-time signal detection and triage</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setShowScan(true); setScanResult(null); }} className="gap-1">
-              <Zap className="w-3.5 h-3.5" /> Scan Live News
-            </Button>
-            <Button variant="outline" size="sm" onClick={load} className="gap-1">
-              <RefreshCw className="w-3.5 h-3.5" /> Refresh
-            </Button>
-            <Button size="sm" onClick={() => setShowCreate(true)} className="gap-1"
-              style={{ background: NAVY }}>
-              <Plus className="w-3.5 h-3.5" /> New Alert
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/reputation/command?campaignId=${campaignId}`)}
-              className="gap-1">
-              <Shield className="w-3.5 h-3.5" /> Command Center
-            </Button>
-          </div>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-[#F5F7FF] uppercase tracking-tight drop-shadow-[0_0_10px_rgba(41,121,255,0.6)]">
+            Reputation Alerts
+          </h1>
+          <p className="text-[#AAB2FF] text-sm mt-1 flex items-center gap-2">
+            <Siren size={14} className="text-[#FF3B30]" />
+            Real-time signal detection &amp; triage
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowScan(true); setScanResult(null); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#EF9F27]/40 text-[#EF9F27] text-xs font-bold uppercase tracking-wider hover:bg-[#EF9F27]/10 transition-all">
+            <Zap size={14} /> Scan Live News
+          </button>
+          <button onClick={load}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2979FF]/30 text-[#AAB2FF] text-xs font-bold uppercase tracking-wider hover:text-[#00E5FF] transition-all">
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2979FF] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#2979FF]/80 transition-all">
+            <Plus size={14} /> New Alert
+          </button>
+          <button onClick={() => router.push(`/reputation/command?campaignId=${campaignId}`)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2979FF]/30 text-[#AAB2FF] text-xs font-bold uppercase tracking-wider hover:text-[#00E5FF] transition-all">
+            <Shield size={14} /> Command
+          </button>
         </div>
       </div>
 
-      {/* Summary bar */}
-      {summary && (
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
-          <div className="flex gap-6 text-sm">
-            {[
-              { label: "New Alerts", value: summary.newAlerts, color: AMBER, icon: Bell },
-              { label: "Critical", value: summary.criticalAlerts, color: RED, icon: AlertTriangle },
-              { label: "Open Issues", value: summary.openIssues, color: NAVY, icon: Shield },
-              { label: "Overdue", value: summary.overdueIssues, color: RED, icon: Clock },
-              { label: "Escalated", value: summary.escalatedIssues, color: AMBER, icon: TrendingUp },
-            ].map(({ label, value, color, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <Icon className="w-4 h-4" style={{ color }} />
-                <span className="font-semibold" style={{ color }}>{value}</span>
-                <span className="text-gray-500">{label}</span>
-              </div>
-            ))}
-          </div>
+      {/* KPI Strip */}
+      {kpis.length > 0 && (
+        <div className="grid grid-cols-5 gap-3">
+          {kpis.map(({ label, value, color }) => (
+            <div key={label} className={`${CARD} p-4 relative overflow-hidden`}>
+              <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-[40px] opacity-20" style={{ backgroundColor: color }} />
+              <div className="text-[10px] font-bold text-[#AAB2FF] uppercase tracking-widest mb-1">{label}</div>
+              <div className="text-2xl font-black" style={{ color }}>{value}</div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
+      <div className={`${CARD} p-4`}>
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-[300px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#6B72A0]" />
             <input
-              className="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md w-full focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full pl-9 pr-3 py-2 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] placeholder-[#6B72A0] focus:outline-none focus:border-[#2979FF]/60"
               placeholder="Search alerts…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
           {[
-            { label: "Severity", value: sevFilter, setter: setSevFilter, options: [["", "All"], ["critical", "Critical"], ["high", "High"], ["medium", "Medium"], ["low", "Low"]] },
-            { label: "Status", value: statusFilter, setter: setStatusFilter, options: [["", "All"], ["new", "New"], ["acknowledged", "Acknowledged"], ["linked", "Linked"], ["dismissed", "Dismissed"]] },
-            { label: "Sentiment", value: sentFilter, setter: setSentFilter, options: [["", "All"], ["negative", "Negative"], ["neutral", "Neutral"], ["positive", "Positive"], ["mixed", "Mixed"]] },
-          ].map(({ label, value, setter, options }) => (
-            <select key={label} value={value} onChange={(e) => setter(e.target.value)}
-              className="text-sm border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white">
-              {options.map(([v, l]) => <option key={v} value={v}>{l === "All" ? `${label}: All` : l}</option>)}
-            </select>
+            { label: "Severity", value: sevFilter, set: setSevFilter, opts: [["","All Severity"],["critical","Critical"],["high","High"],["medium","Medium"],["low","Low"]] },
+            { label: "Status",   value: statusFilter, set: setStatusFilter, opts: [["","All Status"],["new","New"],["acknowledged","Acknowledged"],["linked","Linked"],["dismissed","Dismissed"]] },
+            { label: "Sentiment",value: sentFilter, set: setSentFilter, opts: [["","All Sentiment"],["negative","Negative"],["neutral","Neutral"],["positive","Positive"],["mixed","Mixed"]] },
+          ].map(({ label, value, set, opts }) => (
+            <div key={label} className="relative">
+              <select value={value} onChange={(e) => set(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-2 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-xs font-bold text-[#AAB2FF] uppercase tracking-wider focus:outline-none focus:border-[#2979FF]/60">
+                {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#6B72A0] pointer-events-none" />
+            </div>
           ))}
-          <span className="text-sm text-gray-400 ml-auto">{total} alert{total !== 1 ? "s" : ""}</span>
+
+          <div className="ml-auto flex items-center gap-2 text-[#6B72A0] text-xs">
+            <Filter size={12} />
+            <span>{total} alert{total !== 1 ? "s" : ""}</span>
+          </div>
         </div>
       </div>
 
-      {/* Alert list */}
-      <div className="px-6 py-4 space-y-2 max-w-5xl mx-auto">
+      {/* Alert List */}
+      <div className="space-y-2">
         <AnimatePresence>
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin" /> Loading alerts…
+            <div className={`${CARD} p-16 text-center`}>
+              <RefreshCw className="w-6 h-6 animate-spin text-[#2979FF] mx-auto mb-2" />
+              <p className="text-[#6B72A0] text-sm">Loading alerts…</p>
             </div>
           ) : alerts.length === 0 ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="text-center py-16 text-gray-400">
-              <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No alerts match your filters</p>
-              <p className="text-sm mt-1">Try adjusting filters or create a manual alert</p>
+              className={`${CARD} p-16 text-center`}>
+              <Bell className="w-10 h-10 text-[#2979FF]/30 mx-auto mb-3" />
+              <p className="text-[#AAB2FF] font-medium text-sm">No alerts match your filters</p>
+              <p className="text-[#6B72A0] text-xs mt-1">Try adjusting filters or run a live news scan</p>
             </motion.div>
           ) : (
             alerts.map((alert) => {
-              const sev = SEV[alert.severity];
+              const sev    = SEV[alert.severity];
+              const sent   = SENT_BADGE[alert.sentiment];
               const SrcIcon = SOURCE_ICON[alert.sourceType];
               const isLinked = alert.issueLinks.length > 0;
               return (
                 <motion.div key={alert.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className={`bg-white rounded-lg border ${sev.border} p-4 flex gap-4`}>
-                  {/* Severity dot */}
-                  <div className={`w-1.5 rounded-full self-stretch ${alert.severity === "critical" ? "bg-red-500" : alert.severity === "high" ? "bg-amber-500" : alert.severity === "medium" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                  className="bg-[#0F1440]/60 backdrop-blur-md rounded-xl border border-[#2979FF]/20 shadow-xl overflow-hidden flex"
+                  style={{ borderLeft: `3px solid ${LEFT_BAR[alert.severity]}` }}>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${sev.bg}`}
-                            style={{ color: sev.color }}>{sev.label}</span>
-                          <span className="text-xs text-gray-400">{SENT_ICON[alert.sentiment]} {alert.sentiment}</span>
-                          <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded"
+                            style={{ color: sev.color, backgroundColor: sev.bg }}>
+                            {sev.label}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                            style={{ color: sent.color, backgroundColor: `${sent.color}22` }}>
+                            {sent.label}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] text-[#6B72A0]">
                             <SrcIcon className="w-3 h-3" />
-                            {alert.sourceName ?? alert.sourceType.replace("_", " ")}
+                            {alert.sourceName ?? alert.sourceType.replace(/_/g, " ")}
                           </span>
                           {alert.geography && (
-                            <span className="flex items-center gap-1 text-xs text-gray-400">
+                            <span className="flex items-center gap-1 text-[10px] text-[#6B72A0]">
                               <Globe className="w-3 h-3" /> {alert.geography}
                             </span>
                           )}
                           {alert.velocityScore > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+                            <span className="flex items-center gap-1 text-[10px] text-[#EF9F27] font-bold">
                               <TrendingUp className="w-3 h-3" /> {alert.velocityScore.toFixed(1)}
                             </span>
                           )}
                           {isLinked && (
-                            <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                              Linked to issue
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded"
+                              style={{ color: "#2979FF", backgroundColor: "rgba(41,121,255,0.15)" }}>
+                              Linked to Issue
+                            </span>
+                          )}
+                          {alert.status === "acknowledged" && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded"
+                              style={{ color: "#00C853", backgroundColor: "rgba(0,200,83,0.15)" }}>
+                              Acknowledged
                             </span>
                           )}
                         </div>
-                        <h3 className="text-sm font-semibold text-gray-900 mt-1">{alert.title}</h3>
+                        <h3 className="text-sm font-bold text-[#F5F7FF]">{alert.title}</h3>
                         {alert.description && (
-                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{alert.description}</p>
+                          <p className="text-xs text-[#AAB2FF] mt-0.5 line-clamp-2">{alert.description}</p>
                         )}
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-[10px] text-[#6B72A0] mt-1.5">
                           {new Date(alert.detectedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}
                         </p>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {alert.status === "new" && (
                           <button onClick={() => acknowledge(alert.id)}
-                            className="text-xs px-2.5 py-1 rounded border border-gray-200 hover:bg-gray-50 text-gray-600 transition">
+                            className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border border-[#00C853]/40 text-[#00C853] hover:bg-[#00C853]/10 transition-all">
                             Acknowledge
                           </button>
                         )}
                         {!isLinked && (
                           <button onClick={() => createIssueFromAlert(alert.id, alert.title)}
-                            className="text-xs px-2.5 py-1 rounded border border-indigo-200 hover:bg-indigo-50 text-indigo-700 transition">
+                            className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded border border-[#2979FF]/40 text-[#2979FF] hover:bg-[#2979FF]/10 transition-all">
                             Create Issue
                           </button>
                         )}
                         {alert.sourceUrl && (
                           <a href={alert.sourceUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs px-2.5 py-1 rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition flex items-center gap-1">
-                            <ExternalLink className="w-3 h-3" />
+                            className="p-1.5 rounded border border-[#2979FF]/20 text-[#6B72A0] hover:text-[#AAB2FF] transition-all">
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         )}
                         <button onClick={() => dismiss(alert.id)}
-                          className="text-xs p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition">
+                          className="p-1.5 rounded hover:bg-[#FF3B30]/10 text-[#6B72A0] hover:text-[#FF3B30] transition-all">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -366,60 +364,65 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Scan Live News Modal */}
+      {/* Scan Modal */}
       <AnimatePresence>
         {showScan && (
-          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          <motion.div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+            <motion.div className={`${CARD} w-full max-w-md p-6`}
               initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-base font-semibold flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-500" /> Scan Live News
+                  <h2 className="text-sm font-black text-[#F5F7FF] uppercase tracking-wider flex items-center gap-2">
+                    <Zap size={14} className="text-[#EF9F27]" /> Scan Live News
                   </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Fetches real Canadian news. Leave blank to use the campaign's candidate name.</p>
+                  <p className="text-xs text-[#6B72A0] mt-1">Leave blank to use campaign candidate name</p>
                 </div>
-                <button onClick={() => setShowScan(false)} className="text-gray-400 hover:text-gray-700">
+                <button onClick={() => setShowScan(false)} className="text-[#6B72A0] hover:text-[#AAB2FF] transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {scanResult ? (
-                <div className="space-y-3">
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4">
-                    <p className="text-sm font-semibold text-emerald-800">
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[#00C853]/30 bg-[#00C853]/5 p-4">
+                    <p className="text-sm font-bold text-[#00C853]">
                       {scanResult.created > 0
                         ? `${scanResult.created} new alert${scanResult.created !== 1 ? "s" : ""} imported`
                         : "No new alerts — already up to date"}
                     </p>
-                    <p className="text-xs text-emerald-600 mt-1">
-                      {scanResult.total} articles found · {scanResult.skipped} already in system · scanning for &ldquo;{scanResult.query}&rdquo;
+                    <p className="text-xs text-[#6B72A0] mt-1">
+                      {scanResult.total} articles · {scanResult.skipped} skipped · &ldquo;{scanResult.query}&rdquo;
                     </p>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setScanResult(null)}>Scan Again</Button>
-                    <Button size="sm" onClick={() => setShowScan(false)} style={{ background: NAVY }}>Done</Button>
+                    <button onClick={() => setScanResult(null)}
+                      className="px-4 py-2 text-xs font-bold uppercase tracking-wider border border-[#2979FF]/30 text-[#AAB2FF] rounded-lg hover:text-[#00E5FF] transition-all">
+                      Scan Again
+                    </button>
+                    <button onClick={() => setShowScan(false)}
+                      className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#2979FF] text-white rounded-lg hover:bg-[#2979FF]/80 transition-all">
+                      Done
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Search Term</label>
-                    <input
-                      value={scanQuery}
-                      onChange={(e) => setScanQuery(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") runLiveScan(); }}
-                      className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                      placeholder="e.g. Mayor of Whitby, Maleeha Khan"
-                    />
-                  </div>
+                  <input
+                    value={scanQuery} onChange={(e) => setScanQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") runLiveScan(); }}
+                    className="w-full px-4 py-2.5 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] placeholder-[#6B72A0] focus:outline-none focus:border-[#2979FF]/60"
+                    placeholder="e.g. Mayor of Whitby, Maleeha Shahid"
+                  />
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => setShowScan(false)}>Cancel</Button>
-                    <Button size="sm" disabled={scanning} onClick={runLiveScan}
-                      className="gap-1.5" style={{ background: NAVY }}>
+                    <button type="button" onClick={() => setShowScan(false)}
+                      className="px-4 py-2 text-xs font-bold uppercase tracking-wider border border-[#2979FF]/30 text-[#AAB2FF] rounded-lg hover:text-[#00E5FF] transition-all">
+                      Cancel
+                    </button>
+                    <button disabled={scanning} onClick={runLiveScan}
+                      className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#EF9F27] text-[#050A1F] rounded-lg hover:bg-[#EF9F27]/80 disabled:opacity-50 transition-all flex items-center gap-2">
                       {scanning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Scanning…</> : <><Zap className="w-3.5 h-3.5" /> Scan Now</>}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
@@ -431,65 +434,60 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
       {/* Create Alert Modal */}
       <AnimatePresence>
         {showCreate && (
-          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          <motion.div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6"
+            <motion.div className={`${CARD} w-full max-w-lg p-6`}
               initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold">Create Manual Alert</h2>
-                <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-700">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-sm font-black text-[#F5F7FF] uppercase tracking-wider">Create Manual Alert</h2>
+                <button onClick={() => setShowCreate(false)} className="text-[#6B72A0] hover:text-[#AAB2FF] transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <form onSubmit={handleCreate} className="space-y-3">
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                  <label className="block text-[10px] font-bold text-[#AAB2FF] uppercase tracking-wider mb-1.5">Title *</label>
                   <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                    placeholder="e.g. Negative media mention in local paper" />
+                    className="w-full px-4 py-2.5 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] placeholder-[#6B72A0] focus:outline-none focus:border-[#2979FF]/60"
+                    placeholder="e.g. Negative mention in local paper" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-[10px] font-bold text-[#AAB2FF] uppercase tracking-wider mb-1.5">Description</label>
                   <textarea rows={2} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
+                    className="w-full px-4 py-2.5 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] placeholder-[#6B72A0] focus:outline-none focus:border-[#2979FF]/60 resize-none"
                     placeholder="What happened?" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Severity</label>
-                    <select value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value as RepAlertSeverity }))}
-                      className="w-full border border-gray-200 rounded-md px-2 py-2 text-sm focus:outline-none">
-                      {(["critical","high","medium","low"] as const).map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Sentiment</label>
-                    <select value={form.sentiment} onChange={(e) => setForm((f) => ({ ...f, sentiment: e.target.value as RepAlertSentiment }))}
-                      className="w-full border border-gray-200 rounded-md px-2 py-2 text-sm focus:outline-none">
-                      {(["negative","neutral","positive","mixed","unknown"] as const).map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Source</label>
-                    <select value={form.sourceType} onChange={(e) => setForm((f) => ({ ...f, sourceType: e.target.value as RepAlertSourceType }))}
-                      className="w-full border border-gray-200 rounded-md px-2 py-2 text-sm focus:outline-none">
-                      {(["manual","social_media","news","blog","forum","internal_monitoring"] as const).map((s) => (
-                        <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Geography</label>
-                    <input value={form.geography} onChange={(e) => setForm((f) => ({ ...f, geography: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-md px-2 py-2 text-sm focus:outline-none"
-                      placeholder="e.g. Ward 3" />
-                  </div>
+                  {[
+                    { label: "Severity", key: "severity" as const, opts: ["critical","high","medium","low"] },
+                    { label: "Sentiment", key: "sentiment" as const, opts: ["negative","neutral","positive","mixed","unknown"] },
+                    { label: "Source", key: "sourceType" as const, opts: ["manual","social_media","news","blog","forum","internal_monitoring"] },
+                    { label: "Geography", key: "geography" as const, isText: true },
+                  ].map(({ label, key, opts, isText }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] font-bold text-[#AAB2FF] uppercase tracking-wider mb-1.5">{label}</label>
+                      {isText ? (
+                        <input value={(form as Record<string, string>)[key] ?? ""} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                          className="w-full px-3 py-2 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] placeholder-[#6B72A0] focus:outline-none focus:border-[#2979FF]/60"
+                          placeholder="e.g. Ward 3" />
+                      ) : (
+                        <select value={(form as Record<string, string>)[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                          className="w-full px-3 py-2 bg-[#050A1F] border border-[#2979FF]/20 rounded-lg text-sm text-[#F5F7FF] focus:outline-none focus:border-[#2979FF]/60">
+                          {opts!.map((o) => <option key={o} value={o}>{o.replace(/_/g," ")}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>
-                  <Button type="submit" size="sm" disabled={submitting} style={{ background: NAVY }}>
+                  <button type="button" onClick={() => setShowCreate(false)}
+                    className="px-4 py-2 text-xs font-bold uppercase tracking-wider border border-[#2979FF]/30 text-[#AAB2FF] rounded-lg hover:text-[#00E5FF] transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={submitting}
+                    className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#2979FF] text-white rounded-lg hover:bg-[#2979FF]/80 disabled:opacity-50 transition-all">
                     {submitting ? "Creating…" : "Create Alert"}
-                  </Button>
+                  </button>
                 </div>
               </form>
             </motion.div>

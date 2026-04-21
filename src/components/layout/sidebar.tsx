@@ -118,7 +118,6 @@ const OUTREACH_SECTION: NavSection = {
     { href: "/polls",             icon: BarChart3,     label: "Polls"            },
     { href: "/forms",             icon: FileText,      label: "Forms"            },
     { href: "/notifications",     icon: Bell,          label: "Voter Outreach"   },
-    { href: "/compliance",        icon: ScrollText,    label: "CASL Compliance", isNew: true },
   ],
 };
 
@@ -135,11 +134,19 @@ const INTELLIGENCE_SECTION: NavSection = {
   id: "intelligence",
   label: "Intelligence",
   items: [
-    { href: "/analytics",          icon: BarChart2,      label: "Analytics"                             },
-    { href: "/intel",              icon: Brain,          label: "Candidate Intel",   isNew: true        },
-    { href: "/reputation/alerts",  icon: AlertTriangle,  label: "Rep: Alerts",       isNew: true        },
-    { href: "/reputation/command", icon: Gauge,          label: "Rep: Command",      isNew: true        },
-    { href: "/reputation/pages",   icon: FileSearch,     label: "Rep: Monitored",    isNew: true        },
+    { href: "/analytics", icon: BarChart2, label: "Analytics"                    },
+    { href: "/intel",     icon: Brain,     label: "Candidate Intel", isNew: true },
+  ],
+};
+
+const COMPLIANCE_SECTION: NavSection = {
+  id: "compliance",
+  label: "Compliance",
+  items: [
+    { href: "/compliance",          icon: ScrollText,    label: "CASL Compliance",  isNew: true },
+    { href: "/reputation/alerts",   icon: AlertTriangle, label: "Rep: Alerts",      isNew: true },
+    { href: "/reputation/command",  icon: Gauge,         label: "Rep: Command",     isNew: true },
+    { href: "/reputation/pages",    icon: FileSearch,    label: "Rep: Monitored",   isNew: true },
   ],
 };
 
@@ -267,6 +274,7 @@ export default function Sidebar() {
       OUTREACH_SECTION,
       MONEY_SECTION,
       INTELLIGENCE_SECTION,
+      COMPLIANCE_SECTION,
       CANDIDATE_SECTION,
       POLLING_ATLAS_SECTION,
       { ...PLATFORM_SECTION, items: platformItems },

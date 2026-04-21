@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle, CheckCircle2, Clock, User, ChevronDown,
-  X, Plus, FileText, ArrowUpCircle, Loader2, Shield,
+  X, Plus, FileText, ArrowUpCircle, Loader2, Shield, Mail, Phone, Users,
 } from "lucide-react";
 import type {
   RepAlertSeverity, RepIssueStatus, RepIssueCategory,
@@ -266,9 +266,27 @@ export default function IssueWorkspaceClient({ campaignId, issueId }: Props) {
           </div>
 
           <div className="bg-white rounded-xl border p-5">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-              Recommendations ({activeRecs.length} active)
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Recommendations ({activeRecs.length} active)
+              </h2>
+              {activeRecs.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => router.push(`/communications?campaignId=${campaignId}`)}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-[#0A2342] text-white hover:bg-[#0A2342]/80 transition-colors">
+                    <Mail className="w-3 h-3" /> Email Blast
+                  </button>
+                  <button onClick={() => router.push(`/communications?tab=sms&campaignId=${campaignId}`)}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <Phone className="w-3 h-3" /> SMS
+                  </button>
+                  <button onClick={() => router.push(`/communications?tab=supporters&campaignId=${campaignId}`)}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <Users className="w-3 h-3" /> Supporter Briefing
+                  </button>
+                </div>
+              )}
+            </div>
             {activeRecs.length === 0
               ? <p className="text-sm text-gray-400">All recommendations dismissed.</p>
               : <AnimatePresence>
