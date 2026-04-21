@@ -1,8 +1,37 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-20 (session 2)
-**Updated by:** Claude Sonnet 4.6 (SocialCommand ported, MapLibre everywhere in preview lab, Google geocoding wired, opponent sign grid, dropdown z-index fix)
+**Last updated:** 2026-04-21 (overnight autonomous — demo prep)
+**Updated by:** Claude Sonnet 4.6 — Atlas Command OSM fix deployed, timeout hardening, demo audit complete
+
+---
+
+## 🚨 WEDNESDAY DEMO — APRIL 22, 2026 (Maleeha + Mayor of Whitby) 🚨
+
+**Demo is TOMORROW. Platform is ready. Here's exactly what to do:**
+
+### Before the demo (George does these)
+1. `npx prisma db push` — critical, fixes CASL/Analytics/Atlas cache tables (see GEORGE_TODO item 3)
+2. Log in as the demo account, confirm dashboard loads with Ward 20 data
+3. Test Atlas Command: type "Whitby" → click Fetch → addresses should load (Overpass mirror fix is live)
+
+### Demo click path
+1. **Dashboard** `/dashboard` — KPI cards, health score, 14,179 contacts
+2. **Briefing** `/briefing` — morning summary, priorities (needs ANTHROPIC_API_KEY in Vercel for Adoni to speak)
+3. **Contacts** `/contacts` — search "Maleeha", show supporter pipeline, filter by ward
+4. **Field Ops** `/field-ops` — turf map, canvasser assignments, routes
+5. **Polls** `/polls` — create a live poll in real time during the demo
+6. **Atlas Command** `/atlas/import` → Address Pre-List → type "Whitby" → Fetch → shows real OSM addresses
+
+### What's fixed since last session
+- `b12d084` — Overpass GET + 3 mirror fallback (overpass-api.de blocks Vercel IPs)
+- `c98808f` — maxDuration=60 + per-mirror timeout 15s (prevents Vercel function timeout on slow mirrors)
+- Ward 20 seed: 14,179 contacts, 4,837 supporters, 290 donations loaded ✓
+
+### Known demo risks
+- Adoni (Briefing page) is silent without `ANTHROPIC_API_KEY` in Vercel
+- CASL / Analytics pages crash without `npx prisma db push`
+- Atlas Command works but first fetch for "Whitby" is live (not cached) — will take 10–30s
 
 ---
 
