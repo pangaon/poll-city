@@ -89,6 +89,30 @@ npx prisma db push
   **If it errors "Official not found":** item 3b (db seed) didn't run yet. Run it first.
   **The script is safe to re-run** — it uses upsert throughout, won't create duplicates.
 
+- [ ] **3d. ⚠️ RUN THIS — Seeds real ward boundaries into Maleeha + Elizabeth campaigns** (after 3c)
+
+  This auto-fetches the official Whitby ward boundaries from OpenNorth Represent API and
+  stores them directly in each campaign. **No manual file download or upload needed.**
+
+  ```bash
+  npx tsx scripts/seed-whitby-boundaries.ts
+  ```
+
+  **Run order (must be in this sequence):**
+  1. `npx prisma db push` ← item 3
+  2. `npx prisma db seed` ← item 3b
+  3. `npx tsx scripts/provision-whitby-clients.ts` ← item 3c
+  4. `npx tsx scripts/seed-whitby-boundaries.ts` ← THIS ITEM
+
+  **What it does:**
+  - Fetches all 4 Whitby ward boundaries from represent.opennorth.ca
+  - Maleeha Shahid (`maleeha-shahid`): stores East Ward boundary only (her ward)
+  - Elizabeth Roy (`elizabeth-roy-whitby`): stores all 4 wards (Mayor covers the whole town)
+  - Boundaries stored in `Campaign.customization.boundaryGeoJSON`
+  - Visible immediately in Atlas Command → canvassing map for each campaign
+
+  **If it errors "Campaign not found":** item 3c (provision script) didn't run yet. Run it first.
+
 - [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 
   The Ontario Open Data CSV dump (resource `31f8e45e`) was removed. The data is now on

@@ -441,17 +441,59 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
 
 /* ── File drop panel (Riding Boundaries, Results, Demographics) ──────────── */
 
-function FileDropPanel({ sourceId }: { sourceId: SourceId }) {
+function FileDropPanel({ sourceId, campaignId, onSuccess }: { sourceId: SourceId; campaignId: string; onSuccess?: (entry: HistoryEntry) => void }) {
   const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleBoundaryFile(file: File) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["geojson", "json"].includes(ext ?? "")) {
+      toast.error("Please upload a GeoJSON file (.geojson or .json). To convert a Shapefile: open the ArcGIS GeoHub link and download as GeoJSON instead.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/atlas/boundaries", {
+        method: "POST",
+        headers: { "x-campaign-id": campaignId },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Upload failed");
+        return;
+      }
+      toast.success(`Boundary imported — ${data.data.featureCount} feature${data.data.featureCount !== 1 ? "s" : ""} stored`);
+      onSuccess?.({
+        id: Date.now().toString(),
+        filename: file.name,
+        type: "GeoJSON",
+        records: data.data.featureCount,
+        date: new Date().toISOString().slice(0, 10),
+        duration: "< 1s",
+        status: "Success",
+      });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFile(file: File | undefined) {
+    if (!file) return;
+    if (sourceId === "boundaries") { handleBoundaryFile(file); return; }
+    toast.info("CSV import coming soon — use Import / Export for voter files");
+  }
 
   const configs: Record<string, { requiredFields: string[]; label: string; accept: string; officialSource?: string; sampleUrl?: string }> = {
     boundaries: {
-      label: "Drop GeoJSON / SHP file here",
-      accept: ".geojson,.json,.shp,.zip",
-      requiredFields: ["FED_NUM", "geometry (Polygon)", "FED_NAMEE / FED_NAMEF", "PRNAME"],
-      officialSource: "Elections Canada",
-      sampleUrl: "elections.ca/open-data",
+      label: "Drop GeoJSON file here",
+      accept: ".geojson,.json",
+      requiredFields: ["geometry (Polygon)", "Ward / district name", "Download as GeoJSON from ArcGIS GeoHub"],
+      officialSource: "Town of Whitby / Elections Canada",
+      sampleUrl: "geohub-whitby.hub.arcgis.com",
     },
     results: {
       label: "Drop CSV file here",
@@ -483,22 +525,28 @@ function FileDropPanel({ sourceId }: { sourceId: SourceId }) {
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); toast.info("File upload backend coming soon"); }}
-        onClick={() => inputRef.current?.click()}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
+        onClick={() => !uploading && inputRef.current?.click()}
         className={cn(
           "border-2 border-dashed rounded-xl p-12 flex flex-col items-center gap-4 cursor-pointer transition-all",
-          dragging ? "border-cyan-500 bg-cyan-950/20" : "border-slate-700 hover:border-slate-600 bg-[#0A1628]"
+          dragging ? "border-cyan-500 bg-cyan-950/20" : "border-slate-700 hover:border-slate-600 bg-[#0A1628]",
+          uploading && "pointer-events-none opacity-70"
         )}
       >
-        <Upload className={cn("w-8 h-8", dragging ? "text-cyan-400" : "text-slate-500")} />
+        {uploading
+          ? <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+          : <Upload className={cn("w-8 h-8", dragging ? "text-cyan-400" : "text-slate-500")} />
+        }
         <div className="text-center">
-          <p className="text-slate-300 font-medium">{cfg.label}</p>
-          <p className="text-slate-500 text-sm mt-1">or click to browse your computer</p>
+          <p className="text-slate-300 font-medium">{uploading ? "Importing…" : cfg.label}</p>
+          <p className="text-slate-500 text-sm mt-1">{uploading ? "Storing boundary data" : "or click to browse your computer"}</p>
         </div>
-        <button className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors">
-          Choose File
-        </button>
-        <input ref={inputRef} type="file" accept={cfg.accept} className="hidden" onChange={() => toast.info("File upload backend coming soon")} />
+        {!uploading && (
+          <button className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors">
+            Choose File
+          </button>
+        )}
+        <input ref={inputRef} type="file" accept={cfg.accept} className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
       </div>
 
       {/* Required fields */}
@@ -657,7 +705,7 @@ export default function AtlasImportClient({ campaignId }: Props) {
                 {selected === "prelist" ? (
                   <PrelistPanel campaignId={campaignId} onSuccess={handlePrelistSuccess} />
                 ) : (
-                  <FileDropPanel sourceId={selected} />
+                  <FileDropPanel sourceId={selected} campaignId={campaignId} onSuccess={(entry) => setHistory(prev => [entry, ...prev])} />
                 )}
               </motion.div>
             </AnimatePresence>

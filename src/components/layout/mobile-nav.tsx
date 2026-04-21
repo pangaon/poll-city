@@ -106,6 +106,7 @@ const MORE_GROUPS = [
   {
     title: "Candidate",
     items: [
+      { href: "/my-website",         label: "My Website" },
       { href: "/calendar/candidate", label: "Candidate Schedule" },
       { href: "/officials",          label: "Officials" },
       { href: "/social",             label: "Poll City Social" },
