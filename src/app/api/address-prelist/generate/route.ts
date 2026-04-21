@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Verify campaign membership when campaignId is provided
     if (campaignId) {
       const membership = await prisma.membership.findFirst({
-        where: { userId: session.user.id, campaignId, role: { not: "VIEWER" } },
+        where: { userId: session.user.id, campaignId, role: { in: ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "FINANCE", "VOLUNTEER_LEADER"] } },
       });
       if (!membership) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
