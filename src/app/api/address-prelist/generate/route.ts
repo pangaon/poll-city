@@ -112,26 +112,39 @@ async function fetchOsm(municipality: string): Promise<AddrRecord[]> {
 
   const [south, north, west, east] = geoData[0].boundingbox.map(Number);
 
-  // 2. Query Overpass for address nodes/ways inside the bbox
-  const overpassQuery = `[out:json][timeout:55];(node["addr:housenumber"](${south},${west},${north},${east});way["addr:housenumber"](${south},${west},${north},${east}););out center 1000;`;
+  // 2. Query Overpass via GET — overpass-api.de blocks Vercel IPs, try mirrors in order
+  const overpassQuery = `[out:json][timeout:30];(node["addr:housenumber"]["addr:street"](${south},${west},${north},${east}););out 800;`;
+  const enc = encodeURIComponent(overpassQuery);
+  const mirrors = [
+    `https://overpass.kumi.systems/api/interpreter?data=${enc}`,
+    `https://lz4.overpass-api.de/api/interpreter?data=${enc}`,
+    `https://overpass-api.de/api/interpreter?data=${enc}`,
+  ];
 
-  const ovRes = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `data=${encodeURIComponent(overpassQuery)}`,
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!ovRes.ok) {
-    if (ovRes.status === 429) throw new Error("OpenStreetMap is busy — please wait 60 seconds and try again.");
-    throw new Error(`OpenStreetMap returned HTTP ${ovRes.status} — please try again in a moment.`);
+  let ovRes: Response | null = null;
+  let lastStatus = 0;
+  for (const url of mirrors) {
+    try {
+      const r = await fetch(url, {
+        headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)", "Accept": "application/json" },
+        signal: AbortSignal.timeout(35000),
+      });
+      if (r.ok) { ovRes = r; break; }
+      lastStatus = r.status;
+    } catch { /* try next mirror */ }
   }
+
+  if (!ovRes) {
+    if (lastStatus === 429) throw new Error("OpenStreetMap is busy — please wait 60 seconds and try again.");
+    throw new Error("Could not reach OpenStreetMap servers — please try again in a moment.");
+  }
+
   const ovData = (await ovRes.json()) as {
     elements: Array<{
       id: number;
       type: string;
       lat?: number;
       lon?: number;
-      center?: { lat: number; lon: number };
       tags?: Record<string, string>;
     }>;
   };
@@ -148,8 +161,8 @@ async function fetchOsm(municipality: string): Promise<AddrRecord[]> {
     const civic = parseInt(civicRaw, 10);
     if (isNaN(civic)) continue;
 
-    const lat = el.lat ?? el.center?.lat ?? 0;
-    const lng = el.lon ?? el.center?.lon ?? 0;
+    const lat = el.lat ?? 0;
+    const lng = el.lon ?? 0;
     const postalCode = tags["addr:postcode"] ?? "";
 
     records.push({
