@@ -1,107 +1,153 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { FileText, Globe, Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Globe, Plus, ChevronRight } from "lucide-react";
 
 interface Page {
-  id: string; title: string; slug: string; summary: string | null;
-  publishStatus: string; publishedAt: string | null; createdAt: string;
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  publishStatus: string;
+  publishedAt: string | null;
+  createdAt: string;
   issue: { id: string; title: string } | null;
 }
 
 interface Props { campaignId: string; }
 
-const NAVY = "#0A2342";
-const GREEN = "#1D9E75";
+const BG     = "#06111f";
+const CARD   = "#0d1e30";
+const BORDER = "rgba(255,255,255,0.08)";
+const GREEN  = "#1D9E75";
+const AMBER  = "#EF9F27";
+
+function timeAgo(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 3600)  return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+
+function sourceType(p: Page): string {
+  if (p.title.toLowerCase().includes("reddit")) return "Reddit Thread";
+  if (p.title.toLowerCase().includes("facebook") || p.title.toLowerCase().includes("fb")) return "Facebook Group";
+  if (p.title.toLowerCase().includes("star") || p.title.toLowerCase().includes("cbc") ||
+      p.title.toLowerCase().includes("globe") || p.title.toLowerCase().includes("tribune")) return "News Source";
+  return "Monitored Source";
+}
 
 export default function ResponsePagesClient({ campaignId }: Props) {
-  const router = useRouter();
-  const [pages, setPages] = useState<Page[]>([]);
+  const [pages, setPages]   = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/reputation/pages?campaignId=${campaignId}`);
-    if (res.ok) setPages(await res.json().then((d) => d.pages));
+    if (res.ok) setPages(await res.json().then((d: { pages: Page[] }) => d.pages));
     setLoading(false);
   }, [campaignId]);
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = pages.filter((p) =>
-    !filter || p.title.toLowerCase().includes(filter.toLowerCase()),
-  );
+  const active  = pages.filter((p) => p.publishStatus === "published").length;
+  const total   = pages.length;
+  const alerts  = pages.reduce((s, p) => s + (p.issue ? 1 : 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-500" /> Response Pages
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">Fact sheets, rebuttals, and public statements</p>
-          </div>
-          <Button size="sm" style={{ background: NAVY }} className="gap-1"
-            onClick={() => router.push(`/reputation/pages/new?campaignId=${campaignId}`)}>
-            <Plus className="w-3.5 h-3.5" /> New Page
-          </Button>
+    <div className="min-h-screen" style={{ background: BG, color: "white" }}>
+      <div className="px-8 pt-8 pb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight uppercase">Monitored Pages</h1>
+          <p className="mt-1 text-sm" style={{ color: "#64748b" }}>Sources being tracked for mentions and sentiment</p>
         </div>
+        <button className="flex items-center gap-2 text-xs font-semibold px-5 py-2.5 rounded border mt-1"
+          style={{ borderColor: "rgba(255,255,255,0.3)", color: "white", background: "rgba(255,255,255,0.05)" }}>
+          <Plus className="w-3.5 h-3.5" /> ADD PAGE
+        </button>
       </div>
 
-      <div className="px-6 py-4 max-w-4xl mx-auto">
-        <div className="relative mb-4 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input className="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md w-full focus:outline-none"
-            placeholder="Search pages…" value={filter} onChange={(e) => setFilter(e.target.value)} />
-        </div>
+      {/* KPI Cards */}
+      <div className="px-8 pb-6 grid grid-cols-3 gap-4">
+        {[
+          { label: "MONITORED PAGES", value: total || 0 },
+          { label: "ACTIVE",          value: active || 0 },
+          { label: "TOTAL ALERTS",    value: alerts || 0, color: AMBER },
+        ].map((c) => (
+          <div key={c.label} className="rounded-xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+            <p className="text-xs font-semibold tracking-widest mb-3" style={{ color: "#64748b" }}>{c.label}</p>
+            <p className="text-4xl font-extrabold" style={{ color: c.color ?? "white" }}>{c.value}</p>
+          </div>
+        ))}
+      </div>
 
-        {loading ? (
-          <div className="text-center py-12 text-gray-400 text-sm">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No response pages yet</p>
-            <p className="text-sm mt-1">Create a fact sheet or rebuttal to address issues publicly</p>
-            <Button size="sm" className="mt-4" style={{ background: NAVY }}
-              onClick={() => router.push(`/reputation/pages/new?campaignId=${campaignId}`)}>
-              Create First Page
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map((page) => (
-              <motion.div key={page.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${page.publishStatus === "published" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {page.publishStatus}
-                    </span>
-                    {page.issue && (
-                      <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                        Issue: {page.issue.title}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{page.title}</h3>
-                  {page.summary && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{page.summary}</p>}
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                    <Globe className="w-3 h-3" /> /{page.slug}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm"
-                  onClick={() => router.push(`/reputation/pages/${page.id}?campaignId=${campaignId}`)}>
-                  Edit
-                </Button>
-              </motion.div>
-            ))}
-          </div>
-        )}
+      {/* Page list */}
+      <div className="px-8 pb-8">
+        <div className="rounded-xl overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          {loading ? (
+            <div className="flex items-center justify-center py-20" style={{ color: "#475569" }}>
+              Loading…
+            </div>
+          ) : pages.length === 0 ? (
+            <div className="text-center py-20" style={{ color: "#475569" }}>
+              <Globe className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-medium">No monitored pages yet</p>
+              <p className="text-xs mt-1">Add a news source, Reddit thread, or social group to track</p>
+              <button className="mt-5 flex items-center gap-2 text-xs font-semibold px-5 py-2.5 rounded border mx-auto"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "#94a3b8" }}>
+                <Plus className="w-3.5 h-3.5" /> Add first source
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: BORDER }}>
+              {pages.map((p) => {
+                const isLive = p.publishStatus === "published";
+                return (
+                  <motion.div key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="flex items-center gap-5 px-6 py-5 hover:bg-white/[0.03] transition cursor-pointer group">
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${BORDER}` }}>
+                      <Globe className="w-4 h-4" style={{ color: "#64748b" }} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-semibold" style={{ color: "#e2e8f0" }}>{p.title}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded"
+                          style={isLive
+                            ? { background: "rgba(29,158,117,0.2)", color: GREEN, border: `1px solid rgba(29,158,117,0.3)` }
+                            : { background: "rgba(100,116,139,0.2)", color: "#64748b", border: `1px solid rgba(100,116,139,0.3)` }}>
+                          {isLive ? "LIVE" : "PAUSED"}
+                        </span>
+                      </div>
+                      <p className="text-xs" style={{ color: "#475569" }}>
+                        {sourceType(p)} · {p.slug || "—"} · Since {new Date(p.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
+                      </p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold" style={{ color: p.issue ? AMBER : "#475569" }}>
+                        {p.issue ? 1 : 0}
+                      </p>
+                      <p className="text-xs" style={{ color: "#334155" }}>ALERTS</p>
+                    </div>
+
+                    <div className="text-right shrink-0 ml-4">
+                      <p className="text-xs" style={{ color: "#475569" }}>{timeAgo(p.createdAt)}</p>
+                      <p className="text-xs" style={{ color: "#334155" }}>Last activity</p>
+                    </div>
+
+                    <ChevronRight className="w-4 h-4 ml-2 opacity-30 group-hover:opacity-70 transition" style={{ color: "#94a3b8" }} />
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
