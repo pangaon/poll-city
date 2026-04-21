@@ -184,7 +184,7 @@ async function main() {
     recordedById: userId,
     amount: pick([25, 50, 50, 100, 100, 100, 200, 250, 500, 1200]),
     method: pick(["cheque", "e-transfer", "credit", "cash", "online"]),
-    status: "received" as any,
+    status: "processed" as const,
     createdAt: randDate(60),
   }));
 
@@ -212,8 +212,8 @@ async function main() {
         name: e.name,
         location: e.location,
         eventDate: e.eventDate,
-        status: "published" as any,
-        visibility: "internal" as any,
+        status: "scheduled" as const,
+        visibility: "internal" as const,
         isPublic: false,
       },
     }).catch(() => {}); // skip if exists
