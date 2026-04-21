@@ -448,6 +448,8 @@ export function FormField({ label, error, required, help, hint, children }: {
 }
 
 // Re-export new components
+export { FeatureGuide } from "./feature-guide";
+export type { FeatureGuideProps } from "./feature-guide";
 export { FieldHelp } from "./field-help";
 export type { FieldHelpProps } from "./field-help";
 export { ContactAutocomplete } from "./contact-autocomplete";
