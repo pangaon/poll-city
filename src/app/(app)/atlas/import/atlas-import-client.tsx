@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Layers, BarChart2, Users, MapPin, GitMerge,
@@ -129,6 +129,36 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
   const [source, setSource] = useState<PrelistSource>("osm");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PrelistResult | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debounced autocomplete
+  useEffect(() => {
+    const q = municipality.trim();
+    if (q.length < 2) { setSuggestions([]); setShowDropdown(false); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/address-prelist/autocomplete?q=${encodeURIComponent(q)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { suggestions: string[] };
+        setSuggestions(data.suggestions ?? []);
+        setShowDropdown((data.suggestions ?? []).length > 0);
+      } catch { /* silent */ }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [municipality]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const sourceOptions: Array<{
     id: PrelistSource;
@@ -232,17 +262,47 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
             Municipality
           </label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <div className="relative" ref={dropdownRef}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 z-10" />
             <input
               type="text"
               value={municipality}
-              onChange={(e) => setMunicipality(e.target.value)}
+              onChange={(e) => { setMunicipality(e.target.value); }}
+              onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
               placeholder="Type a Canadian city or municipality…"
               className="w-full bg-[#0A1628] border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-200 text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30"
             />
+            <AnimatePresence>
+              {showDropdown && suggestions.length > 0 && (
+                <motion.ul
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#0D1B2E] border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+                >
+                  {suggestions.map((s) => (
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setMunicipality(s);
+                          setSuggestions([]);
+                          setShowDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700/60 flex items-center gap-2 transition-colors"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </motion.ul>
+              )}
+            </AnimatePresence>
           </div>
-          <p className="mt-1.5 text-xs text-slate-500">Type a Canadian city or municipality — suggestions from OpenStreetMap</p>
+          <p className="mt-1.5 text-xs text-slate-500">Suggestions from OpenStreetMap — select or type any Canadian city</p>
         </div>
 
         {/* Source options */}

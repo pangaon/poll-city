@@ -16,66 +16,83 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as GeneratePrelistRequest;
-  const { municipality, source, postalFrom, postalTo } = body;
+  try {
+    const body = (await req.json()) as GeneratePrelistRequest;
+    const { municipality, source, postalFrom, postalTo } = body;
 
-  if (!municipality || !source || !["osm", "mpac", "statcan"].includes(source)) {
-    return NextResponse.json({ error: "municipality and source required" }, { status: 400 });
+    if (!municipality || !source || !["osm", "mpac", "statcan"].includes(source)) {
+      return NextResponse.json({ error: "municipality and source required" }, { status: 400 });
+    }
+
+    // Check cache first
+    const now = new Date();
+    let cached = null;
+    try {
+      cached = await prisma.municipalityAddressCache.findUnique({
+        where: { municipality_source: { municipality, source } },
+      });
+    } catch {
+      // Table may not exist yet — skip cache
+    }
+
+    if (cached && cached.expiresAt > now) {
+      return NextResponse.json({
+        records: cached.addressJson as unknown as AddrRecord[],
+        count: cached.recordCount,
+        source,
+        cached: true,
+      });
+    }
+
+    let records: AddrRecord[] = [];
+
+    if (source === "osm") {
+      records = await fetchOsm(municipality);
+    } else if (source === "mpac") {
+      records = await fetchMpac(municipality, postalFrom, postalTo);
+    } else {
+      records = await fetchStatcan(municipality);
+    }
+
+    // Attach DA demographics via spatial join (turf, no PostGIS required)
+    records = await attachDemographics(records, municipality);
+
+    if (records.length === 0) {
+      return NextResponse.json(
+        { error: `No addresses found for "${municipality}" via ${source}. Try a different municipality name (e.g. "Whitby" instead of "Town of Whitby").` },
+        { status: 404 }
+      );
+    }
+
+    const expiresAt = new Date(now.getTime() + TTL[source] * 24 * 60 * 60 * 1000);
+    const bbox = source === "osm" ? computeBbox(records) : null;
+
+    const jsonRecords = records as unknown as Prisma.InputJsonValue;
+    const jsonBbox = bbox as Prisma.InputJsonValue | null;
+
+    try {
+      await prisma.municipalityAddressCache.upsert({
+        where: { municipality_source: { municipality, source } },
+        create: {
+          municipality, source, addressJson: jsonRecords,
+          recordCount: records.length, bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
+        },
+        update: {
+          addressJson: jsonRecords, recordCount: records.length,
+          bbox: jsonBbox ?? Prisma.JsonNull, expiresAt,
+        },
+      });
+    } catch {
+      // Cache write failed (table may not exist) — still return results
+    }
+
+    return NextResponse.json({ records, count: records.length, source, cached: false });
+
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Failed to generate address list";
+    console.error("[address-prelist/generate]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  // Check cache first
-  const now = new Date();
-  const cached = await prisma.municipalityAddressCache.findUnique({
-    where: { municipality_source: { municipality, source } },
-  });
-
-  if (cached && cached.expiresAt > now) {
-    return NextResponse.json({
-      records: cached.addressJson as unknown as AddrRecord[],
-      count: cached.recordCount,
-      source,
-      cached: true,
-    });
-  }
-
-  let records: AddrRecord[] = [];
-
-  if (source === "osm") {
-    records = await fetchOsm(municipality);
-  } else if (source === "mpac") {
-    records = await fetchMpac(municipality, postalFrom, postalTo);
-  } else {
-    records = await fetchStatcan(municipality);
-  }
-
-  // Attach DA demographics via spatial join (turf, no PostGIS required)
-  records = await attachDemographics(records, municipality);
-
-  const expiresAt = new Date(now.getTime() + TTL[source] * 24 * 60 * 60 * 1000);
-  const bbox = source === "osm" ? computeBbox(records) : null;
-
-  const jsonRecords = records as unknown as Prisma.InputJsonValue;
-  const jsonBbox = bbox as Prisma.InputJsonValue | null;
-
-  await prisma.municipalityAddressCache.upsert({
-    where: { municipality_source: { municipality, source } },
-    create: {
-      municipality,
-      source,
-      addressJson: jsonRecords,
-      recordCount: records.length,
-      bbox: jsonBbox ?? Prisma.JsonNull,
-      expiresAt,
-    },
-    update: {
-      addressJson: jsonRecords,
-      recordCount: records.length,
-      bbox: jsonBbox ?? Prisma.JsonNull,
-      expiresAt,
-    },
-  });
-
-  return NextResponse.json({ records, count: records.length, source, cached: false });
 }
 
 // ─── OSM / Overpass ────────────────────────────────────────────────────────────

@@ -77,6 +77,10 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
   const [sentFilter, setSentFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [showScan, setShowScan] = useState(false);
+  const [scanQuery, setScanQuery] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ created: number; skipped: number; total: number; query: string } | null>(null);
 
   // New alert form
   const [form, setForm] = useState({
@@ -159,13 +163,23 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
     await load();
   };
 
-  const runMockIngest = async () => {
-    await fetch("/api/reputation/ingest", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ campaignId }),
-    });
-    await load();
+  const runLiveScan = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const res = await fetch("/api/reputation/scan-news", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, query: scanQuery.trim() || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScanResult(data);
+        await load();
+      }
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
@@ -181,8 +195,8 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
             <p className="text-sm text-gray-500 mt-0.5">Real-time signal detection and triage</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={runMockIngest} className="gap-1">
-              <Zap className="w-3.5 h-3.5" /> Simulate Ingest
+            <Button variant="outline" size="sm" onClick={() => { setShowScan(true); setScanResult(null); }} className="gap-1">
+              <Zap className="w-3.5 h-3.5" /> Scan Live News
             </Button>
             <Button variant="outline" size="sm" onClick={load} className="gap-1">
               <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -341,6 +355,68 @@ export default function AlertsDashboardClient({ campaignId }: Props) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Scan Live News Modal */}
+      <AnimatePresence>
+        {showScan && (
+          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+              initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-semibold flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-500" /> Scan Live News
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Fetches real Canadian news. Leave blank to use the campaign's candidate name.</p>
+                </div>
+                <button onClick={() => setShowScan(false)} className="text-gray-400 hover:text-gray-700">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {scanResult ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4">
+                    <p className="text-sm font-semibold text-emerald-800">
+                      {scanResult.created > 0
+                        ? `${scanResult.created} new alert${scanResult.created !== 1 ? "s" : ""} imported`
+                        : "No new alerts — already up to date"}
+                    </p>
+                    <p className="text-xs text-emerald-600 mt-1">
+                      {scanResult.total} articles found · {scanResult.skipped} already in system · scanning for &ldquo;{scanResult.query}&rdquo;
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setScanResult(null)}>Scan Again</Button>
+                    <Button size="sm" onClick={() => setShowScan(false)} style={{ background: NAVY }}>Done</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Search Term</label>
+                    <input
+                      value={scanQuery}
+                      onChange={(e) => setScanQuery(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") runLiveScan(); }}
+                      className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      placeholder="e.g. Mayor of Whitby, Maleeha Khan"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowScan(false)}>Cancel</Button>
+                    <Button size="sm" disabled={scanning} onClick={runLiveScan}
+                      className="gap-1.5" style={{ background: NAVY }}>
+                      {scanning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Scanning…</> : <><Zap className="w-3.5 h-3.5" /> Scan Now</>}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Create Alert Modal */}
       <AnimatePresence>
