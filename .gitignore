@@ -61,3 +61,6 @@ coverage/
 .vercel
 .env*.local
 tsconfig.tsbuildinfo
+
+# Figma Make project files
+*.make
