@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-21 (overnight autonomous — demo prep)
-**Updated by:** Claude Sonnet 4.6 — Atlas Command OSM fix deployed, timeout hardening, demo audit complete
+**Last updated:** 2026-04-22
+**Updated by:** Claude Sonnet 4.6 — Print Vendor Portal shipped (P0 cleared)
 
 ---
 
@@ -98,6 +98,28 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 **UX DIRECTIVE:**
 - Every flow must meet Stripe-quality guided UX. No dead ends, no jargon.
 - Ask: "Would a first-time candidate understand this without help?"
+
+---
+
+## CURRENT PLATFORM STATE (as of 2026-04-22 — Print Vendor Portal + AtlasMapClient Phase 2 complete)
+
+### Print Vendor Portal — DONE (P0 cleared)
+
+**What shipped:**
+- `PRINT_VENDOR` role added to `Role` enum in Prisma schema + `userId String? @unique` on `PrintShop` — links a vendor user account to their shop record. **George must run `npx prisma db push`** (already in GEORGE_TODO.md item 3).
+- `/vendor/signup` — public registration page. Vendors create email+password account + shop in one form. `POST /api/vendor/signup` creates User (PRINT_VENDOR) + PrintShop atomically.
+- `/vendor/dashboard` — stats (open jobs, bids submitted, jobs won, win rate) + recent bid history.
+- `/vendor/jobs` — live job board showing `posted` and `bidding` status jobs. Shows vendor's own bid on each job if submitted.
+- `/vendor/jobs/[id]` — job detail. Bid submission form (price + turnaround + notes) when job is open. Production status update panel (in_production → shipped → delivered, tracking number, carrier, estimated delivery) when vendor's bid is accepted.
+- `/vendor/bids` — full bid history with status badges (Won / Pending / Lost / In Production / Shipped / Delivered).
+- 5 API routes: `GET /api/vendor/me`, `GET /api/vendor/jobs`, `GET /api/vendor/bids`, `POST+PATCH /api/vendor/jobs/[id]/bid`, `PATCH /api/vendor/jobs/[id]/production`.
+- Middleware: PRINT_VENDOR users are routed to `/vendor/dashboard` on login and restricted to `/vendor/*` + `/api/vendor/*` paths only.
+- **Navigation path:** Vendor receives signup link → `/vendor/signup` → creates account → auto-login → `/vendor/dashboard` → sidebar: Available Jobs | My Bids.
+
+**What's still needed (George's actions):**
+1. `npx prisma db push` — adds `PRINT_VENDOR` role and `userId` column to `print_shops` table.
+2. To add the first vendor: share `/vendor/signup` URL with a print shop, or create them manually via `prisma studio`.
+3. Stripe Connect onboarding for vendors still flows through `/api/print/shops/onboard` (George awards bid → campaign pays → Stripe releases to vendor).
 
 ---
 

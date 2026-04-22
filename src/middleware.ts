@@ -69,6 +69,8 @@ const PUBLIC_PATHS = [
   "/api/domain-lookup",
   "/claim",
   "/api/auth/claim-profile",
+  "/vendor/signup",
+  "/api/vendor/signup",
 ];
 
 function isPublicPath(path: string) {
@@ -115,6 +117,9 @@ export async function middleware(req: NextRequest) {
   if (path === "/login") {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (token) {
+      if (token.role === "PRINT_VENDOR") {
+        return NextResponse.redirect(new URL("/vendor/dashboard", req.url));
+      }
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
@@ -123,6 +128,9 @@ export async function middleware(req: NextRequest) {
   if (path === "/") {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (token) {
+      if (token.role === "PRINT_VENDOR") {
+        return NextResponse.redirect(new URL("/vendor/dashboard", req.url));
+      }
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
@@ -152,6 +160,20 @@ export async function middleware(req: NextRequest) {
       const url = new URL("/2fa-verify", req.url);
       url.searchParams.set("callbackUrl", req.nextUrl.pathname);
       return NextResponse.redirect(url);
+    }
+  }
+
+  // Print vendor role: restrict to vendor portal + API only
+  if (token.role === "PRINT_VENDOR") {
+    const VENDOR_ALLOWED_PREFIXES = [
+      "/vendor",
+      "/api/vendor",
+      "/api/auth",
+      "/settings",
+    ];
+    const isAllowed = VENDOR_ALLOWED_PREFIXES.some((p) => path.startsWith(p));
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/vendor/dashboard", req.url));
     }
   }
 

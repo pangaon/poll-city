@@ -85,7 +85,7 @@ Everything below is built, pushed, and accessible in the app.
 | AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | DONE — commit e88ed2e | src/components/atlas/atlas-map-client.tsx. City wrappers: whitby/toronto/markham-map-client.tsx. Preload-all pattern included (all cities). |
 | AtlasMapClient Phase 2 — campaign DB overlay: support levels on doors, visit history, DNK suppression, ward campaign stats | DONE — commit 1c67f8c | GET /api/atlas/contacts-overlay (auth-gated, 401=silent). enrichAddresses() wires contact data to OSM dots. Expression-based layer colors: green=strong support → red=strong opposition, grey=DNK, gold stroke=visited. Ward panel shows campaign stats. Address popup shows support level + visit count. No schema changes needed. |
 | AtlasMapClient Phase 3 — turf cutting overhaul: street search, manual street-to-turf assignment, volunteer DB assignment, two-mode turf builder | PENDING | See SESSION_HANDOFF.md for full spec. No schema changes — uses existing VolunteerProfile model. Lives entirely in src/components/atlas/atlas-map-client.tsx. |
-| AtlasMapClient Phase 4 — true unified pan map: single /atlas/map page showing Whitby + Toronto + Markham simultaneously, pan-to-navigate, /api/atlas/all-wards merger endpoint | PENDING | George's actual "unified" vision — one map, all municipalities, pan across GTA. Do Phase 3 first. |
+| AtlasMapClient Phase 4 — true unified pan map: single /atlas/map page showing Whitby + Toronto + Markham simultaneously, pan-to-navigate, /api/atlas/all-wards merger endpoint | CLAIMED 2026-04-22 | George's actual "unified" vision — one map, all municipalities, pan across GTA. Do Phase 3 first. |
 
 ### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 
@@ -108,7 +108,7 @@ Everything below is built, pushed, and accessible in the app.
 |---|---|---|
 | Migration baseline | PENDING | Run `npx prisma db push` before first real customer. GAP-003. George's action. |
 | CASL consent management | DONE — commit cc97b33 | ConsentRecord schema (3 enums + model), POST/GET /api/compliance/consent, email blast consent filter (skips unconsented, surfaces count), Smart Import consent column mapper + processor, Contact detail CASL Consent tab, /compliance overview page, sidebar entry. George must run `npx prisma db push` to apply schema. |
-| Print vendor portal | CLAIMED 2026-04-22 | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
+| Print vendor portal | DONE — commit pending | PRINT_VENDOR role + userId on PrintShop. /vendor/signup (public). /vendor/dashboard + /jobs + /bids + /jobs/[id] (vendor portal). 5 API routes under /api/vendor/. Middleware routes PRINT_VENDOR to /vendor and restricts to vendor paths. Requires npx prisma db push. |
 | Turf cutting — 0 voters bug | DONE — commit 64aa67f | Preview API take:500 cap removed for filtered queries; turf stops now sorted by street+number; import aliases for poll/polling_division/streetNumber/streetName added; print walk-list uses parsed-integer sort; map mode shows honest geocoding warning. |
 
 ---

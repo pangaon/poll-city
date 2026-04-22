@@ -48,6 +48,8 @@ npx prisma db push
   - **`post_comments` table** — PostComment model (PCS comments system)
   - **`reactionCount` + `commentCount` columns** on `politician_posts` table
   - **`PostReactionType` enum**
+  - **`PRINT_VENDOR` value** in `Role` enum (Print Vendor Portal — vendor login system)
+  - **`userId` column** on `print_shops` table (links a vendor User account to their shop)
 
   Steps:
   1. Open your terminal in the poll-city project folder
