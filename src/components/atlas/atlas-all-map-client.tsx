@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapGL, { Source, Layer, NavigationControl, ScaleControl, AttributionControl } from "react-map-gl/maplibre";
 import type { MapRef, MapMouseEvent } from "react-map-gl/maplibre";
-import type { FillLayerSpecification, LineLayerSpecification, SymbolLayerSpecification, CircleLayerSpecification } from "maplibre-gl";
+import type { FillLayerSpecification, LineLayerSpecification, SymbolLayerSpecification, CircleLayerSpecification, HeatmapLayerSpecification, FillExtrusionLayerSpecification, IControl } from "maplibre-gl";
 import type { FeatureCollection, Feature, Point } from "geojson";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -265,6 +265,32 @@ const bgPointLayer: Omit<CircleLayerSpecification, "source"> = {
   id: "bg-point", type: "circle", filter: ["!", ["has", "point_count"]],
   paint: { "circle-color": "rgba(100,160,220,0.45)", "circle-radius": 4, "circle-stroke-width": 0, "circle-opacity": 0.7 },
 };
+const heatmapLayerSpec: Omit<HeatmapLayerSpecification, "source"> = {
+  id: "addr-heatmap", type: "heatmap",
+  paint: {
+    "heatmap-weight": ["case", ["has", "visitCount"], ["to-number", ["get", "visitCount"]], 1],
+    "heatmap-color": [
+      "interpolate", ["linear"], ["heatmap-density"],
+      0, "rgba(0,0,0,0)", 0.2, "rgba(29,158,117,0.2)", 0.6, "#10B981", 1, "#1D9E75",
+    ],
+    "heatmap-radius": 25,
+    "heatmap-opacity": 0.85,
+  },
+};
+const supportPointLayerSpec: Omit<CircleLayerSpecification, "source"> = {
+  id: "addr-support-point", type: "circle",
+  paint: {
+    "circle-color": [
+      "match", ["get", "supportLevel"],
+      "strong_support", "#1D9E75", "leaning_support", "#10B981", "undecided", "#EF9F27",
+      "leaning_opposition", "#F97316", "strong_opposition", "#E24B4A", "#6366F1",
+    ],
+    "circle-radius": 6,
+    "circle-stroke-width": 1.5,
+    "circle-stroke-color": ["case", ["boolean", ["get", "visited"], false], "#FFD700", "#fff"],
+    "circle-opacity": ["case", ["boolean", ["get", "skipHouse"], false], 0.45, 0.92],
+  },
+};
 
 // ─── glass ───────────────────────────────────────────────────────────────────
 
@@ -308,11 +334,37 @@ function BuildingRow({ icon, text, count, pct }: { icon: string; text: string; c
   );
 }
 
+// ─── view mode pill ───────────────────────────────────────────────────────────
+
+type ViewMode = "dots" | "heatmap" | "support";
+const VIEW_MODES: Array<{ key: ViewMode; label: string }> = [
+  { key: "dots", label: "Dots" },
+  { key: "heatmap", label: "Heat" },
+  { key: "support", label: "Support" },
+];
+
+function ViewModePill({ viewMode, setViewMode, accent }: { viewMode: ViewMode; setViewMode: (m: ViewMode) => void; accent: string }) {
+  return (
+    <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: 2, gap: 2 }}>
+      {VIEW_MODES.map(m => (
+        <button key={m.key} onClick={() => setViewMode(m.key)}
+          style={{ padding: "3px 8px", borderRadius: 6, border: "none", fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", background: viewMode === m.key ? accent : "transparent", color: viewMode === m.key ? "#fff" : "rgba(255,255,255,0.45)" }}
+        >{m.label}</button>
+      ))}
+    </div>
+  );
+}
+
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function AtlasAllMapClient() {
   const mapRef = useRef<MapRef>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const exportCtrlRef = useRef<IControl | null>(null);
+
+  // Display modes
+  const [viewMode, setViewMode] = useState<ViewMode>("dots");
+  const [show3D, setShow3D] = useState(false);
 
   // Ward
   const [wards, setWards] = useState<FeatureCollection | null>(null);
@@ -420,6 +472,25 @@ export default function AtlasAllMapClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addresses, contactsOverlay]);
 
+  // Export control — loaded once after map initialises
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+    const map = mapRef.current.getMap();
+    void import("@watergis/maplibre-gl-export").then(({ MaplibreExportControl }) => {
+      if (!mapRef.current) return;
+      const ctrl = new MaplibreExportControl({ Format: "png", DPI: 144 });
+      map.addControl(ctrl, "top-right");
+      exportCtrlRef.current = ctrl;
+    });
+    return () => {
+      const ctrl = exportCtrlRef.current;
+      if (ctrl) {
+        try { map.removeControl(ctrl); } catch { /* map may already be destroyed */ }
+        exportCtrlRef.current = null;
+      }
+    };
+  }, [mapLoaded]);
+
   // Grouped sidebar — wards by municipality
   const municipalityGroups = useMemo(() => {
     if (!wards) return [];
@@ -464,7 +535,7 @@ export default function AtlasAllMapClient() {
       map.setFeatureState({ source: "wards", id }, { hover: true });
       setHoveredId(id);
       map.getCanvas().style.cursor = "pointer";
-    } else if (e.features?.some(f => ["addr-clusters", "addr-point"].includes(f.layer.id))) {
+    } else if (e.features?.some(f => ["addr-clusters", "addr-point", "addr-support-point"].includes(f.layer.id))) {
       map.getCanvas().style.cursor = "pointer";
     } else {
       if (hoveredId !== null) map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
@@ -486,12 +557,12 @@ export default function AtlasAllMapClient() {
       const map = mapRef.current.getMap();
       const id = cluster.properties.cluster_id as number;
       const coords = (cluster.geometry as unknown as { coordinates: [number, number] }).coordinates;
-      const src = map.getSource("addresses") as { getClusterExpansionZoom: (id: number, cb: (e: Error | null, z: number) => void) => void } | undefined;
+      const src = map.getSource("addresses-clustered") as { getClusterExpansionZoom: (id: number, cb: (e: Error | null, z: number) => void) => void } | undefined;
       if (src?.getClusterExpansionZoom) src.getClusterExpansionZoom(id, (err, zoom) => { if (!err) mapRef.current?.flyTo({ center: coords, zoom }); });
       else mapRef.current?.flyTo({ center: coords, zoom: (map.getZoom() ?? 11) + 2 });
       return;
     }
-    const af = e.features?.find(f => f.layer.id === "addr-point");
+    const af = e.features?.find(f => f.layer.id === "addr-point" || f.layer.id === "addr-support-point");
     if (af) { setSelectedAddress(af.properties as unknown as AddrProps); return; }
     const wf = e.features?.find(f => f.layer.id === "ward-fill");
     if (wf) {
@@ -545,10 +616,32 @@ export default function AtlasAllMapClient() {
   const uniqueDoors = streets.reduce((s, st) => s + st.doors, 0);
   const litRec = Math.ceil(addrCount * 1.1);
   const canBeginCanvassing = addrCount > 0 && !addrLoading;
-  const interactiveLayers = ["ward-fill", ...(displayAddresses ? ["addr-clusters", "addr-point"] : [])];
+  const interactiveLayers = [
+    "ward-fill",
+    ...(displayAddresses
+      ? viewMode === "dots" ? ["addr-clusters", "addr-point"]
+        : viewMode === "support" ? ["addr-support-point"]
+        : [] // heatmap — no individual point clicks
+      : []),
+  ];
 
   const selectedMuni = selectedProps ? getProp(selectedProps, "municipality") : "";
   const muniAccent = MUNI_ACCENT[selectedMuni] ?? "#1D9E75";
+
+  // Dynamic 3D layer spec — depends on muniAccent which changes per ward
+  const extrusion3DLayerSpec = useMemo((): Omit<FillExtrusionLayerSpecification, "source"> => ({
+    id: "addr-3d-extrusion", type: "fill-extrusion",
+    paint: {
+      "fill-extrusion-height": ["case",
+        [">", ["coalesce", ["to-number", ["get", "buildingUnits"]], 0], 1],
+        ["*", ["coalesce", ["to-number", ["get", "buildingUnits"]], 1], 3],
+        4,
+      ],
+      "fill-extrusion-color": muniAccent,
+      "fill-extrusion-opacity": 0.75,
+    },
+  }), [muniAccent]);
+
   const filteredStreets = useMemo(() => {
     const q = streetSearch.toLowerCase().trim();
     return q ? streets.filter(st => st.name.toLowerCase().includes(q)) : streets;
@@ -589,9 +682,16 @@ export default function AtlasAllMapClient() {
             <Layer {...bgClusterLayer} /><Layer {...bgPointLayer} />
           </Source>
         )}
-        {displayAddresses && (
-          <Source id="addresses" type="geojson" data={displayAddresses} cluster clusterMaxZoom={15} clusterRadius={45}>
+        {displayAddresses && viewMode === "dots" && (
+          <Source id="addresses-clustered" type="geojson" data={displayAddresses} cluster clusterMaxZoom={15} clusterRadius={45}>
             <Layer {...addrClusterLayer} /><Layer {...addrClusterCountLayer} /><Layer {...addrPointLayer} />
+          </Source>
+        )}
+        {displayAddresses && (viewMode !== "dots" || (show3D && !!selectedWard)) && (
+          <Source id="addresses-flat" type="geojson" data={displayAddresses}>
+            {viewMode === "heatmap" && <Layer {...heatmapLayerSpec} />}
+            {viewMode === "support" && <Layer {...supportPointLayerSpec} />}
+            {show3D && selectedWard && <Layer {...extrusion3DLayerSpec} />}
           </Source>
         )}
       </MapGL>
@@ -825,7 +925,7 @@ export default function AtlasAllMapClient() {
                   </div>
                   {filteredStreets.length === 0 && streetSearch && (
                     <div style={{ padding: "14px 18px", color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center" }}>
-                      No streets matching "{streetSearch}"
+                      No streets matching &ldquo;{streetSearch}&rdquo;
                     </div>
                   )}
                   {filteredStreets.map((st, i) => (
