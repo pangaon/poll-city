@@ -108,7 +108,7 @@ Everything below is built, pushed, and accessible in the app.
 |---|---|---|
 | Migration baseline | PENDING | Run `npx prisma db push` before first real customer. GAP-003. George's action. |
 | CASL consent management | DONE — commit cc97b33 | ConsentRecord schema (3 enums + model), POST/GET /api/compliance/consent, email blast consent filter (skips unconsented, surfaces count), Smart Import consent column mapper + processor, Contact detail CASL Consent tab, /compliance overview page, sidebar entry. George must run `npx prisma db push` to apply schema. |
-| Print vendor portal | DONE — commit pending | PRINT_VENDOR role + userId on PrintShop. /vendor/signup (public). /vendor/dashboard + /jobs + /bids + /jobs/[id] (vendor portal). 5 API routes under /api/vendor/. Middleware routes PRINT_VENDOR to /vendor and restricts to vendor paths. Requires npx prisma db push. |
+| Print vendor portal | DONE — commit f393872 | PRINT_VENDOR role + userId on PrintShop. /vendor/signup (public). /vendor/dashboard + /jobs + /bids + /jobs/[id] (vendor portal). 5 API routes under /api/vendor/. Middleware routes PRINT_VENDOR to /vendor and restricts to vendor paths. Requires npx prisma db push. |
 | Turf cutting — 0 voters bug | DONE — commit 64aa67f | Preview API take:500 cap removed for filtered queries; turf stops now sorted by street+number; import aliases for poll/polling_division/streetNumber/streetName added; print walk-list uses parsed-integer sort; map mode shows honest geocoding warning. |
 
 ---

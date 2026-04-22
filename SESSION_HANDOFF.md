@@ -103,7 +103,7 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ## CURRENT PLATFORM STATE (as of 2026-04-22 — Print Vendor Portal + AtlasMapClient Phase 2 complete)
 
-### Print Vendor Portal — DONE (P0 cleared)
+### Print Vendor Portal — DONE (commit f393872, P0 cleared)
 
 **What shipped:**
 - `PRINT_VENDOR` role added to `Role` enum in Prisma schema + `userId String? @unique` on `PrintShop` — links a vendor user account to their shop record. **George must run `npx prisma db push`** (already in GEORGE_TODO.md item 3).
