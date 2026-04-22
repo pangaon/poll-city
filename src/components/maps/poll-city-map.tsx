@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Map, {
   NavigationControl,
   ScaleControl,
@@ -110,6 +110,35 @@ function normalizeToFeatureCollection(
   return null;
 }
 
+// Compute bounding box from a FeatureCollection by walking all coordinate arrays.
+function computeBbox(
+  fc: GeoJSON.FeatureCollection,
+): [[number, number], [number, number]] | null {
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+
+  function walk(coords: unknown): void {
+    if (!Array.isArray(coords)) return;
+    if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+      const [lng, lat] = coords as number[];
+      if (lng < minLng) minLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lng > maxLng) maxLng = lng;
+      if (lat > maxLat) maxLat = lat;
+    } else {
+      (coords as unknown[]).forEach(walk);
+    }
+  }
+
+  for (const feature of fc.features) {
+    const geom = (feature as GeoJSON.Feature).geometry;
+    if (!geom) continue;
+    if ("coordinates" in geom) walk(geom.coordinates);
+  }
+
+  if (!isFinite(minLng) || !isFinite(minLat)) return null;
+  return [[minLng, minLat], [maxLng, maxLat]];
+}
+
 export default function PollCityMap({
   wardGeoJSON,
   children,
@@ -120,6 +149,7 @@ export default function PollCityMap({
   cursor = "grab",
 }: PollCityMapProps) {
   const mapRef = useRef<MapRef>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const handleClick = useCallback(
     (e: MapMouseEvent) => {
@@ -136,6 +166,18 @@ export default function PollCityMap({
 
   const wardFC = normalizeToFeatureCollection(wardGeoJSON ?? null);
 
+  // Auto-fit to ward boundary whenever it becomes available and map is loaded.
+  useEffect(() => {
+    if (!mapLoaded || !wardFC || !mapRef.current) return;
+    const bbox = computeBbox(wardFC);
+    if (!bbox) return;
+    try {
+      mapRef.current.fitBounds(bbox, { padding: 60, duration: 800, maxZoom: 14 });
+    } catch {
+      // fitBounds can throw if map is not yet fully initialized
+    }
+  }, [mapLoaded, wardFC]);
+
   return (
     <div style={{ height, width: "100%", minHeight: 400, position: "relative" }}>
       <Map
@@ -147,6 +189,7 @@ export default function PollCityMap({
         onClick={handleClick}
         attributionControl={false}
         reuseMaps
+        onLoad={() => setMapLoaded(true)}
       >
         <NavigationControl position="top-right" />
         <ScaleControl position="bottom-right" />
