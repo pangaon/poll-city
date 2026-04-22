@@ -117,6 +117,27 @@ npx prisma db push
 
   **If it errors "Campaign not found":** item 3c (provision script) didn't run yet. Run it first.
 
+- [ ] **3e. ⚠️ Add VAPID keys to Vercel — required for browser push notifications (PCS)**
+
+  Without these, `sendPushToUser` silently returns `false`. Push notifications will not fire.
+
+  **Step 1 — Generate your VAPID key pair** (run this once in your terminal):
+  ```bash
+  npx web-push generate-vapid-keys
+  ```
+  It outputs two keys — copy both.
+
+  **Step 2 — Add to Vercel** → Project Settings → Environment Variables:
+
+  | Variable | Value |
+  |---|---|
+  | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | The `Public Key` from the output above |
+  | `VAPID_PRIVATE_KEY` | The `Private Key` from the output above |
+
+  Both are required. The public key is safe to expose (used by browsers). The private key must stay secret.
+
+  **After adding:** Redeploy (Vercel will auto-deploy on next push, or hit Redeploy in dashboard).
+
 - [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 
   The Ontario Open Data CSV dump (resource `31f8e45e`) was removed. The data is now on
