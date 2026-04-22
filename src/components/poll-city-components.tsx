@@ -1128,7 +1128,7 @@ export function EmptyState({
           fontSize: 12, color: "#185FA5",
           marginTop: 16, cursor: "pointer",
         }}>
-          Ask Adoni: "{adoniPrompt}" ↗
+          Ask Adoni: &ldquo;{adoniPrompt}&rdquo; ↗
         </div>
       )}
     </motion.div>

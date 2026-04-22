@@ -142,7 +142,7 @@ export default function NotificationOptInPrompt({
 
           <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              What you'll receive
+              What you&apos;ll receive
             </p>
             <div className="space-y-1">
               <div className="flex items-start gap-1.5 text-xs text-gray-700">

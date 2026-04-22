@@ -65,11 +65,6 @@ export default function ContactDotsLayer({ campaignId, showHeatmap = false, onCo
       .finally(() => setLoading(false));
   }, [campaignId]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _onClick = useCallback(() => {
-    // handled by parent map click if needed
-  }, [onContactClick]);
-
   if (loading || !geojson) return null;
 
   return (

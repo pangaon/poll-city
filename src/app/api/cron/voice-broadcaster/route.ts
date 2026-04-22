@@ -61,7 +61,6 @@ export async function GET(req: NextRequest) {
     let dialed = 0;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const twilio = require("twilio") as any;
       const client = twilio(accountSid, authToken);
       const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://pollcity.ca"}/api/voice/webhook`;
