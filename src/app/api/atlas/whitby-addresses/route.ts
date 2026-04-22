@@ -1,19 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
 // Town of Whitby official address points — Whitby GeoHub (ArcGIS)
-// Source: https://geohub-whitby.hub.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0
+// https://geohub-whitby.hub.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0
 const ARCGIS_URL =
   "https://opendata.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0.geojson";
 
-// OSM Overpass fallback — partial coverage but free
+// OSM Overpass fallback
 const OVERPASS_MIRRORS = [
   "https://overpass.kumi.systems/api/interpreter",
   "https://lz4.overpass-api.de/api/interpreter",
   "https://overpass-api.de/api/interpreter",
 ];
-const WHITBY_BBOX = { south: 43.833, west: -79.050, north: 44.030, east: -78.880 };
+
+// Hard bounds for Whitby, Ontario — reject any bbox outside this
+const WHITBY_HARD_BOUNDS = { south: 43.80, west: -79.10, north: 44.05, east: -78.82 };
 
 type ArcGISFeature = {
   type: string;
@@ -28,23 +30,49 @@ type OverpassElement = {
   tags?: Record<string, string>;
 };
 
-function extractAddress(props: Record<string, unknown>): {
-  address: string; civic: string; street: string; postalCode: string; city: string; unit: string;
-} {
-  // ArcGIS Whitby address point property names (common patterns)
-  const civic =
-    String(props["CIVIC_NUM"] ?? props["CIVIC"] ?? props["ADDRESS_NUM"] ?? props["HouseNumber"] ?? props["ADDR_NUM"] ?? "");
-  const street =
-    String(props["STREET_NAME"] ?? props["STREET"] ?? props["FULL_STREET"] ?? props["StreetName"] ?? props["ADDR_STREET"] ?? "");
-  const suffix =
-    String(props["STREET_TYPE"] ?? props["STREET_SFX"] ?? props["StreetType"] ?? "");
-  const dir =
-    String(props["STREET_DIR"] ?? props["DIR"] ?? props["StreetDir"] ?? "");
+type BBox = { south: number; west: number; north: number; east: number };
 
+// ─── validation ──────────────────────────────────────────────────────────────
+
+function parseBbox(params: URLSearchParams): BBox | null {
+  const keys = ["south", "west", "north", "east"] as const;
+  const vals = keys.map((k) => parseFloat(params.get(k) ?? ""));
+  if (vals.some((v) => isNaN(v))) return null;
+  const [south, west, north, east] = vals;
+  const b = WHITBY_HARD_BOUNDS;
+  // Clamp to Whitby hard bounds — never fetch outside the municipality
+  return {
+    south: Math.max(south, b.south),
+    west: Math.max(west, b.west),
+    north: Math.min(north, b.north),
+    east: Math.min(east, b.east),
+  };
+}
+
+function inBbox(lng: number, lat: number, bbox: BBox): boolean {
+  return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
+}
+
+// ─── property extraction ──────────────────────────────────────────────────────
+
+function extractAddress(props: Record<string, unknown>) {
+  const civic = String(
+    props["CIVIC_NUM"] ?? props["CIVIC"] ?? props["ADDRESS_NUM"] ??
+    props["HouseNumber"] ?? props["ADDR_NUM"] ?? props["ADDNUM"] ?? "",
+  );
+  const street = String(
+    props["STREET_NAME"] ?? props["STREET"] ?? props["FULL_STREET"] ??
+    props["StreetName"] ?? props["ADDR_STREET"] ?? props["ST_NAME"] ?? "",
+  );
+  const suffix = String(
+    props["STREET_TYPE"] ?? props["STREET_SFX"] ?? props["StreetType"] ??
+    props["ST_TYPE"] ?? "",
+  );
+  const dir = String(props["STREET_DIR"] ?? props["DIR"] ?? props["ST_DIR"] ?? "");
   const streetFull = [street, suffix, dir].filter(Boolean).join(" ").trim();
-  const address = [civic, streetFull].filter(Boolean).join(" ").trim() ||
+  const address =
+    [civic, streetFull].filter(Boolean).join(" ").trim() ||
     String(props["FULL_ADDRESS"] ?? props["ADDRESS"] ?? props["FullAddress"] ?? "");
-
   return {
     address,
     civic,
@@ -55,20 +83,30 @@ function extractAddress(props: Record<string, unknown>): {
   };
 }
 
-export async function GET() {
-  // ── Primary: Town of Whitby official ArcGIS dataset ───────────────────────
+// ─── handler ─────────────────────────────────────────────────────────────────
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const bbox = parseBbox(searchParams) ?? WHITBY_HARD_BOUNDS;
+
+  // ── Primary: Town of Whitby official ArcGIS dataset ──────────────────────
   try {
     const res = await fetch(ARCGIS_URL, {
       headers: { Accept: "application/json", "User-Agent": "PollCity/1.0 (contact@poll.city)" },
       signal: AbortSignal.timeout(30000),
-      next: { revalidate: 86400 },
+      next: { revalidate: 86400 }, // cache the full dataset for 24h
     });
 
     if (res.ok) {
       const data = (await res.json()) as { type: string; features: ArcGISFeature[] };
+
       if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
         const features = data.features
-          .filter((f) => f.geometry?.coordinates != null)
+          .filter((f) => {
+            if (!f.geometry?.coordinates) return false;
+            const [lng, lat] = f.geometry.coordinates;
+            return inBbox(lng, lat, bbox);
+          })
           .map((f, i) => {
             const addr = extractAddress(f.properties ?? {});
             return {
@@ -80,7 +118,11 @@ export async function GET() {
           .filter((f) => f.properties.address.length > 0);
 
         return NextResponse.json(
-          { type: "FeatureCollection", features, meta: { count: features.length, source: "whitby-geohub" } },
+          {
+            type: "FeatureCollection",
+            features,
+            meta: { count: features.length, source: "whitby-geohub", bbox },
+          },
           { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600" } },
         );
       }
@@ -89,8 +131,8 @@ export async function GET() {
     // fall through to OSM
   }
 
-  // ── Fallback: OpenStreetMap via Overpass ───────────────────────────────────
-  const { south, west, north, east } = WHITBY_BBOX;
+  // ── Fallback: OpenStreetMap via Overpass ──────────────────────────────────
+  const { south, west, north, east } = bbox;
   const query = `[out:json][timeout:45];(node["addr:housenumber"]["addr:street"](${south},${west},${north},${east}););out 5000;`;
   const enc = encodeURIComponent(query);
 
@@ -101,29 +143,33 @@ export async function GET() {
         headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)", Accept: "application/json" },
         signal: AbortSignal.timeout(20000),
       });
-      if (r.ok) { osmData = (await r.json()) as { elements: OverpassElement[] }; break; }
+      if (r.ok) {
+        osmData = (await r.json()) as { elements: OverpassElement[] };
+        break;
+      }
     } catch { /* try next */ }
   }
 
   if (!osmData) {
     return NextResponse.json(
-      { error: "Could not load address data. Both Whitby GeoHub and OpenStreetMap unavailable." },
+      { error: "Address data temporarily unavailable. Both Whitby GeoHub and OpenStreetMap are unreachable." },
       { status: 502 },
     );
   }
 
   const features = (osmData.elements ?? [])
-    .filter((el) => el.lat != null && el.lon != null)
+    .filter((el) => el.lat != null && el.lon != null && inBbox(el.lon!, el.lat!, bbox))
     .map((el) => {
       const tags = el.tags ?? {};
       const civic = tags["addr:housenumber"] ?? "";
       const street = tags["addr:street"] ?? "";
-      const address = `${civic} ${street}`.trim();
       return {
         type: "Feature" as const,
         geometry: { type: "Point" as const, coordinates: [el.lon!, el.lat!] },
         properties: {
-          id: el.id, source: "osm", address, civic, street,
+          id: el.id, source: "osm",
+          address: `${civic} ${street}`.trim(),
+          civic, street,
           postalCode: tags["addr:postcode"] ?? "",
           city: tags["addr:city"] ?? "Whitby",
           unit: tags["addr:unit"] ?? "",
@@ -133,7 +179,7 @@ export async function GET() {
     .filter((f) => f.properties.address.length > 0);
 
   return NextResponse.json(
-    { type: "FeatureCollection", features, meta: { count: features.length, source: "osm-fallback" } },
+    { type: "FeatureCollection", features, meta: { count: features.length, source: "osm-fallback", bbox } },
     { headers: { "Cache-Control": "public, s-maxage=3600" } },
   );
 }

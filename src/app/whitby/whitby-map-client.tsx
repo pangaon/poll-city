@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const TILE_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const WHITBY_CENTER = { longitude: -78.959477, latitude: 43.942973, zoom: 11 };
+const AVG_VOTERS_PER_DOOR = 2.3; // Canadian household average
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,21 @@ function getProp(props: Record<string, unknown> | null | undefined, key: string)
   return String(props[key] ?? "");
 }
 
+function wardBboxParams(feature: Feature): URLSearchParams | null {
+  const fc: FeatureCollection = { type: "FeatureCollection", features: [feature] };
+  const bbox = computeBbox(fc);
+  if (!bbox) return null;
+  const [[west, south], [east, north]] = bbox;
+  // Add small padding to catch addresses right on the boundary
+  const pad = 0.002;
+  return new URLSearchParams({
+    south: (south - pad).toFixed(6),
+    west: (west - pad).toFixed(6),
+    north: (north + pad).toFixed(6),
+    east: (east + pad).toFixed(6),
+  });
+}
+
 // ─── ward layer specs ─────────────────────────────────────────────────────────
 
 const wardFillLayer: Omit<FillLayerSpecification, "source"> = {
@@ -55,7 +71,7 @@ const wardFillLayer: Omit<FillLayerSpecification, "source"> = {
   type: "fill",
   paint: {
     "fill-color": ["get", "wardFill"],
-    "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.52, 0.22],
+    "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.45, 0.18],
   },
 };
 
@@ -72,7 +88,7 @@ const wardLineLayer: Omit<LineLayerSpecification, "source"> = {
 const wardSelectedFillLayer: Omit<FillLayerSpecification, "source"> = {
   id: "ward-selected-fill",
   type: "fill",
-  paint: { "fill-color": ["get", "wardFill"], "fill-opacity": 0.55 },
+  paint: { "fill-color": ["get", "wardFill"], "fill-opacity": 0.28 },
 };
 
 const wardSelectedLineLayer: Omit<LineLayerSpecification, "source"> = {
@@ -107,9 +123,7 @@ const addrClusterLayer: Omit<CircleLayerSpecification, "source"> = {
   paint: {
     "circle-color": [
       "step", ["get", "point_count"],
-      "#1D9E75", 25,
-      "#EF9F27", 100,
-      "#E24B4A",
+      "#1D9E75", 25, "#EF9F27", 100, "#E24B4A",
     ],
     "circle-radius": ["step", ["get", "point_count"], 18, 25, 24, 100, 32],
     "circle-opacity": 0.88,
@@ -143,10 +157,10 @@ const addrPointLayer: Omit<CircleLayerSpecification, "source"> = {
   },
 };
 
-// ─── glass style ─────────────────────────────────────────────────────────────
+// ─── glass styles ─────────────────────────────────────────────────────────────
 
 const glass: React.CSSProperties = {
-  background: "rgba(10, 35, 66, 0.72)",
+  background: "rgba(10, 35, 66, 0.75)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   border: "1px solid rgba(255,255,255,0.13)",
@@ -163,9 +177,18 @@ const glassLight: React.CSSProperties = {
   boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
 };
 
-// ─── component ───────────────────────────────────────────────────────────────
+// ─── types ───────────────────────────────────────────────────────────────────
 
-type AddressProps = { address: string; civic: string; street: string; postalCode: string; city: string; unit: string };
+type AddrProps = {
+  address: string; civic: string; street: string;
+  postalCode: string; city: string; unit: string; source?: string;
+};
+
+type MapFeatureEvent = MapMouseEvent & {
+  features?: Array<{ properties: Record<string, unknown>; layer: { id: string }; geometry: unknown }>;
+};
+
+// ─── component ───────────────────────────────────────────────────────────────
 
 export default function WhitbyMapClient() {
   const mapRef = useRef<MapRef>(null);
@@ -178,14 +201,14 @@ export default function WhitbyMapClient() {
   const [wardLoading, setWardLoading] = useState(true);
   const [wardError, setWardError] = useState<string | null>(null);
 
-  // Address state
-  const [showAddresses, setShowAddresses] = useState(false);
+  // Address state — always scoped to the selected ward
   const [addresses, setAddresses] = useState<FeatureCollection | null>(null);
   const [addrLoading, setAddrLoading] = useState(false);
   const [addrError, setAddrError] = useState<string | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState<AddressProps | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<AddrProps | null>(null);
+  const [showAddresses, setShowAddresses] = useState(false);
 
-  // Fetch ward boundaries
+  // Fetch ward boundaries on mount
   useEffect(() => {
     fetch("/api/atlas/whitby-wards")
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FeatureCollection>; })
@@ -193,18 +216,7 @@ export default function WhitbyMapClient() {
       .catch((err: Error) => { setWardError(err.message); setWardLoading(false); });
   }, []);
 
-  // Lazy-load addresses only when toggled on
-  useEffect(() => {
-    if (!showAddresses || addresses) return;
-    setAddrLoading(true);
-    setAddrError(null);
-    fetch("/api/atlas/whitby-addresses")
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FeatureCollection>; })
-      .then((data) => { setAddresses(data); setAddrLoading(false); })
-      .catch((err: Error) => { setAddrError(err.message); setAddrLoading(false); });
-  }, [showAddresses, addresses]);
-
-  // Auto-fit map to Whitby ward bounds
+  // Auto-fit to Whitby on ward load
   useEffect(() => {
     if (!mapLoaded || !wards || !mapRef.current) return;
     const bbox = computeBbox(wards);
@@ -212,27 +224,43 @@ export default function WhitbyMapClient() {
     try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 1000, maxZoom: 13 }); } catch { /* ignore */ }
   }, [mapLoaded, wards]);
 
-  // Hover via feature-state (zero React re-renders)
-  const handleMouseMove = useCallback((e: MapMouseEvent) => {
+  // When ward changes: clear old addresses + re-fetch if addresses are toggled on
+  useEffect(() => {
+    setAddresses(null);
+    setAddrError(null);
+    setSelectedAddress(null);
+
+    if (!selectedWard || !showAddresses) return;
+
+    const params = wardBboxParams(selectedWard);
+    if (!params) return;
+
+    setAddrLoading(true);
+    fetch(`/api/atlas/whitby-addresses?${params.toString()}`)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FeatureCollection>; })
+      .then((data) => { setAddresses(data); setAddrLoading(false); })
+      .catch((err: Error) => { setAddrError(err.message); setAddrLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWard?.properties?.wardIndex, showAddresses]);
+
+  // Hover — feature-state, zero React re-renders
+  const handleMouseMove = useCallback((e: MapFeatureEvent) => {
     if (!mapRef.current) return;
     const map = mapRef.current.getMap();
-    const features = (e as MapMouseEvent & { features?: { properties: Record<string, unknown>; layer: { id: string } }[] }).features;
-    const wardFeature = features?.find((f) => f.layer.id === "ward-fill");
+    const wardF = e.features?.find((f) => f.layer.id === "ward-fill");
 
-    if (wardFeature) {
-      const newId = wardFeature.properties?.wardIndex as number;
+    if (wardF) {
+      const newId = wardF.properties?.wardIndex as number;
       if (hoveredId !== null && hoveredId !== newId) {
         map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
       }
       map.setFeatureState({ source: "wards", id: newId }, { hover: true });
       setHoveredId(newId);
       map.getCanvas().style.cursor = "pointer";
-    } else if (features?.some((f) => ["addr-clusters", "addr-point"].includes(f.layer.id))) {
+    } else if (e.features?.some((f) => ["addr-clusters", "addr-point"].includes(f.layer.id))) {
       map.getCanvas().style.cursor = "pointer";
     } else {
-      if (hoveredId !== null) {
-        map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
-      }
+      if (hoveredId !== null) map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
       setHoveredId(null);
       map.getCanvas().style.cursor = "";
     }
@@ -246,47 +274,48 @@ export default function WhitbyMapClient() {
     map.getCanvas().style.cursor = "";
   }, [hoveredId]);
 
-  // Click — route to ward or address or cluster
-  const handleClick = useCallback((e: MapMouseEvent) => {
+  // Click — cluster zoom, address point, or ward select
+  const handleClick = useCallback((e: MapFeatureEvent) => {
     if (!mapRef.current) return;
-    const features = (e as MapMouseEvent & { features?: { properties: Record<string, unknown>; layer: { id: string }; geometry: { coordinates: [number, number] } }[] }).features;
-    if (!features || features.length === 0) {
-      setSelectedWard(null);
-      setSelectedAddress(null);
-      return;
-    }
 
     // Cluster → zoom in
-    const cluster = features.find((f) => f.layer.id === "addr-clusters");
+    const cluster = e.features?.find((f) => f.layer.id === "addr-clusters");
     if (cluster) {
       const map = mapRef.current.getMap();
       const clusterId = cluster.properties.cluster_id as number;
-      const clusterCoords = (cluster.geometry as unknown as { coordinates: [number, number] }).coordinates;
+      const coords = (cluster.geometry as unknown as { coordinates: [number, number] }).coordinates;
       const src = map.getSource("addresses") as { getClusterExpansionZoom: (id: number, cb: (err: Error | null, zoom: number) => void) => void } | undefined;
       if (src?.getClusterExpansionZoom) {
         src.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          mapRef.current?.flyTo({ center: clusterCoords, zoom });
+          if (!err) mapRef.current?.flyTo({ center: coords, zoom });
         });
       } else {
-        mapRef.current?.flyTo({ center: clusterCoords, zoom: (mapRef.current.getMap().getZoom() ?? 11) + 2 });
+        mapRef.current?.flyTo({ center: coords, zoom: (map.getZoom() ?? 11) + 2 });
       }
       return;
     }
 
-    // Individual address point
-    const addrPoint = features.find((f) => f.layer.id === "addr-point");
-    if (addrPoint) {
-      setSelectedAddress(addrPoint.properties as unknown as AddressProps);
-      setSelectedWard(null);
+    // Individual address
+    const addrF = e.features?.find((f) => f.layer.id === "addr-point");
+    if (addrF) {
+      setSelectedAddress(addrF.properties as unknown as AddrProps);
       return;
     }
 
-    // Ward click
-    const wardFeature = features.find((f) => f.layer.id === "ward-fill");
-    if (wardFeature) {
-      setSelectedWard(wardFeature as unknown as Feature);
+    // Ward select
+    const wardF = e.features?.find((f) => f.layer.id === "ward-fill");
+    if (wardF) {
+      const feature = wardF as unknown as Feature;
+      setSelectedWard(feature);
       setSelectedAddress(null);
+
+      // Auto-enable addresses and zoom to ward
+      setShowAddresses(true);
+      const fc: FeatureCollection = { type: "FeatureCollection", features: [feature] };
+      const bbox = computeBbox(fc);
+      if (bbox) {
+        try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 700, maxZoom: 14 }); } catch { /* ignore */ }
+      }
     } else {
       setSelectedWard(null);
       setSelectedAddress(null);
@@ -297,27 +326,32 @@ export default function WhitbyMapClient() {
   const handleSidebarWardClick = useCallback((feature: Feature) => {
     setSelectedWard(feature);
     setSelectedAddress(null);
+    setShowAddresses(true);
     if (!mapRef.current) return;
     const fc: FeatureCollection = { type: "FeatureCollection", features: [feature] };
     const bbox = computeBbox(fc);
     if (bbox) {
-      try { mapRef.current.fitBounds(bbox, { padding: 80, duration: 800, maxZoom: 13 }); } catch { /* ignore */ }
+      try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 700, maxZoom: 14 }); } catch { /* ignore */ }
     }
   }, []);
 
   const wardCount = wards?.features.length ?? 0;
   const addrCount = addresses?.features.length ?? 0;
+  const voterEstimate = Math.round(addrCount * AVG_VOTERS_PER_DOOR);
+  const selectedProps = selectedWard?.properties as Record<string, unknown> | null;
   const selectedFC: FeatureCollection | null = selectedWard
     ? { type: "FeatureCollection", features: [selectedWard] }
     : null;
-  const selectedProps = selectedWard?.properties as Record<string, unknown> | null;
 
-  const interactiveLayers = ["ward-fill", ...(showAddresses && addresses ? ["addr-clusters", "addr-point"] : [])];
+  const interactiveLayers = [
+    "ward-fill",
+    ...(showAddresses && addresses ? ["addr-clusters", "addr-point"] : []),
+  ];
 
   return (
     <div className="relative w-full h-screen overflow-hidden" style={{ background: "#060f1e" }}>
 
-      {/* ── MAP ────────────────────────────────────────────────────── */}
+      {/* ── MAP ──────────────────────────────────────────────────────── */}
       <Map
         ref={mapRef}
         initialViewState={WHITBY_CENTER}
@@ -327,9 +361,9 @@ export default function WhitbyMapClient() {
         reuseMaps
         onLoad={() => setMapLoaded(true)}
         interactiveLayerIds={interactiveLayers}
-        onMouseMove={handleMouseMove}
+        onMouseMove={handleMouseMove as (e: MapMouseEvent) => void}
         onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
+        onClick={handleClick as (e: MapMouseEvent) => void}
       >
         <NavigationControl position="top-right" />
         <ScaleControl position="bottom-right" />
@@ -339,7 +373,6 @@ export default function WhitbyMapClient() {
           compact
         />
 
-        {/* Ward boundaries */}
         {wards && (
           <Source id="wards" type="geojson" data={wards} promoteId="wardIndex">
             <Layer {...wardFillLayer} />
@@ -348,7 +381,6 @@ export default function WhitbyMapClient() {
           </Source>
         )}
 
-        {/* Selected ward highlight */}
         {selectedFC && (
           <Source id="ward-selected" type="geojson" data={selectedFC}>
             <Layer {...wardSelectedFillLayer} />
@@ -356,16 +388,8 @@ export default function WhitbyMapClient() {
           </Source>
         )}
 
-        {/* Address clusters */}
         {showAddresses && addresses && (
-          <Source
-            id="addresses"
-            type="geojson"
-            data={addresses}
-            cluster
-            clusterMaxZoom={15}
-            clusterRadius={45}
-          >
+          <Source id="addresses" type="geojson" data={addresses} cluster clusterMaxZoom={15} clusterRadius={45}>
             <Layer {...addrClusterLayer} />
             <Layer {...addrClusterCountLayer} />
             <Layer {...addrPointLayer} />
@@ -373,7 +397,7 @@ export default function WhitbyMapClient() {
         )}
       </Map>
 
-      {/* ── GLASS HEADER ─────────────────────────────────────────── */}
+      {/* ── GLASS HEADER ─────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -383,27 +407,25 @@ export default function WhitbyMapClient() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           <span style={{ fontSize: 20 }}>🏛️</span>
           <div>
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, letterSpacing: "0.04em", lineHeight: 1.2 }}>
-              TOWN OF WHITBY
-            </div>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 16, letterSpacing: "0.04em" }}>TOWN OF WHITBY</div>
             <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, letterSpacing: "0.12em", marginTop: 2, textTransform: "uppercase" }}>
               Ward Boundaries · Municipal Electoral Map
             </div>
           </div>
           {wardCount > 0 && (
-            <span style={{ marginLeft: 10, background: "rgba(29,158,117,0.25)", border: "1px solid rgba(29,158,117,0.5)", color: "#1D9E75", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "2px 10px", letterSpacing: "0.06em" }}>
+            <span style={{ marginLeft: 10, background: "rgba(29,158,117,0.25)", border: "1px solid rgba(29,158,117,0.5)", color: "#1D9E75", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "2px 10px" }}>
               {wardCount} WARDS
             </span>
           )}
         </div>
       </motion.div>
 
-      {/* ── LEFT SIDEBAR ─────────────────────────────────────────── */}
+      {/* ── LEFT SIDEBAR ─────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, x: -30 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-        style={{ ...glass, position: "absolute", top: 90, left: 20, zIndex: 10, width: 220, maxHeight: "calc(100vh - 200px)", overflowY: "auto", padding: "16px 0" }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        style={{ ...glass, position: "absolute", top: 90, left: 20, zIndex: 10, width: 224, maxHeight: "calc(100vh - 200px)", overflowY: "auto", padding: "16px 0" }}
       >
         <div style={{ padding: "0 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>Ward Directory</div>
@@ -411,8 +433,8 @@ export default function WhitbyMapClient() {
         </div>
 
         <div style={{ padding: "8px 0" }}>
-          {wardLoading && <div style={{ padding: "16px", color: "rgba(255,255,255,0.4)", fontSize: 12, textAlign: "center" }}>Loading wards…</div>}
-          {wardError && <div style={{ padding: "16px", color: "#E24B4A", fontSize: 11 }}>{wardError}</div>}
+          {wardLoading && <div style={{ padding: 16, color: "rgba(255,255,255,0.4)", fontSize: 12, textAlign: "center" }}>Loading wards…</div>}
+          {wardError && <div style={{ padding: 16, color: "#E24B4A", fontSize: 11 }}>{wardError}</div>}
           {wards?.features.map((f, i) => {
             const props = (f as Feature).properties as Record<string, unknown>;
             const name = getProp(props, "wardName");
@@ -425,157 +447,196 @@ export default function WhitbyMapClient() {
                 style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 16px", background: isSelected ? "rgba(255,255,255,0.08)" : "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: fill, flexShrink: 0, boxShadow: isSelected ? `0 0 8px ${fill}` : "none" }} />
-                <span style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: isSelected ? 600 : 400, lineHeight: 1.3 }}>
+                <span style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: isSelected ? 600 : 400 }}>
                   {name}
                 </span>
-                {isSelected && <span style={{ marginLeft: "auto", color: fill, fontSize: 10 }}>●</span>}
+                {isSelected && addrCount > 0 && (
+                  <span style={{ marginLeft: "auto", color: fill, fontSize: 9, fontWeight: 700 }}>
+                    {addrCount.toLocaleString()}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Address toggle */}
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "12px 16px" }}>
-          <button
-            onClick={() => { setShowAddresses((v) => !v); setSelectedAddress(null); }}
-            style={{
-              width: "100%",
-              padding: "9px 12px",
-              borderRadius: 10,
-              border: "1px solid",
-              borderColor: showAddresses ? "rgba(29,158,117,0.6)" : "rgba(255,255,255,0.12)",
-              background: showAddresses ? "rgba(29,158,117,0.18)" : "rgba(255,255,255,0.04)",
-              color: showAddresses ? "#1D9E75" : "rgba(255,255,255,0.6)",
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 6,
-              transition: "all 0.2s",
-            }}
-          >
-            <span>📍 Address Points</span>
-            <span style={{ fontSize: 10, opacity: 0.7 }}>
-              {addrLoading ? "loading…" : showAddresses && addrCount > 0 ? `${addrCount.toLocaleString()}` : showAddresses ? "on" : "off"}
-            </span>
-          </button>
-          {addrError && <div style={{ color: "#E24B4A", fontSize: 10, marginTop: 6 }}>{addrError}</div>}
-        </div>
-
-        <div style={{ padding: "0 16px 4px" }}>
-          <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, lineHeight: 1.5 }}>
-            Data: Whitby GeoHub · OpenStreetMap<br />
-            Click a ward or address to explore
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "10px 16px 12px" }}>
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, lineHeight: 1.6 }}>
+            {selectedWard ? "Click another ward to switch." : "Click a ward to load its addresses."}<br />
+            Data: Whitby GeoHub · OSM fallback
           </div>
         </div>
       </motion.div>
 
-      {/* ── SELECTED WARD PANEL ───────────────────────────────────── */}
+      {/* ── WARD OPERATIONS PANEL ────────────────────────────────────── */}
       <AnimatePresence>
         {selectedWard && selectedProps && (
           <motion.div
-            key="ward-detail"
-            initial={{ opacity: 0, y: 30, scale: 0.96 }}
+            key={`ward-${getProp(selectedProps, "wardIndex")}`}
+            initial={{ opacity: 0, y: 30, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ ...glass, position: "absolute", bottom: 40, right: 20, zIndex: 10, width: 280, padding: "20px" }}
+            style={{ ...glass, position: "absolute", bottom: 40, right: 20, zIndex: 10, width: 300, padding: 0, overflow: "hidden" }}
           >
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: getProp(selectedProps, "wardFill"), borderRadius: "16px 16px 0 0", opacity: 0.9 }} />
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Selected Ward</div>
-                <div style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{getProp(selectedProps, "wardName")}</div>
+            {/* Colour bar */}
+            <div style={{ height: 4, background: getProp(selectedProps, "wardFill") }} />
+
+            <div style={{ padding: "18px 20px" }}>
+              {/* Ward name + close */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+                <div>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 3 }}>
+                    Selected Ward
+                  </div>
+                  <div style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>
+                    {getProp(selectedProps, "wardName")}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSelectedWard(null); setAddresses(null); setSelectedAddress(null); }}
+                  style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", borderRadius: 8, width: 28, height: 28, fontSize: 14, flexShrink: 0 }}
+                >✕</button>
               </div>
-              <button onClick={() => setSelectedWard(null)} style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", borderRadius: 8, width: 28, height: 28, fontSize: 14, flexShrink: 0, marginTop: 2 }}>✕</button>
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {Object.entries(selectedProps)
-                .filter(([k]) => !["wardFill", "wardStroke", "wardIndex"].includes(k))
-                .filter(([, v]) => v != null && String(v).trim() !== "")
-                .slice(0, 6)
-                .map(([key, value]) => {
-                  const label = key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
-                  return (
-                    <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{label}</span>
-                      <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 500, textAlign: "right", maxWidth: 160, wordBreak: "break-word" }}>{String(value)}</span>
-                    </div>
-                  );
-                })}
-            </div>
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>📍 Town of Whitby · Durham Region, Ontario</div>
+
+              {/* Stats grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                {/* Doors */}
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Doors</div>
+                  {addrLoading ? (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Loading…</div>
+                  ) : addrCount > 0 ? (
+                    <div style={{ color: "#fff", fontSize: 22, fontWeight: 700 }}>{addrCount.toLocaleString()}</div>
+                  ) : (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>—</div>
+                  )}
+                </div>
+
+                {/* Est. voters */}
+                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>Est. Voters</div>
+                  {addrLoading ? (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Loading…</div>
+                  ) : voterEstimate > 0 ? (
+                    <div style={{ color: "#1D9E75", fontSize: 22, fontWeight: 700 }}>{voterEstimate.toLocaleString()}</div>
+                  ) : (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>—</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Lit inventory hint */}
+              {addrCount > 0 && (
+                <div style={{ background: "rgba(239,159,39,0.1)", border: "1px solid rgba(239,159,39,0.25)", borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>
+                  <div style={{ color: "#EF9F27", fontSize: 11, fontWeight: 600 }}>
+                    📄 Literature: {Math.ceil(addrCount * 1.1).toLocaleString()} pieces recommended
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, marginTop: 2 }}>
+                    Includes 10% buffer · Adjust for multi-piece drops
+                  </div>
+                </div>
+              )}
+
+              {/* Begin Canvassing CTA */}
+              <button
+                disabled={addrCount === 0 || addrLoading}
+                style={{
+                  width: "100%",
+                  padding: "11px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: addrCount > 0 && !addrLoading ? "#1D9E75" : "rgba(255,255,255,0.08)",
+                  color: addrCount > 0 && !addrLoading ? "#fff" : "rgba(255,255,255,0.3)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: addrCount > 0 && !addrLoading ? "pointer" : "not-allowed",
+                  letterSpacing: "0.04em",
+                  transition: "all 0.2s",
+                }}
+              >
+                {addrLoading ? "Loading addresses…" : addrCount > 0 ? "🗺️ Begin Canvassing" : "Select ward to load doors"}
+              </button>
+
+              {addrError && (
+                <div style={{ marginTop: 10, color: "#E24B4A", fontSize: 11 }}>{addrError}</div>
+              )}
+
+              <div style={{ marginTop: 12, color: "rgba(255,255,255,0.25)", fontSize: 10 }}>
+                Durham Region · Ontario Municipal 2026
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── SELECTED ADDRESS PANEL ────────────────────────────────── */}
+      {/* ── SELECTED ADDRESS PANEL ────────────────────────────────────── */}
       <AnimatePresence>
         {selectedAddress && (
           <motion.div
             key="addr-detail"
-            initial={{ opacity: 0, y: 30, scale: 0.96 }}
+            initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ ...glass, position: "absolute", bottom: 40, right: 20, zIndex: 10, width: 260, padding: "20px" }}
+            style={{ ...glassLight, position: "absolute", bottom: addrCount > 0 ? 360 : 40, right: 20, zIndex: 11, width: 260, padding: "16px 18px" }}
           >
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "#1D9E75", borderRadius: "16px 16px 0 0" }} />
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "#1D9E75", borderRadius: "12px 12px 0 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <div>
-                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Address</div>
-                <div style={{ color: "#fff", fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{selectedAddress.address}</div>
-                {selectedAddress.unit && <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 2 }}>Unit {selectedAddress.unit}</div>}
+                <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 3 }}>Address</div>
+                <div style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>{selectedAddress.address}</div>
+                {selectedAddress.unit && <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>Unit {selectedAddress.unit}</div>}
               </div>
-              <button onClick={() => setSelectedAddress(null)} style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", borderRadius: 8, width: 28, height: 28, fontSize: 14, flexShrink: 0, marginTop: 2 }}>✕</button>
+              <button onClick={() => setSelectedAddress(null)} style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
             </div>
-            <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gap: 5 }}>
               {selectedAddress.city && (
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>City</span>
-                  <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 500 }}>{selectedAddress.city}</span>
+                  <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 500 }}>{selectedAddress.city}</span>
                 </div>
               )}
               {selectedAddress.postalCode && (
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Postal Code</span>
-                  <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: 500 }}>{selectedAddress.postalCode}</span>
+                  <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 500 }}>{selectedAddress.postalCode}</span>
                 </div>
               )}
-            </div>
-            <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>Source: OpenStreetMap</div>
+              {selectedAddress.source && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Source</span>
+                  <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{selectedAddress.source === "whitby-geohub" ? "Whitby GeoHub (official)" : "OpenStreetMap"}</span>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── ADDRESS LOADING BADGE ─────────────────────────────────── */}
+      {/* ── ADDRESS LOADING SPINNER ───────────────────────────────────── */}
       <AnimatePresence>
         {addrLoading && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{ ...glassLight, position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 15, padding: "16px 24px", display: "flex", alignItems: "center", gap: 12, pointerEvents: "none" }}
           >
             <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(29,158,117,0.3)", borderTopColor: "#1D9E75", animation: "spin 0.8s linear infinite" }} />
-            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, letterSpacing: "0.08em" }}>Fetching Whitby addresses…</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, letterSpacing: "0.08em" }}>
+              Loading {getProp(selectedProps, "wardName") || "ward"} addresses…
+            </div>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── BOTTOM-LEFT BRAND ────────────────────────────────────── */}
+      {/* ── BRAND BADGE ──────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
+        transition={{ delay: 0.8 }}
         style={{ ...glassLight, position: "absolute", bottom: 20, left: 20, zIndex: 10, padding: "8px 14px" }}
       >
         <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, letterSpacing: "0.08em" }}>
@@ -583,23 +644,23 @@ export default function WhitbyMapClient() {
         </div>
       </motion.div>
 
-      {/* ── WARD LOADING OVERLAY ──────────────────────────────────── */}
+      {/* ── WARD LOADING OVERLAY ─────────────────────────────────────── */}
       <AnimatePresence>
         {wardLoading && (
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            style={{ position: "absolute", inset: 0, background: "rgba(6,15,30,0.7)", backdropFilter: "blur(8px)", zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}
+            style={{ position: "absolute", inset: 0, background: "rgba(6,15,30,0.75)", backdropFilter: "blur(8px)", zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}
           >
             <div style={{ width: 48, height: 48, borderRadius: "50%", border: "3px solid rgba(29,158,117,0.2)", borderTopColor: "#1D9E75", animation: "spin 0.8s linear infinite" }} />
-            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase" }}>Loading ward boundaries…</div>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase" }}>Loading Whitby ward boundaries…</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── ERROR OVERLAY ─────────────────────────────────────────── */}
+      {/* ── WARD ERROR ───────────────────────────────────────────────── */}
       <AnimatePresence>
         {wardError && (
           <motion.div
@@ -608,10 +669,17 @@ export default function WhitbyMapClient() {
             style={{ ...glass, position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 20, padding: 32, maxWidth: 360, textAlign: "center" }}
           >
             <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
-            <div style={{ color: "#E24B4A", fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Could not load ward data</div>
+            <div style={{ color: "#E24B4A", fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Could not load ward boundaries</div>
             <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, lineHeight: 1.6 }}>{wardError}</div>
             <button
-              onClick={() => { setWardError(null); setWardLoading(true); fetch("/api/atlas/whitby-wards").then(r => r.json() as Promise<FeatureCollection>).then(setWards).catch((e: Error) => setWardError(e.message)).finally(() => setWardLoading(false)); }}
+              onClick={() => {
+                setWardError(null); setWardLoading(true);
+                fetch("/api/atlas/whitby-wards")
+                  .then(r => r.json() as Promise<FeatureCollection>)
+                  .then(setWards)
+                  .catch((e: Error) => setWardError(e.message))
+                  .finally(() => setWardLoading(false));
+              }}
               style={{ marginTop: 20, background: "#1D9E75", border: "none", color: "#fff", borderRadius: 8, padding: "10px 24px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
             >
               Retry
