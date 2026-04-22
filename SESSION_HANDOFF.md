@@ -120,6 +120,17 @@ BACKGROUND
 
 **Why:** Ward boundaries are stable data. They must NEVER be fetched live at request time when 10,000+ users are on the map. One ArcGIS outage on election night = blank map = done.
 
+**Primary data source is the ArcGIS Hub (`municipalities-ontarioregion.hub.arcgis.com`) — not Represent OpenNorth.**
+The hub is where George found all Ontario municipal data in one place. It is the canonical source.
+The hub is a DISCOVERY layer — it catalogs underlying ArcGIS REST Feature Services.
+The actual data comes from those underlying services, queried directly with `outSR=4326` to guarantee WGS84 output.
+Represent OpenNorth is last-resort fallback only — not primary. It was used for Brampton because the hub's GeoJSON download returned EPSG:3857 (missing `outSR=4326`). That was a query bug, not a reason to abandon the hub.
+
+**Source priority order for every municipality:**
+1. ArcGIS REST service URL from hub item metadata → `[serviceUrl]/[layer]/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=500`
+2. Hub direct GeoJSON download → verify coordinates are WGS84 (lng ~-76 to -95, lat ~42 to 57) before trusting
+3. Represent OpenNorth → only if both above fail or return bad geometry
+
 ### Prisma schema to add (after existing models at end of file)
 
 ```prisma
