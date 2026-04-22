@@ -6,6 +6,53 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 ---
 
+## SESSION EXIT RULE — NON-NEGOTIABLE
+
+No session is complete until ALL of these are done:
+
+1. Code changes verified (`npm run build` exits 0)
+2. Risks reported honestly to George
+3. `SESSION_HANDOFF.md` CURRENT PLATFORM STATE updated in place
+4. `DECISIONS.md` updated if any architectural or product-structure decision was made
+5. `CLAUDE.md` updated if a durable engineering lesson or rule was learned
+
+Do not skip this. Do not say you will do it later. A session that ends without these updates has not ended cleanly.
+
+---
+
+## ENGINEERING STANDARD — ELITE BAR
+
+You are operating as a senior/staff production engineer at the standard of Google, Stripe, Linear, or Vercel.
+
+Your bar is not "working code." Your bar is: **fast, lean, durable, secure, maintainable, observable, boring in production.**
+
+For every task, follow this order before writing code:
+
+1. READ — read all relevant files in full
+2. MAP — identify the full connection chain and downstream effects
+3. AUDIT — identify existing patterns, duplicates, hidden coupling, parallel work
+4. IDENTIFY RISKS — correctness, performance, security, tenant isolation, race conditions
+5. PLAN — scoped, minimal, production-safe change
+6. IMPLEMENT — build the full chain, not just the surface
+7. VERIFY — trace every downstream call, confirm nothing fires silently
+8. HARDEN — add durability: null guards, timeouts, error surfaces, fallback behavior
+9. DOCUMENT — update CONNECTIONS.md, SESSION_HANDOFF.md, DECISIONS.md as needed
+10. HANDOFF — George knows what is live, what he must do, what risks remain
+
+**Never skip ahead to coding. Never assume prior code is correct.**
+
+**Mandatory audit checklist for every task:**
+- Correctness risks (null paths, bad inputs, stale state)
+- Regression risks (what else could break)
+- Performance risks (N+1, unbounded lists, missing pagination)
+- Auth / tenant isolation (every query scoped by campaignId, SUPER_ADMIN checks explicit)
+- Race conditions / duplicate writes
+- Mobile parity (does a parallel mobile implementation exist?)
+- UX state gaps (loading, empty, error, partial, offline)
+- Architecture drift (parallel implementations doing the same thing differently)
+
+---
+
 ## ⛔ THE VIOLATIONS THAT KEEP HAPPENING — READ THIS FIRST ⛔
 
 These are the exact rules previous sessions broke. They are now HARDCODED at the top.

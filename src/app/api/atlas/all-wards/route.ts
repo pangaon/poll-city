@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import type { Feature, FeatureCollection } from "geojson";
 import prisma from "@/lib/db/prisma";
 import { WARD_ASSET_REGISTRY } from "@/config/ward-asset-registry";
-import { ingestAllMunicipalities } from "@/lib/atlas/ward-ingestor";
+import { ingestVerifiedMunicipalities } from "@/lib/atlas/ward-ingestor";
+
+// Allow enough time for the lazy-seed path (verified municipalities only — ~5 sources)
+export const maxDuration = 60;
 
 // addressesApi lookup — keyed by municipality display name
 const ADDRESSES_API = Object.fromEntries(
@@ -67,9 +70,12 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // ── Lazy seed: if DB is empty, run ingestor now ───────────────────────────
+    // ── Lazy seed: if DB is empty, seed verified municipalities only ─────────
+    // Full 28-municipality ingest is too slow for a live request — use the
+    // seed-wards endpoint for that. Here we only seed the ~5 verified sources
+    // which completes well within maxDuration.
     if (rows.length === 0) {
-      await ingestAllMunicipalities();
+      await ingestVerifiedMunicipalities();
       rows = await prisma.wardBoundary.findMany({
         orderBy: [
           { municipality: "asc" },

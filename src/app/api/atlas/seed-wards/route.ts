@@ -4,7 +4,8 @@ import { ingestAllMunicipalities } from "@/lib/atlas/ward-ingestor";
 
 // One-time seed endpoint — run once after `npx prisma db push`
 // GET /api/atlas/seed-wards?secret=CRON_SECRET
-export const maxDuration = 60;
+// 300s: 28 municipalities × 15s timeout per source × batched with retries can approach this
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");

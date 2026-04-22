@@ -102,3 +102,52 @@ Why:
 
 Impact:
 - Critical GOTV action path now operational and consistent with mark-voted flow.
+
+---
+
+## 2026-04-22 - Ward boundary infrastructure: 3-layer cache with DB as source of truth
+
+Decision:
+- Ward boundaries are served from DB (`WardBoundary` table) as the primary layer, with Edge CDN cache on top (`Cache-Control: public, max-age=3600, stale-while-revalidate=86400`).
+- Live external fetches (ArcGIS / Represent / CKAN) are background-only via daily 3am cron and the one-time seed endpoint.
+- The `all-wards` GET route must NEVER block on a full 28-municipality live fetch.
+
+Why:
+- Ward boundaries change at most once every 4 years (municipal election redistricting). Fetching them live on every map load is unnecessary and creates a single point of failure. On election night with 10,000+ concurrent users, one ArcGIS outage would blank every map simultaneously.
+
+Impact:
+- `GET /api/atlas/all-wards` serves sub-10ms responses from DB once seeded.
+- Lazy seed on empty DB is scoped to verified municipalities only (`ingestVerifiedMunicipalities`) — safe within Vercel's 60s limit.
+- Full 28-municipality ingest only runs via `/api/atlas/seed-wards` (maxDuration=300) or the nightly cron.
+
+---
+
+## 2026-04-22 - wardIndex uses stable registry-position × 200 offset, not accumulated count
+
+Decision:
+- `wardIndex` (MapLibre promoteId) for each ward is `registryPosition × 200 + localIndex` within the municipality.
+- Registry position is the index in `WARD_ASSET_REGISTRY` which is stable (committed to git, append-only).
+
+Why:
+- Prior implementation accumulated offsets dynamically during batch processing with `j * 20` spacing. A municipality with > 20 wards (Toronto has 25, Ottawa has more) would cause wardIndex collisions with the next municipality in the same batch. MapLibre uses wardIndex as a unique feature identifier for hover state — collisions cause the wrong polygon to highlight.
+- Static registry-position offsets are deterministic across all runs: same municipality always gets the same index range.
+
+Impact:
+- No Ontario city has close to 200 wards, so 200-slot spacing is permanently safe.
+- Re-seeding the DB produces identical wardIndex values — no drift over time.
+
+---
+
+## 2026-04-22 - Elite engineering standard adopted as session protocol
+
+Decision:
+- All AI agent sessions on this codebase operate at senior/staff production engineer standard: audit before code, full chain builds, mandatory session exit updates.
+- The 10-step READ→MAP→AUDIT→IDENTIFY RISKS→PLAN→IMPLEMENT→VERIFY→HARDEN→DOCUMENT→HANDOFF sequence is the default protocol.
+- DECISIONS.md, SESSION_HANDOFF.md, and CLAUDE.md are mandatory session exit artifacts.
+
+Why:
+- George's directive: the platform affects real candidates in real elections. Every session must leave the codebase stronger and the next session better informed.
+
+Impact:
+- SESSION EXIT RULE block added to top of CLAUDE.md.
+- Every significant architectural or product-structure decision must be recorded here, not in chat memory.

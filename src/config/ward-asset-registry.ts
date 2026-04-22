@@ -227,7 +227,7 @@ export const WARD_ASSET_REGISTRY: WardAssetEntry[] = [
     wardSources: [
       {
         type: "represent",
-        url: "https://represent.opennorth.ca/boundaries/?sets=ajax-pickering-wards&limit=20&format=json",
+        url: "https://represent.opennorth.ca/boundaries/?sets=ajax-wards&limit=20&format=json",
         verified: false,
       },
     ],

@@ -17,9 +17,10 @@ export async function GET(req: NextRequest) {
   const started = new Date().toISOString();
   const results = await ingestAllMunicipalities();
 
-  const updated   = results.filter((r) => r.count > 0).map((r) => r.municipality);
-  const failed    = results.filter((r) => r.count === 0).map((r) => ({ municipality: r.municipality, error: r.error }));
-  const unchanged = results.filter((r) => r.count > 0 && !r.error).map((r) => r.municipality);
+  // "upserted" = Prisma upsert ran (data may or may not have changed at source)
+  // "failed" = all sources returned errors or 0 features
+  const upserted = results.filter((r) => r.count > 0).map((r) => ({ municipality: r.municipality, wards: r.count, source: r.sourceType }));
+  const failed   = results.filter((r) => r.count === 0).map((r) => ({ municipality: r.municipality, error: r.error }));
 
-  return NextResponse.json({ started, updated, failed, unchanged });
+  return NextResponse.json({ started, upserted, failed, total: upserted.reduce((s, r) => s + r.wards, 0) });
 }

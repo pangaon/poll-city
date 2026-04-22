@@ -69,8 +69,14 @@ async function fetchArcGISGeoJSON(src: WardAssetSource): Promise<GeoJSONFeature[
 }
 
 async function fetchRepresent(src: WardAssetSource): Promise<GeoJSONFeature[]> {
-  const listRes = await fetch(src.url, { signal: AbortSignal.timeout(10000) });
-  if (!listRes.ok) throw new Error(`Represent list ${listRes.status}`);
+  // Retry on 429 (rate limit) with backoff — Represent throttles concurrent seeds
+  let listRes: Response | undefined;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2500));
+    listRes = await fetch(src.url, { signal: AbortSignal.timeout(10000) });
+    if (listRes.status !== 429) break;
+  }
+  if (!listRes || !listRes.ok) throw new Error(`Represent list ${listRes?.status ?? "no response"}`);
   const listData = (await listRes.json()) as {
     objects: Array<{ url: string; name: string }>;
   };
@@ -297,25 +303,56 @@ export async function ingestMunicipality(
 }
 
 /**
- * Ingest all municipalities in the registry concurrently (with a concurrency cap).
- * Returns a full audit log.
+ * Ingest all municipalities in the registry (with a concurrency cap of 3).
+ * wardIndex is stable: registry position × 200 — no Ontario city has 200 wards,
+ * so there is zero overlap between municipalities regardless of actual ward count.
  */
 export async function ingestAllMunicipalities(): Promise<IngestResult[]> {
   const results: IngestResult[] = [];
-  let globalIndex = 0;
 
-  // Process in batches of 5 to avoid hammering external APIs simultaneously
-  const BATCH = 5;
+  // Process in batches of 3 — reduces concurrent Represent API pressure
+  const BATCH = 3;
   for (let i = 0; i < WARD_ASSET_REGISTRY.length; i += BATCH) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1500)); // pace to avoid Represent 429
     const batch = WARD_ASSET_REGISTRY.slice(i, i + BATCH);
-    const offsets = batch.map((_, j) => globalIndex + j * 20); // reserve 20 slots per municipality
     const batchResults = await Promise.allSettled(
-      batch.map((entry, j) => ingestMunicipality(entry, offsets[j])),
+      // Stable offset: registry index × 200 guarantees no cross-municipality collisions
+      batch.map((entry, j) => ingestMunicipality(entry, (i + j) * 200)),
     );
     for (const r of batchResults) {
       if (r.status === "fulfilled") {
         results.push(r.value);
-        globalIndex += r.value.count || 20;
+      } else {
+        results.push({ municipality: "unknown", count: 0, sourceUrl: "", sourceType: "none", error: String(r.reason) });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Ingest only municipalities with at least one verified source.
+ * Used for lazy seeding — fast enough to run within a single Vercel request.
+ * Uses the same stable wardIndex offsets as ingestAllMunicipalities so indices
+ * are consistent regardless of which function populated the DB.
+ */
+export async function ingestVerifiedMunicipalities(): Promise<IngestResult[]> {
+  const verified = WARD_ASSET_REGISTRY
+    .map((entry, idx) => ({ entry, idx }))
+    .filter(({ entry }) => entry.wardSources.some((s) => s.verified));
+
+  const results: IngestResult[] = [];
+  const BATCH = 3;
+  for (let b = 0; b < verified.length; b += BATCH) {
+    if (b > 0) await new Promise((r) => setTimeout(r, 1500));
+    const batch = verified.slice(b, b + BATCH);
+    const batchResults = await Promise.allSettled(
+      batch.map(({ entry, idx }) => ingestMunicipality(entry, idx * 200)),
+    );
+    for (const r of batchResults) {
+      if (r.status === "fulfilled") {
+        results.push(r.value);
       } else {
         results.push({ municipality: "unknown", count: 0, sourceUrl: "", sourceType: "none", error: String(r.reason) });
       }

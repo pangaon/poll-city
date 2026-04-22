@@ -307,11 +307,27 @@ Update `src/app/api/atlas/brampton-addresses/route.ts`:
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Hardened Ward Infrastructure BUILD GREEN)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — Ward Infrastructure Hardening Pass)
+
+### Hardening pass — 4 bugs fixed (2026-04-22)
+
+**Files changed:**
+- `src/lib/atlas/ward-ingestor.ts` — fixed `wardIndex` collision bug (was `j * 20` spacing in batches; Toronto's 25 wards would overlap municipality[1]'s index space); now uses `registryPosition × 200` stable offsets. Added `ingestVerifiedMunicipalities()` for safe lazy seeding.
+- `src/app/api/atlas/all-wards/route.ts` — added `maxDuration = 60`; lazy seed now calls `ingestVerifiedMunicipalities()` (fast ~5 sources) instead of all 28 (would timeout at Vercel default 10s).
+- `src/app/api/atlas/seed-wards/route.ts` — `maxDuration` 60 → 300 (28 municipalities with retries can approach 60s under network pressure).
+- `src/app/api/cron/refresh-wards/route.ts` — fixed response: `unchanged` was always empty (wrong filter logic); now returns `upserted` (Prisma ran) vs `failed` (all sources returned 0 features).
+
+**Risk removed:** On election night, any GET to `/api/atlas/all-wards` with an empty DB would have triggered a full 28-municipality ingest inline, almost certainly hitting Vercel's 10s timeout and returning a 502 to every map client simultaneously. Fixed.
+
+**Still to do (George actions — unchanged):**
+- `npx prisma db push` — creates `ward_boundaries` table
+- Hit `/api/atlas/seed-wards?secret=[CRON_SECRET]` — full 28-municipality seed (now has 300s budget)
+
+---
 
 ### Ontario Map (`/atlas/map`) — LIVE infrastructure, DB cache pending George's activation
 
-**What is built and in origin/main (commits baef811 + dc0b180):**
+**What is built and in origin/main (commits baef811 + dc0b180 + this session):**
 - `src/config/ward-asset-registry.ts` — 28-municipality Ontario registry (permanent audit trail)
 - `src/lib/atlas/ward-ingestor.ts` — universal ingestor supporting arcgis-rest, arcgis-geojson, represent, ckan sources. WGS84 validation. Retry-on-failure with fallbacks.
 - `src/app/api/atlas/all-wards/route.ts` — DB-first (sub-10ms), ETag/304 support, `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`. Falls back to live ingest if DB empty.
