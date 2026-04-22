@@ -32,6 +32,7 @@ import {
   MinusCircle,
   Rocket,
   LogIn,
+  Search,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -648,6 +649,8 @@ function PlatformTab({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [search, setSearch] = useState("");
+
   if (!stats) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
@@ -656,6 +659,12 @@ function PlatformTab({
       </div>
     );
   }
+
+  const filteredCampaigns = stats.recentCampaigns.filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q);
+  });
 
   const bigStats: Array<{
     label: string;
@@ -805,16 +814,26 @@ function PlatformTab({
 
       {/* Recent campaigns table */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-900">Recent Campaigns</h2>
-          <span className="text-xs text-gray-400">
-            {stats.recentCampaigns.length} shown
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold text-gray-900 flex-shrink-0">Recent Campaigns</h2>
+          <div className="relative flex-1 max-w-xs">
+            <input
+              type="text"
+              placeholder="Search campaigns or slugs…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-3 py-1.5 pl-8 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50"
+            />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          </div>
+          <span className="text-xs text-gray-400 flex-shrink-0">
+            {filteredCampaigns.length} shown
           </span>
         </div>
-        {stats.recentCampaigns.length === 0 ? (
+        {filteredCampaigns.length === 0 ? (
           <div className="p-12 text-center">
             <Building2 className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm text-gray-500">No campaigns yet</p>
+            <p className="text-sm text-gray-500">{search ? "No campaigns match your search" : "No campaigns yet"}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -839,7 +858,7 @@ function PlatformTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {stats.recentCampaigns.map((c, i) => (
+                {filteredCampaigns.map((c, i) => (
                   <motion.tr
                     key={c.id}
                     initial={{ opacity: 0, x: -10 }}
@@ -1418,11 +1437,18 @@ function CustomersTab({
   campaigns: Campaign[];
   totalMrr: number;
 }) {
+  const [search, setSearch] = useState("");
   const [intelStates, setIntelStates] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(campaigns.map((c) => [c.id, c.intelligenceEnabled]))
   );
   const [enriching, setEnriching] = useState<Record<string, boolean>>({});
   const [enrichResults, setEnrichResults] = useState<Record<string, string>>({});
+
+  const filteredCampaigns = campaigns.filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return c.name.toLowerCase().includes(q) || (c.jurisdiction ?? "").toLowerCase().includes(q);
+  });
 
   async function toggleIntel(campaignId: string, enabled: boolean) {
     setIntelStates((prev) => ({ ...prev, [campaignId]: enabled }));
@@ -1467,10 +1493,20 @@ function CustomersTab({
 
       {/* Campaigns table */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-          <Zap className="w-4 h-4" style={{ color: AMBER }} />
-          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Intelligence Controls</span>
-          <span className="text-xs text-gray-400 ml-1">— Super Admin only. Campaigns cannot see or change these.</span>
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+          <Zap className="w-4 h-4 flex-shrink-0" style={{ color: AMBER }} />
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex-shrink-0">Intelligence Controls</span>
+          <div className="relative flex-1 max-w-xs">
+            <input
+              type="text"
+              placeholder="Search campaigns or ward…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-3 py-1.5 pl-8 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-gray-50"
+            />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          </div>
+          <span className="text-xs text-gray-400 ml-auto flex-shrink-0">Super Admin only</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -1485,7 +1521,7 @@ function CustomersTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {campaigns.map((c) => (
+              {filteredCampaigns.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

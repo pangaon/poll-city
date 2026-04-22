@@ -191,6 +191,15 @@ const wardLabelLayer: Omit<SymbolLayerSpecification, "source"> = {
   paint: { "text-color": "#0A2342", "text-halo-color": "rgba(255,255,255,0.95)", "text-halo-width": 2.5 },
 };
 
+const schoolWardFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "school-ward-fill", type: "fill",
+  paint: { "fill-color": ["get", "boardColor"], "fill-opacity": 0.07 },
+};
+const schoolWardLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "school-ward-line", type: "line",
+  paint: { "line-color": ["get", "boardColor"], "line-width": 2, "line-dasharray": [4, 2], "line-opacity": 0.85 },
+};
+
 const addrClusterLayer: Omit<CircleLayerSpecification, "source"> = {
   id: "addr-clusters", type: "circle", filter: ["has", "point_count"],
   paint: {
@@ -274,6 +283,12 @@ export default function TorontoMapClient() {
   const [addrError, setAddrError] = useState<string | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<AddrProps | null>(null);
 
+  // School wards
+  const [schoolWards, setSchoolWards] = useState<FeatureCollection | null>(null);
+  const [showSchoolWards, setShowSchoolWards] = useState(false);
+  const [schoolWardsLoading, setSchoolWardsLoading] = useState(false);
+  const [schoolWardsError, setSchoolWardsError] = useState<string | null>(null);
+
   // Streets + turfs
   const [streets, setStreets] = useState<StreetData[]>([]);
   const [turfs, setTurfs] = useState<TurfData[]>([]);
@@ -295,6 +310,16 @@ export default function TorontoMapClient() {
     if (!bbox) return;
     try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 1000, maxZoom: 13 }); } catch { /* ignore */ }
   }, [mapLoaded, wards]);
+
+  // School ward toggle → fetch once
+  useEffect(() => {
+    if (!showSchoolWards || schoolWards) return;
+    setSchoolWardsLoading(true); setSchoolWardsError(null);
+    fetch("/api/atlas/toronto-school-wards")
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FeatureCollection>; })
+      .then(d => { setSchoolWards(d); setSchoolWardsLoading(false); })
+      .catch((e: Error) => { setSchoolWardsError(e.message); setSchoolWardsLoading(false); });
+  }, [showSchoolWards, schoolWards]);
 
   // Ward change → reload addresses
   useEffect(() => {
@@ -444,6 +469,11 @@ export default function TorontoMapClient() {
             <Layer {...addrClusterLayer} /><Layer {...addrClusterCountLayer} /><Layer {...addrPointLayer} />
           </Source>
         )}
+        {showSchoolWards && schoolWards && (
+          <Source id="school-wards" type="geojson" data={schoolWards}>
+            <Layer {...schoolWardFillLayer} /><Layer {...schoolWardLineLayer} />
+          </Source>
+        )}
       </MapGL>
 
       {/* ── HEADER ───────────────────────────────────────────────────── */}
@@ -462,8 +492,27 @@ export default function TorontoMapClient() {
               {wardCount} WARDS
             </span>
           )}
+          <button
+            onClick={() => setShowSchoolWards(v => !v)}
+            style={{
+              marginLeft: 10, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700,
+              border: `1px solid ${showSchoolWards ? "rgba(139,92,246,0.7)" : "rgba(255,255,255,0.15)"}`,
+              background: showSchoolWards ? "rgba(139,92,246,0.2)" : "rgba(255,255,255,0.05)",
+              color: showSchoolWards ? "#8B5CF6" : "rgba(255,255,255,0.5)",
+              cursor: "pointer",
+            }}
+          >
+            {schoolWardsLoading ? "Loading…" : "🏫 School Wards"}
+          </button>
         </div>
       </motion.div>
+      {schoolWardsError && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{ ...GL, position: "absolute", top: 70, left: "50%", transform: "translateX(-50%)", zIndex: 12, padding: "8px 16px", fontSize: 11, color: "#E24B4A" }}
+        >
+          School ward data unavailable: {schoolWardsError}
+        </motion.div>
+      )}
 
       {/* ── LEFT SIDEBAR — ward directory ────────────────────────────── */}
       <motion.div

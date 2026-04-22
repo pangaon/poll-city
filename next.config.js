@@ -10,7 +10,7 @@ const nextConfig = {
   },
 
   experimental: {
-    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs", "resend"],
+    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs", "resend", "unzipper", "shapefile"],
     optimizePackageImports: ["lucide-react", "recharts"],
     // Exclude agent worktrees from build tracing — their stale .next dirs corrupt collect-build-traces
     outputFileTracingExcludes: {
