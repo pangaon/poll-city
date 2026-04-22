@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapGL, { Source, Layer, NavigationControl, ScaleControl, AttributionControl } from "react-map-gl/maplibre";
 import type { MapRef, MapMouseEvent } from "react-map-gl/maplibre";
-import type { FillLayerSpecification, LineLayerSpecification, SymbolLayerSpecification, CircleLayerSpecification, HeatmapLayerSpecification, FillExtrusionLayerSpecification, IControl } from "maplibre-gl";
+import type { FillLayerSpecification, LineLayerSpecification, SymbolLayerSpecification, CircleLayerSpecification, HeatmapLayerSpecification, FillExtrusionLayerSpecification } from "maplibre-gl";
 import type { FeatureCollection, Feature, Point } from "geojson";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -360,8 +360,6 @@ function ViewModePill({ viewMode, setViewMode, accent }: { viewMode: ViewMode; s
 export default function AtlasAllMapClient() {
   const mapRef = useRef<MapRef>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const exportCtrlRef = useRef<IControl | null>(null);
-
   // Display modes
   const [viewMode, setViewMode] = useState<ViewMode>("dots");
   const [show3D, setShow3D] = useState(false);
@@ -471,25 +469,6 @@ export default function AtlasAllMapClient() {
     setDisplayAddresses(enriched);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addresses, contactsOverlay]);
-
-  // Export control — loaded once after map initialises
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
-    const map = mapRef.current.getMap();
-    void import("@watergis/maplibre-gl-export").then(({ MaplibreExportControl }) => {
-      if (!mapRef.current) return;
-      const ctrl = new MaplibreExportControl({ Format: "png", DPI: 144 });
-      map.addControl(ctrl, "top-right");
-      exportCtrlRef.current = ctrl;
-    });
-    return () => {
-      const ctrl = exportCtrlRef.current;
-      if (ctrl) {
-        try { map.removeControl(ctrl); } catch { /* map may already be destroyed */ }
-        exportCtrlRef.current = null;
-      }
-    };
-  }, [mapLoaded]);
 
   // Grouped sidebar — wards by municipality
   const municipalityGroups = useMemo(() => {
