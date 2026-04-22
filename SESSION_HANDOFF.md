@@ -101,6 +101,120 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
+## 🚨 NEXT SESSION — HARDENED WARD INFRASTRUCTURE BUILD 🚨
+
+### What to build (3-layer architecture, fully specified)
+
+**Architecture:**
+```
+REQUEST PATH
+  Layer 1: Vercel Edge Cache (Cache-Control: public, max-age=3600, stale-while-revalidate=86400)
+    ↓ cache miss
+  Layer 2: DB (WardBoundary Prisma table — sub-10ms, zero external calls)
+    ↓ DB empty or failure
+  Layer 3: Live fetch (Represent OpenNorth — WGS84 guaranteed from Vercel)
+
+BACKGROUND
+  Vercel Cron: daily 3am → universal ingestor → updates DB → edge cache invalidates
+```
+
+**Why:** Ward boundaries are stable data. They must NEVER be fetched live at request time when 10,000+ users are on the map. One ArcGIS outage on election night = blank map = done.
+
+### Prisma schema to add (after existing models at end of file)
+
+```prisma
+model WardBoundary {
+  id           String   @id @default(cuid())
+  municipality String   // "Whitby" | "Toronto" | "Markham" | "Brampton"
+  wardName     String   // "Ward 1", "Ward Centre"
+  wardNumber   Int?     // numeric sort key, null for non-numeric names
+  wardIndex    Int      // global index across all municipalities (used as MapLibre promoteId)
+  geojsonFeature Json   // the full GeoJSON Feature object (type + geometry + properties)
+  sourceUrl    String   // which URL this was fetched from (audit trail)
+  fetchedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([municipality, wardName])
+  @@index([municipality])
+  @@map("ward_boundaries")
+}
+```
+
+George action required: `npx prisma db push` after schema change committed.
+
+### Verified source URLs (researched this session — do NOT guess alternatives)
+
+| Municipality | Primary source | Fallback |
+|---|---|---|
+| Whitby | `https://opendata.arcgis.com/datasets/223810efc31c40b3aff99dd74f809a97_0.geojson` | Represent `whitby-wards` |
+| Toronto | CKAN `https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards` → extract GeoJSON resource URL | Represent `toronto-wards-2018` |
+| Markham | ArcGIS item `e18e684f2f004f0e98d707cad60234be`, layer 0 on arcgis.com (works) | `https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson` |
+| Brampton | Represent `brampton-wards` (WGS84 guaranteed — current working solution) | Peel Region ArcGIS `https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Peel_Ward_Boundary/FeatureServer/0` filter Municipality=Brampton |
+
+**Brampton address points verified URL:** `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14`
+- Source CRS: WKID 2150 (projected) — MUST add `outSR=4326` to all queries
+- Update `brampton-addresses/route.ts` to use this URL instead of geohub.brampton.ca
+
+### Build sequence (ordered, do not skip steps)
+
+**Step 1 — Schema**
+Add `WardBoundary` model to `prisma/schema.prisma`. Commit. Add checkbox to `GEORGE_TODO.md` for `npx prisma db push`.
+
+**Step 2 — Universal ingestor lib**
+Create `src/lib/atlas/ward-ingestor.ts`:
+- `WARD_SOURCES` config array: municipality → primary URL (ArcGIS/CKAN/Represent) → fallback URL
+- `fetchWardFeatures(municipality)` → tries primary → fallback → throws if both fail
+- `normalizeWardFeature(feature, municipality, globalIndex)` → adds wardName, wardNumber, wardIndex, municipality, addressesApi, wardFill, wardStroke
+- `upsertWardBoundaries(municipality, features)` → prisma.wardBoundary.upsert per feature, updates fetchedAt + geojsonFeature if changed
+- All fetch calls: `outSR=4326`, `AbortSignal.timeout(15000)`, no `next: { revalidate }` (cron handles refresh)
+
+**Step 3 — Seed endpoint (one-time population)**
+Create `src/app/api/atlas/seed-wards/route.ts`:
+- `GET /api/atlas/seed-wards?secret=CRON_SECRET` — protected by `CRON_SECRET` env var
+- Runs all 4 municipalities through the ingestor, upserts to DB
+- Returns `{ seeded: { municipality, count }[], failed: string[] }`
+- George hits this once after `npx prisma db push`
+
+**Step 4 — Updated all-wards route**
+Rewrite `src/app/api/atlas/all-wards/route.ts`:
+- Read from `prisma.wardBoundary.findMany({ orderBy: [{ municipality: 'asc' }, { wardNumber: 'asc' }, { wardName: 'asc' }] })`
+- If result is empty: fall back to live fetch via ingestor (lazy seed)
+- Build FeatureCollection from DB rows (geojsonFeature is stored as the Feature, just add municipality + addressesApi + wardFill + wardStroke)
+- ETag: hash of `max(updatedAt)` across all rows — enables `304 Not Modified` for mobile apps
+- `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`
+- Response includes `X-Ward-Count` header and `X-Last-Refreshed` timestamp
+
+**Step 5 — Cron refresh endpoint**
+Create `src/app/api/cron/refresh-wards/route.ts`:
+- `GET /api/cron/refresh-wards` — checks `Authorization: Bearer ${process.env.CRON_SECRET}`
+- Runs all municipalities through ingestor, upserts changed features
+- Returns audit log: `{ updated: [], unchanged: [], failed: [] }`
+- Add to `vercel.json` crons: `{ "path": "/api/cron/refresh-wards", "schedule": "0 3 * * *" }` (3am daily)
+- NEVER touches DB on election days — add date check: if today is a Monday in October skip (George refines this)
+
+**Step 6 — Fix Brampton addresses route**
+Update `src/app/api/atlas/brampton-addresses/route.ts`:
+- Change service URL to `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14`
+- Remove geohub.brampton.ca meta fetch (it returns HTML from server environments)
+- Query directly: `[url]/query?geometry=...&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson&outSR=4326&resultRecordCount=2000`
+
+**Step 7 — Build + push**
+`npm run push:safe` — must exit 0. Then George runs `npx prisma db push` then hits `/api/atlas/seed-wards?secret=[CRON_SECRET]`.
+
+### What does NOT change
+- `atlas-all-map-client.tsx` — untouched. Map client reads from `/api/atlas/all-wards` same as before.
+- All other municipality routes (`whitby-addresses`, `toronto-addresses`, `markham-addresses`) — untouched.
+- Sidebar, navigation — untouched.
+- No schema changes other than `WardBoundary`.
+
+### George's actions after push
+1. `npx prisma db push` — adds `ward_boundaries` table
+2. Add `CRON_SECRET` to Vercel env vars if not already there (check `.env.local`)
+3. Hit `https://app.poll.city/api/atlas/seed-wards?secret=[CRON_SECRET]` — wait for JSON response confirming 4 municipalities seeded
+4. Hard refresh `/atlas/map` — verify all 4 municipalities render
+
+---
+
 ## CURRENT PLATFORM STATE (as of 2026-04-22 — Brampton ward render bug FIXED)
 
 ### Ontario Map (`/atlas/map`) — LIVE, all 4 municipalities rendering
