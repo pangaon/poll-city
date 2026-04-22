@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 const BRAMPTON_ITEM_ID = "61b3e12fb4d74d078a15512dc3baf568";
 const BRAMPTON_LAYER = 3;
-const BRAMPTON_FALLBACK_URL = `https://opendata.arcgis.com/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
+// Brampton GeoHub is a standalone ArcGIS Enterprise Hub — NOT arcgis.com
+const BRAMPTON_FALLBACK_URL = `https://geohub.brampton.ca/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
 
 const WARD_COLORS = [
   { fill: "#8B5CF6", stroke: "#7040d4" },
@@ -62,14 +63,14 @@ function colorize(
 
 async function fetchViaRestApi(): Promise<RawFeature[] | null> {
   const metaRes = await fetch(
-    `https://www.arcgis.com/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`,
+    `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`,
     { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) },
   );
   if (!metaRes.ok) return null;
   const meta = (await metaRes.json()) as { url?: string };
   if (!meta.url) return null;
 
-  const queryUrl = `${meta.url}/${BRAMPTON_LAYER}/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=100`;
+  const queryUrl = `${meta.url}/${BRAMPTON_LAYER}/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=100`;
   const dataRes = await fetch(queryUrl, {
     next: { revalidate: 86400 },
     signal: AbortSignal.timeout(12000),

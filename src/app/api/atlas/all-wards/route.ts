@@ -212,21 +212,24 @@ async function fetchMarkhamWards(): Promise<RawFeature[]> {
 
 const BRAMPTON_ITEM_ID = "61b3e12fb4d74d078a15512dc3baf568";
 const BRAMPTON_LAYER = 3;
-const BRAMPTON_FALLBACK_URL = `https://opendata.arcgis.com/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
+// Brampton GeoHub is a standalone ArcGIS Enterprise Hub — NOT arcgis.com
+const BRAMPTON_GEOHUB_META = `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`;
+const BRAMPTON_GEOHUB_DIRECT = `https://geohub.brampton.ca/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
 
 async function fetchBramptonWards(): Promise<RawFeature[]> {
+  // Primary: Brampton GeoHub REST API (item metadata → service URL)
   try {
-    const metaRes = await fetch(
-      `https://www.arcgis.com/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) },
-    );
+    const metaRes = await fetch(BRAMPTON_GEOHUB_META, {
+      next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000),
+    });
     if (metaRes.ok) {
       const meta = (await metaRes.json()) as { url?: string };
       if (meta.url) {
-        const queryUrl = `${meta.url}/${BRAMPTON_LAYER}/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=100`;
+        const queryUrl =
+          `${meta.url}/${BRAMPTON_LAYER}/query` +
+          `?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=100`;
         const dataRes = await fetch(queryUrl, {
-          next: { revalidate: 86400 },
-          signal: AbortSignal.timeout(12000),
+          next: { revalidate: 86400 }, signal: AbortSignal.timeout(12000),
         });
         if (dataRes.ok) {
           const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
@@ -238,8 +241,9 @@ async function fetchBramptonWards(): Promise<RawFeature[]> {
     }
   } catch { /* fall through */ }
 
+  // Fallback: direct GeoJSON download from Brampton GeoHub
   try {
-    const res = await fetch(BRAMPTON_FALLBACK_URL, {
+    const res = await fetch(BRAMPTON_GEOHUB_DIRECT, {
       next: { revalidate: 86400 },
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),

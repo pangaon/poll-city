@@ -11,7 +11,7 @@ async function getServiceUrl(): Promise<string | null> {
   if (cachedServiceUrl) return cachedServiceUrl;
   try {
     const metaRes = await fetch(
-      `https://www.arcgis.com/sharing/rest/content/items/${BRAMPTON_ADDR_ITEM_ID}?f=json`,
+      `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ADDR_ITEM_ID}?f=json`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!metaRes.ok) return null;
