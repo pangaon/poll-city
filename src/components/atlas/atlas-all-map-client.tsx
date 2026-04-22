@@ -599,7 +599,7 @@ export default function AtlasAllMapClient() {
           <span style={{ fontSize: 18 }}>🗺️</span>
           <div>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: 15, letterSpacing: "0.05em" }}>GREATER TORONTO AREA</div>
-            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Whitby · Toronto · Markham · Ward Boundaries</div>
+            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Whitby · Toronto · Markham · Brampton · Ward Boundaries</div>
           </div>
           {wardCount > 0 && (
             <span style={{ marginLeft: 8, background: "rgba(29,158,117,0.2)", border: "1px solid rgba(29,158,117,0.45)", color: "#1D9E75", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px" }}>
@@ -685,10 +685,10 @@ export default function AtlasAllMapClient() {
             key={`ops-${getProp(selectedProps, "wardIndex")}`}
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            style={{ ...G, position: "absolute", bottom: 24, right: 16, zIndex: 10, width: 310, overflow: "hidden" }}
+            style={{ ...G, position: "absolute", bottom: 24, right: 16, zIndex: 10, width: 310, maxHeight: "calc(100vh - 120px)", overflow: "hidden", display: "flex", flexDirection: "column" }}
           >
-            <div style={{ height: 4, background: muniAccent }} />
-            <div style={{ padding: "16px 18px" }}>
+            <div style={{ height: 4, background: muniAccent, flexShrink: 0 }} />
+            <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1 }}>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div>

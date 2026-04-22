@@ -212,12 +212,20 @@ async function fetchMarkhamWards(): Promise<RawFeature[]> {
 
 const BRAMPTON_ITEM_ID = "61b3e12fb4d74d078a15512dc3baf568";
 const BRAMPTON_LAYER = 3;
-// Brampton GeoHub is a standalone ArcGIS Enterprise Hub — NOT arcgis.com
+// Brampton GeoHub meta endpoint returns HTML (not JSON) from server environments.
+// Direct GeoJSON download from GeoHub/hub.arcgis.com returns EPSG:3857, not WGS84 — MapLibre can't render it.
+// Represent OpenNorth is the reliable WGS84 source.
+const BRAMPTON_REPRESENT_URL = "https://represent.opennorth.ca/boundaries/?sets=brampton-wards&limit=20&format=json";
 const BRAMPTON_GEOHUB_META = `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`;
-const BRAMPTON_GEOHUB_DIRECT = `https://geohub.brampton.ca/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
 
 async function fetchBramptonWards(): Promise<RawFeature[]> {
-  // Primary: Brampton GeoHub REST API (item metadata → service URL)
+  // Primary: Represent OpenNorth API — WGS84 guaranteed, reliable from Vercel
+  try {
+    const features = await fetchRepresentWards(BRAMPTON_REPRESENT_URL);
+    if (features.length > 0) return features;
+  } catch { /* fall through */ }
+
+  // Secondary: Brampton GeoHub REST API with outSR=4326 (may work if meta endpoint is accessible)
   try {
     const metaRes = await fetch(BRAMPTON_GEOHUB_META, {
       next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000),
@@ -239,22 +247,9 @@ async function fetchBramptonWards(): Promise<RawFeature[]> {
         }
       }
     }
-  } catch { /* fall through */ }
-
-  // Fallback: direct GeoJSON download from Brampton GeoHub
-  try {
-    const res = await fetch(BRAMPTON_GEOHUB_DIRECT, {
-      next: { revalidate: 86400 },
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { type?: string; features?: RawFeature[] };
-      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-        return data.features ?? [];
-      }
-    }
   } catch { /* give up */ }
+  // NOTE: The direct GeoHub/hub.arcgis.com GeoJSON download is intentionally omitted —
+  // it returns EPSG:3857 (Web Mercator) coordinates which MapLibre silently rejects.
   return [];
 }
 

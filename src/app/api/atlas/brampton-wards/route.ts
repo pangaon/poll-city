@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 const BRAMPTON_ITEM_ID = "61b3e12fb4d74d078a15512dc3baf568";
 const BRAMPTON_LAYER = 3;
-// Brampton GeoHub is a standalone ArcGIS Enterprise Hub — NOT arcgis.com
-const BRAMPTON_FALLBACK_URL = `https://geohub.brampton.ca/datasets/${BRAMPTON_ITEM_ID}_${BRAMPTON_LAYER}.geojson`;
+// Brampton GeoHub meta endpoint returns HTML from server environments.
+// Direct GeoJSON download returns EPSG:3857 — MapLibre requires WGS84.
+// Represent OpenNorth is the reliable WGS84 source.
+const BRAMPTON_REPRESENT_URL = "https://represent.opennorth.ca/boundaries/?sets=brampton-wards&limit=20&format=json";
+const BRAMPTON_GEOHUB_META = `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`;
 
 const WARD_COLORS = [
   { fill: "#8B5CF6", stroke: "#7040d4" },
@@ -23,6 +26,29 @@ type RawFeature = {
   properties: Record<string, unknown> | null;
   geometry: unknown;
 };
+
+async function fetchRepresentWards(listUrl: string): Promise<RawFeature[]> {
+  const listRes = await fetch(listUrl, { signal: AbortSignal.timeout(8000) });
+  if (!listRes.ok) return [];
+  const listData = (await listRes.json()) as { objects: Array<{ url: string; name: string }> };
+  const results = await Promise.allSettled(
+    listData.objects.map(async (b) => {
+      const shapeRes = await fetch(
+        `https://represent.opennorth.ca${b.url}simple_shape`,
+        { signal: AbortSignal.timeout(5000) },
+      );
+      if (!shapeRes.ok) return null;
+      const geometry = await shapeRes.json();
+      const rawName = b.name.split("/").pop() ?? b.name;
+      const wardName = rawName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return { type: "Feature", properties: { WARD_NAME: wardName } as Record<string, unknown>, geometry };
+    }),
+  );
+  return results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => (r as PromiseFulfilledResult<RawFeature | null>).value)
+    .filter((v): v is RawFeature => v !== null);
+}
 
 function extractWardName(props: Record<string, unknown>, index: number): string {
   const raw =
@@ -61,51 +87,35 @@ function colorize(
   } as GeoJSON.FeatureCollection;
 }
 
-async function fetchViaRestApi(): Promise<RawFeature[] | null> {
-  const metaRes = await fetch(
-    `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`,
-    { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) },
-  );
-  if (!metaRes.ok) return null;
-  const meta = (await metaRes.json()) as { url?: string };
-  if (!meta.url) return null;
-
-  const queryUrl = `${meta.url}/${BRAMPTON_LAYER}/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=100`;
-  const dataRes = await fetch(queryUrl, {
-    next: { revalidate: 86400 },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!dataRes.ok) return null;
-  const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
-  if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-    return data.features ?? [];
-  }
-  return null;
-}
-
 export async function GET() {
-  // Primary: ArcGIS REST API (via item metadata → service URL)
+  // Primary: Represent OpenNorth API — WGS84 guaranteed, reliable from Vercel
   try {
-    const features = await fetchViaRestApi();
-    if (features && features.length > 0) {
-      return NextResponse.json(colorize(features));
-    }
+    const features = await fetchRepresentWards(BRAMPTON_REPRESENT_URL);
+    if (features.length > 0) return NextResponse.json(colorize(features));
   } catch { /* fall through */ }
 
-  // Fallback: direct GeoJSON URL
+  // Secondary: Brampton GeoHub REST API with outSR=4326
   try {
-    const res = await fetch(BRAMPTON_FALLBACK_URL, {
-      next: { revalidate: 86400 },
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12000),
+    const metaRes = await fetch(BRAMPTON_GEOHUB_META, {
+      next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000),
     });
-    if (res.ok) {
-      const data = (await res.json()) as { type?: string; features?: RawFeature[] };
-      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-        return NextResponse.json(colorize(data.features ?? []));
+    if (metaRes.ok) {
+      const meta = (await metaRes.json()) as { url?: string };
+      if (meta.url) {
+        const queryUrl = `${meta.url}/${BRAMPTON_LAYER}/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=100`;
+        const dataRes = await fetch(queryUrl, {
+          next: { revalidate: 86400 }, signal: AbortSignal.timeout(12000),
+        });
+        if (dataRes.ok) {
+          const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
+          if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
+            return NextResponse.json(colorize(data.features ?? []));
+          }
+        }
       }
     }
   } catch { /* give up */ }
+  // NOTE: Direct GeoHub/hub.arcgis.com GeoJSON download omitted — returns EPSG:3857, not WGS84.
 
   return NextResponse.json(
     { error: "Failed to load Brampton ward boundaries" },
