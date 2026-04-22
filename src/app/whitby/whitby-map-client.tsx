@@ -25,11 +25,11 @@ type AddrProps = { address: string; civic: string; street: string; postalCode: s
 
 type StreetData = {
   name: string;
-  doors: number;        // unique civic numbers (physical doors/buildings to approach)
-  units: number;        // total addressable units
-  houses: number;       // single-family doors
-  buildings: number;    // multi-unit buildings (one approach, many voters)
-  buildingUnits: number;// total units across all buildings
+  doors: number;
+  units: number;
+  houses: number;
+  buildings: number;
+  buildingUnits: number;
   estMinutes: number;
   centroid: [number, number];
   features: Feature[];
@@ -86,6 +86,20 @@ function wardBboxParams(feature: Feature): URLSearchParams | null {
   });
 }
 
+function isLikelyCommercial(props: Record<string, unknown>): boolean {
+  const unit = String(props.unit ?? "");
+  if (unit.length > 0) return false;
+  const civic = String(props.civic ?? "");
+  const civicNum = parseInt(civic, 10);
+  if (!isNaN(civicNum) && civicNum > 0) {
+    if (civicNum > 9000) return true;
+    if (civicNum % 100 === 0) return true;
+  }
+  const address = String(props.address ?? "").toUpperCase();
+  const commercialRx = /\b(UNIT\s+\d|SUITE\s+\d|BAY\s+\d|PLAZA|MALL|CENTRE|CENTER|INDUSTRIAL|COMMERCE)\b/;
+  return commercialRx.test(address);
+}
+
 function parseStreets(fc: FeatureCollection): StreetData[] {
   const map = new Map<string, Feature[]>();
   for (const f of fc.features) {
@@ -95,7 +109,6 @@ function parseStreets(fc: FeatureCollection): StreetData[] {
   }
 
   return Array.from(map.entries()).map(([name, features]) => {
-    // Group by civic number to detect buildings
     const civicMap = new Map<string, Feature[]>();
     for (const f of features) {
       const civic = String((f.properties as Record<string, unknown>)?.civic || "?");
@@ -108,7 +121,7 @@ function parseStreets(fc: FeatureCollection): StreetData[] {
     const buildingCount = buildings.length;
     const buildingUnits = buildings.reduce((s, v) => s + v.length, 0);
     const houseCount = singleDoors.length;
-    const doors = civicMap.size; // unique approaches
+    const doors = civicMap.size;
     const units = features.length;
 
     const estMinutes = houseCount * MINS_PER_HOUSE + buildingUnits * MINS_PER_APT_UNIT;
@@ -231,7 +244,6 @@ const GL: React.CSSProperties = {
 const label: React.CSSProperties = { color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" };
 const val: React.CSSProperties = { color: "#fff", fontSize: 24, fontWeight: 800, lineHeight: 1.1 };
 const subval: React.CSSProperties = { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 500 };
-const divider: React.CSSProperties = { borderTop: "1px solid rgba(255,255,255,0.08)", margin: "14px 0" };
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -282,6 +294,12 @@ export default function WhitbyMapClient() {
   const [showTurfPanel, setShowTurfPanel] = useState(false);
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
 
+  // Phase 1: commercial filter, canvassing mode, time enforcement
+  const [includeCommercial, setIncludeCommercial] = useState(false);
+  const [canvassingMode, setCanvassingMode] = useState<"persuasion" | "gotv">("persuasion");
+  const [currentHour] = useState(() => new Date().getHours());
+  const withinCanvassingHours = currentHour >= 9 && currentHour < 21;
+
   // Fetch wards
   useEffect(() => {
     fetch("/api/atlas/whitby-wards")
@@ -308,16 +326,21 @@ export default function WhitbyMapClient() {
     setAddrLoading(true); setAddrError(null);
     fetch(`/api/atlas/whitby-addresses?${params.toString()}`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FeatureCollection>; })
-      .then(d => { setAddresses(d); setDisplayAddresses(d); setAddrLoading(false); })
+      .then(d => { setAddresses(d); setAddrLoading(false); })
       .catch((e: Error) => { setAddrError(e.message); setAddrLoading(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWard?.properties?.wardIndex]);
 
-  // Parse streets when addresses load
+  // Filter + parse streets when addresses or commercial toggle changes
   useEffect(() => {
-    setStreets(addresses ? parseStreets(addresses) : []);
-    setTurfs([]); setDisplayAddresses(addresses);
-  }, [addresses]);
+    if (!addresses) { setStreets([]); setTurfs([]); setDisplayAddresses(null); return; }
+    const filtered: FeatureCollection = includeCommercial
+      ? addresses
+      : { ...addresses, features: addresses.features.filter(f => !isLikelyCommercial(f.properties as Record<string, unknown>)) };
+    setStreets(parseStreets(filtered));
+    setTurfs([]);
+    setDisplayAddresses(filtered);
+  }, [addresses, includeCommercial]);
 
   // Hover
   const handleMouseMove = useCallback((e: MapFeatureEvent) => {
@@ -347,7 +370,6 @@ export default function WhitbyMapClient() {
   // Click
   const handleClick = useCallback((e: MapFeatureEvent) => {
     if (!mapRef.current) return;
-    // Cluster zoom
     const cluster = e.features?.find(f => f.layer.id === "addr-clusters");
     if (cluster) {
       const map = mapRef.current.getMap();
@@ -358,10 +380,8 @@ export default function WhitbyMapClient() {
       else mapRef.current?.flyTo({ center: coords, zoom: (map.getZoom() ?? 11) + 2 });
       return;
     }
-    // Address point
     const af = e.features?.find(f => f.layer.id === "addr-point");
     if (af) { setSelectedAddress(af.properties as unknown as AddrProps); return; }
-    // Ward
     const wf = e.features?.find(f => f.layer.id === "ward-fill");
     if (wf) {
       const feat = wf as unknown as Feature;
@@ -382,11 +402,11 @@ export default function WhitbyMapClient() {
   }, []);
 
   const handleCutTurfs = useCallback(() => {
-    if (!addresses || streets.length === 0) return;
+    if (!displayAddresses || streets.length === 0) return;
     const newTurfs = cutTurfs(streets, canvasserCount);
     setTurfs(newTurfs);
-    setDisplayAddresses(applyTurfColors(addresses, newTurfs));
-  }, [addresses, streets, canvasserCount]);
+    setDisplayAddresses(applyTurfColors(displayAddresses, newTurfs));
+  }, [displayAddresses, streets, canvasserCount]);
 
   const updateCanvasserName = useCallback((index: number, name: string) => {
     setTurfs(prev => prev.map(t => t.index === index ? { ...t, canvasserName: name } : t));
@@ -394,7 +414,7 @@ export default function WhitbyMapClient() {
 
   // Derived
   const wardCount = wards?.features.length ?? 0;
-  const addrCount = addresses?.features.length ?? 0;
+  const addrCount = displayAddresses?.features.length ?? 0;
   const voterEst = Math.round(addrCount * AVG_VOTERS_PER_DOOR);
   const selectedProps = selectedWard?.properties as Record<string, unknown> | null;
   const selectedFC: FeatureCollection | null = selectedWard ? { type: "FeatureCollection", features: [selectedWard] } : null;
@@ -534,7 +554,7 @@ export default function WhitbyMapClient() {
               {/* Building breakdown */}
               {addrCount > 0 && !addrLoading && (
                 <>
-                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                  <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ ...label, marginBottom: 8 }}>Building Breakdown</div>
                     <BuildingRow icon="🏠" text="Single Family / Townhouse" count={totalHouses} pct={Math.round(totalHouses / uniqueDoors * 100)} />
                     <BuildingRow icon="🏢" text={`Buildings (${totalBuildingUnits.toLocaleString()} units)`} count={totalBuildings} pct={Math.round(totalBuildings / uniqueDoors * 100)} />
@@ -543,27 +563,49 @@ export default function WhitbyMapClient() {
                     )}
                   </div>
 
+                  {/* Commercial toggle */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 10 }}>
+                    <div>
+                      <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Include commercial</div>
+                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>Off = filters likely businesses</div>
+                    </div>
+                    <button
+                      onClick={() => setIncludeCommercial(v => !v)}
+                      style={{ position: "relative", width: 40, height: 22, borderRadius: 11, border: "none", background: includeCommercial ? "#1D9E75" : "rgba(255,255,255,0.12)", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}
+                    >
+                      <span style={{ position: "absolute", top: 3, left: includeCommercial ? 21 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+                    </button>
+                  </div>
+
                   {/* Literature recommendation */}
-                  <div style={{ background: "rgba(239,159,39,0.09)", border: "1px solid rgba(239,159,39,0.22)", borderRadius: 9, padding: "9px 12px", marginBottom: 14 }}>
+                  <div style={{ background: "rgba(239,159,39,0.09)", border: "1px solid rgba(239,159,39,0.22)", borderRadius: 9, padding: "9px 12px", marginBottom: 12 }}>
                     <div style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700 }}>📄 Literature: {litRec.toLocaleString()} pieces</div>
                     <div style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 2 }}>Includes 10% buffer · Adjust for multi-piece drops</div>
                   </div>
                 </>
               )}
 
+              {/* Time enforcement warning */}
+              {!withinCanvassingHours && (
+                <div style={{ background: "rgba(239,159,39,0.12)", border: "1px solid rgba(239,159,39,0.3)", borderRadius: 9, padding: "9px 12px", marginBottom: 10 }}>
+                  <div style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700 }}>⏰ Outside canvassing hours</div>
+                  <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 2 }}>Ontario canvassing permitted 9am–9pm only.</div>
+                </div>
+              )}
+
               {/* CTA */}
               <button
-                disabled={addrCount === 0 || addrLoading}
+                disabled={addrCount === 0 || addrLoading || !withinCanvassingHours}
                 onClick={() => setShowTurfPanel(true)}
                 style={{
                   width: "100%", padding: "12px 16px", borderRadius: 10, border: "none",
-                  background: addrCount > 0 && !addrLoading ? "#1D9E75" : "rgba(255,255,255,0.06)",
-                  color: addrCount > 0 && !addrLoading ? "#fff" : "rgba(255,255,255,0.25)",
-                  fontSize: 14, fontWeight: 700, cursor: addrCount > 0 && !addrLoading ? "pointer" : "not-allowed",
+                  background: addrCount > 0 && !addrLoading && withinCanvassingHours ? "#1D9E75" : "rgba(255,255,255,0.06)",
+                  color: addrCount > 0 && !addrLoading && withinCanvassingHours ? "#fff" : "rgba(255,255,255,0.25)",
+                  fontSize: 14, fontWeight: 700, cursor: addrCount > 0 && !addrLoading && withinCanvassingHours ? "pointer" : "not-allowed",
                   letterSpacing: "0.03em",
                 }}
               >
-                {addrLoading ? "Loading addresses…" : addrCount > 0 ? "🗺️ Begin Canvassing" : "Select a ward to load doors"}
+                {addrLoading ? "Loading addresses…" : !withinCanvassingHours ? "Canvassing hours: 9am–9pm" : addrCount > 0 ? "🗺️ Begin Canvassing" : "Select a ward to load doors"}
               </button>
 
               {addrError && <div style={{ marginTop: 8, color: "#E24B4A", fontSize: 11 }}>{addrError}</div>}
@@ -597,6 +639,19 @@ export default function WhitbyMapClient() {
               </div>
               <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, marginTop: 8 }}>{getProp(selectedProps, "wardName")}</div>
               <div style={{ ...subval, marginTop: 2 }}>{uniqueDoors.toLocaleString()} doors · {streets.length} streets</div>
+
+              {/* Persuasion / GOTV mode toggle */}
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                {(["persuasion", "gotv"] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setCanvassingMode(mode)}
+                    style={{ flex: 1, padding: "5px 8px", borderRadius: 7, border: `1px solid ${canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.12)"}`, background: canvassingMode === mode ? "rgba(29,158,117,0.2)" : "transparent", color: canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}
+                  >
+                    {mode === "persuasion" ? "Persuasion" : "GOTV"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Canvasser count */}
@@ -624,7 +679,6 @@ export default function WhitbyMapClient() {
             {/* Street intelligence / turf list */}
             <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
               {turfs.length === 0 ? (
-                // Street list (pre-cut)
                 <div>
                   <div style={{ padding: "4px 18px 8px", ...label }}>Street Intelligence ({streets.length} streets)</div>
                   {streets.map((st, i) => (
@@ -646,10 +700,9 @@ export default function WhitbyMapClient() {
                   ))}
                 </div>
               ) : (
-                // Turf list (post-cut)
                 <div>
                   <div style={{ padding: "4px 18px 8px", ...label }}>
-                    {turfs.length} Turfs — Tap name to assign canvasser
+                    {turfs.length} Turfs — {canvassingMode === "gotv" ? "GOTV Mode" : "Persuasion Mode"}
                   </div>
                   {turfs.map((turf) => (
                     <div key={turf.index} style={{ margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden", border: `1px solid ${turf.color}30` }}>
@@ -666,14 +719,12 @@ export default function WhitbyMapClient() {
                           </div>
                         </div>
 
-                        {/* Building breakdown per turf */}
                         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>🏠 {turf.houses}</span>
                           {turf.buildings > 0 && <span style={{ fontSize: 10, color: "#EF9F27" }}>🏢 {turf.buildings} bldg ({turf.buildingUnits} units)</span>}
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
                         </div>
 
-                        {/* Canvasser name */}
                         <input
                           type="text"
                           placeholder="Assign canvasser name…"
@@ -682,7 +733,6 @@ export default function WhitbyMapClient() {
                           style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
                         />
 
-                        {/* Streets in this turf */}
                         <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6 }}>
                           {turf.streets.slice(0, 4).map((st, i) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
@@ -700,7 +750,6 @@ export default function WhitbyMapClient() {
                     </div>
                   ))}
 
-                  {/* Generate walk lists */}
                   <div style={{ padding: "10px 10px 4px" }}>
                     <button
                       style={{ width: "100%", padding: "11px", borderRadius: 10, background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", color: "#1D9E75", fontSize: 13, fontWeight: 700, cursor: "pointer" } as React.CSSProperties}

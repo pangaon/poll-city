@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 
 // Town of Whitby official address points — Whitby GeoHub (ArcGIS)
-// https://geohub-whitby.hub.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0
-const ARCGIS_URL =
-  "https://opendata.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0.geojson";
+// Item: https://geohub-whitby.hub.arcgis.com/datasets/5198a2ba0f0145e3a79db28045a4245d_0
+const ARCGIS_ITEM_ID = "5198a2ba0f0145e3a79db28045a4245d";
+const ARCGIS_LAYER_INDEX = 0;
 
 // OSM Overpass fallback
 const OVERPASS_MIRRORS = [
@@ -32,15 +32,12 @@ type OverpassElement = {
 
 type BBox = { south: number; west: number; north: number; east: number };
 
-// ─── validation ──────────────────────────────────────────────────────────────
-
 function parseBbox(params: URLSearchParams): BBox | null {
   const keys = ["south", "west", "north", "east"] as const;
   const vals = keys.map((k) => parseFloat(params.get(k) ?? ""));
   if (vals.some((v) => isNaN(v))) return null;
   const [south, west, north, east] = vals;
   const b = WHITBY_HARD_BOUNDS;
-  // Clamp to Whitby hard bounds — never fetch outside the municipality
   return {
     south: Math.max(south, b.south),
     west: Math.max(west, b.west),
@@ -52,8 +49,6 @@ function parseBbox(params: URLSearchParams): BBox | null {
 function inBbox(lng: number, lat: number, bbox: BBox): boolean {
   return lat >= bbox.south && lat <= bbox.north && lng >= bbox.west && lng <= bbox.east;
 }
-
-// ─── property extraction ──────────────────────────────────────────────────────
 
 function extractAddress(props: Record<string, unknown>) {
   const civic = String(
@@ -83,55 +78,87 @@ function extractAddress(props: Record<string, unknown>) {
   };
 }
 
-// ─── handler ─────────────────────────────────────────────────────────────────
+// Fetches addresses within the ward bbox — avoids downloading the full 35k-point dataset
+async function fetchArcGISBbox(bbox: BBox): Promise<ArcGISFeature[] | null> {
+  let serviceUrl: string | null = null;
+  try {
+    const metaRes = await fetch(
+      `https://www.arcgis.com/sharing/rest/content/items/${ARCGIS_ITEM_ID}?f=json`,
+      {
+        signal: AbortSignal.timeout(10000),
+        headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)", Accept: "application/json" },
+        next: { revalidate: 86400 },
+      },
+    );
+    if (metaRes.ok) {
+      const meta = (await metaRes.json()) as { url?: string };
+      if (typeof meta.url === "string" && meta.url.length > 0) serviceUrl = meta.url;
+    }
+  } catch {
+    // fall through to OSM
+  }
+  if (!serviceUrl) return null;
+
+  const base = serviceUrl.replace(/\/FeatureServer\/\d+$/, "/FeatureServer");
+  const { south, west, north, east } = bbox;
+  const qp = new URLSearchParams({
+    geometry: `${west},${south},${east},${north}`,
+    geometryType: "esriGeometryEnvelope",
+    spatialRel: "esriSpatialRelIntersects",
+    outFields: "*",
+    f: "geojson",
+    resultRecordCount: "5000",
+  });
+
+  try {
+    const queryRes = await fetch(
+      `${base}/${ARCGIS_LAYER_INDEX}/query?${qp.toString()}`,
+      {
+        signal: AbortSignal.timeout(25000),
+        headers: { "User-Agent": "PollCity/1.0 (contact@poll.city)", Accept: "application/json" },
+      },
+    );
+    if (!queryRes.ok) return null;
+    const data = (await queryRes.json()) as { type?: string; features?: ArcGISFeature[] };
+    if (data.type === "FeatureCollection" && Array.isArray(data.features)) return data.features;
+  } catch {
+    // fall through to OSM
+  }
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const bbox = parseBbox(searchParams) ?? WHITBY_HARD_BOUNDS;
 
-  // ── Primary: Town of Whitby official ArcGIS dataset ──────────────────────
-  try {
-    const res = await fetch(ARCGIS_URL, {
-      headers: { Accept: "application/json", "User-Agent": "PollCity/1.0 (contact@poll.city)" },
-      signal: AbortSignal.timeout(30000),
-      next: { revalidate: 86400 }, // cache the full dataset for 24h
-    });
+  const arcFeatures = await fetchArcGISBbox(bbox);
+  if (arcFeatures !== null) {
+    const features = arcFeatures
+      .filter((f) => {
+        if (!f.geometry?.coordinates) return false;
+        const [lng, lat] = f.geometry.coordinates;
+        return inBbox(lng, lat, bbox);
+      })
+      .map((f, i) => {
+        const addr = extractAddress(f.properties ?? {});
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: f.geometry!.coordinates },
+          properties: { id: i, source: "whitby-geohub", ...addr },
+        };
+      })
+      .filter((f) => f.properties.address.length > 0);
 
-    if (res.ok) {
-      const data = (await res.json()) as { type: string; features: ArcGISFeature[] };
-
-      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-        const features = data.features
-          .filter((f) => {
-            if (!f.geometry?.coordinates) return false;
-            const [lng, lat] = f.geometry.coordinates;
-            return inBbox(lng, lat, bbox);
-          })
-          .map((f, i) => {
-            const addr = extractAddress(f.properties ?? {});
-            return {
-              type: "Feature" as const,
-              geometry: { type: "Point" as const, coordinates: f.geometry!.coordinates },
-              properties: { id: i, source: "whitby-geohub", ...addr },
-            };
-          })
-          .filter((f) => f.properties.address.length > 0);
-
-        return NextResponse.json(
-          {
-            type: "FeatureCollection",
-            features,
-            meta: { count: features.length, source: "whitby-geohub", bbox },
-          },
-          { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600" } },
-        );
-      }
-    }
-  } catch {
-    // fall through to OSM
+    return NextResponse.json(
+      {
+        type: "FeatureCollection",
+        features,
+        meta: { count: features.length, source: "whitby-geohub", bbox },
+      },
+      { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600" } },
+    );
   }
 
-  // ── Fallback: OpenStreetMap via Overpass ──────────────────────────────────
   const { south, west, north, east } = bbox;
   const query = `[out:json][timeout:45];(node["addr:housenumber"]["addr:street"](${south},${west},${north},${east}););out 5000;`;
   const enc = encodeURIComponent(query);
