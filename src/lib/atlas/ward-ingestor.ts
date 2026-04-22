@@ -68,14 +68,22 @@ async function fetchArcGISGeoJSON(src: WardAssetSource): Promise<GeoJSONFeature[
   return data.features;
 }
 
-async function fetchRepresent(src: WardAssetSource): Promise<GeoJSONFeature[]> {
-  // Retry on 429 (rate limit) with backoff — Represent throttles concurrent seeds
-  let listRes: Response | undefined;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 2500));
-    listRes = await fetch(src.url, { signal: AbortSignal.timeout(10000) });
-    if (listRes.status !== 429) break;
+// Retry fetch on 429 (rate limit) with linear backoff. Returns null on timeout/network error.
+async function fetchWithRetry(url: string, timeoutMs: number, maxAttempts = 4): Promise<Response | null> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 1500));
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (res.status !== 429) return res;
+    } catch {
+      if (attempt === maxAttempts - 1) return null;
+    }
   }
+  return null;
+}
+
+async function fetchRepresent(src: WardAssetSource): Promise<GeoJSONFeature[]> {
+  const listRes = await fetchWithRetry(src.url, 10000);
   if (!listRes || !listRes.ok) throw new Error(`Represent list ${listRes?.status ?? "no response"}`);
   const listData = (await listRes.json()) as {
     objects: Array<{ url: string; name: string }>;
@@ -84,11 +92,12 @@ async function fetchRepresent(src: WardAssetSource): Promise<GeoJSONFeature[]> {
 
   const results = await Promise.allSettled(
     listData.objects.map(async (b) => {
-      const shapeRes = await fetch(
+      // Retry individual shape fetches — Represent rate-limits per-request, not just per-list
+      const shapeRes = await fetchWithRetry(
         `https://represent.opennorth.ca${b.url}simple_shape`,
-        { signal: AbortSignal.timeout(8000) },
+        8000,
       );
-      if (!shapeRes.ok) return null;
+      if (!shapeRes || !shapeRes.ok) return null;
       const geometry = await shapeRes.json();
       const rawName = b.name.split("/").pop() ?? b.name;
       const wardName = rawName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -236,14 +245,13 @@ async function upsertWards(
   sourceUrl: string,
   globalIndexOffset: number,
 ): Promise<number> {
-  let count = 0;
-  for (let i = 0; i < features.length; i++) {
-    const f = features[i];
+  // Build all upsert operations then send in one transaction — one DB round trip
+  // instead of N sequential awaits. Critical for seed performance (280+ wards total).
+  const ops = features.map((f, i) => {
     const wardName = extractWardName(f.properties, i);
     const wardNumber = extractWardNumber(wardName);
     const wardIndex = globalIndexOffset + i;
-
-    await prisma.wardBoundary.upsert({
+    return prisma.wardBoundary.upsert({
       where: { municipality_wardName: { municipality: entry.municipality, wardName } },
       create: {
         municipality: entry.municipality,
@@ -261,9 +269,9 @@ async function upsertWards(
         fetchedAt: new Date(),
       },
     });
-    count++;
-  }
-  return count;
+  });
+  await prisma.$transaction(ops);
+  return ops.length;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
