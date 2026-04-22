@@ -150,6 +150,9 @@ enum SignStatus {
   installed
   removed
   declined
+  damaged
+  missing
+  needs_repair
 }
 
 enum ServiceCategory {
@@ -684,6 +687,14 @@ model User {
   budgetTransfersRequested BudgetTransfer[]         @relation("TransferRequestedBy")
   budgetTransfersApproved  BudgetTransfer[]         @relation("TransferApprovedBy")
   financeAssetsUploaded    FinanceAsset[]           @relation("AssetUploadedBy")
+  // Unified QR + Field + Finance
+  signEventsActed          SignEvent[]               @relation("SignEventActor")
+  signBatchesCreated       SignBatch[]               @relation("SignBatchCreatedBy")
+  signBatchesAssigned      SignBatch[]               @relation("SignBatchAssigned")
+  fundingSourcesCreated    FundingSource[]           @relation("FundingSourceCreatedBy")
+  vouchersIssued           Voucher[]                 @relation("VoucherIssuer")
+  vouchersAssigned         Voucher[]                 @relation("VoucherAssignee")
+  voucherRedemptions       VoucherRedemption[]       @relation("VoucherRedemptionUser")
 
   // Calendar Suite
   calendarItemsCreated      CalendarItem[]               @relation("CalendarItemCreator")
@@ -1035,6 +1046,15 @@ model Campaign {
   // Address Pre-List + Voter Enrichment
   addressPreLists AddressPreList[]
   enrichmentRuns  EnrichmentRun[]
+
+  // Unified QR + Field + Finance System
+  signEvents               SignEvent[]
+  signBatches              SignBatch[]
+  qrContextRules           QrContextRule[]
+  fundingSources           FundingSource[]
+  fundingSourceTransactions FundingSourceTransaction[]
+  vouchers                 Voucher[]
+  voucherRedemptions       VoucherRedemption[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -1543,6 +1563,8 @@ model Sign {
   id             String     @id @default(cuid())
   campaignId     String
   contactId      String?
+  qrCodeId       String? // QR code linked to this sign — scan to trigger field actions
+  batchId        String? // sign delivery batch
   address1       String
   city           String?
   postalCode     String?
@@ -1570,9 +1592,11 @@ model Sign {
   assignmentStops AssignmentStop[]
   fieldAttempts   FieldAttempt[]
   followUpActions FollowUpAction[]
+  signEvents      SignEvent[]
 
   @@index([campaignId, status])
   @@index([lat, lng])
+  @@index([qrCodeId])
   @@map("signs")
 }
 
@@ -2144,9 +2168,13 @@ model DonationSource {
   campaignId   String
   name         String
   sourceType   DonationSourceType @default(other)
-  medium       String? // email | sms | social | direct | qr
+  medium       String? // email | sms | social | direct | qr | nfc | sign
   campaignCode String? // UTM campaign code
   channel      String? // utm_channel override
+  qrCodeId     String? // linked QR code for scan attribution
+  signId       String? // linked sign for sign-cluster attribution
+  nfcTagId     String? // NFC tag identifier (for future hardware)
+  eventId      String? // event table attribution
   active       Boolean            @default(true)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
@@ -2155,6 +2183,7 @@ model DonationSource {
   donations Donation[]
 
   @@index([campaignId])
+  @@index([qrCodeId])
   @@map("donation_sources")
 }
 
@@ -2751,6 +2780,7 @@ model QrCode {
   scans             QrScan[]
   prospects         QrProspect[]
   signOpportunities QrSignOpportunity[]
+  contextRules      QrContextRule[]
 
   @@index([campaignId, status])
   @@index([token])
@@ -9179,4 +9209,293 @@ model WardBoundary {
   @@unique([municipality, wardName])
   @@index([municipality])
   @@map("ward_boundaries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UNIFIED QR + FIELD OPS + FINANCE SYSTEM
+// Phase 1: Sign Events — audit trail for every field action on a sign
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SignEventAction {
+  install
+  remove
+  move
+  damage
+  missing
+  repair
+  audit
+  photo_added
+  notes_updated
+  reassigned
+}
+
+model SignEvent {
+  id              String          @id @default(cuid())
+  signId          String
+  campaignId      String
+  userId          String
+  action          SignEventAction
+  // Route context — set when action is taken during an active route
+  routeId         String?
+  fieldTargetId   String? // the specific stop this sign is linked to
+  // Location at time of action
+  lat             Float?
+  lng             Float?
+  address         String? // reverse-geocoded or route-stop address
+  // Evidence
+  photoUrl        String?
+  notes           String?
+  // Previous state (for move/reassign audit)
+  previousStatus  String?
+  previousAddress String?
+  // Metadata
+  deviceType      String? // mobile | tablet | desktop
+  appContext       String? // web | pwa | native
+  createdAt       DateTime        @default(now())
+
+  sign      Sign        @relation(fields: [signId], references: [id], onDelete: Cascade)
+  campaign  Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user      User        @relation("SignEventActor", fields: [userId], references: [id])
+
+  @@index([signId, createdAt])
+  @@index([campaignId, action])
+  @@index([routeId])
+  @@map("sign_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sign Batches — group signs by delivery run for logistics tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SignBatchStatus {
+  planned
+  in_transit
+  delivered
+  partial
+  cancelled
+}
+
+model SignBatch {
+  id              String          @id @default(cuid())
+  campaignId      String
+  name            String
+  description     String?
+  status          SignBatchStatus @default(planned)
+  scheduledDate   DateTime?
+  deliveredDate   DateTime?
+  assignedUserId  String?
+  totalSigns      Int             @default(0)
+  installedCount  Int             @default(0)
+  notes           String?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("SignBatchCreatedBy", fields: [createdById], references: [id])
+  assignedTo  User?    @relation("SignBatchAssigned", fields: [assignedUserId], references: [id])
+
+  @@index([campaignId, status])
+  @@map("sign_batches")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QR Context Rules — dynamic behavior routing for a single QR endpoint
+// One physical QR → different actions based on user role / context / time
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum QrConditionType {
+  user_role       // condition_value: "CAMPAIGN_MANAGER" | "VOLUNTEER" | "anonymous"
+  active_route    // condition_value: routeId (matches if user has that route active)
+  time_window     // condition_value: JSON { start: "HH:MM", end: "HH:MM", days: [0-6] }
+  location_radius // condition_value: JSON { lat, lng, radiusMetres }
+  scan_count      // condition_value: JSON { min?, max? } — rule fires after N scans
+}
+
+enum QrActionType {
+  open_url
+  donation_flow
+  sign_action     // opens sign install/status panel
+  voucher_redeem
+  event_checkin
+  contact_capture
+  route_context   // loads route stop context for sign scanning
+}
+
+model QrContextRule {
+  id               String           @id @default(cuid())
+  qrCodeId         String
+  campaignId       String
+  priority         Int              @default(0) // lower = higher priority; first match wins
+  conditionType    QrConditionType
+  conditionValue   Json             // type-dependent condition payload
+  actionType       QrActionType
+  actionPayload    Json             // type-dependent action payload (url, signId, voucherId, etc.)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  qrCode   QrCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([qrCodeId, priority])
+  @@index([campaignId, isActive])
+  @@map("qr_context_rules")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNDING SOURCES — campaign treasury tracking
+// Tracks where money comes from. Every expense can link to a source.
+// Designed so a future Stripe Issuing / card module can plug in later.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum FundingSourceType {
+  candidate_money
+  donations
+  bank_account
+  petty_cash
+  operating_reserve
+  grant
+  loan
+  other
+}
+
+enum FundingTxType {
+  credit      // money in
+  debit       // money out
+  transfer    // between sources
+  allocation  // budget allocation
+  reimbursement_out
+  donation_in
+  vendor_payment
+  adjustment
+}
+
+model FundingSource {
+  id               String            @id @default(cuid())
+  campaignId       String
+  type             FundingSourceType @default(other)
+  name             String
+  description      String?
+  balance          Decimal?          @db.Decimal(12, 2) // current tracked balance (nullable = untracked)
+  currency         String            @default("CAD")
+  ownerEntity      String? // "Candidate: Jane Smith" | "Campaign Bank"
+  restrictedUse    Boolean           @default(false) // if true, must note what it's restricted to
+  restrictedNotes  String?
+  isActive         Boolean           @default(true)
+  metadata         Json?             // bank account number (masked), reference info, etc.
+  createdByUserId  String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  campaign     Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy    User                       @relation("FundingSourceCreatedBy", fields: [createdByUserId], references: [id])
+  transactions FundingSourceTransaction[]
+  vouchers     Voucher[]
+
+  @@index([campaignId, isActive])
+  @@map("funding_sources")
+}
+
+model FundingSourceTransaction {
+  id                String        @id @default(cuid())
+  fundingSourceId   String
+  campaignId        String
+  type              FundingTxType
+  amount            Decimal       @db.Decimal(12, 2)
+  balanceAfter      Decimal?      @db.Decimal(12, 2) // running balance snapshot
+  description       String?
+  relatedExpenseId  String? // FinanceExpense
+  relatedDonationId String? // Donation
+  relatedVoucherId  String? // Voucher
+  actorUserId       String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+
+  fundingSource FundingSource @relation(fields: [fundingSourceId], references: [id], onDelete: Cascade)
+  campaign      Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([fundingSourceId, createdAt])
+  @@index([campaignId, type])
+  @@map("funding_source_transactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOUCHERS — pre-authorized spend authorizations
+// Issued by campaign managers. Redeemed by field crew / volunteers.
+// Designed to extend cleanly to Stripe Issuing / virtual cards later.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VoucherType {
+  gas
+  food
+  event_supplies
+  print
+  general
+  accommodation
+}
+
+enum VoucherStatus {
+  draft
+  active
+  partially_redeemed
+  fully_redeemed
+  expired
+  cancelled
+}
+
+model Voucher {
+  id               String        @id @default(cuid())
+  campaignId       String
+  code             String?       // human-readable code (e.g. "CREW-GAS-042")
+  type             VoucherType   @default(general)
+  description      String?
+  maxAmount        Decimal       @db.Decimal(12, 2)
+  redeemedAmount   Decimal       @default(0) @db.Decimal(12, 2)
+  remainingAmount  Decimal       @db.Decimal(12, 2)
+  currency         String        @default("CAD")
+  assignedUserId   String? // if null, any team member can redeem
+  fundingSourceId  String?
+  eventId          String?
+  routeId          String?
+  expiresAt        DateTime?
+  status           VoucherStatus @default(draft)
+  policyJson       Json? // { allowedMerchants?, requireReceipt, maxSingleTransaction? }
+  qrCodeId         String? // QR code that triggers redemption flow
+  issuedById       String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  campaign       Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedUser   User?                @relation("VoucherAssignee", fields: [assignedUserId], references: [id])
+  fundingSource  FundingSource?       @relation(fields: [fundingSourceId], references: [id])
+  issuedBy       User                 @relation("VoucherIssuer", fields: [issuedById], references: [id])
+  redemptions    VoucherRedemption[]
+
+  @@unique([campaignId, code])
+  @@index([campaignId, status])
+  @@index([assignedUserId])
+  @@index([qrCodeId])
+  @@map("vouchers")
+}
+
+model VoucherRedemption {
+  id          String   @id @default(cuid())
+  voucherId   String
+  campaignId  String
+  redeemedById String
+  expenseId   String?  // linked FinanceExpense when receipt is attached
+  amount      Decimal  @db.Decimal(12, 2)
+  merchant    String?
+  notes       String?
+  receiptUrl  String?
+  createdAt   DateTime @default(now())
+
+  voucher     Voucher        @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  campaign    Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  redeemedBy  User           @relation("VoucherRedemptionUser", fields: [redeemedById], references: [id])
+
+  @@index([voucherId])
+  @@index([campaignId, createdAt])
+  @@map("voucher_redemptions")
 }

@@ -65,6 +65,11 @@ npx prisma db push
   - **`PRINT_VENDOR` value** in `Role` enum (Print Vendor Portal — vendor login system)
   - **`userId` column** on `print_shops` table (links a vendor User account to their shop)
   - **`ward_boundaries` table** — WardBoundary model for DB-cached Ontario ward geometry (Ontario Map 10,000-user election-night architecture)
+  - **`sign_events` table** — SignEvent model (sign install/remove/damage event log)
+  - **`sign_batches` table** — SignBatch model (bulk sign order tracking)
+  - **`qr_context_rules` table** — QrContextRule model (QR conditional routing rules)
+  - **`funding_sources` + `funding_source_transactions` tables** — FundingSource + FundingSourceTransaction models (granular finance tracking)
+  - **`vouchers` + `voucher_redemptions` tables** — Voucher + VoucherRedemption models (volunteer incentives system)
 
   Steps:
   1. Open your terminal in the poll-city project folder

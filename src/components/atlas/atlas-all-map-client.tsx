@@ -697,7 +697,7 @@ export default function AtlasAllMapClient() {
       </MapGL>
 
       {/* ── HEADER ───────────────────────────────────────────────────── */}
-      <motion.div
+      <motion.div data-print-hide
         initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
         style={{ ...G, position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10, padding: "12px 24px" }}
       >
@@ -716,7 +716,7 @@ export default function AtlasAllMapClient() {
       </motion.div>
 
       {/* ── LEFT SIDEBAR — ward directory grouped by municipality ─────── */}
-      <motion.div
+      <motion.div data-print-hide
         initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.15 }}
         style={{ ...G, position: "absolute", top: 80, left: 16, zIndex: 10, width: 236, maxHeight: "calc(100vh - 180px)", overflowY: "auto", padding: "14px 0" }}
       >
@@ -787,7 +787,7 @@ export default function AtlasAllMapClient() {
       {/* ── WARD OPS PANEL ───────────────────────────────────────────── */}
       <AnimatePresence>
         {selectedWard && selectedProps && !showTurfPanel && (
-          <motion.div
+          <motion.div data-print-hide
             key={`ops-${getProp(selectedProps, "wardIndex")}`}
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
@@ -804,6 +804,16 @@ export default function AtlasAllMapClient() {
                 <button onClick={() => { setSelectedWard(null); setAddresses(null); }}
                   style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.45)", cursor: "pointer", borderRadius: 7, width: 26, height: 26, fontSize: 13 }}>✕</button>
               </div>
+
+              {displayAddresses && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} />
+                  <button
+                    onClick={() => setShow3D(v => !v)}
+                    style={{ padding: "3px 9px", borderRadius: 6, border: `1px solid ${show3D ? muniAccent : "rgba(255,255,255,0.12)"}`, background: show3D ? `${muniAccent}22` : "transparent", color: show3D ? muniAccent : "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
+                  >3D</button>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <StatBox label="Doors" value={addrLoading ? "…" : uniqueDoors.toLocaleString()} sub="unique approaches" />
@@ -867,7 +877,7 @@ export default function AtlasAllMapClient() {
       {/* ── TURF CUTTING PANEL ───────────────────────────────────────── */}
       <AnimatePresence>
         {showTurfPanel && selectedProps && (
-          <motion.div
+          <motion.div data-print-hide
             key="turf-panel"
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
@@ -886,7 +896,10 @@ export default function AtlasAllMapClient() {
                   style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.35)", cursor: "pointer", fontSize: 14 }}>✕</button>
               </div>
               <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, marginTop: 8 }}>{getProp(selectedProps, "wardName")}</div>
-              <div style={{ ...subval, marginTop: 2 }}>{uniqueDoors.toLocaleString()} doors · {streets.length} streets</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+                <div style={{ ...subval, fontSize: 11 }}>{uniqueDoors.toLocaleString()} doors · {streets.length} streets</div>
+                <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} />
+              </div>
               <input
                 type="text"
                 placeholder="Search streets…"
@@ -988,8 +1001,14 @@ export default function AtlasAllMapClient() {
                     </div>
                   ))}
                   <div style={{ padding: "10px 10px 4px" }}>
-                    <button style={{ width: "100%", padding: "11px", borderRadius: 10, background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", color: "#1D9E75", fontSize: 13, fontWeight: 700, cursor: "pointer" } as React.CSSProperties}>
-                      📋 Generate Walk Lists
+                    <button
+                      onClick={() => {
+                        if (mapRef.current) mapRef.current.getMap().triggerRepaint();
+                        window.print();
+                      }}
+                      style={{ width: "100%", padding: "11px", borderRadius: 10, background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", color: "#1D9E75", fontSize: 13, fontWeight: 700, cursor: "pointer" } as React.CSSProperties}
+                    >
+                      📋 Print Walk Lists
                     </button>
                   </div>
                 </div>
@@ -1002,7 +1021,7 @@ export default function AtlasAllMapClient() {
       {/* ── ADDRESS DETAIL ───────────────────────────────────────────── */}
       <AnimatePresence>
         {selectedAddress && !showTurfPanel && (
-          <motion.div
+          <motion.div data-print-hide
             key="addr"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -1079,7 +1098,7 @@ export default function AtlasAllMapClient() {
       </AnimatePresence>
 
       {/* ── BRAND ────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+      <motion.div data-print-hide initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
         style={{ ...GL, position: "absolute", bottom: 16, left: 16, zIndex: 10, padding: "7px 12px" }}
       >
         <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, letterSpacing: "0.07em" }}>
@@ -1116,6 +1135,15 @@ export default function AtlasAllMapClient() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── PRINT CSS — hides all UI overlays, shows only the map canvas ── */}
+      <style>{`
+        @media print {
+          [data-print-hide] { display: none !important; }
+          body { margin: 0; padding: 0; background: #050e1c; }
+          canvas { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }
+        }
+      `}</style>
     </div>
   );
 }
