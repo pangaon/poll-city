@@ -184,7 +184,7 @@ function CommandTab({ data, lastRefresh }: { data: OpsData; lastRefresh: Date })
         <div className="flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-200 mb-1">The Gap</p>
           <p className="text-5xl font-black">{gotv.gap.toLocaleString()}</p>
-          <p className="text-sm text-blue-200 mt-1">supporters who haven't voted yet</p>
+          <p className="text-sm text-blue-200 mt-1">supporters who haven&apos;t voted yet</p>
         </div>
         <div className="text-right space-y-2">
           <div>
@@ -1230,7 +1230,7 @@ function ScrutineerView({ campaignId }: { campaignId: string }) {
                   <AlertTriangle className="h-12 w-12 mx-auto mb-3" style={{ color: AMBER }} />
                   <h3 className="text-lg font-semibold text-slate-900">Vote count mismatch</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    One or more counts don't match a previous entry. Your campaign manager has been flagged to review.
+                    One or more counts don&apos;t match a previous entry. Your campaign manager has been flagged to review.
                   </p>
                 </>
               )}

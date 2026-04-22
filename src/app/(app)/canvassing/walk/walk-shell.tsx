@@ -734,8 +734,8 @@ function HouseholdRow({
             <div className="px-4 py-3 bg-blue-50 border-t border-blue-100">
               <p className="text-xs font-bold text-[#0A2342] uppercase tracking-wide mb-2">Door Script</p>
               <p className="text-sm text-gray-800 leading-relaxed">
-                "Hi, my name is <span className="font-bold">[Your Name]</span> and I am here on behalf of <span className="font-bold">[Candidate]</span>.
-                We are talking to voters in the neighbourhood about the upcoming election. Do you have a moment?"
+                &ldquo;Hi, my name is <span className="font-bold">[Your Name]</span> and I am here on behalf of <span className="font-bold">[Candidate]</span>.
+                We are talking to voters in the neighbourhood about the upcoming election. Do you have a moment?&rdquo;
               </p>
               <p className="text-xs text-gray-500 mt-2 italic">
                 Listen first. Ask what issues matter most. Then connect to platform.
@@ -1093,7 +1093,7 @@ function PersonRow({ person: p, onUpdate, campaignFields, address, campaignId }:
             className="overflow-hidden"
           >
             <div className="mt-3 space-y-2.5">
-              {p.notes && <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">"{p.notes}"</p>}
+              {p.notes && <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">&ldquo;{p.notes}&rdquo;</p>}
               <div className="flex flex-wrap gap-1.5">
                 {SUPPORT_QUICK.map(({ v, l, c }) => (
                   <button

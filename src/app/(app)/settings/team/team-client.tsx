@@ -553,7 +553,7 @@ export default function TeamClient({ campaignId, currentUserRole, globalUserRole
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Invite team member</h3>
-                <p className="text-sm text-gray-500">They'll receive an email with a sign-in link.</p>
+                <p className="text-sm text-gray-500">They&apos;ll receive an email with a sign-in link.</p>
               </div>
               <button
                 onClick={() => setInviteOpen(false)}

@@ -572,7 +572,7 @@ function ScriptCard({
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Opening</p>
                 <p className="text-sm text-gray-800 bg-gray-50 rounded-xl p-3 leading-relaxed italic">
-                  "{script.openingLine}"
+                  &ldquo;{script.openingLine}&rdquo;
                 </p>
               </div>
 
@@ -612,7 +612,7 @@ function ScriptCard({
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Closing Ask</p>
                 <p className="text-sm text-gray-800 bg-green-50 border border-green-100 rounded-xl p-3 leading-relaxed italic">
-                  "{script.closingAsk}"
+                  &ldquo;{script.closingAsk}&rdquo;
                 </p>
               </div>
 

@@ -1013,7 +1013,7 @@ export default function DashboardClient({ data, campaign, user, official }: Dash
         </div>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4">
-          <p className="text-sm font-semibold text-gray-900 mb-2">Today's priorities</p>
+          <p className="text-sm font-semibold text-gray-900 mb-2">Today&apos;s priorities</p>
           <ul className="space-y-2">
             {priorities.map((item) => (
               <li key={item} className="text-sm text-gray-700 rounded-lg bg-gray-50 px-3 py-2">{item}</li>

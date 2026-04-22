@@ -145,7 +145,7 @@ export default function NewRequestClient({ campaignId }: { campaignId: string })
           <ArrowLeft className="w-3.5 h-3.5" /> Back to requests
         </Link>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">New Food Request</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400">After creating, we'll rank available vendors automatically</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">After creating, we&apos;ll rank available vendors automatically</p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-6 space-y-4">

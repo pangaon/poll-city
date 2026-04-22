@@ -431,7 +431,7 @@ function ItemsTab({
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <p className="text-sm text-gray-500">No items yet. Click "Add item" to record your first allocation or expense.</p>
+          <p className="text-sm text-gray-500">No items yet. Click &ldquo;Add item&rdquo; to record your first allocation or expense.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">

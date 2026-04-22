@@ -364,7 +364,7 @@ export function DebugToolbar() {
 
             {pendingNote?.elementText && (
               <div className="mb-2 rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                Flagged: "{pendingNote.elementText.slice(0, 120)}"
+                Flagged: &ldquo;{pendingNote.elementText.slice(0, 120)}&rdquo;
               </div>
             )}
 

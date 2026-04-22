@@ -670,7 +670,7 @@ export default function ContactDetailClient({ contact: initialContact, userRole,
         {crmTab === "score" && isManager && (
           <div className="p-4">
             {!supportProfile ? (
-              <p className="text-sm text-gray-400 text-center py-6">No support profile yet. Visit the contact's score API to initialize.</p>
+              <p className="text-sm text-gray-400 text-center py-6">No support profile yet. Visit the contact&apos;s score API to initialize.</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[

@@ -322,7 +322,7 @@ export default function QrLandingClient({ context, token }: Props) {
 
               <h2 className="text-2xl font-black text-white mb-1">Stay Connected</h2>
               <p className="text-slate-400 text-sm mb-5">
-                Leave your info and we'll follow up.
+                Leave your info and we&apos;ll follow up.
                 <span className="text-slate-500"> Optional fields marked with *</span>
               </p>
 

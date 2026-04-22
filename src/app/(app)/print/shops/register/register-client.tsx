@@ -324,7 +324,7 @@ export default function ShopRegisterClient() {
       <Card className="bg-gray-50 border-gray-200">
         <CardContent className="py-4">
           <p className="text-xs text-gray-500 leading-relaxed">
-            By registering, you agree to Poll City Print's vendor terms: a <strong>15% platform fee</strong> is
+            By registering, you agree to Poll City Print&apos;s vendor terms: a <strong>15% platform fee</strong> is
             deducted from each awarded bid, with the remainder paid via Stripe within 3 business days of the
             campaign confirming delivery. Poll City reserves the right to remove shops that receive repeated
             quality complaints.

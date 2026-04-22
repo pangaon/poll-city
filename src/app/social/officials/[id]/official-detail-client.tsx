@@ -368,7 +368,7 @@ export default function OfficialDetailPage() {
               <Heart className="w-4 h-4 text-rose-500" />Support their campaign
             </h3>
             <p className="text-xs text-gray-500 mb-3">
-              Let the campaign know you support them. You control what's shared.
+              Let the campaign know you support them. You control what&apos;s shared.
             </p>
             <div className="space-y-2">
               {official.campaigns.map(campaign => (

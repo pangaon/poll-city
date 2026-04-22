@@ -222,7 +222,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             <div className="p-8 text-center">
               <Search className="w-10 h-10 text-gray-200 mx-auto mb-2" />
               <p className="text-sm text-gray-500">Start typing to search across Poll City.</p>
-              <p className="text-xs text-gray-400 mt-1">Try "supporters", "Toronto", "gotv"</p>
+              <p className="text-xs text-gray-400 mt-1">Try &ldquo;supporters&rdquo;, &ldquo;Toronto&rdquo;, &ldquo;gotv&rdquo;</p>
             </div>
           )}
 
@@ -232,7 +232,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
           {query.trim() && !loading && combinedResults.length === 0 && (
             <div className="p-8 text-center">
-              <p className="text-sm text-gray-500">No results for "{query}"</p>
+              <p className="text-sm text-gray-500">No results for &ldquo;{query}&rdquo;</p>
               <p className="text-xs text-gray-400 mt-1">Try different keywords.</p>
             </div>
           )}

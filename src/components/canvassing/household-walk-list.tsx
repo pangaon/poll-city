@@ -622,7 +622,7 @@ function PersonRow({ person: p, onUpdate }: { person: Person; onUpdate: () => vo
               📶 Offline — this will be saved locally and synced when back online
             </p>
           )}
-          {p.notes && <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">"{p.notes}"</p>}
+          {p.notes && <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">&ldquo;{p.notes}&rdquo;</p>}
           <div className="flex flex-wrap gap-1.5">
             {SUPPORT_QUICK.map(({ v, l, c }) => (
               <button key={v} onClick={() => setSupport(v as SupportLevel)}

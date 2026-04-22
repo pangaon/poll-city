@@ -224,7 +224,7 @@ export default function CanvassContactCard({ contact, onUpdate }: Props) {
           {/* Previous notes */}
           {contact.notes && (
             <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 italic border border-gray-100">
-              "{contact.notes}"
+              &ldquo;{contact.notes}&rdquo;
             </p>
           )}
 

@@ -325,7 +325,7 @@ export default function ProspectsClient({ campaignId }: { campaignId: string }) 
                   <div className="text-center py-6">
                     <Lock className="h-8 w-8 text-amber-400 mx-auto mb-3" />
                     <p className="text-slate-300 text-sm mb-4">
-                      This prospect's details are locked. Upgrade to access their full profile.
+                      This prospect&apos;s details are locked. Upgrade to access their full profile.
                     </p>
                     <Link
                       href="/billing"

@@ -355,7 +355,7 @@ export default function WebsiteEditorClient({ campaign }: { campaign: Campaign }
             {platformItems.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <Layers className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No platform issues yet. Click "Add Issue" to start.</p>
+                <p className="text-sm">No platform issues yet. Click &ldquo;Add Issue&rdquo; to start.</p>
               </div>
             )}
             {platformItems.map((item, idx) => (
@@ -402,7 +402,7 @@ export default function WebsiteEditorClient({ campaign }: { campaign: Campaign }
             {endorsements.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <Quote className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No endorsements yet. Click "Add Endorsement" to start.</p>
+                <p className="text-sm">No endorsements yet. Click &ldquo;Add Endorsement&rdquo; to start.</p>
               </div>
             )}
             {endorsements.map((item, idx) => (
@@ -435,7 +435,7 @@ export default function WebsiteEditorClient({ campaign }: { campaign: Campaign }
           <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-gray-900">FAQ — "Because You Asked"</h2>
+                <h2 className="font-semibold text-gray-900">FAQ &mdash; &ldquo;Because You Asked&rdquo;</h2>
                 <p className="text-sm text-gray-500">Questions voters ask most. Honest answers build trust.</p>
               </div>
               <button onClick={() => setFaqs(prev => [...prev, { id: `faq-${Date.now()}`, q: "", a: "" }])}
@@ -446,7 +446,7 @@ export default function WebsiteEditorClient({ campaign }: { campaign: Campaign }
             {faqs.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <HelpCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No FAQs yet. Click "Add Question" to start.</p>
+                <p className="text-sm">No FAQs yet. Click &ldquo;Add Question&rdquo; to start.</p>
               </div>
             )}
             {faqs.map((item, idx) => (

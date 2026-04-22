@@ -328,7 +328,7 @@ export default function AssignmentDetailClient({ assignment: initial, teamMember
                                   {stop.exceptionNotes && ` — ${stop.exceptionNotes}`}
                                 </div>
                               )}
-                              {stop.notes && <div className="text-gray-500 italic">"{stop.notes}"</div>}
+                              {stop.notes && <div className="text-gray-500 italic">&ldquo;{stop.notes}&rdquo;</div>}
                             </div>
                           </motion.div>
                         )}

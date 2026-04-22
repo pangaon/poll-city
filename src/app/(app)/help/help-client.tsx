@@ -86,7 +86,7 @@ export default function HelpCenterClient() {
           <div>
             <p className="font-semibold text-blue-900 text-sm">Still need help?</p>
             <p className="text-sm text-blue-700">
-              Email <a href="mailto:support@poll.city" className="underline">support@poll.city</a> and we'll respond within 1 business day.
+              Email <a href="mailto:support@poll.city" className="underline">support@poll.city</a> and we&apos;ll respond within 1 business day.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export default function HelpCenterClient() {
         />
         {query.trim() && (
           <p className="text-sm text-gray-500 mt-2">
-            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{query}"
+            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{query}&rdquo;
           </p>
         )}
       </div>
@@ -161,7 +161,7 @@ export default function HelpCenterClient() {
       {displayedArticles.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
           <HelpCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500 mb-1">No articles found for "{query}"</p>
+          <p className="text-sm text-gray-500 mb-1">No articles found for &ldquo;{query}&rdquo;</p>
           <p className="text-xs text-gray-400">Try different keywords or browse by category.</p>
         </div>
       ) : (
@@ -196,7 +196,7 @@ export default function HelpCenterClient() {
       {/* Contact support */}
       <div className="mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 mb-1">Can't find what you need?</h3>
+          <h3 className="font-bold text-gray-900 mb-1">Can&apos;t find what you need?</h3>
           <p className="text-sm text-gray-600">
             Our team responds to every support request within 1 business day.
           </p>
