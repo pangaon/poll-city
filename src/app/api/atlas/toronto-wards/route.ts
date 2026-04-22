@@ -89,11 +89,27 @@ export async function GET() {
     if (pkgRes.ok) {
       const pkg = (await pkgRes.json()) as CKANPackage;
       if (pkg.success) {
-        const gjResource = pkg.result.resources.find(
-          (r) =>
-            r.format.toLowerCase().includes("geojson") ||
-            r.format.toLowerCase() === "geo json",
-        );
+        const resources = pkg.result.resources;
+        // Prefer the WGS84 (4326) GeoJSON — skip CKAN datastore dumps (tabular, not geometry)
+        const gjResource =
+          resources.find(
+            (r) =>
+              r.format.toUpperCase() === "GEOJSON" &&
+              r.name.includes("4326") &&
+              !r.url.includes("datastore/dump"),
+          ) ??
+          resources.find(
+            (r) =>
+              (r.format.toLowerCase().includes("geojson") ||
+                r.format.toLowerCase() === "geo json") &&
+              !r.url.includes("datastore/dump"),
+          ) ??
+          resources.find(
+            (r) =>
+              r.format.toLowerCase().includes("geojson") ||
+              r.format.toLowerCase() === "geo json",
+          );
+
         if (gjResource?.url) {
           const dataRes = await fetch(gjResource.url, {
             signal: AbortSignal.timeout(20000),
@@ -102,7 +118,8 @@ export async function GET() {
           });
           if (dataRes.ok) {
             const data = await dataRes.json();
-            if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
+            // Must be a FeatureCollection with at least 20 features (Toronto has 25 wards)
+            if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) >= 20) {
               return NextResponse.json(colorize(data));
             }
           }
