@@ -101,33 +101,29 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Brampton added, ward render bug open)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — Brampton ward render bug FIXED)
 
-### Ontario Map (`/atlas/map`) — PARTIAL
+### Ontario Map (`/atlas/map`) — LIVE, all 4 municipalities rendering
 
 **What is live and working:**
-- `GET /api/atlas/all-wards` — merges Whitby + Toronto + Markham + Brampton wards into one FeatureCollection. Global `wardIndex` for hover. Falls back gracefully per city.
-- `GET /api/atlas/brampton-wards` — standalone Brampton ward route (uses `geohub.brampton.ca`)
-- `GET /api/atlas/brampton-addresses` — bbox address fetcher for Brampton (uses `geohub.brampton.ca`)
-- Sidebar shows all 4 municipalities. Wards sorted numerically (Ward 1 → Ward 2 → … → Ward 10). Groups sorted alphabetically (Brampton → Markham → Toronto → Whitby).
-- Initial view centered at longitude -79.38 to frame all 4 cities.
-- MUNI_ACCENT includes `Brampton: "#8B5CF6"` (purple).
+- `GET /api/atlas/all-wards` — merges Whitby + Toronto + Markham + Brampton wards. Brampton now uses Represent OpenNorth (WGS84) as primary source.
+- `GET /api/atlas/brampton-wards` — standalone Brampton route, same Represent OpenNorth fix.
+- `GET /api/atlas/brampton-addresses` — bbox address fetcher for Brampton.
+- Sidebar shows all 4 municipalities. Wards sorted numerically. Groups sorted alphabetically.
+- Header subtitle: "Whitby · Toronto · Markham · Brampton · Ward Boundaries"
+- Ward count pill is dynamic (57 wards total when all 4 municipalities load).
+- Ward detail panel has maxHeight + overflowY:auto — no more viewport clipping.
 
-**🔴 KNOWN BUG — Brampton ward polygons not rendering on map:**
-- Sidebar shows Brampton Ward 1–10 (properties are correct) but NO purple polygons appear over Brampton on the map.
-- Root cause candidates:
-  1. `geohub.brampton.ca` may block Vercel IPs (CORS / IP restriction) — Next.js Data Cache serving `[]` silently
-  2. Fallback `opendata.arcgis.com` returns features with null geometry or projected (non-WGS84) coordinates
-  3. Vercel deployment propagation lag (the domain fix commit is `a8e278e`, pushed ~2026-04-22 afternoon)
-- **Next session must:** Check Vercel function logs for the `all-wards` route → find what `fetchBramptonWards()` is actually returning. Then either fix the data source URL or find an alternative open GeoJSON URL for Brampton ward boundaries.
+**Root cause of Brampton render bug (resolved commit 4efd761):**
+- `geohub.brampton.ca/sharing/rest/content/items/?f=json` → returns HTML, not JSON (meta endpoint blocked)
+- `_3.geojson` direct download → 301 redirect → hub.arcgis.com → returns **EPSG:3857** coordinates (Web Mercator, metres)
+- MapLibre silently rejects EPSG:3857 coordinates — features had correct properties (sidebar showed Ward 1-10) but geometry at longitude ~-8.8M was outside WGS84 range
+- Fix: Represent OpenNorth `brampton-wards` set returns proper WGS84 (lng: ~-79.7, lat: ~43.7). EPSG:3857 download path removed entirely.
 
-**Other items to fix on Ontario Map:**
-- Header subtitle hardcoded as "WHITBY · TORONTO · MARKHAM · WARD BOUNDARIES" — needs "· BRAMPTON" added
-- Ward count pill says "47 WARDS" — should be 57 (47 + 10 Brampton)
-- Ward detail panel clips at bottom of viewport on non-standard screen sizes (no max-height + scroll)
+**⚠️ AWAITING GEORGE BROWSER VERIFICATION** — code complete and pushed, Vercel deploying `4efd761`. George must confirm purple Brampton polygons render on `/atlas/map`.
 
 **George's architectural note (do NOT act without direction):**
-George's original plan was to strip the old per-municipality atlas pages and layer back piece by piece. The Ontario Map was added to sidebar in this session. George noted this was not the sequence he intended. Before doing ANY further atlas work, ask George: strip first or layer-in-place?
+George's original plan was to strip the old per-municipality atlas pages and layer back piece by piece. The Ontario Map was added to sidebar in a prior session. George noted this was not the sequence he intended. Before doing ANY further atlas work, ask George: strip first or layer-in-place?
 
 **Navigation path:** Sidebar → Polling Atlas → Ontario Map → `/atlas/map`
 
