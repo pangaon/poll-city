@@ -28,9 +28,10 @@ const SUPPORT_LABELS: Record<string, string> = {
 };
 
 const MUNI_ACCENT: Record<string, string> = {
-  Whitby:  "#1D9E75",
-  Toronto: "#0EA5E9",
-  Markham: "#EF9F27",
+  Whitby:   "#1D9E75",
+  Toronto:  "#0EA5E9",
+  Markham:  "#EF9F27",
+  Brampton: "#8B5CF6",
 };
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -540,7 +541,7 @@ export default function AtlasAllMapClient() {
       {/* ── MAP ──────────────────────────────────────────────────────── */}
       <MapGL
         ref={mapRef}
-        initialViewState={{ longitude: -79.2, latitude: 43.75, zoom: 9 }}
+        initialViewState={{ longitude: -79.38, latitude: 43.75, zoom: 9 }}
         mapStyle={TILE_STYLE}
         style={{ width: "100%", height: "100%" }}
         attributionControl={false} reuseMaps
