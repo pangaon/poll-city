@@ -82,7 +82,7 @@ Everything below is built, pushed, and accessible in the app.
 
 | Task | Status | Notes |
 |---|---|---|
-| AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | CLAIMED 2026-04-22 | All 3 city clients become thin wrappers. Ref: SESSION_HANDOFF.md opener. |
+| AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | DONE — commit e88ed2e | src/components/atlas/atlas-map-client.tsx. City wrappers: whitby/toronto/markham-map-client.tsx. Preload-all pattern included (all cities). |
 
 ### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 

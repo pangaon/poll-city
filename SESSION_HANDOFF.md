@@ -101,6 +101,31 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
+## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Unification complete)
+
+### AtlasMapClient Unification — DONE (commit e88ed2e)
+
+**What shipped:**
+- `src/components/atlas/atlas-map-client.tsx` — single unified map component accepting `MunicipalityConfig` prop
+- Each city client is now a thin wrapper (~25 lines): `whitby-map-client.tsx`, `toronto-map-client.tsx`, `markham-map-client.tsx`
+- All shared logic (turf cutting, address parsing, ward interaction, hover/click, clustering) lives once
+- Preload-all pattern extended to all three cities: on ward load, all ward bboxes fetched concurrently → dim blue background dots; selected ward renders bright green on top
+- Per-city feature flags in config: `commercialFilter`, `canvassingModes`, `timeEnforcement`, `wardSearch` (Whitby); `wardSearch` (Toronto); `schoolWardsApi` (Toronto school board overlays)
+
+**Architecture (for next session):**
+```
+MunicipalityConfig {
+  displayName, displayLocation, loadingText, dataAttribution, footerText,
+  addressSourceKey, addressSourceLabel, initialView,
+  wardsApi, addressesApi, schoolWardsApi?,
+  features: { commercialFilter?, canvassingModes?, timeEnforcement?, wardSearch? }
+}
+```
+
+**Phase 2 (next session):** Connect campaign DB — support levels on doors, visit history, household counts, DNK suppression from DB contacts. The `whitby-dnk` API is already live and can be added to the Whitby config as `dnkApi`.
+
+---
+
 ## CURRENT PLATFORM STATE (as of 2026-04-22 — Whitby Phase 1 + Task Autocomplete + Session Close)
 
 ### Build
