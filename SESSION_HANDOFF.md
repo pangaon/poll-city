@@ -147,11 +147,66 @@ George action required: `npx prisma db push` after schema change committed.
 **George's directive:** Add every municipality with ward data available at `https://municipalities-ontarioregion.hub.arcgis.com/pages/ontario-open-data` to the Ontario Map.
 
 **What the next session must do first (before building infrastructure):**
-1. Query the hub API: `https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100` — get every Ontario ward boundary dataset
-2. Also query Represent OpenNorth boundary sets: `https://represent.opennorth.ca/boundary-sets/?format=json&limit=200` — filter for Ontario municipalities with `-wards` or `-ward` slugs
-3. Cross-reference both sources. Build a complete `WARD_SOURCES` config covering every discoverable Ontario municipality.
-4. For each municipality found: verify the service URL returns valid GeoJSON with real geometry before adding to config
-5. Document which municipalities were found, which have verified sources, which had no usable data
+
+**Step 0A — Full hub crawl with pagination (do not stop at page 1):**
+The hub API paginates. You MUST exhaust all pages:
+```
+GET https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=1
+GET https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=2
+... continue until response returns 0 results or no next page
+```
+Also crawl with alternate terms to catch different naming conventions:
+- `q=ward+boundary`
+- `q=electoral+division`
+- `q=ward+ontario`
+Filter to Ontario Canada only (ignore US results). Collect every unique dataset.
+
+**Step 0B — Full Represent crawl:**
+```
+GET https://represent.opennorth.ca/boundary-sets/?format=json&limit=500
+```
+Filter for slugs ending in `-wards` or containing `ontario`. Collect all slugs and their metadata.
+
+**Step 0C — Build and COMMIT the asset registry:**
+Create `src/config/ward-asset-registry.ts` — the canonical, committed source of truth for all Ontario ward assets. This file is the repository. Format:
+```typescript
+export interface WardAssetSource {
+  type: 'arcgis' | 'represent' | 'ckan' | 'geojson-direct';
+  url: string;
+  layer?: number;
+  filter?: string;       // e.g. "Municipality='Brampton'"
+  outSR?: number;        // if source is projected (not WGS84), set to 4326
+  verified: boolean;     // true only if URL was confirmed to return valid WGS84 geometry
+  verifiedAt?: string;   // ISO date when verification was done
+  notes?: string;        // e.g. "returns EPSG:3857 — use outSR=4326"
+}
+
+export interface WardAssetEntry {
+  municipality: string;    // display name: "City of Hamilton"
+  slug: string;            // url-safe: "hamilton"
+  region: string;          // "GTA" | "Greater Golden Horseshoe" | "Eastern Ontario" | etc.
+  population?: number;     // approximate, for sorting/display
+  wardCount?: number;      // how many wards (fill in after fetch)
+  accentColor: string;     // hex color for map rendering
+  addressesApi: string;    // "/api/atlas/[slug]-addresses" (stub if not built yet)
+  wardSources: WardAssetSource[];     // ordered: primary first
+  addressSources?: WardAssetSource[]; // for address points
+  lastFetched?: string;    // ISO date of last successful DB upsert
+}
+
+export const WARD_ASSET_REGISTRY: WardAssetEntry[] = [
+  // ... one entry per municipality
+];
+```
+
+**Step 0D — Verification log:**
+For every municipality in the registry, record:
+- `verified: true/false` on each source
+- If a source returned EPSG:3857 instead of WGS84, note it and add `outSR: 4326`
+- If a source had null geometries, mark `verified: false` and try fallback
+- If all sources failed for a municipality, still include the entry with `verified: false` — it goes in the registry, just doesn't get ingested until fixed
+
+The registry is committed to git. It is the audit trail. Every municipality George has ever asked to support is in this file forever, with its verification status.
 
 **Already verified sources (do not re-research these):**
 
