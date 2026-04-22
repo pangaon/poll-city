@@ -338,6 +338,7 @@ export default function AtlasAllMapClient() {
   // Sidebar state
   const [wardSearch, setWardSearch] = useState("");
   const [collapsedMunis, setCollapsedMunis] = useState<Set<string>>(new Set());
+  const [streetSearch, setStreetSearch] = useState("");
 
   // Campaign DB overlay
   const [contactsOverlay, setContactsOverlay] = useState<{ contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats } | null>(null);
@@ -393,6 +394,7 @@ export default function AtlasAllMapClient() {
   useEffect(() => {
     setAddresses(null); setStreets([]); setTurfs([]);
     setDisplayAddresses(null); setSelectedAddress(null); setShowTurfPanel(false);
+    setStreetSearch("");
     if (!selectedWard) return;
 
     const addressesApi = getProp(selectedWard.properties as Record<string, unknown>, "addressesApi");
@@ -547,6 +549,10 @@ export default function AtlasAllMapClient() {
 
   const selectedMuni = selectedProps ? getProp(selectedProps, "municipality") : "";
   const muniAccent = MUNI_ACCENT[selectedMuni] ?? "#1D9E75";
+  const filteredStreets = useMemo(() => {
+    const q = streetSearch.toLowerCase().trim();
+    return q ? streets.filter(st => st.name.toLowerCase().includes(q)) : streets;
+  }, [streets, streetSearch]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#050e1c" }}>
@@ -781,6 +787,13 @@ export default function AtlasAllMapClient() {
               </div>
               <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, marginTop: 8 }}>{getProp(selectedProps, "wardName")}</div>
               <div style={{ ...subval, marginTop: 2 }}>{uniqueDoors.toLocaleString()} doors · {streets.length} streets</div>
+              <input
+                type="text"
+                placeholder="Search streets…"
+                value={streetSearch}
+                onChange={e => setStreetSearch(e.target.value)}
+                style={{ width: "100%", marginTop: 8, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "5px 9px", color: "#fff", fontSize: 11, outline: "none", boxSizing: "border-box" }}
+              />
             </div>
 
             <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
@@ -807,8 +820,15 @@ export default function AtlasAllMapClient() {
             <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
               {turfs.length === 0 ? (
                 <div>
-                  <div style={{ padding: "4px 18px 8px", ...labelStyle }}>Street Intelligence ({streets.length} streets)</div>
-                  {streets.map((st, i) => (
+                  <div style={{ padding: "4px 18px 8px", ...labelStyle }}>
+                    Street Intelligence ({streetSearch ? filteredStreets.length + "/" : ""}{streets.length} streets)
+                  </div>
+                  {filteredStreets.length === 0 && streetSearch && (
+                    <div style={{ padding: "14px 18px", color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center" }}>
+                      No streets matching "{streetSearch}"
+                    </div>
+                  )}
+                  {filteredStreets.map((st, i) => (
                     <div key={i} style={{ padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                         <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{st.name}</span>
