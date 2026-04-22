@@ -1,303 +1,124 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import type { Feature, FeatureCollection } from "geojson";
+import { prisma } from "@/lib/prisma";
+import { WARD_ASSET_REGISTRY } from "@/config/ward-asset-registry";
+import { ingestAllMunicipalities } from "@/lib/atlas/ward-ingestor";
 
-const WHITBY_ARCGIS_URL =
-  "https://opendata.arcgis.com/datasets/223810efc31c40b3aff99dd74f809a97_0.geojson";
-const WHITBY_REPRESENT_URL =
-  "https://represent.opennorth.ca/boundaries/?sets=whitby-wards&limit=20&format=json";
-const TORONTO_CKAN_URL =
-  "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards";
-const TORONTO_REPRESENT_URL =
-  "https://represent.opennorth.ca/boundaries/?sets=toronto-wards-2018&limit=30&format=json";
-const MARKHAM_ITEM_ID = "e18e684f2f004f0e98d707cad60234be";
-const MARKHAM_FALLBACK_URL =
-  "https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson";
+// addressesApi lookup — keyed by municipality display name
+const ADDRESSES_API = Object.fromEntries(
+  WARD_ASSET_REGISTRY.map((e) => [e.municipality, e.addressesApi]),
+);
 
-const WARD_COLORS = [
-  { fill: "#1D9E75", stroke: "#0d7a5a" },
-  { fill: "#EF9F27", stroke: "#c47e12" },
-  { fill: "#6366F1", stroke: "#4f51c7" },
-  { fill: "#E24B4A", stroke: "#b83a39" },
-  { fill: "#8B5CF6", stroke: "#7040d4" },
-  { fill: "#0EA5E9", stroke: "#0284c7" },
-  { fill: "#10B981", stroke: "#059669" },
-  { fill: "#F59E0B", stroke: "#d97706" },
-  { fill: "#EC4899", stroke: "#c7277a" },
-  { fill: "#14B8A6", stroke: "#0d9488" },
-  { fill: "#F97316", stroke: "#c2510f" },
-  { fill: "#84CC16", stroke: "#5a8c0e" },
-  { fill: "#06B6D4", stroke: "#0891b2" },
-  { fill: "#A78BFA", stroke: "#7c5ed6" },
-  { fill: "#FB7185", stroke: "#e11d48" },
-  { fill: "#34D399", stroke: "#059669" },
-  { fill: "#FBBF24", stroke: "#d97706" },
-  { fill: "#60A5FA", stroke: "#2563eb" },
-  { fill: "#C084FC", stroke: "#9333ea" },
-  { fill: "#4ADE80", stroke: "#16a34a" },
-  { fill: "#F472B6", stroke: "#db2777" },
-  { fill: "#38BDF8", stroke: "#0284c7" },
-  { fill: "#A3E635", stroke: "#65a30d" },
-  { fill: "#FB923C", stroke: "#ea580c" },
-  { fill: "#E879F9", stroke: "#c026d3" },
-];
+// Accent colours keyed by municipality display name
+const MUNI_FILL = Object.fromEntries(
+  WARD_ASSET_REGISTRY.map((e) => [e.municipality, e.accentColor]),
+);
+const MUNI_STROKE = Object.fromEntries(
+  WARD_ASSET_REGISTRY.map((e) => [e.municipality, e.accentStroke]),
+);
 
-type RawFeature = {
-  type: string;
-  properties: Record<string, unknown> | null;
-  geometry: unknown;
-};
-
-function extractWardName(props: Record<string, unknown>, index: number): string {
-  const raw =
-    (props["AREA_NAME"] as string) ||
-    (props["WARD_NAME"] as string) ||
-    (props["Ward_Name"] as string) ||
-    (props["NAME"] as string) ||
-    (props["name"] as string) ||
-    (props["WARD"] as string);
-  if (raw) {
-    const s = String(raw).trim();
-    return /^\d+$/.test(s) ? `Ward ${s}` : s;
-  }
-  const num =
-    (props["AREA_SHORT_CODE"] as number | string) ||
-    (props["WARD_NUM"] as number | string) ||
-    (props["Ward_Num"] as number | string) ||
-    (props["WARD_NUMBER"] as number | string);
-  if (num != null) return `Ward ${num}`;
-  return `Ward ${index + 1}`;
-}
-
-async function fetchRepresentWards(listUrl: string): Promise<RawFeature[]> {
-  const listRes = await fetch(listUrl, { signal: AbortSignal.timeout(8000) });
-  if (!listRes.ok) return [];
-  const listData = (await listRes.json()) as { objects: Array<{ url: string; name: string }> };
-  const results = await Promise.allSettled(
-    listData.objects.map(async (b) => {
-      const shapeRes = await fetch(
-        `https://represent.opennorth.ca${b.url}simple_shape`,
-        { signal: AbortSignal.timeout(5000) },
-      );
-      if (!shapeRes.ok) return null;
-      const geometry = await shapeRes.json();
-      const rawName = b.name.split("/").pop() ?? b.name;
-      const wardName = rawName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      return { type: "Feature", properties: { WARD_NAME: wardName } as Record<string, unknown>, geometry };
-    }),
-  );
-  return results
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => (r as PromiseFulfilledResult<RawFeature | null>).value)
-    .filter((v): v is RawFeature => v !== null);
-}
-
-async function fetchWhitbyWards(): Promise<RawFeature[]> {
-  // Primary: ArcGIS Open Data
-  try {
-    const res = await fetch(WHITBY_ARCGIS_URL, {
-      next: { revalidate: 86400 },
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { type?: string; features?: RawFeature[] };
-      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-        return data.features ?? [];
-      }
-    }
-  } catch { /* fall through */ }
-
-  // Fallback: Represent OpenNorth API
-  try {
-    const features = await fetchRepresentWards(WHITBY_REPRESENT_URL);
-    if (features.length > 0) return features;
-  } catch { /* give up */ }
-  return [];
-}
-
-type CKANResource = { format: string; url: string; name: string };
-
-async function fetchTorontoWards(): Promise<RawFeature[]> {
-  try {
-    const pkgRes = await fetch(TORONTO_CKAN_URL, {
-      signal: AbortSignal.timeout(8000),
-      headers: { Accept: "application/json" },
-      next: { revalidate: 86400 },
-    });
-    if (!pkgRes.ok) return [];
-    const pkg = (await pkgRes.json()) as {
-      success: boolean;
-      result: { resources: CKANResource[] };
+function buildFeatureCollection(
+  rows: Array<{
+    municipality: string;
+    wardName: string;
+    wardNumber: number | null;
+    wardIndex: number;
+    geojsonFeature: unknown;
+    updatedAt: Date;
+  }>,
+): FeatureCollection {
+  const features: Feature[] = rows.map((row) => {
+    const stored = row.geojsonFeature as Record<string, unknown>;
+    return {
+      ...(stored as Feature),
+      properties: {
+        ...((stored.properties as Record<string, unknown>) ?? {}),
+        wardName: row.wardName,
+        wardNumber: row.wardNumber,
+        wardIndex: row.wardIndex,
+        municipality: row.municipality,
+        addressesApi: ADDRESSES_API[row.municipality] ?? `/api/atlas/${row.municipality.toLowerCase().replace(/\s+/g, "-")}-addresses`,
+        wardFill: MUNI_FILL[row.municipality] ?? "#6366F1",
+        wardStroke: MUNI_STROKE[row.municipality] ?? "#4f51c7",
+      },
     };
-    if (!pkg.success) return [];
-    const resources = pkg.result.resources;
-    const gjResource =
-      resources.find(
-        (r) =>
-          r.format.toUpperCase() === "GEOJSON" &&
-          r.name.includes("4326") &&
-          !r.url.includes("datastore/dump"),
-      ) ??
-      resources.find(
-        (r) =>
-          (r.format.toLowerCase().includes("geojson") ||
-            r.format.toLowerCase() === "geo json") &&
-          !r.url.includes("datastore/dump"),
-      ) ??
-      resources.find(
-        (r) =>
-          r.format.toLowerCase().includes("geojson") ||
-          r.format.toLowerCase() === "geo json",
-      );
-    if (!gjResource?.url) return [];
-    const dataRes = await fetch(gjResource.url, {
-      signal: AbortSignal.timeout(20000),
-      headers: { Accept: "application/json" },
-      next: { revalidate: 86400 },
-    });
-    if (!dataRes.ok) return [];
-    const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
-    if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) >= 20) {
-      return data.features ?? [];
-    }
-  } catch { /* fall through */ }
+  });
 
-  // Fallback: Represent OpenNorth API
-  try {
-    const features = await fetchRepresentWards(TORONTO_REPRESENT_URL);
-    if (features.length > 0) return features;
-  } catch { /* give up */ }
-  return [];
+  return { type: "FeatureCollection", features };
 }
 
-async function fetchMarkhamWards(): Promise<RawFeature[]> {
+export async function GET(req: NextRequest) {
   try {
-    const metaRes = await fetch(
-      `https://www.arcgis.com/sharing/rest/content/items/${MARKHAM_ITEM_ID}?f=json`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) },
-    );
-    if (metaRes.ok) {
-      const meta = (await metaRes.json()) as { url?: string };
-      if (meta.url) {
-        const queryUrl = `${meta.url}/0/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=100`;
-        const dataRes = await fetch(queryUrl, {
-          next: { revalidate: 86400 },
-          signal: AbortSignal.timeout(10000),
-        });
-        if (dataRes.ok) {
-          const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
-          if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-            return data.features ?? [];
-          }
-        }
-      }
-    }
-  } catch { /* fall through */ }
-
-  try {
-    const res = await fetch(MARKHAM_FALLBACK_URL, {
-      next: { revalidate: 86400 },
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(10000),
+    // ── Layer 2: DB ────────────────────────────────────────────────────────────
+    let rows = await prisma.wardBoundary.findMany({
+      orderBy: [
+        { municipality: "asc" },
+        { wardNumber: "asc" },
+        { wardName: "asc" },
+      ],
+      select: {
+        municipality: true,
+        wardName: true,
+        wardNumber: true,
+        wardIndex: true,
+        geojsonFeature: true,
+        updatedAt: true,
+      },
     });
-    if (res.ok) {
-      const data = (await res.json()) as { type?: string; features?: RawFeature[] };
-      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-        return data.features ?? [];
-      }
-    }
-  } catch { /* give up */ }
-  return [];
-}
 
-const BRAMPTON_ITEM_ID = "61b3e12fb4d74d078a15512dc3baf568";
-const BRAMPTON_LAYER = 3;
-// Brampton GeoHub meta endpoint returns HTML (not JSON) from server environments.
-// Direct GeoJSON download from GeoHub/hub.arcgis.com returns EPSG:3857, not WGS84 — MapLibre can't render it.
-// Represent OpenNorth is the reliable WGS84 source.
-const BRAMPTON_REPRESENT_URL = "https://represent.opennorth.ca/boundaries/?sets=brampton-wards&limit=20&format=json";
-const BRAMPTON_GEOHUB_META = `https://geohub.brampton.ca/sharing/rest/content/items/${BRAMPTON_ITEM_ID}?f=json`;
-
-async function fetchBramptonWards(): Promise<RawFeature[]> {
-  // Primary: Represent OpenNorth API — WGS84 guaranteed, reliable from Vercel
-  try {
-    const features = await fetchRepresentWards(BRAMPTON_REPRESENT_URL);
-    if (features.length > 0) return features;
-  } catch { /* fall through */ }
-
-  // Secondary: Brampton GeoHub REST API with outSR=4326 (may work if meta endpoint is accessible)
-  try {
-    const metaRes = await fetch(BRAMPTON_GEOHUB_META, {
-      next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000),
-    });
-    if (metaRes.ok) {
-      const meta = (await metaRes.json()) as { url?: string };
-      if (meta.url) {
-        const queryUrl =
-          `${meta.url}/${BRAMPTON_LAYER}/query` +
-          `?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=100`;
-        const dataRes = await fetch(queryUrl, {
-          next: { revalidate: 86400 }, signal: AbortSignal.timeout(12000),
-        });
-        if (dataRes.ok) {
-          const data = (await dataRes.json()) as { type?: string; features?: RawFeature[] };
-          if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-            return data.features ?? [];
-          }
-        }
-      }
-    }
-  } catch { /* give up */ }
-  // NOTE: The direct GeoHub/hub.arcgis.com GeoJSON download is intentionally omitted —
-  // it returns EPSG:3857 (Web Mercator) coordinates which MapLibre silently rejects.
-  return [];
-}
-
-const MUNI_CONFIG = [
-  { name: "Whitby",   addressesApi: "/api/atlas/whitby-addresses",   fetch: fetchWhitbyWards   },
-  { name: "Toronto",  addressesApi: "/api/atlas/toronto-addresses",  fetch: fetchTorontoWards  },
-  { name: "Markham",  addressesApi: "/api/atlas/markham-addresses",  fetch: fetchMarkhamWards  },
-  { name: "Brampton", addressesApi: "/api/atlas/brampton-addresses", fetch: fetchBramptonWards },
-] as const;
-
-export async function GET() {
-  const results = await Promise.allSettled(MUNI_CONFIG.map((m) => m.fetch()));
-
-  let globalIndex = 0;
-  const allFeatures: Feature[] = [];
-
-  for (let i = 0; i < MUNI_CONFIG.length; i++) {
-    const muni = MUNI_CONFIG[i];
-    const result = results[i];
-    const rawFeatures: RawFeature[] =
-      result.status === "fulfilled" ? result.value : [];
-
-    for (const f of rawFeatures) {
-      const color = WARD_COLORS[globalIndex % WARD_COLORS.length];
-      const props = f.properties ?? {};
-      allFeatures.push({
-        ...(f as Feature),
-        properties: {
-          ...props,
-          wardIndex: globalIndex,
-          wardName: extractWardName(props, globalIndex),
-          wardFill: color.fill,
-          wardStroke: color.stroke,
-          municipality: muni.name,
-          addressesApi: muni.addressesApi,
+    // ── Lazy seed: if DB is empty, run ingestor now ───────────────────────────
+    if (rows.length === 0) {
+      await ingestAllMunicipalities();
+      rows = await prisma.wardBoundary.findMany({
+        orderBy: [
+          { municipality: "asc" },
+          { wardNumber: "asc" },
+          { wardName: "asc" },
+        ],
+        select: {
+          municipality: true,
+          wardName: true,
+          wardNumber: true,
+          wardIndex: true,
+          geojsonFeature: true,
+          updatedAt: true,
         },
       });
-      globalIndex++;
     }
-  }
 
-  if (allFeatures.length === 0) {
+    if (rows.length === 0) {
+      return NextResponse.json(
+        { error: "Ward boundary data unavailable — run /api/atlas/seed-wards first" },
+        { status: 503 },
+      );
+    }
+
+    const fc = buildFeatureCollection(rows);
+    const lastUpdated = rows.reduce((max, r) => r.updatedAt > max ? r.updatedAt : max, rows[0].updatedAt);
+    const etag = `"wards-${lastUpdated.getTime()}"`;
+
+    // Conditional GET — return 304 if client already has current data (great for mobile apps)
+    const ifNoneMatch = req.headers.get("if-none-match");
+    if (ifNoneMatch === etag) {
+      return new NextResponse(null, { status: 304 });
+    }
+
+    return NextResponse.json(fc, {
+      headers: {
+        // Edge cache: serve from CDN for 1 hour, allow stale for 24h while revalidating
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        "ETag": etag,
+        "X-Ward-Count": String(rows.length),
+        "X-Last-Refreshed": lastUpdated.toISOString(),
+        "X-Municipalities": [...new Set(rows.map((r) => r.municipality))].join(", "),
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to load ward boundaries from all sources" },
+      { error: `Ward boundary service error: ${message}` },
       { status: 502 },
     );
   }
-
-  const fc: FeatureCollection = { type: "FeatureCollection", features: allFeatures };
-  return NextResponse.json(fc);
 }

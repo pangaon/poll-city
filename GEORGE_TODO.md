@@ -31,6 +31,20 @@ npx prisma db push
   npx prisma db push
   ```
 
+- [ ] **4. 🗺️ Seed Ontario ward boundaries into DB — run AFTER item 3**
+
+  After `npx prisma db push` completes, hit this URL in your browser (replace YOUR_CRON_SECRET with the value from `.env.local`):
+
+  ```
+  https://app.poll.city/api/atlas/seed-wards?secret=YOUR_CRON_SECRET
+  ```
+
+  Wait for the JSON response — it will show how many wards were seeded per municipality.
+  Then hard-refresh `/atlas/map` — all Ontario municipalities should render.
+
+  After seeding, the daily cron at 3am will keep the DB fresh automatically.
+  You will never need to re-run this manually unless the DB is wiped.
+
   What this fixes:
   - `intelligenceEnabled` column on Campaign (Analytics Historical tab crashes without it)
   - `ConsentRecord` model + 3 enums (CASL Compliance page and email consent filter crash without it)

@@ -94,6 +94,10 @@
     {
       "path": "/api/cron/calendar-reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-wards",
+      "schedule": "0 3 * * *"
     }
   ]
 }

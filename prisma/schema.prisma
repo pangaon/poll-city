@@ -9160,3 +9160,23 @@ model RepMonitoredSource {
   @@index([campaignId, active])
   @@map("rep_monitored_sources")
 }
+
+// ── Ward Boundary Cache ────────────────────────────────────────────────────────
+
+/// DB-cached ward boundaries — populated by /api/atlas/seed-wards, refreshed by daily cron
+/// Never fetched live at request time — all map requests read from here
+model WardBoundary {
+  id             String   @id @default(cuid())
+  municipality   String   // display name: "Whitby", "Toronto", "Brampton"
+  wardName       String   // "Ward 1", "Ward Centre"
+  wardNumber     Int?     // numeric sort key extracted from wardName; null for non-numeric
+  wardIndex      Int      // global index across all municipalities (MapLibre promoteId)
+  geojsonFeature Json     // full GeoJSON Feature { type, geometry, properties }
+  sourceUrl      String   // audit trail — which URL this geometry came from
+  fetchedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([municipality, wardName])
+  @@index([municipality])
+  @@map("ward_boundaries")
+}
