@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, CheckCircle, Clock, ChevronRight, X, Pencil, Trash2, UserCircle2, CalendarDays, AlignLeft, AlertCircle } from "lucide-react";
-import { Button, Modal, FormField, Input, Textarea, EmptyState } from "@/components/ui";
+import { Button, Modal, FormField, Input, Textarea, EmptyState, TeamMemberAutocomplete } from "@/components/ui";
 import { formatDate, fullName, cn } from "@/lib/utils";
 import { TASK_STATUS_LABELS, TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TaskStatus, TaskPriority } from "@/types";
 import { useForm } from "react-hook-form";
@@ -515,16 +515,12 @@ function TaskDetailPanel({
           <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1">
             <UserCircle2 className="w-3 h-3" />Assigned To
           </label>
-          <select
-            value={task.assignedTo?.id ?? ""}
-            onChange={e => onUpdate(task.id, { assignedToId: e.target.value || null })}
-            className="mt-1 w-full text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Unassigned</option>
-            {teamMembers.map(m => (
-              <option key={m.id} value={m.id}>{m.name ?? m.email}</option>
-            ))}
-          </select>
+          <TeamMemberAutocomplete
+            teamMembers={teamMembers}
+            value={task.assignedTo?.id ?? null}
+            onChange={id => onUpdate(task.id, { assignedToId: id })}
+            className="mt-1"
+          />
         </div>
 
         {/* Due date */}
@@ -622,7 +618,7 @@ function CreateTaskModal({
   teamMembers: { id: string; name: string | null; email: string | null }[];
   onCreated: () => void;
 }) {
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateTaskInput>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<CreateTaskInput>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: { campaignId, priority: "medium", status: "pending" },
   });
@@ -663,10 +659,12 @@ function CreateTaskModal({
           </FormField>
         </div>
         <FormField label="Assign To" help={{ content: "Who on your team is responsible for completing this task. They will see it on their task list.", tip: "Unassigned tasks can get missed — assign them to someone." }}>
-          <select {...register("assignedToId")} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Unassigned</option>
-            {teamMembers.map(m => <option key={m.id} value={m.id}>{m.name ?? m.email}</option>)}
-          </select>
+          <input type="hidden" {...register("assignedToId")} />
+          <TeamMemberAutocomplete
+            teamMembers={teamMembers}
+            value={watch("assignedToId") ?? null}
+            onChange={id => setValue("assignedToId", id ?? undefined)}
+          />
         </FormField>
         <div className="flex gap-3 pt-2 border-t border-gray-100">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>

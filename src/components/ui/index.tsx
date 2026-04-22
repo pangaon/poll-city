@@ -458,3 +458,4 @@ export { AddressAutocomplete } from "./address-autocomplete";
 export type { AddressResult } from "./address-autocomplete";
 export { WriteAssistTextarea } from "./write-assist-textarea";
 export type { WriteAssistContext } from "./write-assist-textarea";
+export { TeamMemberAutocomplete } from "./team-member-autocomplete";
