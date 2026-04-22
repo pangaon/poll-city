@@ -101,7 +101,27 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Print Vendor Portal + AtlasMapClient Phase 2 complete)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Phase 4 complete)
+
+### AtlasMapClient Phase 4 — True Unified Pan Map — DONE (commit 7c9637b)
+
+**What shipped:**
+- `GET /api/atlas/all-wards` — fetches Whitby (ArcGIS), Toronto (CKAN), Markham (ArcGIS) wards concurrently, merges into one FeatureCollection. Adds `municipality` + `addressesApi` properties to every ward feature. Global `wardIndex` for hover state. Falls back gracefully if any one city fails.
+- `src/components/atlas/atlas-all-map-client.tsx` — 987-line standalone map component (no MunicipalityConfig prop). Initial view: `{ longitude: -79.2, latitude: 43.75, zoom: 9 }` — shows GTA. Per-ward address loading via `feature.properties.addressesApi`. Municipality-coloured accent in the ops panel (green=Whitby, blue=Toronto, amber=Markham). Campaign DB overlay still works.
+- `src/app/(app)/atlas/map/page.tsx` + `map-wrapper.tsx` — client wrapper pattern (avoids `next/dynamic` directly in a server page.tsx inside `(app)`). Page title: "Ontario Map — Poll City".
+- `src/components/layout/sidebar.tsx` — "Ontario Map" added as first entry in Polling Atlas section.
+- **Sidebar grouped by municipality** — Whitby / Toronto / Markham each have a collapse toggle. Ward search filters across all municipalities.
+
+**Navigation path:** Sidebar → Polling Atlas → Ontario Map → `/atlas/map` → see GTA → click a ward → zooms in + loads doors → Begin Canvassing.
+
+**No schema changes. No new dependencies.**
+
+**George's action:** None required. Browser confirmation pending — verify:
+1. `/atlas/map` loads without crash
+2. Ward boundaries appear for all 3 cities (may take 10-30s for external APIs)
+3. Click a ward → zooms in → addresses load
+
+---
 
 ### Print Vendor Portal — DONE (commit f393872, P0 cleared)
 
