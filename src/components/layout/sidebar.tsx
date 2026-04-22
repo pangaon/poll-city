@@ -176,11 +176,12 @@ const POLLING_ATLAS_SECTION: NavSection = {
   id: "polling_atlas",
   label: "Polling Atlas",
   items: [
-    { href: "/atlas/import",    icon: Compass,       label: "Atlas Command",     isNew: true },
-    { href: "/atlas/boundaries", icon: MapPinned,    label: "Boundary Manager",  isNew: true },
-    { href: "/atlas/results",    icon: BarChart2,    label: "Historical Results", isNew: true },
-    { href: "/atlas/calculator", icon: Calculator,   label: "Swing Calculator",  isNew: true },
-    { href: "/atlas/demographics", icon: BookOpen,   label: "Demographics",      isNew: true },
+    { href: "/atlas/map",          icon: Map,           label: "Ontario Map",       isNew: true },
+    { href: "/atlas/import",       icon: Compass,       label: "Atlas Command",     isNew: true },
+    { href: "/atlas/boundaries",   icon: MapPinned,     label: "Boundary Manager",  isNew: true },
+    { href: "/atlas/results",      icon: BarChart2,     label: "Historical Results", isNew: true },
+    { href: "/atlas/calculator",   icon: Calculator,    label: "Swing Calculator",  isNew: true },
+    { href: "/atlas/demographics", icon: BookOpen,      label: "Demographics",      isNew: true },
   ],
 };
 
