@@ -101,18 +101,23 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Unification complete)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Phase 2 complete)
+
+### AtlasMapClient Phase 2 — Campaign DB Overlay — DONE (commit 1c67f8c)
+
+**What shipped:**
+- `GET /api/atlas/contacts-overlay?wardName=...` — returns per-address campaign contact intelligence (supportLevel, skipHouse, visitCount) for the active campaign. Auth-gated: 401 for anonymous → base map shows, no error.
+- `enrichAddresses()` in `atlas-map-client.tsx` — normalises `civic + street` key to match OSM feature properties, attaches supportLevel / skipHouse / visited / visitCount to each GeoJSON point.
+- `addrPointLayer` updated with MapLibre expression-based coloring: green=strong support, teal=leaning support, amber=undecided, orange=leaning opposition, red=strong opposition, grey=Do Not Knock, gold stroke=visited door.
+- Ward ops panel now shows Campaign Data section: totalContacts, doorsWithData, doorsVisited, supporters — only visible when campaign data exists.
+- Address detail popup shows Support Level badge, Door Knocks count, Do Not Knock warning when overlay data is available.
+- Support level legend floats at bottom of map when campaign data is loaded.
+
+**No schema changes** — uses existing Contact model, Interaction.type=door_knock, Contact.skipHouse, Contact.supportLevel.
 
 ### AtlasMapClient Unification — DONE (commit e88ed2e)
 
-**What shipped:**
-- `src/components/atlas/atlas-map-client.tsx` — single unified map component accepting `MunicipalityConfig` prop
-- Each city client is now a thin wrapper (~25 lines): `whitby-map-client.tsx`, `toronto-map-client.tsx`, `markham-map-client.tsx`
-- All shared logic (turf cutting, address parsing, ward interaction, hover/click, clustering) lives once
-- Preload-all pattern extended to all three cities: on ward load, all ward bboxes fetched concurrently → dim blue background dots; selected ward renders bright green on top
-- Per-city feature flags in config: `commercialFilter`, `canvassingModes`, `timeEnforcement`, `wardSearch` (Whitby); `wardSearch` (Toronto); `schoolWardsApi` (Toronto school board overlays)
-
-**Architecture (for next session):**
+**Architecture:**
 ```
 MunicipalityConfig {
   displayName, displayLocation, loadingText, dataAttribution, footerText,
@@ -121,8 +126,9 @@ MunicipalityConfig {
   features: { commercialFilter?, canvassingModes?, timeEnforcement?, wardSearch? }
 }
 ```
-
-**Phase 2 (next session):** Connect campaign DB — support levels on doors, visit history, household counts, DNK suppression from DB contacts. The `whitby-dnk` API is already live and can be added to the Whitby config as `dnkApi`.
+- Single unified component at `src/components/atlas/atlas-map-client.tsx`
+- City wrappers (25 lines each): `whitby-map-client.tsx`, `toronto-map-client.tsx`, `markham-map-client.tsx`
+- Preload-all pattern: all ward bboxes fetched concurrently → dim blue dots everywhere; selected ward renders bright green on top
 
 ---
 

@@ -83,7 +83,7 @@ Everything below is built, pushed, and accessible in the app.
 | Task | Status | Notes |
 |---|---|---|
 | AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | DONE — commit e88ed2e | src/components/atlas/atlas-map-client.tsx. City wrappers: whitby/toronto/markham-map-client.tsx. Preload-all pattern included (all cities). |
-| AtlasMapClient Phase 2 — campaign DB overlay: support levels on doors, visit history, DNK suppression, ward campaign stats | CLAIMED 2026-04-22 | New API /api/atlas/contacts-overlay + AtlasMapClient enrichment layer. Auth-gated — anonymous users see base map, logged-in campaign users see colored dots. |
+| AtlasMapClient Phase 2 — campaign DB overlay: support levels on doors, visit history, DNK suppression, ward campaign stats | DONE — commit 1c67f8c | GET /api/atlas/contacts-overlay (auth-gated, 401=silent). enrichAddresses() wires contact data to OSM dots. Expression-based layer colors: green=strong support → red=strong opposition, grey=DNK, gold stroke=visited. Ward panel shows campaign stats. Address popup shows support level + visit count. No schema changes needed. |
 
 ### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 
