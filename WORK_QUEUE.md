@@ -78,6 +78,12 @@ Everything below is built, pushed, and accessible in the app.
 
 ## REMAINING WORK
 
+### ACTIVE BUILD (2026-04-18 → 2026-04-22)
+
+| Task | Status | Notes |
+|---|---|---|
+| AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | CLAIMED 2026-04-22 | All 3 city clients become thin wrappers. Ref: SESSION_HANDOFF.md opener. |
+
 ### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 
 | Task | Status | Notes |
