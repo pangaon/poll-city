@@ -101,7 +101,7 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Toronto ATLAS + conflict resolution)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — Whitby Phase 1 + Task Autocomplete + Session Close)
 
 ### Build
 - **GREEN** — latest commit `9780c2f` on origin/main, working tree clean
@@ -110,25 +110,23 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ### ⚠️ BUILD-UNIFYING AGENT — READ THIS FIRST
 
-**What this session did:**
-- Resolved merge conflict in `src/app/(app)/communications/communications-client.tsx` — kept HEAD (upstream). Working tree is now clean.
+**What shipped this session (Whitby Phase 1 + tasks autocomplete):**
+- `whitby-addresses` API: fixed 0-doors bug — bbox ArcGIS spatial query replaces full 35k-point download (commits from prior context)
+- `whitby-dnk` API: new authenticated DNK endpoint (`/api/atlas/whitby-dnk`) using `skipHouse` field
+- Whitby map: commercial filter toggle, 9am–9pm Ontario time enforcement, GOTV/Persuasion tab, ward search filter
+- `markham-map-client.tsx`: stub created (parallel session needed it)
+- **Tasks module**: `TeamMemberAutocomplete` — searchable dropdown replaces plain `<select>` in both task detail panel and create modal. Commit `0f43000`.
 
 **Stash situation — important:**
-- `stash@{0}: comms-client-segment-work` is sitting on the stack. It contains in-progress comms work from the whitby session: `CreateSegmentModal` (segment builder) + `CreateRuleModal` refactor for `AutoTriggersPanel`. It also adds `ChevronDown` to lucide imports and `segmentsLoading` state.
-- **Do NOT pop this stash blindly.** It will conflict again because we resolved by keeping HEAD. Review with `git stash show -p stash@{0}` before applying.
-- The stash's comms changes need to be manually re-applied and verified against the current file before pushing.
+- `stash@{0}: comms-client-segment-work` is sitting on the stack. It contains in-progress comms work: `CreateSegmentModal` (segment builder) + `CreateRuleModal` refactor for `AutoTriggersPanel`. Also adds `ChevronDown` to lucide imports and `segmentsLoading` state.
+- **Do NOT pop this stash blindly.** It conflicted with HEAD previously and was resolved by keeping HEAD. Review with `git stash show -p stash@{0}` before applying.
+- Manually re-apply the non-conflicting parts to `communications-client.tsx`, verify `CreateRuleModal` is fully implemented, then build and push.
 
 **Toronto ATLAS map — fully shipped (no action needed):**
 - Commits `df4631a` → `aa8758b` → `da2c463` → `9780c2f` are all on origin/main
 - Files: `src/app/toronto/page.tsx`, `src/app/toronto/toronto-map-client.tsx`, `src/app/api/atlas/toronto-wards/route.ts`, `src/app/api/atlas/toronto-addresses/route.ts`, `src/app/api/atlas/toronto-school-wards/route.ts`
 - Features: 25 wards (CKAN 4326 GeoJSON), address points (ArcGIS bbox), school board overlays (TDSB/TCDSB/Viamonde/CSDC via SHP), ward search filter
 - `next.config.js` has `unzipper` and `shapefile` in `serverComponentsExternalPackages`
-
-**What still needs doing for comms session:**
-1. `git stash show -p stash@{0}` — review the CreateSegmentModal + CreateRuleModal changes
-2. Manually re-apply the non-conflicting parts to `communications-client.tsx`
-3. Verify `CreateRuleModal` component exists (was it in the stash or is it missing?)
-4. Build and push after applying
 
 **No schema changes this session. No GEORGE_TODO items added.**
 
@@ -307,22 +305,25 @@ In priority order — these block real customers:
 
 ---
 
-## NEXT SESSION OPENER
+## NEXT SESSION OPENER — AtlasMapClient Unification
 
-**Situation:** Address Pre-List Generator backend is live (commit `9affca2`). OSM source works immediately for any Ontario municipality. MPAC and StatsCan sources need one-time import scripts run by George before they're usable.
+**Situation:** Three separate map clients exist and are now all shipped:
+- `src/app/whitby/whitby-map-client.tsx` — most complete (Phase 1 done: bbox addresses, commercial filter, time enforcement, GOTV mode, DNK endpoint, ward search)
+- `src/app/toronto/toronto-map-client.tsx` — 25 wards, school board overlays, ArcGIS bbox addresses, ward search
+- `src/app/markham/markham-map-client.tsx` — stub only (needs implementation)
 
-The frontend for the Address Pre-List Generator lives in the Figma Make prototype — it POSTs to `/api/address-prelist/generate`. The backend is waiting for it.
+**The goal:** Unify into one shared `AtlasMapClient` component (likely `src/components/atlas/atlas-map-client.tsx`) that accepts a municipality config prop. Each city page (`/whitby`, `/toronto`, `/markham`) passes its own config and nothing else.
 
-Next session priorities (in order):
+**MANDATORY: Read SESSION_HANDOFF.md fully before touching any map files.** The Toronto agent specifically flagged this — the handoff contains the stash situation and exact commit state you need to know before building.
 
 **Step 1:** `git pull origin main`
-**Step 2:** Check if new Figma Make pages arrived in `figma_design_pollcity_iosapp/pages/` — port any new screens to `/design-preview/`
-**Step 3:** If the AtlasDataImportScreen is in the Figma pages, wire it to `POST /api/address-prelist/generate`
-**Step 4:** Add `GOOGLE_MAPS_API_KEY` to Vercel if not already done
+**Step 2:** Read this file in full, then read `src/app/whitby/whitby-map-client.tsx` and `src/app/toronto/toronto-map-client.tsx` side by side
+**Step 3:** Design the `MunicipalityConfig` prop interface — wards API URL, addresses API URL, DNK API URL, hard bounds, display name, initial centre/zoom
+**Step 4:** Extract shared logic into `AtlasMapClient` from whitby (the reference implementation)
+**Step 5:** Wire Whitby, Toronto, Markham city pages to pass their configs
+**Step 6:** Build and push
 
-**George's optional imports (can run anytime, don't block anything):**
-- `npx tsx scripts/import-mpac.ts` — Ontario address data (30-90 min, large download)
-- `npx tsx scripts/import-statcan-da.ts` — StatsCan DA demographics (20-40 min)
+**Phase 2 (next session after unification):** Connect campaign DB — support levels on doors, visit history, household counts, DNK suppression from DB contacts. The `whitby-dnk` API is already live and can serve as the pattern.
 
 ---
 
