@@ -64,6 +64,7 @@ npx prisma db push
   - **`PostReactionType` enum**
   - **`PRINT_VENDOR` value** in `Role` enum (Print Vendor Portal — vendor login system)
   - **`userId` column** on `print_shops` table (links a vendor User account to their shop)
+  - **`ward_boundaries` table** — WardBoundary model for DB-cached Ontario ward geometry (Ontario Map 10,000-user election-night architecture)
 
   Steps:
   1. Open your terminal in the poll-city project folder
@@ -153,6 +154,23 @@ npx prisma db push
   Both are required. The public key is safe to expose (used by browsers). The private key must stay secret.
 
   **After adding:** Redeploy (Vercel will auto-deploy on next push, or hit Redeploy in dashboard).
+
+- [ ] **3f. ⚠️ Seed Ontario ward boundaries into DB** (run ONCE after item 3 `npx prisma db push`)
+
+  The `ward_boundaries` table is now in the schema but empty. You need to hit this endpoint once to populate it with all 28 Ontario municipalities. Do this AFTER `npx prisma db push` completes.
+
+  1. Make sure `CRON_SECRET` is set in Vercel (check your `.env.local` for the current value)
+  2. Open in a browser (or curl): `https://app.poll.city/api/atlas/seed-wards?secret=YOUR_CRON_SECRET`
+  3. Wait 30–60 seconds — it fetches from ArcGIS + Represent + CKAN for all 28 cities
+  4. Expected response: `{"total": NNN, "seeded": [...], "failed": []}` — note any "failed" entries
+
+  **What this populates:**
+  - All ward boundaries for: Toronto, Brampton, Markham, Whitby, Vaughan, Mississauga, Oshawa, Ajax, Clarington, Hamilton, Burlington, Oakville, Milton, Guelph, Kitchener, Cambridge, Waterloo, Brantford, Niagara Falls, Richmond Hill, Ottawa, Kingston, Belleville, Peterborough, Barrie, Sudbury, Thunder Bay, London, Windsor, Sarnia
+  - `/atlas/map` will then render all municipalities instantly (no live ArcGIS calls at request time)
+  - The cron at 3am daily (`/api/cron/refresh-wards`) keeps it current automatically
+
+  **If the fetch times out:** Some municipalities may be slow. Re-hit the endpoint — upserts are idempotent.
+  **If "failed" list has entries:** Those municipalities need their source URLs verified — file a note.
 
 - [ ] **4. ⚠️ MPAC source — manual download required (old URL is 404)**
 
