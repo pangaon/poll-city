@@ -34,6 +34,12 @@ const MUNI_ACCENT: Record<string, string> = {
   Brampton: "#8B5CF6",
 };
 
+// Extract numeric ward number for natural sort ("Ward 5 Centre" → 5, "Ward 12" → 12, other → Infinity)
+function wardSortKey(name: string): [number, string] {
+  const m = /\b(\d+)\b/.exec(name);
+  return m ? [parseInt(m[1], 10), name] : [Infinity, name];
+}
+
 // ─── types ───────────────────────────────────────────────────────────────────
 
 type AddrProps = { address: string; civic: string; street: string; postalCode: string; city: string; unit: string; source?: string; supportLevel?: string; skipHouse?: boolean; visited?: boolean; visitCount?: number };
@@ -422,12 +428,19 @@ export default function AtlasAllMapClient() {
       groups.get(muni)!.push(f as Feature);
     }
     const search = wardSearch.toLowerCase().trim();
-    return Array.from(groups.entries()).map(([name, features]) => ({
-      name,
-      features: search
+    return Array.from(groups.entries()).map(([name, features]) => {
+      const filtered = search
         ? features.filter(f => getProp(f.properties as Record<string, unknown>, "wardName").toLowerCase().includes(search))
-        : features,
-    })).filter(g => g.features.length > 0);
+        : features;
+      const sorted = [...filtered].sort((a, b) => {
+        const [an, as_] = wardSortKey(getProp(a.properties as Record<string, unknown>, "wardName"));
+        const [bn, bs_] = wardSortKey(getProp(b.properties as Record<string, unknown>, "wardName"));
+        return an !== bn ? an - bn : as_.localeCompare(bs_);
+      });
+      return { name, features: sorted };
+    })
+      .filter(g => g.features.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [wards, wardSearch]);
 
   const toggleMuni = useCallback((name: string) => {
