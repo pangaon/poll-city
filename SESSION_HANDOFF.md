@@ -142,18 +142,36 @@ model WardBoundary {
 
 George action required: `npx prisma db push` after schema change committed.
 
-### Verified source URLs (researched this session — do NOT guess alternatives)
+### Scope: ALL Ontario municipalities, not just the current 4
+
+**George's directive:** Add every municipality with ward data available at `https://municipalities-ontarioregion.hub.arcgis.com/pages/ontario-open-data` to the Ontario Map.
+
+**What the next session must do first (before building infrastructure):**
+1. Query the hub API: `https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100` — get every Ontario ward boundary dataset
+2. Also query Represent OpenNorth boundary sets: `https://represent.opennorth.ca/boundary-sets/?format=json&limit=200` — filter for Ontario municipalities with `-wards` or `-ward` slugs
+3. Cross-reference both sources. Build a complete `WARD_SOURCES` config covering every discoverable Ontario municipality.
+4. For each municipality found: verify the service URL returns valid GeoJSON with real geometry before adding to config
+5. Document which municipalities were found, which have verified sources, which had no usable data
+
+**Already verified sources (do not re-research these):**
 
 | Municipality | Primary source | Fallback |
 |---|---|---|
 | Whitby | `https://opendata.arcgis.com/datasets/223810efc31c40b3aff99dd74f809a97_0.geojson` | Represent `whitby-wards` |
-| Toronto | CKAN `https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards` → extract GeoJSON resource URL | Represent `toronto-wards-2018` |
-| Markham | ArcGIS item `e18e684f2f004f0e98d707cad60234be`, layer 0 on arcgis.com (works) | `https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson` |
-| Brampton | Represent `brampton-wards` (WGS84 guaranteed — current working solution) | Peel Region ArcGIS `https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Peel_Ward_Boundary/FeatureServer/0` filter Municipality=Brampton |
+| Toronto | CKAN `https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards` → extract GeoJSON URL | Represent `toronto-wards-2018` |
+| Markham | ArcGIS item `e18e684f2f004f0e98d707cad60234be`, layer 0 via arcgis.com | `https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson` |
+| Brampton | Represent `brampton-wards` (WGS84 guaranteed) | Peel Region `https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Peel_Ward_Boundary/FeatureServer/0` |
+| Milton | `https://api.milton.ca/arcgis/rest/services/Datasets/Wards/MapServer/0` | Represent if slug exists |
+| Barrie (addresses) | `https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressvW/MapServer/0` | — |
+| Brampton addresses | `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14` (WKID 2150 → must use `outSR=4326`) | — |
 
-**Brampton address points verified URL:** `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14`
-- Source CRS: WKID 2150 (projected) — MUST add `outSR=4326` to all queries
-- Update `brampton-addresses/route.ts` to use this URL instead of geohub.brampton.ca
+**Represent slugs to check** (query `represent.opennorth.ca/boundary-sets/` for full list of Ontario -wards sets): ajax-pickering-wards, barrie-wards, belleville-wards, brampton-wards, brantford-wards, burlington-wards, cambridge-wards, clarington-wards, guelph-wards, hamilton-wards, kingston-wards, kitchener-wards, london-wards, markham-wards, mississauga-wards, niagara-falls-wards, oakville-wards, oshawa-wards, ottawa-wards, peterborough-wards, richmond-hill-wards, sarnia-wards, sudbury-wards, thunder-bay-wards, toronto-wards-2018, vaughan-wards, waterloo-wards, whitby-wards, windsor-wards
+
+**Each municipality added to `WARD_SOURCES` needs:**
+- `municipality` string (display name)
+- `addressesApi` path (even if stub — `/api/atlas/[slug]-addresses`)
+- `accentColor` (extend `MUNI_ACCENT` in `atlas-all-map-client.tsx`)
+- Verified primary + fallback URL
 
 ### Build sequence (ordered, do not skip steps)
 
