@@ -369,7 +369,7 @@ function BroadcastPanel({
             <div className="flex justify-between items-center border-b border-[#2979FF]/20 pb-3">
               <h3 className="text-[11px] font-black text-[#AAB2FF] uppercase tracking-[0.2em]">Target Vector</h3>
               <Link
-                href="/app/communications/inbox"
+                href="/communications/inbox"
                 className="text-[10px] text-[#00E5FF] hover:underline tracking-widest"
               >
                 View Matrix
@@ -899,6 +899,11 @@ function AutoTriggersPanel({ campaignId }: { campaignId: string }) {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newTrigger, setNewTrigger] = useState<string>("new_contact");
+  const [newDesc, setNewDesc] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetch(`/api/comms/automations?campaignId=${campaignId}`)
@@ -907,6 +912,31 @@ function AutoTriggersPanel({ campaignId }: { campaignId: string }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [campaignId]);
+
+  async function createRule() {
+    if (!newName.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/comms/automations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, name: newName.trim(), trigger: newTrigger, description: newDesc.trim() || undefined }),
+      });
+      const data = await res.json() as { rule?: AutomationRule };
+      if (res.ok && data.rule) {
+        setRules(prev => [data.rule!, ...prev]);
+        setShowNew(false);
+        setNewName(""); setNewTrigger("new_contact"); setNewDesc("");
+        toast.success("Rule created");
+      } else {
+        toast.error("Failed to create rule");
+      }
+    } catch {
+      toast.error("Failed to create rule");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function toggleActive(rule: AutomationRule) {
     setToggling(rule.id);
@@ -937,13 +967,52 @@ function AutoTriggersPanel({ campaignId }: { campaignId: string }) {
             {rules.filter(r => r.isActive).length} active
           </span>
         </h2>
-        <Link
-          href="/app/communications"
+        <button
+          onClick={() => setShowNew(v => !v)}
           className="px-4 py-2 border border-[#2979FF]/40 rounded text-[11px] font-bold uppercase tracking-widest text-[#AAB2FF] hover:bg-[#2979FF]/10 transition-colors flex items-center gap-2"
         >
           <Plus size={14} /> New Rule
-        </Link>
+        </button>
       </div>
+
+      {showNew && (
+        <div className="mb-6 bg-[#0F1440]/80 border border-[#2979FF]/40 rounded-lg p-4 space-y-3">
+          <div className="text-[11px] font-black uppercase tracking-widest text-[#AAB2FF] mb-1">New Automation Rule</div>
+          <input
+            className="w-full bg-[#050A1F] border border-[#2979FF]/40 text-[#F5F7FF] text-xs p-2 rounded outline-none focus:border-[#00E5FF]"
+            placeholder="Rule name (e.g. Welcome new contacts)"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+          />
+          <select
+            value={newTrigger}
+            onChange={e => setNewTrigger(e.target.value)}
+            className="w-full bg-[#050A1F] border border-[#2979FF]/40 text-[#F5F7FF] text-xs p-2 rounded outline-none focus:border-[#00E5FF]"
+          >
+            {Object.entries(TRIGGER_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <textarea
+            className="w-full bg-[#050A1F] border border-[#2979FF]/40 text-[#F5F7FF] text-xs p-2 rounded outline-none focus:border-[#00E5FF] resize-none"
+            rows={2}
+            placeholder="Description (optional)"
+            value={newDesc}
+            onChange={e => setNewDesc(e.target.value)}
+          />
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowNew(false)} className="px-3 py-1.5 text-[10px] text-[#6B72A0] hover:text-[#AAB2FF]">Cancel</button>
+            <button
+              onClick={createRule}
+              disabled={creating || !newName.trim()}
+              className="px-4 py-1.5 bg-[#2979FF] text-white text-[10px] font-bold uppercase rounded hover:bg-[#2979FF]/80 disabled:opacity-40 flex items-center gap-1.5"
+            >
+              {creating ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+              Create Rule
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -953,13 +1022,7 @@ function AutoTriggersPanel({ campaignId }: { campaignId: string }) {
         <div className="flex flex-col items-center justify-center py-20 text-[#6B72A0]">
           <Zap size={48} className="mb-4 opacity-20" />
           <div className="text-sm font-bold mb-1">No automation rules yet</div>
-          <div className="text-xs">Create trigger-based sequences to automate outreach</div>
-          <Link
-            href="/app/communications"
-            className="mt-4 px-5 py-2 bg-[#2979FF]/20 border border-[#2979FF]/40 rounded text-[11px] font-bold text-[#2979FF] hover:bg-[#2979FF]/30 transition-colors"
-          >
-            Go to full automation builder →
-          </Link>
+          <div className="text-xs">Click &ldquo;New Rule&rdquo; above to create your first automation</div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -1102,7 +1165,7 @@ export default function CommunicationsClient({
           })}
 
           <Link
-            href="/app/communications/qa"
+            href="/communications/qa"
             className="w-full flex items-center justify-between px-3 py-2.5 rounded text-[11px] font-bold uppercase tracking-widest text-[#AAB2FF] hover:bg-[#2979FF]/10 border border-transparent transition-all"
           >
             <span className="flex items-center gap-2">
@@ -1145,9 +1208,9 @@ export default function CommunicationsClient({
         {/* Bottom quick links */}
         <div className="p-3 border-t border-[#2979FF]/20 space-y-0.5">
           {[
-            { href: "/app/communications/email", icon: Mail,     label: "Email Campaigns" },
-            { href: "/app/communications/sms",   icon: Phone,    label: "SMS Centre" },
-            { href: "/app/communications/inbox", icon: Settings, label: "Full Comms Suite" },
+            { href: "/communications/email", icon: Mail,     label: "Email Campaigns" },
+            { href: "/communications/sms",   icon: Phone,    label: "SMS Centre" },
+            { href: "/communications/inbox", icon: Settings, label: "Full Comms Suite" },
           ].map(item => {
             const Icon = item.icon;
             return (
