@@ -22,7 +22,10 @@ function extractWardName(props: Record<string, unknown>, index: number): string 
     (props["NAME"] as string) ||
     (props["name"] as string) ||
     (props["WARD"] as string);
-  if (raw) return raw;
+  if (raw) {
+    const s = String(raw).trim();
+    return /^\d+$/.test(s) ? `Ward ${s}` : s;
+  }
   const num =
     (props["WARD_NUM"] as number | string) ||
     (props["Ward_Num"] as number | string) ||
