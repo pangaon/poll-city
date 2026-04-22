@@ -18,6 +18,15 @@ const TURF_COLORS = [
   "#EC4899", "#14B8A6",
 ];
 
+const SUPPORT_COLORS: Record<string, string> = {
+  strong_support: "#1D9E75", leaning_support: "#10B981", undecided: "#EF9F27",
+  leaning_opposition: "#F97316", strong_opposition: "#E24B4A",
+};
+const SUPPORT_LABELS: Record<string, string> = {
+  strong_support: "Strong Support", leaning_support: "Leaning Support", undecided: "Undecided",
+  leaning_opposition: "Leaning Opposition", strong_opposition: "Strong Opposition", unknown: "Unknown",
+};
+
 // ─── config ──────────────────────────────────────────────────────────────────
 
 export interface MunicipalityConfig {
@@ -42,7 +51,7 @@ export interface MunicipalityConfig {
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type AddrProps = { address: string; civic: string; street: string; postalCode: string; city: string; unit: string; source?: string };
+type AddrProps = { address: string; civic: string; street: string; postalCode: string; city: string; unit: string; source?: string; supportLevel?: string; skipHouse?: boolean; visited?: boolean; visitCount?: number };
 
 type StreetData = {
   name: string;
@@ -73,6 +82,9 @@ type TurfData = {
 type MapFeatureEvent = MapMouseEvent & {
   features?: Array<{ properties: Record<string, unknown>; layer: { id: string }; geometry: unknown }>;
 };
+
+type ContactOverlayEntry = { supportLevel: string; skipHouse: boolean; visitCount: number };
+type ContactOverlayStats = { totalContacts: number; doorsWithData: number; doorsVisited: number; supporters: number };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -188,6 +200,19 @@ function cutTurfs(streets: StreetData[], n: number): TurfData[] {
   return result;
 }
 
+function enrichAddresses(fc: FeatureCollection, contacts: Record<string, ContactOverlayEntry>): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: fc.features.map(f => {
+      const p = f.properties as Record<string, unknown>;
+      const key = `${String(p.civic ?? "")} ${String(p.street ?? "")}`.toLowerCase().trim();
+      const entry = contacts[key];
+      if (!entry) return f;
+      return { ...f, properties: { ...p, supportLevel: entry.supportLevel, skipHouse: entry.skipHouse, visited: entry.visitCount > 0, visitCount: entry.visitCount } };
+    }),
+  };
+}
+
 function applyTurfColors(fc: FeatureCollection, turfs: TurfData[]): FeatureCollection {
   const streetTurf = new Map<string, number>();
   for (const t of turfs) for (const s of t.streets) streetTurf.set(s.name, t.index);
@@ -248,8 +273,19 @@ const addrClusterCountLayer: Omit<SymbolLayerSpecification, "source"> = {
 const addrPointLayer: Omit<CircleLayerSpecification, "source"> = {
   id: "addr-point", type: "circle", filter: ["!", ["has", "point_count"]],
   paint: {
-    "circle-color": ["coalesce", ["get", "turfColor"], "#1D9E75"],
-    "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff", "circle-opacity": 0.92,
+    "circle-color": ["case",
+      ["boolean", ["get", "skipHouse"], false], "#6B7280",
+      ["==", ["get", "supportLevel"], "strong_support"], "#1D9E75",
+      ["==", ["get", "supportLevel"], "leaning_support"], "#10B981",
+      ["==", ["get", "supportLevel"], "undecided"], "#EF9F27",
+      ["==", ["get", "supportLevel"], "leaning_opposition"], "#F97316",
+      ["==", ["get", "supportLevel"], "strong_opposition"], "#E24B4A",
+      ["coalesce", ["get", "turfColor"], "#1D9E75"],
+    ],
+    "circle-radius": ["case", ["boolean", ["get", "skipHouse"], false], 4, ["has", "supportLevel"], 6, 5],
+    "circle-stroke-width": 1.5,
+    "circle-stroke-color": ["case", ["boolean", ["get", "visited"], false], "#FFD700", "#fff"],
+    "circle-opacity": ["case", ["boolean", ["get", "skipHouse"], false], 0.45, 0.92],
   },
 };
 const bgClusterLayer: Omit<CircleLayerSpecification, "source"> = {
@@ -343,6 +379,10 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
   const [schoolWardsLoading, setSchoolWardsLoading] = useState(false);
   const [schoolWardsError, setSchoolWardsError] = useState<string | null>(null);
 
+  // Campaign DB overlay (auth-gated — null = not logged in or no data)
+  const [contactsOverlay, setContactsOverlay] = useState<{ contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats } | null>(null);
+  const [overlayLoading, setOverlayLoading] = useState(false);
+
   // Fetch wards
   useEffect(() => {
     fetch(config.wardsApi)
@@ -386,6 +426,20 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSchoolWards, schoolWards]);
 
+  // Ward change → fetch campaign contact overlay (auth-gated, 401 = silent no-op)
+  useEffect(() => {
+    setContactsOverlay(null);
+    if (!selectedWard) return;
+    const wardName = getProp(selectedWard.properties as Record<string, unknown>, "wardName");
+    setOverlayLoading(true);
+    fetch(`/api/atlas/contacts-overlay${wardName ? `?wardName=${encodeURIComponent(wardName)}` : ""}`)
+      .then(r => { if (r.status === 401) return null; if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { if (d) setContactsOverlay(d as { contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats }); })
+      .catch(() => { /* anonymous users see base map */ })
+      .finally(() => setOverlayLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWard?.properties?.wardIndex]);
+
   // Ward change → reload addresses
   useEffect(() => {
     setAddresses(null); setStreets([]); setTurfs([]);
@@ -402,18 +456,19 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWard?.properties?.wardIndex]);
 
-  // Addresses + commercial filter → displayAddresses + streets
+  // Addresses + commercial filter + campaign overlay → displayAddresses + streets
   useEffect(() => {
     if (!addresses) { setStreets([]); setTurfs([]); setDisplayAddresses(null); return; }
     const filtered: FeatureCollection =
       config.features?.commercialFilter && !includeCommercial
         ? { ...addresses, features: addresses.features.filter(f => !isLikelyCommercial(f.properties as Record<string, unknown>)) }
         : addresses;
-    setStreets(parseStreets(filtered));
+    const enriched = contactsOverlay ? enrichAddresses(filtered, contactsOverlay.contacts) : filtered;
+    setStreets(parseStreets(enriched));
     setTurfs([]);
-    setDisplayAddresses(filtered);
+    setDisplayAddresses(enriched);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addresses, includeCommercial]);
+  }, [addresses, includeCommercial, contactsOverlay]);
 
   // Hover
   const handleMouseMove = useCallback((e: MapFeatureEvent) => {
@@ -708,6 +763,20 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
                     </div>
                   )}
 
+                  {contactsOverlay && contactsOverlay.stats.totalContacts > 0 && (
+                    <div style={{ background: "rgba(29,158,117,0.07)", border: "1px solid rgba(29,158,117,0.18)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ ...labelStyle, marginBottom: 8 }}>Campaign Data{overlayLoading ? " (refreshing…)" : ""}</div>
+                      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                        <StatBox label="Contacts" value={contactsOverlay.stats.totalContacts.toLocaleString()} />
+                        <StatBox label="Doors w/ Data" value={contactsOverlay.stats.doorsWithData.toLocaleString()} />
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <StatBox label="Visited" value={contactsOverlay.stats.doorsVisited.toLocaleString()} />
+                        <StatBox label="Supporters" value={contactsOverlay.stats.supporters.toLocaleString()} color="#1D9E75" />
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ background: "rgba(239,159,39,0.09)", border: "1px solid rgba(239,159,39,0.22)", borderRadius: 9, padding: "9px 12px", marginBottom: 12 }}>
                     <div style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700 }}>📄 Literature: {litRec.toLocaleString()} pieces</div>
                     <div style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 2 }}>Includes 10% buffer · Adjust for multi-piece drops</div>
@@ -908,6 +977,25 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
               <button onClick={() => setSelectedAddress(null)}
                 style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
             </div>
+            {selectedAddress.skipHouse && (
+              <div style={{ background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 7, padding: "5px 9px", marginBottom: 8 }}>
+                <span style={{ color: "#E24B4A", fontSize: 11, fontWeight: 700 }}>⚠️ Do Not Knock</span>
+              </div>
+            )}
+            {selectedAddress.supportLevel && !selectedAddress.skipHouse && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+                <span style={{ ...subval, fontSize: 11 }}>Support Level</span>
+                <span style={{ color: SUPPORT_COLORS[selectedAddress.supportLevel] ?? "#fff", fontSize: 12, fontWeight: 700 }}>
+                  {SUPPORT_LABELS[selectedAddress.supportLevel] ?? selectedAddress.supportLevel}
+                </span>
+              </div>
+            )}
+            {selectedAddress.visited && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span style={{ ...subval, fontSize: 11 }}>Door Knocks</span>
+                <span style={{ color: "#1D9E75", fontSize: 12, fontWeight: 600 }}>{selectedAddress.visitCount}</span>
+              </div>
+            )}
             {selectedAddress.postalCode && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Postal Code</span>
@@ -934,6 +1022,31 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
             <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(29,158,117,0.3)", borderTopColor: "#1D9E75", animation: "spin 0.8s linear infinite" }} />
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Loading {getProp(selectedProps, "wardName")} addresses…</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── SUPPORT LEVEL LEGEND (shown when campaign data is loaded) ─── */}
+      <AnimatePresence>
+        {contactsOverlay && contactsOverlay.stats.totalContacts > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+            style={{ ...GL, position: "absolute", bottom: 16, left: 248, zIndex: 10, padding: "8px 12px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+          >
+            {Object.entries(SUPPORT_COLORS).map(([k, color]) => (
+              <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>{SUPPORT_LABELS[k]}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6B7280", display: "inline-block" }} />
+              <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>Do Not Knock</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1D9E75", border: "1.5px solid #FFD700", display: "inline-block" }} />
+              <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>Visited</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
