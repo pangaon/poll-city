@@ -3,8 +3,12 @@ import type { Feature, FeatureCollection } from "geojson";
 
 const WHITBY_ARCGIS_URL =
   "https://opendata.arcgis.com/datasets/223810efc31c40b3aff99dd74f809a97_0.geojson";
+const WHITBY_REPRESENT_URL =
+  "https://represent.opennorth.ca/boundaries/?sets=whitby-wards&limit=20&format=json";
 const TORONTO_CKAN_URL =
   "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards";
+const TORONTO_REPRESENT_URL =
+  "https://represent.opennorth.ca/boundaries/?sets=toronto-wards-2018&limit=30&format=json";
 const MARKHAM_ITEM_ID = "e18e684f2f004f0e98d707cad60234be";
 const MARKHAM_FALLBACK_URL =
   "https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson";
@@ -64,18 +68,49 @@ function extractWardName(props: Record<string, unknown>, index: number): string 
   return `Ward ${index + 1}`;
 }
 
+async function fetchRepresentWards(listUrl: string): Promise<RawFeature[]> {
+  const listRes = await fetch(listUrl, { signal: AbortSignal.timeout(8000) });
+  if (!listRes.ok) return [];
+  const listData = (await listRes.json()) as { objects: Array<{ url: string; name: string }> };
+  const results = await Promise.allSettled(
+    listData.objects.map(async (b) => {
+      const shapeRes = await fetch(
+        `https://represent.opennorth.ca${b.url}simple_shape`,
+        { signal: AbortSignal.timeout(5000) },
+      );
+      if (!shapeRes.ok) return null;
+      const geometry = await shapeRes.json();
+      const rawName = b.name.split("/").pop() ?? b.name;
+      const wardName = rawName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return { type: "Feature", properties: { WARD_NAME: wardName } as Record<string, unknown>, geometry };
+    }),
+  );
+  return results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => (r as PromiseFulfilledResult<RawFeature | null>).value)
+    .filter((v): v is RawFeature => v !== null);
+}
+
 async function fetchWhitbyWards(): Promise<RawFeature[]> {
+  // Primary: ArcGIS Open Data
   try {
     const res = await fetch(WHITBY_ARCGIS_URL, {
       next: { revalidate: 86400 },
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
     });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { type?: string; features?: RawFeature[] };
-    if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
-      return data.features ?? [];
+    if (res.ok) {
+      const data = (await res.json()) as { type?: string; features?: RawFeature[] };
+      if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) > 0) {
+        return data.features ?? [];
+      }
     }
+  } catch { /* fall through */ }
+
+  // Fallback: Represent OpenNorth API
+  try {
+    const features = await fetchRepresentWards(WHITBY_REPRESENT_URL);
+    if (features.length > 0) return features;
   } catch { /* give up */ }
   return [];
 }
@@ -125,6 +160,12 @@ async function fetchTorontoWards(): Promise<RawFeature[]> {
     if (data?.type === "FeatureCollection" && (data.features?.length ?? 0) >= 20) {
       return data.features ?? [];
     }
+  } catch { /* fall through */ }
+
+  // Fallback: Represent OpenNorth API
+  try {
+    const features = await fetchRepresentWards(TORONTO_REPRESENT_URL);
+    if (features.length > 0) return features;
   } catch { /* give up */ }
   return [];
 }
