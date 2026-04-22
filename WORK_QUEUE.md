@@ -84,6 +84,8 @@ Everything below is built, pushed, and accessible in the app.
 |---|---|---|
 | AtlasMapClient unification — merge whitby/toronto/markham into one component with MunicipalityConfig prop | DONE — commit e88ed2e | src/components/atlas/atlas-map-client.tsx. City wrappers: whitby/toronto/markham-map-client.tsx. Preload-all pattern included (all cities). |
 | AtlasMapClient Phase 2 — campaign DB overlay: support levels on doors, visit history, DNK suppression, ward campaign stats | DONE — commit 1c67f8c | GET /api/atlas/contacts-overlay (auth-gated, 401=silent). enrichAddresses() wires contact data to OSM dots. Expression-based layer colors: green=strong support → red=strong opposition, grey=DNK, gold stroke=visited. Ward panel shows campaign stats. Address popup shows support level + visit count. No schema changes needed. |
+| AtlasMapClient Phase 3 — turf cutting overhaul: street search, manual street-to-turf assignment, volunteer DB assignment, two-mode turf builder | PENDING | See SESSION_HANDOFF.md for full spec. No schema changes — uses existing VolunteerProfile model. Lives entirely in src/components/atlas/atlas-map-client.tsx. |
+| AtlasMapClient Phase 4 — true unified pan map: single /atlas/map page showing Whitby + Toronto + Markham simultaneously, pan-to-navigate, /api/atlas/all-wards merger endpoint | PENDING | George's actual "unified" vision — one map, all municipalities, pan across GTA. Do Phase 3 first. |
 
 ### ACTIVE BUILD (2026-04-18 → 2026-04-21)
 

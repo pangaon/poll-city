@@ -103,17 +103,98 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Phase 2 complete)
 
+### ⚠️ GEORGE'S DEFINITION OF "UNIFIED" — IMPORTANT ⚠️
+
+George's vision for "unified" is a **single map you pan across** to see Whitby, Toronto, Markham etc. simultaneously — not three separate pages sharing one component. The current three-page structure (`/whitby`, `/toronto`, `/markham`) is a stepping stone, not the destination. Phase 4 (below) is the real unified map at `/atlas/map`.
+
+---
+
 ### AtlasMapClient Phase 2 — Campaign DB Overlay — DONE (commit 1c67f8c)
 
 **What shipped:**
-- `GET /api/atlas/contacts-overlay?wardName=...` — returns per-address campaign contact intelligence (supportLevel, skipHouse, visitCount) for the active campaign. Auth-gated: 401 for anonymous → base map shows, no error.
-- `enrichAddresses()` in `atlas-map-client.tsx` — normalises `civic + street` key to match OSM feature properties, attaches supportLevel / skipHouse / visited / visitCount to each GeoJSON point.
-- `addrPointLayer` updated with MapLibre expression-based coloring: green=strong support, teal=leaning support, amber=undecided, orange=leaning opposition, red=strong opposition, grey=Do Not Knock, gold stroke=visited door.
-- Ward ops panel now shows Campaign Data section: totalContacts, doorsWithData, doorsVisited, supporters — only visible when campaign data exists.
-- Address detail popup shows Support Level badge, Door Knocks count, Do Not Knock warning when overlay data is available.
-- Support level legend floats at bottom of map when campaign data is loaded.
+- `GET /api/atlas/contacts-overlay?wardName=...` — auth-gated contact intelligence overlay (supportLevel, skipHouse, visitCount). 401 → silent, base map only.
+- `enrichAddresses()` — normalises civic+street key to OSM properties, attaches support/visit/DNK to GeoJSON points.
+- `addrPointLayer` — MapLibre expression colors: green=strong support → red=strong opposition, grey=DNK, gold stroke=visited.
+- Ward ops panel: Campaign Data section (totalContacts, doorsWithData, doorsVisited, supporters).
+- Address detail popup: support level badge, door knock count, DNK warning.
+- Support level legend at bottom when campaign data loaded.
+- **No schema changes** — uses existing Contact, Interaction (door_knock), Contact.skipHouse.
 
-**No schema changes** — uses existing Contact model, Interaction.type=door_knock, Contact.skipHouse, Contact.supportLevel.
+### AtlasMapClient Phase 1 — Unification — DONE (commit e88ed2e)
+
+Three city pages (`/whitby`, `/toronto`, `/markham`) each use `AtlasMapClient` with a `MunicipalityConfig` prop. All map logic lives once in `src/components/atlas/atlas-map-client.tsx`.
+
+---
+
+### NEXT: Phase 3 — Turf Cutting Overhaul (PENDING in WORK_QUEUE.md)
+
+**The problem George identified:**
+- Ward search only in sidebar — no street search
+- Turf cutting = set a number → auto-slice by longitude — no manual street control
+- Canvasser = free-text name field — no volunteer DB connection
+- No way to say "I want Dundas St and King St in Turf 1, Mary St in Turf 2"
+
+**Full user journey (field director planning a canvass day):**
+1. Selects ward from map/sidebar
+2. **Searches streets** — types "Dundas" → sidebar shows matching streets with door count and building breakdown
+3. Clicks a street → map flies to it, highlights those dots
+4. **Manually assigns streets to turfs** — clicks street → "Add to Turf" button → assigns to Turf 1, 2, or "New Turf"
+5. **Assigns a volunteer** — dropdown from VolunteerProfile records in DB (not free-text), falls back to free-text if no volunteers
+6. **Auto-cut** remains for quick use — but now triggers a warning if any streets were manually assigned
+7. Turf panel shows which streets are in each turf, who's assigned, door count, time estimate
+8. "Generate Walk Lists" button is the end action
+
+**What to build (all in `src/components/atlas/atlas-map-client.tsx`):**
+
+**A. Street search in turf panel:**
+- Text input at top of street list in turf cutting panel
+- Filters `streets` array in real time by name
+- Map highlights matched streets (feature state or separate source)
+- Clicking a street row flies map to its centroid
+
+**B. Manual street-to-turf assignment:**
+- Each street row gets a checkbox or an "Assign" button
+- "Selected streets" bucket at top shows checked streets + door count total
+- "Create Turf from Selected" button → assigns those streets to a new TurfData entry with a chosen color
+- Streets already in a turf show a colored dot indicating which turf they belong to
+- Drag-between-turfs is out of scope — click-reassign is enough
+
+**C. Volunteer assignment:**
+- On component mount (when a ward is selected), fetch `GET /api/volunteers?limit=100` to get VolunteerProfile list for the campaign
+- Turf canvasser field → Combobox: shows volunteer names, filters as you type, falls back to manual entry
+- Selected volunteer shows their name + phone number in the turf card
+
+**D. Two-mode turf builder:**
+- "Quick Mode" tab: set canvasser count → Auto-cut (current behavior, unchanged)
+- "Manual Mode" tab: street list with checkboxes + assign flow (new)
+- Both modes produce identical `TurfData[]` — same downstream for walk lists
+
+**Edge cases to handle:**
+- Street spans multiple wards → already filtered by ward bbox, no cross-ward contamination
+- Volunteer already assigned → show amber warning on second turf card, don't block
+- No volunteers in DB → fall back to free-text silently (no error message)
+- No streets loaded → disabled state on both modes
+- Auto-cut after manual assignment → confirm dialog "This will clear manual assignments. Continue?"
+- Street has 0 doors after commercial filter → hide from list, don't add to any turf
+
+**No new Prisma schema.** Uses existing:
+- `VolunteerProfile` — `GET /api/volunteers` already exists at `src/app/api/volunteers/route.ts`
+- `TurfData` type stays in `atlas-map-client.tsx` (local state only, not persisted)
+
+---
+
+### NEXT: Phase 4 — True Unified Pan Map (PENDING — separate task after Phase 3)
+
+**George's actual vision:** One map at `/atlas/map` (or `/map`) starting at GTA zoom level. Pan left → Whitby. Pan right → Toronto. Pan further → Markham. All ward boundaries loaded simultaneously. Address dots load on demand as you click a ward.
+
+**How to build:**
+- New API route `GET /api/atlas/all-wards` — merges Whitby + Toronto + Markham ward FeatureCollections into one, adds `municipality` property to each feature
+- New page `src/app/atlas/map/page.tsx` + `atlas-all-map-client.tsx`
+- Uses same `AtlasMapClient` or a thin variant — `wardsApi` points to `/api/atlas/all-wards`
+- Initial view: `{ longitude: -79.2, latitude: 43.75, zoom: 9 }` — shows all three cities
+- Address loading on ward click works identically (calls the per-city `addressesApi` stored in each ward feature's properties)
+- Sidebar shows all wards grouped by municipality with a collapse toggle per city
+- Add "Ontario Map" entry to the Atlas section of the sidebar
 
 ### AtlasMapClient Unification — DONE (commit e88ed2e)
 
