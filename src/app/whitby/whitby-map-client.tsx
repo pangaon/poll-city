@@ -294,6 +294,9 @@ export default function WhitbyMapClient() {
   const [showTurfPanel, setShowTurfPanel] = useState(false);
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
 
+  // Sidebar ward search
+  const [wardSearch, setWardSearch] = useState("");
+
   // Phase 1: commercial filter, canvassing mode, time enforcement
   const [includeCommercial, setIncludeCommercial] = useState(false);
   const [canvassingMode, setCanvassingMode] = useState<"persuasion" | "gotv">("persuasion");
@@ -491,12 +494,22 @@ export default function WhitbyMapClient() {
         <div style={{ padding: "0 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <div style={label}>Ward Directory</div>
           <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, marginTop: 3 }}>Whitby, Ontario</div>
+          <input
+            type="text"
+            placeholder="Search wards…"
+            value={wardSearch}
+            onChange={e => setWardSearch(e.target.value)}
+            style={{ width: "100%", marginTop: 8, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "5px 9px", color: "#fff", fontSize: 11, outline: "none", boxSizing: "border-box" }}
+          />
         </div>
 
         <div style={{ padding: "6px 0" }}>
           {wardLoading && <div style={{ padding: 16, color: "rgba(255,255,255,0.35)", fontSize: 12, textAlign: "center" }}>Loading wards…</div>}
           {wardError && <div style={{ padding: 12, color: "#E24B4A", fontSize: 11 }}>{wardError}</div>}
-          {wards?.features.map((f, i) => {
+          {wards?.features.filter(f => {
+            const name = getProp((f as Feature).properties as Record<string, unknown>, "wardName");
+            return name.toLowerCase().includes(wardSearch.toLowerCase());
+          }).map((f, i) => {
             const p = (f as Feature).properties as Record<string, unknown>;
             const name = getProp(p, "wardName");
             const fill = getProp(p, "wardFill");
