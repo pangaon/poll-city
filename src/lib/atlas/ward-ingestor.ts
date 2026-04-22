@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { WARD_ASSET_REGISTRY, type WardAssetEntry, type WardAssetSource } from "@/config/ward-asset-registry";
 
 export interface IngestResult {
@@ -243,13 +244,13 @@ async function upsertWards(
         wardName,
         wardNumber,
         wardIndex,
-        geojsonFeature: f as unknown as Record<string, unknown>,
+        geojsonFeature: f as unknown as Prisma.InputJsonValue,
         sourceUrl,
       },
       update: {
         wardNumber,
         wardIndex,
-        geojsonFeature: f as unknown as Record<string, unknown>,
+        geojsonFeature: f as unknown as Prisma.InputJsonValue,
         sourceUrl,
         fetchedAt: new Date(),
       },

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Feature, FeatureCollection } from "geojson";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/db/prisma";
 import { WARD_ASSET_REGISTRY } from "@/config/ward-asset-registry";
 import { ingestAllMunicipalities } from "@/lib/atlas/ward-ingestor";
 
@@ -31,7 +31,7 @@ function buildFeatureCollection(
   const features: Feature[] = rows.map((row) => {
     const stored = row.geojsonFeature as Record<string, unknown>;
     return {
-      ...(stored as Feature),
+      ...(stored as unknown as Feature),
       properties: {
         ...((stored.properties as Record<string, unknown>) ?? {}),
         wardName: row.wardName,
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
         "ETag": etag,
         "X-Ward-Count": String(rows.length),
         "X-Last-Refreshed": lastUpdated.toISOString(),
-        "X-Municipalities": [...new Set(rows.map((r) => r.municipality))].join(", "),
+        "X-Municipalities": Array.from(new Set(rows.map((r) => r.municipality))).join(", "),
       },
     });
   } catch (err) {
