@@ -101,12 +101,36 @@ George is building the Poll City iOS app for campaign staff. There are two separ
 
 ---
 
-## CURRENT PLATFORM STATE (as of 2026-04-21 session 6 — Whitby PCS profiles)
+## CURRENT PLATFORM STATE (as of 2026-04-22 — Toronto ATLAS + conflict resolution)
 
 ### Build
-- **GREEN** — latest commit `3eaec7c` pushed to main, Vercel deploying
-- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`, **`OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`** (new this session)
+- **GREEN** — latest commit `9780c2f` on origin/main, working tree clean
+- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`, `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`
 - George MUST run `npx prisma db push` then `npx prisma db seed` to activate Whitby profiles
+
+### ⚠️ BUILD-UNIFYING AGENT — READ THIS FIRST
+
+**What this session did:**
+- Resolved merge conflict in `src/app/(app)/communications/communications-client.tsx` — kept HEAD (upstream). Working tree is now clean.
+
+**Stash situation — important:**
+- `stash@{0}: comms-client-segment-work` is sitting on the stack. It contains in-progress comms work from the whitby session: `CreateSegmentModal` (segment builder) + `CreateRuleModal` refactor for `AutoTriggersPanel`. It also adds `ChevronDown` to lucide imports and `segmentsLoading` state.
+- **Do NOT pop this stash blindly.** It will conflict again because we resolved by keeping HEAD. Review with `git stash show -p stash@{0}` before applying.
+- The stash's comms changes need to be manually re-applied and verified against the current file before pushing.
+
+**Toronto ATLAS map — fully shipped (no action needed):**
+- Commits `df4631a` → `aa8758b` → `da2c463` → `9780c2f` are all on origin/main
+- Files: `src/app/toronto/page.tsx`, `src/app/toronto/toronto-map-client.tsx`, `src/app/api/atlas/toronto-wards/route.ts`, `src/app/api/atlas/toronto-addresses/route.ts`, `src/app/api/atlas/toronto-school-wards/route.ts`
+- Features: 25 wards (CKAN 4326 GeoJSON), address points (ArcGIS bbox), school board overlays (TDSB/TCDSB/Viamonde/CSDC via SHP), ward search filter
+- `next.config.js` has `unzipper` and `shapefile` in `serverComponentsExternalPackages`
+
+**What still needs doing for comms session:**
+1. `git stash show -p stash@{0}` — review the CreateSegmentModal + CreateRuleModal changes
+2. Manually re-apply the non-conflicting parts to `communications-client.tsx`
+3. Verify `CreateRuleModal` component exists (was it in the stash or is it missing?)
+4. Build and push after applying
+
+**No schema changes this session. No GEORGE_TODO items added.**
 
 ### Session 6 — What shipped this session (Whitby PCS Profiles)
 
