@@ -7,7 +7,7 @@ import {
   ChevronRight, ArrowRight, CheckCircle,
   Clock, TrendingUp, Sparkles, Vote, Sun, Moon,
   Heart, MessageCircle, Share2, Zap, Send, X,
-  Smartphone, MapPin,
+  Smartphone, MapPin, Plus, Users,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ interface PollSnippet {
 }
 
 interface FeedPost {
+  _type: "post";
   id: string;
   postType: PostType;
   title: string;
@@ -52,6 +53,29 @@ interface FeedPost {
   official: OfficialSnippet | null;
   poll: PollSnippet | null;
 }
+
+interface PollOption {
+  id: string;
+  text: string;
+}
+
+interface CommunityPollItem {
+  _type: "community_poll";
+  id: string;
+  question: string;
+  type: "binary" | "multiple_choice";
+  options: PollOption[];
+  totalResponses: number;
+  targetRegion: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  createdByName: string;
+  userVoted: boolean;
+  userVoteValue: string | null;
+  userVoteOptionId: string | null;
+}
+
+type FeedItem = FeedPost | CommunityPollItem;
 
 interface Comment {
   id: string;
@@ -177,92 +201,66 @@ function CommentDrawer({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={spring}
-        className="relative bg-white dark:bg-[#0F1923] rounded-t-3xl max-h-[75vh] flex flex-col z-10"
+        className="relative bg-white dark:bg-[#0F1923] rounded-t-2xl max-h-[70vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/[0.06]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
           <p className="font-black text-gray-900 dark:text-white text-sm">
-            {count === 1 ? "1 Comment" : `${count} Comments`}
+            {count > 0 ? `${count} Comments` : "Comments"}
           </p>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-            <X className="w-4 h-4 text-gray-500 dark:text-white/50" />
+          <button onClick={onClose} className="p-1 text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Comment list */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4 min-h-0">
-          {loading && (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-2.5">
-                  <Shimmer className="w-8 h-8 !rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <Shimmer className="h-3 w-20 !rounded-md" />
-                    <Shimmer className="h-3 w-full !rounded-md" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          {loading && <Shimmer className="h-10 w-full" />}
           {!loading && comments.length === 0 && (
-            <p className="text-center text-sm text-gray-400 dark:text-white/30 py-8">
+            <p className="text-sm text-gray-400 dark:text-white/30 text-center py-4">
               No comments yet. Be the first.
             </p>
           )}
           {comments.map((c) => (
-            <div key={c.id}>
-              <div className="flex gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#0A2342] dark:bg-white/10 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
-                  {(c.user.name ?? "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-xs font-bold text-gray-900 dark:text-white">{c.user.name ?? "Voter"}</p>
-                    <p className="text-[10px] text-gray-400 dark:text-white/30">{timeAgo(c.createdAt)}</p>
-                  </div>
-                  <p className="text-sm text-gray-700 dark:text-white/80 mt-0.5 leading-relaxed">{c.body}</p>
-                </div>
+            <div key={c.id} className="flex gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-[#0A2342] dark:bg-white/10 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">
+                {(c.user.name ?? "?")[0].toUpperCase()}
               </div>
-              {c.replies && c.replies.length > 0 && (
-                <div className="ml-10 mt-2 space-y-2">
-                  {c.replies.map((r) => (
-                    <div key={r.id} className="flex gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-white/60 text-[9px] font-black flex-shrink-0">
-                        {(r.user.name ?? "?").slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-[11px] font-bold text-gray-800 dark:text-white/90">{r.user.name ?? "Voter"}</p>
-                          <p className="text-[10px] text-gray-400 dark:text-white/30">{timeAgo(r.createdAt)}</p>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-white/70 mt-0.5 leading-relaxed">{r.body}</p>
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">{c.user.name ?? "Anonymous"}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-white/30">{timeAgo(c.createdAt)}</span>
                 </div>
-              )}
+                <p className="text-sm text-gray-700 dark:text-white/70 mt-0.5 leading-relaxed">{c.body}</p>
+                {c.replies?.map((r) => (
+                  <div key={r.id} className="mt-2 ml-3 flex gap-2">
+                    <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-white/50 text-[9px] font-black flex-shrink-0">
+                      {(r.user.name ?? "?")[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-white">{r.user.name ?? "Anonymous"}</span>
+                      <p className="text-xs text-gray-600 dark:text-white/60 mt-0.5">{r.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-
-        {/* Input */}
-        <form onSubmit={submit} className="px-4 pb-6 pt-3 border-t border-gray-100 dark:border-white/[0.06] flex items-center gap-2.5">
+        <form onSubmit={submit} className="flex gap-2 p-3 border-t border-gray-100 dark:border-white/[0.06]">
           <input
             ref={inputRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={userId ? "Add a comment…" : "Sign in to comment"}
+            placeholder={userId ? "Write a comment…" : "Sign in to comment"}
             disabled={!userId || submitting}
-            className="flex-1 bg-gray-100 dark:bg-white/[0.06] rounded-full px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 border-0 outline-none focus:ring-1 focus:ring-[#00D4C8] transition-all disabled:opacity-50"
-            maxLength={1000}
+            maxLength={500}
+            className="flex-1 text-sm bg-gray-100 dark:bg-white/[0.06] rounded-full px-3 py-2 outline-none placeholder-gray-400 dark:placeholder-white/30 text-gray-900 dark:text-white disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!body.trim() || !userId || submitting}
-            className="w-9 h-9 rounded-full bg-[#00D4C8] flex items-center justify-center disabled:opacity-40 transition-opacity flex-shrink-0"
+            className="p-2 rounded-full bg-[#00D4C8] text-[#080D14] disabled:opacity-40 transition-opacity flex-shrink-0"
           >
-            <Send className="w-4 h-4 text-[#080D14]" />
+            <Send className="w-3.5 h-3.5" />
           </button>
         </form>
       </motion.div>
@@ -270,7 +268,7 @@ function CommentDrawer({
   );
 }
 
-// ── Feed Card ──────────────────────────────────────────────────────────────────
+// ── FeedCard (politician posts) ───────────────────────────────────────────────
 
 function FeedCard({
   post: initialPost,
@@ -281,19 +279,20 @@ function FeedCard({
   userId?: string;
   onOpenComments: (postId: string, count: number) => void;
 }) {
+  const cfg = POST_TYPE_CONFIG[initialPost.postType];
   const [reacted, setReacted] = useState(initialPost.userReacted);
   const [reactionCount, setReactionCount] = useState(initialPost.reactionCount);
   const [reacting, setReacting] = useState(false);
-  const cfg = POST_TYPE_CONFIG[initialPost.postType] ?? POST_TYPE_CONFIG.civic_update;
 
   async function toggleReact() {
-    if (!userId) { toast.error("Sign in to react"); return; }
+    if (!userId) { toast.error("Sign in to react to posts"); return; }
     if (reacting) return;
-    // Optimistic update
+
     const nextReacted = !reacted;
     setReacted(nextReacted);
     setReactionCount((c) => nextReacted ? c + 1 : c - 1);
     setReacting(true);
+
     try {
       const res = await fetch(`/api/social/posts/${initialPost.id}/react`, { method: "POST" });
       if (!res.ok) throw new Error();
@@ -301,7 +300,6 @@ function FeedCard({
       setReacted(data.reacted);
       setReactionCount(data.reactionCount);
     } catch {
-      // Revert optimistic update
       setReacted(!nextReacted);
       setReactionCount((c) => nextReacted ? c - 1 : c + 1);
       toast.error("Could not save reaction");
@@ -390,7 +388,6 @@ function FeedCard({
 
       {/* Engagement footer */}
       <div className="flex items-center gap-1 px-3 pb-3 border-t border-gray-100 dark:border-white/[0.04] pt-2">
-        {/* Like */}
         <button
           onClick={toggleReact}
           className={cn(
@@ -404,7 +401,6 @@ function FeedCard({
           {reactionCount > 0 && <span>{reactionCount.toLocaleString()}</span>}
         </button>
 
-        {/* Comment */}
         <button
           onClick={() => onOpenComments(initialPost.id, initialPost.commentCount)}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-gray-400 dark:text-white/30 hover:text-[#00D4C8] hover:bg-[#00D4C8]/10 transition-all"
@@ -413,7 +409,6 @@ function FeedCard({
           {initialPost.commentCount > 0 && <span>{initialPost.commentCount.toLocaleString()}</span>}
         </button>
 
-        {/* Share */}
         <button
           onClick={handleShare}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-gray-400 dark:text-white/30 hover:text-[#00D4C8] hover:bg-[#00D4C8]/10 transition-all ml-auto"
@@ -421,13 +416,448 @@ function FeedCard({
           <Share2 className="w-4 h-4" />
         </button>
 
-        {/* Vote count for polls */}
         {initialPost.postType === "poll" && initialPost.poll && (
           <span className="text-[11px] font-bold text-[#00D4C8]">
             {initialPost.poll.totalResponses.toLocaleString()} votes
           </span>
         )}
       </div>
+    </motion.div>
+  );
+}
+
+// ── Community Poll Card ────────────────────────────────────────────────────────
+
+interface PollResults {
+  counts: Record<string, number>;
+  totalResponses: number;
+}
+
+function CommunityPollFeedCard({
+  item: initialItem,
+  userId,
+}: {
+  item: CommunityPollItem;
+  userId?: string;
+}) {
+  const [voted, setVoted] = useState(initialItem.userVoted);
+  const [voteValue, setVoteValue] = useState<string | null>(initialItem.userVoteValue);
+  const [voteOptionId, setVoteOptionId] = useState<string | null>(initialItem.userVoteOptionId);
+  const [totalResponses, setTotalResponses] = useState(initialItem.totalResponses);
+  const [results, setResults] = useState<PollResults | null>(null);
+  const [voting, setVoting] = useState(false);
+
+  async function fetchResults(pollId: string) {
+    try {
+      const res = await fetch(`/api/social/polls/${pollId}`);
+      const data = await res.json();
+      if (data.data) {
+        setResults({ counts: data.data.counts ?? {}, totalResponses: data.data.totalResponses });
+        setTotalResponses(data.data.totalResponses);
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  useEffect(() => {
+    if (voted) fetchResults(initialItem.id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function castVote(value?: string, optionId?: string) {
+    if (voted || voting) return;
+    if (!userId) { toast.error("Sign in to vote"); return; }
+
+    setVoting(true);
+    try {
+      const body: Record<string, string> = {};
+      if (value) body.value = value;
+      if (optionId) body.optionId = optionId;
+
+      const res = await fetch(`/api/polls/${initialItem.id}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 409) {
+        toast.error("You have already voted on this poll");
+        setVoted(true);
+        await fetchResults(initialItem.id);
+        return;
+      }
+      if (!res.ok) throw new Error();
+
+      setVoted(true);
+      if (value) setVoteValue(value);
+      if (optionId) setVoteOptionId(optionId);
+      await fetchResults(initialItem.id);
+      toast.success("Vote recorded");
+    } catch {
+      toast.error("Could not record vote");
+    } finally {
+      setVoting(false);
+    }
+  }
+
+  const total = results?.totalResponses ?? totalResponses;
+
+  function pct(count: number) {
+    if (total === 0) return 0;
+    return Math.round((count / total) * 100);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="rounded-2xl border bg-white dark:bg-[#0F1923] border-gray-200 dark:border-white/[0.06] overflow-hidden"
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border border-[#00D4C8]/50 text-[#00D4C8] dark:bg-[#00D4C8]/10 bg-teal-50">
+              <Users className="w-2.5 h-2.5" />COMMUNITY POLL
+            </span>
+            {initialItem.targetRegion && (
+              <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full border border-gray-300 dark:border-white/15 dark:text-white/60 text-gray-500 dark:bg-white/5 bg-gray-100">
+                {initialItem.targetRegion.toUpperCase()}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-gray-400 dark:text-white/30 flex items-center gap-0.5">
+            <Clock className="w-3 h-3" />
+            {timeAgo(initialItem.createdAt)}
+          </span>
+        </div>
+
+        <h3 className="font-black text-gray-900 dark:text-white text-[17px] leading-snug tracking-tight">
+          {initialItem.question}
+        </h3>
+        <p className="text-[11px] text-gray-400 dark:text-white/30 mt-1">
+          Asked by {initialItem.createdByName}
+        </p>
+      </div>
+
+      {/* Voting / Results */}
+      <div className="px-4 pb-4">
+        {voted && results ? (
+          // Results view
+          <div className="space-y-2">
+            {initialItem.type === "binary" ? (
+              ["yes", "no"].map((val) => {
+                const count = results.counts[val] ?? 0;
+                const p = pct(count);
+                const isMyVote = voteValue === val;
+                return (
+                  <div key={val} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={cn("font-bold uppercase tracking-wide", isMyVote ? "text-[#00D4C8]" : "text-gray-600 dark:text-white/60")}>
+                        {val === "yes" ? "✓ Yes" : "✗ No"}
+                        {isMyVote && " · your vote"}
+                      </span>
+                      <span className="font-black text-gray-900 dark:text-white">{p}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/[0.06] overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${p}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className={cn("h-full rounded-full", isMyVote ? "bg-[#00D4C8]" : "bg-gray-300 dark:bg-white/20")}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              initialItem.options.map((opt) => {
+                const count = results.counts[opt.id] ?? 0;
+                const p = pct(count);
+                const isMyVote = voteOptionId === opt.id;
+                return (
+                  <div key={opt.id} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={cn("font-semibold truncate pr-2", isMyVote ? "text-[#00D4C8]" : "text-gray-600 dark:text-white/60")}>
+                        {opt.text}{isMyVote && " · your vote"}
+                      </span>
+                      <span className="font-black text-gray-900 dark:text-white flex-shrink-0">{p}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 dark:bg-white/[0.06] overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${p}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className={cn("h-full rounded-full", isMyVote ? "bg-[#00D4C8]" : "bg-gray-300 dark:bg-white/20")}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <p className="text-[11px] text-gray-400 dark:text-white/30 text-right pt-1">
+              {total.toLocaleString()} {total === 1 ? "vote" : "votes"}
+            </p>
+          </div>
+        ) : voted && !results ? (
+          // Voted but results still loading
+          <div className="space-y-2">
+            <Shimmer className="h-8 w-full !rounded-lg" />
+            <Shimmer className="h-8 w-full !rounded-lg" />
+          </div>
+        ) : (
+          // Voting buttons
+          <div className="space-y-2">
+            {initialItem.type === "binary" ? (
+              <div className="flex gap-2">
+                {["yes", "no"].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => castVote(val)}
+                    disabled={voting}
+                    className={cn(
+                      "flex-1 py-3 rounded-xl text-sm font-black tracking-wide border transition-all",
+                      val === "yes"
+                        ? "border-[#00D4C8]/30 text-[#00D4C8] bg-[#00D4C8]/5 hover:bg-[#00D4C8]/15"
+                        : "border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:border-gray-300 dark:hover:border-white/20",
+                      voting && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {val === "yes" ? "✓ Yes" : "✗ No"}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              initialItem.options.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => castVote(undefined, opt.id)}
+                  disabled={voting}
+                  className={cn(
+                    "w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-left border transition-all",
+                    "border-gray-200 dark:border-white/10 text-gray-700 dark:text-white/70",
+                    "hover:border-[#00D4C8]/30 hover:text-[#00D4C8]",
+                    voting && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {opt.text}
+                </button>
+              ))
+            )}
+            {!userId && (
+              <p className="text-[11px] text-gray-400 dark:text-white/30 text-center">
+                <Link href="/signin" className="text-[#00D4C8] hover:underline">Sign in</Link> to vote
+              </p>
+            )}
+            <p className="text-[11px] text-gray-400 dark:text-white/30 text-right">
+              {totalResponses.toLocaleString()} {totalResponses === 1 ? "vote" : "votes"} · anonymous
+            </p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Create Poll Drawer ─────────────────────────────────────────────────────────
+
+function CreatePollDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [question, setQuestion] = useState("");
+  const [type, setType] = useState<"binary" | "multiple_choice">("binary");
+  const [options, setOptions] = useState(["", ""]);
+  const [durationDays, setDurationDays] = useState(7);
+  const [submitting, setSubmitting] = useState(false);
+
+  function updateOption(idx: number, val: string) {
+    setOptions((prev) => prev.map((o, i) => i === idx ? val : o));
+  }
+
+  function addOption() {
+    if (options.length < 6) setOptions((prev) => [...prev, ""]);
+  }
+
+  function removeOption(idx: number) {
+    if (options.length <= 2) return;
+    setOptions((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!question.trim() || submitting) return;
+    if (type === "multiple_choice" && options.filter((o) => o.trim()).length < 2) {
+      toast.error("Add at least 2 options");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/social/polls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: question.trim(),
+          type,
+          options: type === "multiple_choice" ? options.filter((o) => o.trim()) : undefined,
+          durationDays,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Poll created and published");
+      onCreated();
+      onClose();
+    } catch {
+      toast.error("Could not create poll");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={spring}
+        className="relative bg-white dark:bg-[#0F1923] rounded-t-2xl max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/[0.06]">
+          <p className="font-black text-gray-900 dark:text-white text-sm">Ask the community</p>
+          <button onClick={onClose} className="p-1 text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          {/* Question */}
+          <div>
+            <label className="block text-xs font-black text-gray-500 dark:text-white/40 uppercase tracking-widest mb-1.5">
+              Your question
+            </label>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask your ward or city something that matters…"
+              maxLength={500}
+              rows={3}
+              className="w-full text-sm bg-gray-100 dark:bg-white/[0.06] rounded-xl px-3 py-2.5 outline-none placeholder-gray-400 dark:placeholder-white/30 text-gray-900 dark:text-white resize-none"
+            />
+            <p className="text-[10px] text-gray-400 dark:text-white/25 text-right mt-1">{question.length}/500</p>
+          </div>
+
+          {/* Poll type */}
+          <div>
+            <label className="block text-xs font-black text-gray-500 dark:text-white/40 uppercase tracking-widest mb-1.5">
+              Answer type
+            </label>
+            <div className="flex gap-2">
+              {(["binary", "multiple_choice"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-black tracking-wide border transition-all",
+                    type === t
+                      ? "bg-[#00D4C8]/10 border-[#00D4C8]/40 text-[#00D4C8]"
+                      : "border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50"
+                  )}
+                >
+                  {t === "binary" ? "Yes / No" : "Multiple choice"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* MC options */}
+          {type === "multiple_choice" && (
+            <div>
+              <label className="block text-xs font-black text-gray-500 dark:text-white/40 uppercase tracking-widest mb-1.5">
+                Options
+              </label>
+              <div className="space-y-2">
+                {options.map((opt, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <input
+                      value={opt}
+                      onChange={(e) => updateOption(idx, e.target.value)}
+                      placeholder={`Option ${idx + 1}`}
+                      maxLength={200}
+                      className="flex-1 text-sm bg-gray-100 dark:bg-white/[0.06] rounded-xl px-3 py-2 outline-none placeholder-gray-400 dark:placeholder-white/30 text-gray-900 dark:text-white"
+                    />
+                    {options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOption(idx)}
+                        className="p-1 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {options.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={addOption}
+                    className="text-xs text-[#00D4C8] hover:underline font-bold"
+                  >
+                    + Add option
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Duration */}
+          <div>
+            <label className="block text-xs font-black text-gray-500 dark:text-white/40 uppercase tracking-widest mb-1.5">
+              Duration
+            </label>
+            <div className="flex gap-2">
+              {[3, 7, 14, 30].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDurationDays(d)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl text-xs font-black border transition-all",
+                    durationDays === d
+                      ? "bg-[#0A2342] border-[#0A2342] text-white dark:bg-white/10 dark:border-white/30"
+                      : "border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50"
+                  )}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-400 dark:text-white/30">
+            Your poll is anonymous — votes cannot be traced back to individual voters.
+            It will be visible to people in your area.
+          </p>
+        </form>
+
+        <div className="p-4 border-t border-gray-100 dark:border-white/[0.06]">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            transition={spring}
+            onClick={submit}
+            disabled={!question.trim() || submitting}
+            className="w-full py-3 rounded-xl bg-[#00D4C8] text-[#080D14] font-black text-sm tracking-wide disabled:opacity-50 transition-opacity"
+          >
+            {submitting ? "Publishing…" : "Publish Poll"}
+          </motion.button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -524,13 +954,14 @@ export default function SocialFeedClient() {
   const userId = session?.user?.id;
 
   const [tab, setTab] = useState<"for_you" | "local">("for_you");
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDiscovery, setIsDiscovery] = useState(false);
   const [needsLocation, setNeedsLocation] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [commentTarget, setCommentTarget] = useState<{ postId: string; count: number } | null>(null);
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadFeed = useCallback(async (cursor?: string) => {
@@ -543,9 +974,9 @@ export default function SocialFeedClient() {
       const res = await fetch(`/api/social/feed?${params}`);
       const data = await res.json();
       if (cursor) {
-        setPosts((prev) => [...prev, ...(data.data ?? [])]);
+        setItems((prev) => [...prev, ...(data.data ?? [])]);
       } else {
-        setPosts(data.data ?? []);
+        setItems(data.data ?? []);
         setIsDiscovery(data.isDiscovery ?? false);
         setNeedsLocation(data.needsLocation ?? false);
       }
@@ -573,12 +1004,13 @@ export default function SocialFeedClient() {
     return () => observer.disconnect();
   }, [nextCursor, loadingMore, loadFeed]);
 
-  // Update comment count in post list when drawer closes
   function handleCloseComments(updatedCount?: number) {
     if (commentTarget && updatedCount !== undefined) {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === commentTarget.postId ? { ...p, commentCount: updatedCount } : p
+      setItems((prev) =>
+        prev.map((item) =>
+          item._type === "post" && item.id === commentTarget.postId
+            ? { ...item, commentCount: updatedCount }
+            : item
         )
       );
     }
@@ -589,7 +1021,7 @@ export default function SocialFeedClient() {
     <>
       <AppDownloadBanner />
       <div className="min-h-screen bg-[#F0F4F8] dark:bg-[#080D14]">
-        {/* ── Feed header: FOR YOU / LOCAL tabs + theme toggle ── */}
+        {/* Sticky header */}
         <div className="sticky top-0 z-20 bg-[#F0F4F8]/95 dark:bg-[#080D14]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/[0.06]">
           <div className="max-w-2xl mx-auto px-4 h-11 flex items-center justify-between gap-3">
             <div className="flex items-center gap-1">
@@ -612,10 +1044,10 @@ export default function SocialFeedClient() {
           </div>
         </div>
 
-        {/* ── Feed content ── */}
+        {/* Feed content */}
         <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
 
-          {/* LOCAL — needs location prompt */}
+          {/* LOCAL — needs location */}
           <AnimatePresence>
             {needsLocation && !loading && tab === "local" && (
               <motion.div
@@ -679,12 +1111,11 @@ export default function SocialFeedClient() {
               </div>
               <Shimmer className="h-5 w-3/4 !rounded-md" />
               <Shimmer className="h-3.5 w-full !rounded-md" />
-              <Shimmer className="h-3.5 w-5/6 !rounded-md" />
             </div>
           ))}
 
           {/* Empty state */}
-          {!loading && posts.length === 0 && (
+          {!loading && items.length === 0 && (
             <div className="rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#0F1923] p-10 text-center">
               <Vote className="w-10 h-10 mx-auto mb-4 text-gray-300 dark:text-white/20" />
               <p className="font-bold text-gray-900 dark:text-white">No posts yet</p>
@@ -700,17 +1131,21 @@ export default function SocialFeedClient() {
             </div>
           )}
 
-          {/* Posts */}
-          {!loading && posts.length > 0 && (
+          {/* Feed items */}
+          {!loading && items.length > 0 && (
             <>
-              {posts.map((post) => (
-                <FeedCard
-                  key={post.id}
-                  post={post}
-                  userId={userId}
-                  onOpenComments={(postId, count) => setCommentTarget({ postId, count })}
-                />
-              ))}
+              {items.map((item) =>
+                item._type === "community_poll" ? (
+                  <CommunityPollFeedCard key={`poll-${item.id}`} item={item} userId={userId} />
+                ) : (
+                  <FeedCard
+                    key={`post-${item.id}`}
+                    post={item}
+                    userId={userId}
+                    onOpenComments={(postId, count) => setCommentTarget({ postId, count })}
+                  />
+                )
+              )}
               {loadingMore && (
                 <div className="space-y-3">
                   {Array.from({ length: 2 }).map((_, i) => (
@@ -745,6 +1180,19 @@ export default function SocialFeedClient() {
             </Link>
           </div>
         </div>
+
+        {/* FAB — create poll (signed-in users only) */}
+        {userId && (
+          <motion.button
+            whileTap={{ scale: 0.93 }}
+            transition={spring}
+            onClick={() => setShowCreatePoll(true)}
+            className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[#00D4C8] text-[#080D14] shadow-lg shadow-[#00D4C8]/30 flex items-center justify-center"
+            aria-label="Ask the community a question"
+          >
+            <Plus className="w-6 h-6" />
+          </motion.button>
+        )}
       </div>
 
       {/* Comment Drawer */}
@@ -755,6 +1203,16 @@ export default function SocialFeedClient() {
             initialCount={commentTarget.count}
             userId={userId}
             onClose={() => handleCloseComments()}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create Poll Drawer */}
+      <AnimatePresence>
+        {showCreatePoll && (
+          <CreatePollDrawer
+            onClose={() => setShowCreatePoll(false)}
+            onCreated={() => loadFeed()}
           />
         )}
       </AnimatePresence>
