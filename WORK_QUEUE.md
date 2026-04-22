@@ -106,7 +106,7 @@ Everything below is built, pushed, and accessible in the app.
 |---|---|---|
 | Migration baseline | PENDING | Run `npx prisma db push` before first real customer. GAP-003. George's action. |
 | CASL consent management | DONE — commit cc97b33 | ConsentRecord schema (3 enums + model), POST/GET /api/compliance/consent, email blast consent filter (skips unconsented, surfaces count), Smart Import consent column mapper + processor, Contact detail CASL Consent tab, /compliance overview page, sidebar entry. George must run `npx prisma db push` to apply schema. |
-| Print vendor portal | PENDING | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
+| Print vendor portal | CLAIMED 2026-04-22 | Vendors can register via Stripe Connect but have no login, no job view, no status updates. Print marketplace is broken without this. |
 | Turf cutting — 0 voters bug | DONE — commit 64aa67f | Preview API take:500 cap removed for filtered queries; turf stops now sorted by street+number; import aliases for poll/polling_division/streetNumber/streetName added; print walk-list uses parsed-integer sort; map mode shows honest geocoding warning. |
 
 ---
