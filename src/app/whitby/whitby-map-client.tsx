@@ -225,6 +225,14 @@ const addrPointLayer: Omit<CircleLayerSpecification, "source"> = {
     "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff", "circle-opacity": 0.92,
   },
 };
+const bgClusterLayer: Omit<CircleLayerSpecification, "source"> = {
+  id: "bg-clusters", type: "circle", filter: ["has", "point_count"],
+  paint: { "circle-color": "rgba(100,160,220,0.28)", "circle-radius": ["step", ["get", "point_count"], 14, 50, 20, 200, 26], "circle-opacity": 0.8, "circle-stroke-width": 0 },
+};
+const bgPointLayer: Omit<CircleLayerSpecification, "source"> = {
+  id: "bg-point", type: "circle", filter: ["!", ["has", "point_count"]],
+  paint: { "circle-color": "rgba(100,160,220,0.45)", "circle-radius": 4, "circle-stroke-width": 0, "circle-opacity": 0.7 },
+};
 
 // ─── glass ───────────────────────────────────────────────────────────────────
 
@@ -294,6 +302,9 @@ export default function WhitbyMapClient() {
   const [showTurfPanel, setShowTurfPanel] = useState(false);
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
 
+  // All-municipality background address layer
+  const [allAddresses, setAllAddresses] = useState<FeatureCollection | null>(null);
+
   // Sidebar ward search
   const [wardSearch, setWardSearch] = useState("");
 
@@ -317,6 +328,21 @@ export default function WhitbyMapClient() {
     if (!bbox) return;
     try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 1000, maxZoom: 13 }); } catch { /* ignore */ }
   }, [mapLoaded, wards]);
+
+  // Preload all wards' addresses concurrently so dots show everywhere
+  useEffect(() => {
+    if (!wards) return;
+    Promise.all(
+      wards.features.map(f => {
+        const params = wardBboxParams(f as Feature);
+        if (!params) return Promise.resolve([] as Feature[]);
+        return fetch(`/api/atlas/whitby-addresses?${params.toString()}`)
+          .then(r => r.ok ? (r.json() as Promise<FeatureCollection>) : { type: "FeatureCollection" as const, features: [] as Feature[] })
+          .then(d => d.features ?? [])
+          .catch(() => [] as Feature[]);
+      })
+    ).then(all => setAllAddresses({ type: "FeatureCollection", features: all.flat() }));
+  }, [wards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ward change → reload addresses
   useEffect(() => {
@@ -458,6 +484,11 @@ export default function WhitbyMapClient() {
         {selectedFC && (
           <Source id="ward-selected" type="geojson" data={selectedFC}>
             <Layer {...wardSelectedFillLayer} /><Layer {...wardSelectedLineLayer} />
+          </Source>
+        )}
+        {allAddresses && (
+          <Source id="addresses-bg" type="geojson" data={allAddresses} cluster clusterMaxZoom={14} clusterRadius={40}>
+            <Layer {...bgClusterLayer} /><Layer {...bgPointLayer} />
           </Source>
         )}
         {displayAddresses && (
