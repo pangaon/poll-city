@@ -10,12 +10,14 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const specialty = sp.get("specialty") as PrintProductType | null;
+  const province = sp.get("province") ?? "";
   const search = sp.get("search") ?? "";
 
   const shops = await prisma.printShop.findMany({
     where: {
       isActive: true,
       ...(specialty ? { specialties: { has: specialty } } : {}),
+      ...(province ? { provincesServed: { has: province } } : {}),
       ...(search
         ? {
             OR: [

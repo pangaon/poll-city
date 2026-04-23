@@ -146,10 +146,21 @@ export async function POST(req: NextRequest) {
   }
 
   // If consent table exists, filter to consented only. If not, send to all (no-filter mode).
-  const recipients = consentTableExists
+  const consentFiltered = consentTableExists
     ? allRecipients.filter((r) => consentedIds.has(r.id))
     : allRecipients;
-  const noConsentCount = consentTableExists ? allRecipients.length - recipients.length : 0;
+  const noConsentCount = consentTableExists ? allRecipients.length - consentFiltered.length : 0;
+
+  // Fatigue guard: skip contacts contacted by any channel in the last 24h.
+  const fatigueCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const consentFilteredIds = consentFiltered.map((r) => r.id);
+  const recentlyContacted = await prisma.contact.findMany({
+    where: { id: { in: consentFilteredIds }, lastContactedAt: { gte: fatigueCutoff } },
+    select: { id: true },
+  });
+  const recentIds = new Set(recentlyContacted.map((r) => r.id));
+  const recipients = consentFiltered.filter((r) => !recentIds.has(r.id));
+  const fatigueSuppressed = consentFiltered.length - recipients.length;
 
   if (recipients.length === 0 && consentTableExists) {
     return NextResponse.json(
@@ -193,6 +204,7 @@ export async function POST(req: NextRequest) {
 
   let sent = 0;
   let failed = 0;
+  const sentContactIds: string[] = [];
 
   for (const r of recipients) {
     if (!r.email) continue;
@@ -223,10 +235,18 @@ export async function POST(req: NextRequest) {
         ...(campaign?.replyToEmail ? { replyTo: campaign.replyToEmail } : {}),
       });
       sent += 1;
+      sentContactIds.push(r.id);
     } catch (e) {
       console.error(`[comms/email] failed for ${r.email}:`, e);
       failed += 1;
     }
+  }
+
+  if (sentContactIds.length > 0) {
+    await prisma.contact.updateMany({
+      where: { id: { in: sentContactIds } },
+      data: { lastContactedAt: new Date() },
+    }).catch(() => {});
   }
 
   // Update final delivery counts on the log row we created above.
@@ -244,5 +264,5 @@ export async function POST(req: NextRequest) {
     details: { subject, audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, noConsentCount });
+  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, noConsentCount, fatigueSuppressed });
 }

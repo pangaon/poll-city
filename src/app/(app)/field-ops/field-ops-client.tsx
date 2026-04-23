@@ -78,6 +78,10 @@ const FieldAuditClient = dynamic(
   () => import("@/app/(app)/field/audit/audit-client"),
   { ssr: false, loading: () => <PanelLoader /> },
 );
+const WeatherWidget = dynamic(
+  () => import("@/components/weather/weather-widget"),
+  { ssr: false },
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -305,6 +309,9 @@ function DashboardPanel({
         <span className="font-medium">{campaignName}</span>
         <span>— field operations pipeline</span>
       </div>
+
+      {/* Weather widget */}
+      <WeatherWidget />
 
       {/* Pipeline flow indicator */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">

@@ -119,15 +119,26 @@ export async function POST(req: NextRequest) {
       : {}),
   };
 
-  const recipients = await prisma.contact.findMany({
+  const allRecipients = await prisma.contact.findMany({
     where,
     select: { id: true, firstName: true, phone: true, ward: true },
     take: testOnly ? 1 : 2000,
   });
 
-  if (recipients.length === 0) {
+  if (allRecipients.length === 0) {
     return NextResponse.json({ error: "No recipients match that audience" }, { status: 400 });
   }
+
+  // Fatigue guard: skip contacts contacted by any channel in the last 24h.
+  const fatigueCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const allIds = allRecipients.map((r) => r.id);
+  const recentlyContacted = await prisma.contact.findMany({
+    where: { id: { in: allIds }, lastContactedAt: { gte: fatigueCutoff } },
+    select: { id: true },
+  });
+  const recentIds = new Set(recentlyContacted.map((r) => r.id));
+  const recipients = allRecipients.filter((r) => !recentIds.has(r.id));
+  const fatigueSuppressed = allRecipients.length - recipients.length;
 
   let sent = 0;
   let failed = 0;
@@ -179,5 +190,5 @@ export async function POST(req: NextRequest) {
     details: { audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: recipients.length });
+  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, fatigueSuppressed });
 }

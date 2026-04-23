@@ -96,7 +96,7 @@ async function completeWithAnthropic(
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
+        max_tokens: 1200,
         system: systemPrompt,
         messages: wireMessages,
         ...(actionCtx ? { tools: ADONI_TOOLS } : {}),
@@ -154,6 +154,8 @@ export async function POST(req: NextRequest) {
 
   const limited = await enforceLimit(req, "adoni", session?.user?.id);
   if (limited) return limited;
+  const limitedDaily = await enforceLimit(req, "adoni_daily", session?.user?.id);
+  if (limitedDaily) return limitedDaily;
 
   let body: IncomingChatBody;
   try {

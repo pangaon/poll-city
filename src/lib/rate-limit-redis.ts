@@ -22,7 +22,8 @@ type LimiterName =
   | "api"
   | "import"
   | "export"
-  | "adoni";
+  | "adoni"
+  | "adoni_daily";
 
 interface LimiterConfig {
   limit: number;
@@ -37,6 +38,7 @@ const LIMITERS: Record<LimiterName, LimiterConfig> = {
   import: { limit: 5, window: "1 h" },
   export: { limit: 20, window: "1 h" },
   adoni: { limit: 50, window: "1 h" },
+  adoni_daily: { limit: 100, window: "24 h" },
 };
 
 const url = process.env.UPSTASH_REDIS_REST_URL;
