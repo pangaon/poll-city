@@ -1,8 +1,40 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23 (overnight session)
-**Updated by:** Claude Sonnet 4.6 — Adoni fully autonomous: volunteer tools, inline chips, voice input, file upload, Command Centre. Build green × 2, pushed × 2.
+**Last updated:** 2026-04-23 (morning session — session close)
+**Updated by:** Claude Sonnet 4.6 — Atlas Phase 3, canvassing scripts overhaul, forms analytics, demo date fix, NEW badges. Build green × 3, pushed × 3. Session closed cleanly.
+
+---
+
+## ✅ THIS SESSION (2026-04-23 morning, 5 commits, all live on origin/main)
+
+### What shipped
+
+**commit 7fe5cf1 — Atlas Phase 3 + Canvassing Scripts + Forms Analytics**
+- `atlas-map-client.tsx` — ⚡ Quick / ✏️ Manual turf mode tabs, street search + checkbox list, volunteer DB combobox, AnimatePresence confirm dialog before overwriting manual turfs
+- `/api/atlas/volunteers-for-map` — new auth-gated endpoint, returns volunteer names + phones scoped by campaignId
+- `canvassing/scripts/scripts-client.tsx` — full overhaul with branch logic UI
+- `/api/canvassing/scripts/[id]` — GET/PUT/DELETE route
+- `prisma/schema.prisma` — `branchLogic Json?` on CanvassingScript (needs `npx prisma db push`)
+- `/api/forms/[id]/analytics` — analytics aggregation route wired to existing results page
+- Forms results page — Recharts formatter type error fixed (pre-existing, found in build)
+- `scripts/fix-demo-dates.ts` — script to push stale 2024 demo task dates forward
+- GEORGE_TODO items 80 + 81 added
+
+**commits 723f7f9 + e33a1f6 — NEW sidebar badges**
+- Scripts entry added to Field section (`/field-ops/scripts`)
+- Forms marked `isNew: true`
+- All atlas, tasks, AI assist, field ops, signs, finance, compliance entries carry NEW badge
+
+**commit 99dada3 — WORK_QUEUE + GEORGE_TODO docs**
+
+### George actions required (blocking prod)
+1. `npx prisma db push` — covers branchLogic + all prior schema additions (Tasks v2, founder_wisdom, CASL, sources, etc.)
+2. `npx tsx scripts/fix-demo-dates.ts` — fixes demo task dates for Wednesday demo
+3. Ward boundary seed — GEORGE_TODO item 81 (URL + CRON_SECRET from Vercel env)
+
+### Next session opener
+All three requested tasks are shipped and hardened. No PENDING items blocking Wednesday demo. Pick any PENDING item from WORK_QUEUE or start Wednesday walkthrough prep.
 
 ---
 
