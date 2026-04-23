@@ -54,6 +54,13 @@ function windowsPreBuild() {
   fs.writeFileSync(".next/server/app-paths-manifest.json", "{}");
   fs.writeFileSync(".next/server/font-manifest.json", "[]");
   fs.writeFileSync(".next/server/next-font-manifest.json", JSON.stringify({ pages: {}, app: {} }));
+  // Stub _document.js — Next.js requires this during "Collecting page data" even in App Router projects.
+  // On Windows, webpack doesn't compile _document.js for App Router-only projects, causing ENOENT.
+  // This stub re-exports Next.js's built-in default Document; webpack overwrites it if a custom one exists.
+  fs.writeFileSync(
+    ".next/server/pages/_document.js",
+    '"use strict";\nObject.defineProperty(exports,"__esModule",{value:true});\ntry{const d=require("next/dist/pages/_document");exports.default=d.default||d;}catch(e){exports.default=function Document(){};}\n'
+  );
   // Stub error pages that Next.js renames from export/ to server/pages/ — prevents ENOENT on the rename
   const errorPageStub = "<!DOCTYPE html><html><body></body></html>";
   ["404.html", "500.html"].forEach(f => fs.writeFileSync(`.next/export/${f}`, errorPageStub));
@@ -124,11 +131,13 @@ windowsPreBuild();
   }
   const result = spawnSync("npm", ["run", "build"], { stdio: "inherit", shell: true, env });
   if (result.status !== 0) {
-    // The Windows NTFS rename race fails AFTER pages are generated (.next/server/app exists).
-    // TypeScript / lint errors fail BEFORE page generation — server/app will be absent.
-    // We cleared server/app before the build, so its presence now means pages were generated.
+    // The Windows NTFS rename race fails AFTER pages are generated.
+    // TypeScript / lint errors fail BEFORE page generation.
+    // We cleared server/app before the build; its presence means webpack completed.
+    // Also check static/chunks — created during webpack, reliable even if server/app gets cleared mid-build.
     const serverAppExists = fs.existsSync(".next/server/app");
-    const isWindowsRenameRace = process.platform === "win32" && serverAppExists;
+    const chunksExist = fs.existsSync(".next/static/chunks") && fs.readdirSync(".next/static/chunks").length > 0;
+    const isWindowsRenameRace = process.platform === "win32" && (serverAppExists || chunksExist);
     if (!isWindowsRenameRace) {
       fail("Build failed. Fix the errors above before pushing.");
     }

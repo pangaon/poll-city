@@ -26,7 +26,8 @@
       "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue })",
       "PowerShell($procs = Get-Process -Name \"node\" -ErrorAction SilentlyContinue; foreach \\($p in $procs\\) { try { $p.Kill\\(\\) } catch {} }; Start-Sleep -Seconds 2; \\(Get-Process -Name \"node\" -ErrorAction SilentlyContinue\\).Count)",
       "PowerShell(if \\(Test-Path \".next\"\\) { Remove-Item -Recurse -Force \".next\" -ErrorAction SilentlyContinue }; \\(Test-Path \".next\"\\))",
-      "PowerShell(cd \"C:\\\\Users\\\\14168\\\\Documents\\\\Projects\\\\poll-city\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; npm run build 2>&1)"
+      "PowerShell(cd \"C:\\\\Users\\\\14168\\\\Documents\\\\Projects\\\\poll-city\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; npm run build 2>&1)",
+      "PowerShell(cd \"C:\\\\Users\\\\14168\\\\Documents\\\\Projects\\\\poll-city\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; npm run push:safe 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",
