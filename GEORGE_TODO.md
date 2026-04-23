@@ -173,20 +173,6 @@ npx prisma db push
 
   **After adding:** Redeploy (Vercel will auto-deploy on next push, or hit Redeploy in dashboard).
 
-- [ ] **3g. 🗳️ Seed Ontario election results for Whitby (run once — no DB migration required)**
-
-  The election history toggle is live on `/whitby`. Seed results so the data shows:
-
-  ```bash
-  npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"
-  ```
-
-  **What this populates:** 2014, 2018, 2022 election results for Whitby (Mayor + 6 councillors),
-  turnout %, total electors, total votes cast. Uses existing `ElectionResult` table — no schema
-  migration needed. Script is safe to re-run (deterministic upsert IDs).
-
-  **After seeding:** Go to `/whitby` → toggle "📊 Election History" in the header → data appears.
-
 - [ ] **3f. ⚠️ Seed Ontario ward boundaries into DB** (run ONCE after item 3 `npx prisma db push`)
 
   The `ward_boundaries` table is now in the schema but empty. You need to hit this endpoint once to populate it with all 28 Ontario municipalities. Do this AFTER `npx prisma db push` completes.
