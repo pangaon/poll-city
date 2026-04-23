@@ -2,7 +2,25 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-22
-**Updated by:** Claude Sonnet 4.6 — QR intelligence + Sign field ops + Vouchers + Funding Sources + Scan-to-Donate shipped, build GREEN, pushed to origin/main
+**Updated by:** Claude Sonnet 4.6 — Fixed 23 TypeScript errors blocking Vercel (commit 44ed332). Build green locally. Push running in background.
+
+---
+
+## 🚨 PUSH STATUS — IN PROGRESS 🚨
+
+`npm run push:safe` is running in the background on this machine (started ~23:17 local time).
+It takes 15-20 minutes on Windows. It will push to `origin/main` automatically when complete.
+
+**George: Check your Vercel dashboard.** When the push completes, Vercel starts a deploy automatically.
+If the push failed, open a terminal and run `npm run push:safe` — it takes 15-20 min, let it run.
+
+**6 commits waiting to push:**
+- `de1283f` fix(build): stub _document.js in Windows pre-build — fixes ENOENT race
+- `4ef01df` chore(todo): remove completed Whitby election seed item
+- `4727988` docs: session close — sign field ops + finance + QR scan-to-donate
+- `2d63040` chore(queue): ward infra status update
+- `1928f86` chore: linter formatting on election route + atlas clients
+- `44ed332` fix(ts): resolve 23 TypeScript errors blocking Vercel build ← **THE IMPORTANT ONE**
 
 ---
 
