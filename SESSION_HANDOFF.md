@@ -1,8 +1,23 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23 (afternoon session — session close)
-**Updated by:** Claude Sonnet 4.6 — Adoni daily cap, comms fatigue guard, print shop filters + quote modal, weather widget, user guide articles. Build green, pushed. Session closed cleanly.
+**Last updated:** 2026-04-23 (session close — George wrapping up)
+**Updated by:** Claude Sonnet 4.6 — New badges, help-data array fix, 8 new guide articles. Current live: HFL9yf9MC (91567ba). All green.
+
+---
+
+## ✅ THIS SESSION (2026-04-23 — George session, commit 91567ba, LIVE + CURRENT on Vercel)
+
+### What shipped
+- **Sidebar New badges** — All recently shipped features now show green "New" pill: AI Assist, Tasks, Field Ops, Scripts, Signs, Finance, Forms, Adoni Training (ops)
+- **Help-data bug fixed** — `HELP_ARTICLES` closing `];` was at line 467, orphaning all atlas/forms/scripts/weather/adoni articles. Fixed. All articles now reachable via search and category lookup.
+- **8 new user guide articles** — Tasks & Accountability (2 articles), Signs field ops, Finance Funding Sources, Finance Vouchers, Adoni Voice+Upload, Adoni Command Centre
+- **2 new help categories** — Tasks & Accountability, Finance & Funding
+- **Vercel red deploy fixed** — `77d311a` failed because of the orphaned help-data objects; `91567ba` fixed it. Current deployment is green.
+
+### Also in this session's git log (from overnight + morning sessions)
+- `79102ea` — Adoni daily cap (100/24h), comms 24h fatigue guard on email + SMS, print shop province/specialty filters + quote modal, weather widget on Field Ops (Open-Meteo, geolocation, 3-day forecast, canvassing readiness badge)
+- `7fe5cf1` — Atlas Phase 3 turf cutting (Quick Cut + Manual Mode), canvassing script builder with branch logic, forms analytics page
 
 ---
 
@@ -22,11 +37,28 @@
 - `src/app/(app)/help/help-data.ts` — 4 new user guide articles added (weather for canvassing, fatigue guard, finding a print shop, Adoni guide)
 - Build: green ✓ Pushed ✓
 
-### George actions required
-None new from this session. All prior `npx prisma db push` requirements still outstanding — see GEORGE_TODO.md.
+### George actions required — BEFORE WEDNESDAY DEMO (run in order)
+```bash
+npx prisma db push                              # Tasks v2 + FounderWisdom schema — CRITICAL, Tasks 500 without this
+npx prisma db seed                              # Maleeha, Elizabeth, GTA officials, PCS posts
+npx tsx scripts/provision-whitby-clients.ts    # Creates Maleeha + Elizabeth as real clients with logins
+npx tsx scripts/seed-whitby-boundaries.ts      # Loads ward maps into each campaign
+npx tsx scripts/fix-demo-dates.ts              # Fixes stale 2024 task dates in demo campaigns
+```
+
+Atlas ward seed (browser, one-time):
+```
+https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
+```
+Wait 60–90 seconds for JSON response. Populates all Ontario municipalities in the Atlas.
+
+Wednesday login credentials (after provision script runs):
+- Maleeha Shahid: shahidm@whitby.ca / MaleehaWhitby2026!
+- Elizabeth Roy: elizabeth.roy@whitby.ca / ElizabethWhitby2026!
+- George is auto-added as Admin on both campaigns.
 
 ### Next session opener
-Remaining PENDING items in WORK_QUEUE are largely P2/P3 (volunteer reimbursement → payment, comms Phase 8 social publishing, calendar OAuth). The platform is coherent and demo-ready. Next session can either polish for the Maleeha/Whitby mayor demo or tackle comms Phase 8.
+All code is shipped and live. The platform is demo-ready once George runs the 5 terminal commands above. Next session: Adoni Training — populate with George's first wisdom entries so Adoni starts giving campaign-specific advice. Or tackle Figma Make sync if new screens have been published.
 
 ---
 
