@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Maximize2,
+  Mic,
+  MicOff,
   Minimize2,
   Paperclip,
   Send,
@@ -330,6 +332,70 @@ function MessageArea({
 /*  InputBar                                                           */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  Web Speech API — voice input hook                                  */
+/* ------------------------------------------------------------------ */
+
+type SpeechHookResult = {
+  listening: boolean;
+  supported: boolean;
+  start: () => void;
+  stop: () => void;
+};
+
+function useSpeechInput(onTranscript: (text: string) => void): SpeechHookResult {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<unknown>(null);
+
+  const supported = typeof window !== "undefined" && (
+    "SpeechRecognition" in window || "webkitSpeechRecognition" in window
+  );
+
+  const start = useCallback(() => {
+    if (!supported) return;
+    const w = window as unknown as Record<string, unknown>;
+    const SpeechRecognitionCtor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as (new () => SpeechRecognitionInstance) | undefined;
+    if (!SpeechRecognitionCtor) return;
+    const rec = new SpeechRecognitionCtor();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-CA";
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = Array.from(e.results as unknown as Array<Array<{ transcript: string }>>)[0]?.[0]?.transcript ?? "";
+      if (transcript) onTranscript(transcript);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
+  }, [supported, onTranscript]);
+
+  const stop = useCallback(() => {
+    if (recognitionRef.current) {
+      (recognitionRef.current as SpeechRecognitionInstance).stop();
+    }
+    setListening(false);
+  }, []);
+
+  return { listening, supported, start, stop };
+}
+
+// Minimal type stubs for Web Speech API (not in lib.dom.d.ts by default)
+interface SpeechRecognitionEvent {
+  results: Array<Array<{ transcript: string }>>;
+}
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
 /* Parse a CSV string into an array of objects using the first row as headers */
 function parseCsv(text: string): Array<Record<string, string>> {
   const lines = text.trim().split(/\r?\n/);
@@ -377,13 +443,17 @@ function InputBar({
   suggestions,
 }: {
   prompt: string;
-  setPrompt: (v: string) => void;
+  setPrompt: React.Dispatch<React.SetStateAction<string>>;
   streaming: boolean;
   onSend: (text: string) => void;
   suggestions: string[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
+
+  const { listening, supported: voiceSupported, start: startListening, stop: stopListening } = useSpeechInput(
+    (transcript) => setPrompt((prev) => prev ? `${prev} ${transcript}` : transcript),
+  );
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -478,18 +548,42 @@ function InputBar({
           disabled={streaming}
           title="Attach a CSV or text file"
           className="inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:opacity-40 transition-colors"
-          style={{ height: 44, width: 40 }}
+          style={{ height: 44, width: 36 }}
         >
           <Paperclip className="h-4 w-4" />
         </button>
         <input
           value={attachedFile ? "" : prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder={attachedFile ? `Send "${attachedFile.name}" to Adoni` : "Ask Adoni"}
-          readOnly={!!attachedFile}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-          style={{ minHeight: 44, "--tw-ring-color": GREEN } as React.CSSProperties}
+          placeholder={attachedFile ? `Send "${attachedFile.name}" to Adoni` : listening ? "Listening…" : "Ask Adoni"}
+          readOnly={!!attachedFile || listening}
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors"
+          style={{
+            minHeight: 44,
+            "--tw-ring-color": GREEN,
+            borderColor: listening ? GREEN : undefined,
+            backgroundColor: listening ? "rgba(29,158,117,0.04)" : undefined,
+          } as React.CSSProperties}
         />
+        {/* Voice button — only shown when Web Speech API is available */}
+        {voiceSupported && (
+          <button
+            type="button"
+            onClick={listening ? stopListening : startListening}
+            disabled={streaming || !!attachedFile}
+            title={listening ? "Stop recording" : "Dictate to Adoni"}
+            className="inline-flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40"
+            style={{
+              height: 44,
+              width: 36,
+              borderColor: listening ? GREEN : "#e2e8f0",
+              color: listening ? GREEN : "#64748b",
+              backgroundColor: listening ? "rgba(29,158,117,0.08)" : "white",
+            }}
+          >
+            {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+        )}
         <button
           type="submit"
           disabled={!canSend}

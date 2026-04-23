@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FeatureGuide } from "@/components/ui";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -11,23 +11,20 @@ import {
   MessageSquare,
   DollarSign,
   Target,
-  Mic2,
+  Mic,
+  MicOff,
   MapPin,
-  FileText,
-  BarChart3,
-  Zap,
+  Paperclip,
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
-const AMBER = "#EF9F27";
 
 interface Message {
   role: "user" | "adoni";
   content: string;
-  isMock?: boolean;
   ts: number;
 }
 
@@ -35,8 +32,6 @@ interface Props {
   campaignId: string;
   isMock: boolean;
 }
-
-/* ─── Quick prompts by category ──────────────────────────────────────────── */
 
 const CATEGORIES = [
   {
@@ -67,7 +62,7 @@ const CATEGORIES = [
     icon: Target,
     prompts: [
       "Summarise where my campaign stands and the top three things I need to do this week.",
-      "What are the typical warning signs of a campaign that's about to lose?",
+      "What are the typical warning signs of a campaign that is about to lose?",
       "How do I convert undecided voters in a ward that leans right?",
       "Give me a debate prep checklist for a municipal candidates night.",
     ],
@@ -77,27 +72,34 @@ const CATEGORIES = [
     label: "Finance",
     icon: DollarSign,
     prompts: [
-      "What are the MAGA spending limits for Ontario municipal candidates?",
+      "How much have we raised and what are our top donors?",
       "How should I allocate my remaining budget with 3 weeks to election day?",
       "What is the most cost-effective way to reach voters in the final week?",
       "Draft talking points for a fundraising call to a major donor.",
     ],
   },
+  {
+    id: "volunteers",
+    label: "Volunteers",
+    icon: Users,
+    prompts: [
+      "Show me the volunteer roster and who has a vehicle.",
+      "Who can canvass this Saturday morning?",
+      "Add Maria Chen as a volunteer — she can door knock on weekends and has a car.",
+      "Fill unassigned shifts for this weekend from available volunteers.",
+    ],
+  },
 ];
 
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
-
 function storageKey(campaignId: string) {
-  return `poll-city:adoni-history-${campaignId}`;
+  return `poll-city:adoni-command-${campaignId}`;
 }
 
 function loadHistory(campaignId: string): Message[] {
   try {
     const raw = localStorage.getItem(storageKey(campaignId));
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Message[];
-    // Keep only last 40 messages to prevent unbounded storage
-    return parsed.slice(-40);
+    return (JSON.parse(raw) as Message[]).slice(-40);
   } catch {
     return [];
   }
@@ -113,83 +115,171 @@ function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ─── Component ───────────────────────────────────────────────────────────── */
+/* CSV parser — maps common column names to volunteer fields */
+function parseCsv(text: string): Array<Record<string, string>> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map((line) => {
+    const vals = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
+  });
+}
 
-export default function AIAssistClient({ campaignId, isMock }: Props) {
+function csvToMessage(rows: Array<Record<string, string>>, fileName: string): string {
+  const get = (row: Record<string, string>, ...keys: string[]) => {
+    for (const k of keys) {
+      const found = Object.entries(row).find(([key]) => key.toLowerCase().includes(k));
+      if (found?.[1]) return found[1];
+    }
+    return "";
+  };
+  const volunteers = rows.map((row) => ({
+    firstName: get(row, "first", "fname", "given"),
+    lastName: get(row, "last", "lname", "surname"),
+    phone: get(row, "phone", "mobile", "cell"),
+    email: get(row, "email", "mail"),
+    skills: get(row, "skill", "role"),
+    availability: get(row, "avail", "when"),
+  })).filter((v) => v.firstName && v.lastName);
+
+  if (volunteers.length === 0) {
+    return `I uploaded "${fileName}" but could not find name columns. Please paste the list directly as text.`;
+  }
+  return `I have a list of ${volunteers.length} volunteers from "${fileName}". Please add them all using bulk_create_volunteers: ${JSON.stringify(volunteers)}`;
+}
+
+export default function AIAssistClient({ campaignId }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
+  const [listening, setListening] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<unknown>(null);
 
-  // Load history from localStorage on mount
+  const voiceSupported = typeof window !== "undefined" && (
+    "SpeechRecognition" in window || "webkitSpeechRecognition" in window
+  );
+
   useEffect(() => {
-    const saved = loadHistory(campaignId);
-    setMessages(saved);
+    setMessages(loadHistory(campaignId));
     setHistoryLoaded(true);
   }, [campaignId]);
 
-  // Persist history on change
   useEffect(() => {
     if (!historyLoaded) return;
     saveHistory(campaignId, messages);
   }, [messages, campaignId, historyLoaded]);
 
-  // Auto-scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = useCallback(
-    async (text?: string) => {
-      const content = (text ?? prompt).trim();
-      if (!content || loading) return;
+  const send = useCallback(async (text?: string) => {
+    const content = (text ?? (attachedFile?.content ?? prompt)).trim();
+    if (!content || loading) return;
 
-      const userMsg: Message = { role: "user", content, ts: Date.now() };
-      setMessages((prev) => [...prev, userMsg]);
-      setPrompt("");
-      setLoading(true);
-      setActiveCat(null);
+    const userMsg: Message = { role: "user", content: attachedFile?.name ? `[File: ${attachedFile.name}]\n${content}` : content, ts: Date.now() };
+    setMessages((prev) => [...prev, userMsg]);
+    setPrompt("");
+    setAttachedFile(null);
+    setLoading(true);
+    setActiveCat(null);
 
-      // Auto-resize textarea back to single line
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
+    const history = messages.map((m) => ({ role: m.role === "adoni" ? "assistant" : "user", content: m.content }));
+
+    try {
+      const res = await fetch("/api/adoni/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page: "ai-assist",
+          messages: [...history, { role: "user", content }],
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
+      if (!res.body) throw new Error("No stream body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      const adoniMsg: Message = { role: "adoni", content: "", ts: Date.now() };
+      setMessages((prev) => [...prev, adoniMsg]);
+      const msgTs = adoniMsg.ts;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setMessages((prev) =>
+          prev.map((m) => (m.ts === msgTs ? { ...m, content: fullText } : m)),
+        );
       }
+    } catch {
+      setMessages((prev) => [...prev, {
+        role: "adoni",
+        content: "I could not connect right now. Please try again.",
+        ts: Date.now(),
+      }]);
+    } finally {
+      setLoading(false);
+    }
+  }, [prompt, attachedFile, loading, messages]);
 
-      try {
-        const res = await fetch("/api/ai-assist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "chat", campaignId, prompt: content }),
-        });
-        const data = (await res.json()) as { data?: { text: string; isMock?: boolean }; error?: string };
-        if (!res.ok) throw new Error(data.error ?? "Request failed");
-
-        const adoniMsg: Message = {
-          role: "adoni",
-          content: data.data?.text ?? "I wasn't able to generate a response. Please try again.",
-          isMock: data.data?.isMock,
-          ts: Date.now(),
-        };
-        setMessages((prev) => [...prev, adoniMsg]);
-      } catch (e) {
-        const adoniMsg: Message = {
-          role: "adoni",
-          content: "I wasn't able to connect right now. Check your API key configuration and try again.",
-          isMock: true,
-          ts: Date.now(),
-        };
-        setMessages((prev) => [...prev, adoniMsg]);
-      } finally {
-        setLoading(false);
-        textareaRef.current?.focus();
+  const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? "");
+      const isCsv = file.name.toLowerCase().endsWith(".csv");
+      let content: string;
+      if (isCsv) {
+        content = csvToMessage(parseCsv(text), file.name);
+      } else {
+        content = `I am sharing a file "${file.name}":\n\n${text.slice(0, 8000)}`;
       }
-    },
-    [prompt, loading, campaignId],
-  );
+      setAttachedFile({ name: file.name, content });
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }, []);
+
+  const toggleVoice = useCallback(() => {
+    if (listening) {
+      if (recognitionRef.current) (recognitionRef.current as { stop: () => void }).stop();
+      setListening(false);
+      return;
+    }
+    const w = window as unknown as Record<string, unknown>;
+    const SR = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as (new () => unknown) | undefined;
+    if (!SR) return;
+    const rec = new SR() as {
+      continuous: boolean; interimResults: boolean; lang: string;
+      onresult: ((e: { results: Array<Array<{ transcript: string }>> }) => void) | null;
+      onend: (() => void) | null; onerror: (() => void) | null;
+      start: () => void; stop: () => void;
+    };
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-CA";
+    rec.onresult = (e) => {
+      const t = e.results[0]?.[0]?.transcript ?? "";
+      if (t) setPrompt((prev) => prev ? `${prev} ${t}` : t);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
+  }, [listening]);
 
   const copyMessage = useCallback((content: string, ts: number) => {
     navigator.clipboard.writeText(content).then(() => {
@@ -204,62 +294,31 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
     toast.success("Conversation cleared");
   }, [campaignId]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  };
-
-  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPrompt(e.target.value);
-    // Auto-resize
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
   const activeCategory = CATEGORIES.find((c) => c.id === activeCat);
-
-  /* ─── Render ──────────────────────────────────────────────────────────── */
+  const canSend = !loading && (!!prompt.trim() || !!attachedFile);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[900px]" style={{ backgroundColor: "#f8fafc" }}>
-      <FeatureGuide
-        featureKey="ai-assist"
-        title="Your AI Campaign Assistant"
-        description="AI Assist helps you write faster and think through campaign problems. Ask it to draft an email, suggest a response to a voter question, or help you articulate a policy position. It knows your campaign, your ward, and Canadian municipal election context."
-        bullets={[
-          "Write emails, social posts, and canvassing scripts in seconds",
-          "Ask strategic questions: 'What should I say to renters in Ward 3?'",
-          "All output is a draft — always review and personalise before sending",
-        ]}
-      />
+    <div className="flex flex-col h-[calc(100vh-4rem)]" style={{ backgroundColor: "#f8fafc" }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
         <div className="flex items-center gap-3">
-          <div
-            className="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-            style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${GREEN} 100%)` }}
-          >
-            A
+          <div className="relative h-10 w-10 rounded-full overflow-hidden shrink-0" style={{ backgroundColor: NAVY }}>
+            <Image src="/images/adoni-bubble.png" alt="Adoni" fill className="object-cover" />
           </div>
           <div>
-            <p className="font-semibold text-slate-900 text-sm">Adoni</p>
-            <p className="text-xs text-slate-400">Campaign intelligence assistant</p>
+            <p className="font-semibold text-slate-900 text-sm">Adoni — Command Centre</p>
+            <p className="text-xs text-slate-400">Full platform access · Say anything, do anything</p>
           </div>
-          {isMock && (
-            <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-              Demo mode
-            </span>
-          )}
         </div>
         {messages.length > 0 && (
           <button
             onClick={clearConversation}
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-600 transition-colors px-2 py-1 rounded"
-            title="Clear conversation"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Clear
@@ -267,21 +326,8 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
         )}
       </div>
 
-      {/* ── Demo mode notice ────────────────────────────────────────────── */}
-      {isMock && (
-        <div className="mx-4 mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800 flex items-start gap-2">
-          <Zap className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
-          <span>
-            Adoni is running in demo mode — responses are illustrative.
-            Add <code className="font-mono bg-amber-100 px-1 rounded">ANTHROPIC_API_KEY</code> to Railway to activate live intelligence.
-          </span>
-        </div>
-      )}
-
-      {/* ── Messages ────────────────────────────────────────────────────── */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-
-        {/* Welcome state */}
         {messages.length === 0 && !loading && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -289,20 +335,17 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="text-center pt-8 pb-4"
           >
-            <div
-              className="inline-flex h-16 w-16 items-center justify-center rounded-full text-white text-2xl font-bold mb-4"
-              style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${GREEN} 100%)` }}
-            >
-              A
+            <div className="relative h-20 w-20 rounded-full overflow-hidden mx-auto mb-4" style={{ backgroundColor: NAVY }}>
+              <Image src="/images/adoni-bubble.png" alt="Adoni" fill className="object-cover" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">How can I help?</h2>
+            <h2 className="text-xl font-bold text-slate-900">What can I do for you?</h2>
             <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-              Ask me anything about your campaign — strategy, scripting, voter analysis, finance, or what to do today.
+              Ask me anything. I can read your data, create records, write copy, and run your campaign — one command at a time.
             </p>
           </motion.div>
         )}
 
-        {/* Quick prompts — category selector (only when no messages) */}
+        {/* Quick prompts */}
         {messages.length === 0 && (
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2 justify-center">
@@ -313,22 +356,17 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
                     key={cat.id}
                     onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
-                      activeCat === cat.id
-                        ? "text-white border-transparent"
-                        : "text-slate-600 border-slate-200 bg-white hover:border-slate-300"
+                      activeCat === cat.id ? "text-white border-transparent" : "text-slate-600 border-slate-200 bg-white hover:border-slate-300"
                     }`}
-                    style={activeCat === cat.id ? { backgroundColor: NAVY, borderColor: NAVY } : {}}
+                    style={activeCat === cat.id ? { backgroundColor: NAVY } : {}}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {cat.label}
-                    <ChevronDown
-                      className={`h-3 w-3 transition-transform ${activeCat === cat.id ? "rotate-180" : ""}`}
-                    />
+                    <ChevronDown className={`h-3 w-3 transition-transform ${activeCat === cat.id ? "rotate-180" : ""}`} />
                   </button>
                 );
               })}
             </div>
-
             <AnimatePresence>
               {activeCategory && (
                 <motion.div
@@ -356,7 +394,6 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
           </div>
         )}
 
-        {/* Message thread */}
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
@@ -366,30 +403,20 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
             >
-              {/* Avatar */}
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-1 ${
-                  msg.role === "user" ? "bg-slate-200 text-slate-600" : "text-white"
+                className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-1 overflow-hidden ${
+                  msg.role === "user" ? "bg-slate-200 text-slate-600" : ""
                 }`}
-                style={
-                  msg.role === "adoni"
-                    ? { background: `linear-gradient(135deg, ${NAVY} 0%, ${GREEN} 100%)` }
-                    : {}
-                }
+                style={msg.role === "adoni" ? { backgroundColor: NAVY } : {}}
               >
-                {msg.role === "user" ? "You" : "A"}
-              </div>
-
-              {/* Bubble */}
-              <div className={`group max-w-[80%] space-y-1 ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col`}>
-                {msg.isMock && (
-                  <p className="text-xs text-amber-600 font-medium px-1">Demo response</p>
+                {msg.role === "user" ? "You" : (
+                  <Image src="/images/adoni-bubble.png" alt="Adoni" width={32} height={32} className="object-cover" />
                 )}
+              </div>
+              <div className={`group max-w-[80%] space-y-1 ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col`}>
                 <div
                   className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "text-white rounded-tr-sm"
-                      : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm"
+                    msg.role === "user" ? "text-white rounded-tr-sm" : "bg-white border border-slate-200 text-slate-800 rounded-tl-sm"
                   }`}
                   style={msg.role === "user" ? { backgroundColor: NAVY } : {}}
                 >
@@ -397,17 +424,12 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
                 </div>
                 <div className={`flex items-center gap-2 px-1 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                   <p className="text-xs text-slate-400">{formatTime(msg.ts)}</p>
-                  {msg.role === "adoni" && (
+                  {msg.role === "adoni" && msg.content && (
                     <button
                       onClick={() => copyMessage(msg.content, msg.ts)}
                       className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600"
-                      title="Copy response"
                     >
-                      {copiedId === msg.ts ? (
-                        <CheckCheck className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
+                      {copiedId === msg.ts ? <CheckCheck className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                     </button>
                   )}
                 </div>
@@ -416,40 +438,27 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
           ))}
         </AnimatePresence>
 
-        {/* Typing indicator */}
         {loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex gap-3 items-start"
-          >
-            <div
-              className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-1"
-              style={{ background: `linear-gradient(135deg, ${NAVY} 0%, ${GREEN} 100%)` }}
-            >
-              A
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 items-start">
+            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 mt-1" style={{ backgroundColor: NAVY }}>
+              <Image src="/images/adoni-bubble.png" alt="Adoni" width={32} height={32} className="object-cover" />
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3">
               <div className="flex gap-1">
                 {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="h-2 w-2 rounded-full bg-slate-300 animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }}
-                  />
+                  <span key={i} className="h-2 w-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                 ))}
               </div>
             </div>
           </motion.div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Inline prompt suggestions (after conversation starts) ────────── */}
+      {/* Inline suggestions after conversation starts */}
       {messages.length > 0 && !loading && (
         <div className="px-4 pb-2">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {CATEGORIES.flatMap((c) => c.prompts.slice(0, 1)).map((p) => (
               <button
                 key={p}
@@ -463,38 +472,72 @@ export default function AIAssistClient({ campaignId, isMock }: Props) {
         </div>
       )}
 
-      {/* ── Input bar ───────────────────────────────────────────────────── */}
+      {/* Input bar */}
       <div className="px-4 pb-4 pt-2 bg-white border-t border-slate-100">
-        <div className="flex gap-2 items-end">
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={handleTextareaInput}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask Adoni anything… (Enter to send, Shift+Enter for new line)"
-              rows={1}
-              className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-              style={{ "--tw-ring-color": GREEN, minHeight: 48, maxHeight: 160 } as React.CSSProperties}
-            />
-            {prompt.length > 0 && (
-              <p className="absolute bottom-1 right-3 text-xs text-slate-400">
-                {prompt.length}/2000
-              </p>
-            )}
+        {/* File attachment chip */}
+        {attachedFile && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700">
+            <Paperclip className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="flex-1 truncate">{attachedFile.name}</span>
+            <button onClick={() => setAttachedFile(null)} className="text-slate-400 hover:text-red-500 transition-colors">
+              ×
+            </button>
           </div>
+        )}
+        <input ref={fileInputRef} type="file" accept=".csv,.txt,.md" className="hidden" onChange={handleFile} />
+        <div className="flex gap-2 items-center">
+          {/* Attach */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            title="Attach CSV or text file"
+            className="h-12 w-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors disabled:opacity-40 shrink-0"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+          {/* Input */}
+          <input
+            value={attachedFile ? "" : prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            readOnly={!!attachedFile || listening}
+            placeholder={attachedFile ? `Send "${attachedFile.name}"` : listening ? "Listening…" : "Ask Adoni anything… (Enter to send)"}
+            className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+            style={{
+              minHeight: 48,
+              "--tw-ring-color": GREEN,
+              borderColor: listening ? GREEN : undefined,
+              backgroundColor: listening ? "rgba(29,158,117,0.04)" : undefined,
+            } as React.CSSProperties}
+          />
+          {/* Voice */}
+          {voiceSupported && (
+            <button
+              onClick={toggleVoice}
+              disabled={loading || !!attachedFile}
+              title={listening ? "Stop recording" : "Dictate to Adoni"}
+              className="h-12 w-10 rounded-xl border flex items-center justify-center transition-colors disabled:opacity-40 shrink-0"
+              style={{
+                borderColor: listening ? GREEN : "#e2e8f0",
+                color: listening ? GREEN : "#64748b",
+                backgroundColor: listening ? "rgba(29,158,117,0.08)" : "white",
+              }}
+            >
+              {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
+          {/* Send */}
           <button
             onClick={() => send()}
-            disabled={!prompt.trim() || loading}
+            disabled={!canSend}
             className="h-12 w-12 rounded-2xl flex items-center justify-center text-white transition-all disabled:opacity-40 shrink-0"
             style={{ backgroundColor: NAVY }}
-            title="Send (Enter)"
           >
             <Send className="h-4 w-4" />
           </button>
         </div>
         <p className="mt-1.5 text-center text-xs text-slate-400">
-          Adoni uses your campaign data to give relevant answers. Always verify key facts independently.
+          Adoni reads your live campaign data and can take action. Review important changes before confirming.
         </p>
       </div>
     </div>
