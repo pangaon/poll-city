@@ -68,3 +68,4 @@ tsconfig.tsbuildinfo
 .mpac-cache.csv
 .statcan-cache/
 figma_design_pollcity_iosapp/
+build_output.txt
