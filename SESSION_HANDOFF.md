@@ -2,11 +2,44 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-23
-**Updated by:** Claude Sonnet 4.6 — Poll City Social full desktop rebuild (3-column shell, PCSHeader, left sidebar, right rail, feed fixed, PCS Feed tab wired to campaign app). Build green.
+**Updated by:** Claude Sonnet 4.6 — Official site redesign (Maleeha-ready), newsletter subscribe endpoint. Build green, pushed.
 
 ---
 
-## 🏙️ POLL CITY SOCIAL — DESKTOP REBUILD (this session, 2026-04-23)
+## 🏛️ OFFICIAL SITE REDESIGN — LIVE (this session, 2026-04-23)
+
+**Maleeha-ready. Production-quality official profile page deployed.**
+
+### What shipped
+
+**Modified:**
+- `src/app/officials/[id]/page.tsx` — Complete redesign. Sticky nav, full-bleed navy hero with blurred photo backdrop, photo card (140×168px), tagline, committee chips, social icons. Stats strip: Public Approval %, Days to Election, Years of Service, Level of Government. Two-column body: bio, priorities, service record, election history, constituent Q&A, gallery (main) + approval rating widget, countdown, committee roles with context descriptions, contact, Follow on PCS, share (sidebar). Full-width navy newsletter section. Amber claim CTA. Dark footer.
+
+**New files:**
+- `src/app/officials/[id]/official-newsletter.tsx` — Client component for newsletter subscribe. Email + name, POST to subscribe API, success state with checkmark, CASL compliance note.
+- `src/app/api/officials/[id]/subscribe/route.ts` — Public subscribe endpoint. Rate-limited (5/hour per IP via `rateLimit(req, "form")`). Zod validation. Upserts `NewsletterSubscriber` with `source: "official_site"`. Re-activates unsubscribed contacts.
+
+### Key design details
+- All extended data (OfficialPriority, OfficialAccomplishment, OfficialGalleryPhoto, ApprovalRating, ElectionResult) loaded via `Promise.allSettled` — graceful fallback if tables don't exist in Railway yet
+- Approval rating computed from raw `positiveCount / totalSignals` — **not** `approvalPct` (that field doesn't exist on the Prisma model)
+- Committee roles with human-readable context descriptions keyed to exact committee name
+- Election history sourced from Ontario Open Data via existing `ElectionResult` table
+- Hero uses `<img>` tag direct to Squarespace CDN URL — CSP `img-src https:` allows it, no Next Image config needed
+
+### How to see it
+Navigate to: `www.poll.city/officials/off-whitby-maleeha`
+
+### George actions required (CRITICAL — nothing shows without these)
+1. `npx prisma db push` — Apply schema fields `tagline`, `linkedIn`, `profileMode` on `Official` model to Railway (if not already there)
+2. `npx prisma db seed` — Load Maleeha's extended data: 8 committee roles, tagline, 78% approval rating, priorities, accomplishments
+3. After seed: Refresh `www.poll.city/officials/off-whitby-maleeha` — all sections will populate
+
+### Risk: Data won't show until seeded
+Approval rating sidebar, priorities, service record, election history, gallery all gracefully show nothing if the DB doesn't have the seed data yet. The page itself renders cleanly with just the core `Official` record.
+
+---
+
+## 🏙️ POLL CITY SOCIAL — DESKTOP REBUILD (previous session, 2026-04-23)
 
 **Blank page fixed. Full 3-column Facebook-style desktop shell live.**
 
