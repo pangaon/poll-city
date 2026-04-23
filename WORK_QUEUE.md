@@ -149,13 +149,14 @@ This is the business model. Every gap below undermines the conversion funnel.
 | SUPER_ADMIN → /ops routing | DONE — commits b1c8131, 45bdcdc | George lands on /ops on login. Redirected from /dashboard if no activeCampaignId. Null guards added. |
 | Founder campaign view UX | DONE — commits 71a98f5, 1b1e6ce | "Enter Campaign View" in Ops→Clients. Navy banner shows campaign name when inside client view. "Exit to Founder View" clears activeCampaignId and returns to /ops. |
 | Canvassing script branching | DONE — commit 7fe5cf1 | Full branch editor: edit mode (add/wire nodes + responses), interactive preview mode (step-through with back/restart), save per-script to DB. George must run `npx prisma db push` to activate branchLogic column. |
-| `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
+| `/print/shops` — vendor depth | DONE — commit 79102ea | Province + specialty filter dropdowns. Quote request modal (pre-filled mailto to shop). averageResponseHours displayed on every card. |
 | `/forms/[id]/results` — analytics | DONE — commit 7fe5cf1 | Charts tab: bar chart per field (option fields), trend line, answer rate per field, 4 stat cards. Responses tab: paginated table (50/page). CSV export always visible. |
 | Social feed | DONE — commit 0e5ff04 + this session | Discover officials, vote on polls | Phase 1 live. Desktop 3-column shell: PCSHeader, PCSLeftSidebar, PCSRightRail. Blank page fixed (nested html/body). PCS Feed tab in campaign social manager. 5 recent 2026 seed posts added. George must run seed script. |
 | Politician profile — full councillor-website standard | DONE — commit 19a595f | Full profile: events, promises tracker, newsletter subscribe, share button, claim CTA, approval rating fix, ward info, campaign site link | — |
-| Weather integration | PENDING | None | Simple weather API for canvassing day planning |
+| Weather integration | DONE — commit 79102ea | WeatherWidget on Field Ops dashboard. Browser geolocation + Open-Meteo (no API key). Current temp, conditions, rain %, 3-day forecast, canvassing-readiness badge. |
 | Marketing site content | DONE — commit 8aed4ad | Full content pass: copy, social proof, pricing, CTAs, About page, /contact, email capture, Poll City Social section, Officials vertical | — |
-| Adoni per-tool rate limit | PENDING | Adoni works | Per-tool rate limiting to prevent runaway API cost |
+| Adoni per-tool rate limit | DONE — commit 79102ea | adoni_daily limiter: 100/24h on top of 50/hr. max_tokens cut 2000→1200. |
+| Comms fatigue guard | DONE — commit 79102ea | 24h cross-channel suppression on email + SMS blast. lastContactedAt updated after send. fatigueSuppressed count in API response. |
 
 ---
 
