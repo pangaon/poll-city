@@ -269,6 +269,7 @@ export default function Sidebar() {
     const platformItems = [...PLATFORM_SECTION.items];
     if (isSuperAdmin) {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
+      platformItems.push({ href: "/ops/adoni", icon: Brain, label: "Adoni Training" });
       platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
       platformItems.push({ href: "/ops/sources", icon: Library, label: "Source Library" });
       platformItems.push({ href: "/design-preview", icon: Smartphone, label: "Mobile Preview" });

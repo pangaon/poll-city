@@ -84,7 +84,7 @@ export default function PCSHeader() {
   const displayName = session?.user?.name ?? "";
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-[57px] bg-[#080D14]/80 dark:bg-[#080D14]/80 bg-white/80 backdrop-blur-xl border-b border-white/[0.06] dark:border-white/[0.06]">
+    <header className="fixed top-0 inset-x-0 z-50 h-[57px] bg-white/80 dark:bg-[#080D14]/80 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.06]">
       <div className="max-w-[1400px] mx-auto h-full px-3 sm:px-4 lg:px-6 flex items-center gap-3">
 
         {/* ── Brand ── */}
@@ -98,7 +98,7 @@ export default function PCSHeader() {
               className="rounded-lg group-hover:scale-105 transition-transform duration-200"
             />
           </div>
-          <div className="flex items-baseline gap-1 hidden sm:flex">
+          <div className="hidden sm:flex items-baseline gap-1">
             <span className="font-black text-[15px] tracking-tight text-white">
               POLL CITY
             </span>
@@ -114,12 +114,12 @@ export default function PCSHeader() {
           className="flex-1 max-w-sm hidden md:flex items-center"
         >
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search reps, candidates, polls…"
-              className="w-full h-8 pl-9 pr-3 text-sm bg-white/[0.06] hover:bg-white/[0.09] focus:bg-white/[0.09] border border-white/[0.08] focus:border-[#00D4C8]/40 rounded-full text-white placeholder:text-white/30 outline-none transition-all duration-200"
+              className="w-full h-8 pl-9 pr-3 text-sm bg-white/[0.06] hover:bg-white/[0.09] focus:bg-white/[0.09] border border-white/[0.08] focus:border-[#00D4C8]/40 rounded-full text-white placeholder:text-slate-500 outline-none transition-all duration-200"
             />
           </div>
         </form>
@@ -130,7 +130,7 @@ export default function PCSHeader() {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="hidden md:flex w-8 h-8 rounded-full items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-all duration-200"
+            className="hidden md:flex w-8 h-8 rounded-full items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-white/[0.06] transition-all duration-200"
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
@@ -139,7 +139,7 @@ export default function PCSHeader() {
           {session?.user && (
             <Link
               href="/social/notifications"
-              className="relative w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-all duration-200"
+              className="relative w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-white/[0.06] transition-all duration-200"
             >
               <Bell className="w-4 h-4" />
               <AnimatePresence>
@@ -183,7 +183,7 @@ export default function PCSHeader() {
                 )}
                 <ChevronDown
                   className={cn(
-                    "w-3 h-3 text-white/30 transition-transform duration-200",
+                    "w-3 h-3 text-slate-500 transition-transform duration-200",
                     menuOpen && "rotate-180"
                   )}
                 />
@@ -202,7 +202,7 @@ export default function PCSHeader() {
                     {/* User info */}
                     <div className="px-4 py-3 border-b border-white/[0.06]">
                       <p className="text-sm font-semibold text-white truncate">{displayName}</p>
-                      <p className="text-xs text-white/40 truncate">{session.user.email}</p>
+                      <p className="text-xs text-slate-400 truncate">{session.user.email}</p>
                     </div>
 
                     {/* Links */}
@@ -216,7 +216,7 @@ export default function PCSHeader() {
                           key={href}
                           href={href}
                           onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/[0.05] transition-colors"
                         >
                           <Icon className="w-3.5 h-3.5" />
                           {label}
@@ -241,7 +241,7 @@ export default function PCSHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="text-sm text-white/50 hover:text-white transition-colors hidden sm:block"
+                className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
               >
                 Sign in
               </Link>

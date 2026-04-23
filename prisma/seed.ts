@@ -780,6 +780,127 @@ async function main() {
 
   console.log("✅ Elizabeth Roy profile seeded (priorities, accomplishments, posts, Q&A, approval rating)");
 
+  // ── Toronto / Brampton / Mississauga officials ─────────────────────────────
+  const officialOliviaChow = await prisma.official.upsert({
+    where: { id: "off-toronto-mayor" }, update: {},
+    create: {
+      id: "off-toronto-mayor",
+      name: "Olivia Chow",
+      firstName: "Olivia",
+      lastName: "Chow",
+      title: "Mayor of Toronto",
+      level: GovernmentLevel.municipal,
+      district: "City of Toronto",
+      districtCode: "TOR",
+      province: "ON",
+      email: "mayor_chow@toronto.ca",
+      phone: "416-397-2489",
+      website: "https://oliviachow.ca",
+      bio: "Olivia Chow was elected Mayor of Toronto in June 2023, becoming the city's first racialized mayor. She previously represented Trinity-Spadina in the House of Commons and at Toronto City Hall. Her priorities include affordable housing, transit expansion, community safety, and a Toronto that works for everyone — not just those at the top.",
+      tagline: "Building a Toronto that works for everyone.",
+      profileMode: "officeholder",
+      postalCodes: ["M5V", "M5T", "M5S", "M5R", "M5G", "M6G", "M6H", "M6J", "M6K", "M4Y", "M4X", "M4W"],
+      subscriptionStatus: "verified",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2023-07-12"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  const officialBradBradford = await prisma.official.upsert({
+    where: { id: "off-toronto-w19" }, update: {},
+    create: {
+      id: "off-toronto-w19",
+      name: "Brad Bradford",
+      firstName: "Brad",
+      lastName: "Bradford",
+      title: "City Councillor",
+      level: GovernmentLevel.municipal,
+      district: "Ward 19 — Beaches-East York",
+      districtCode: "W19",
+      province: "ON",
+      email: "councillor_bradford@toronto.ca",
+      phone: "416-392-1381",
+      bio: "Brad Bradford has represented Beaches-East York at Toronto City Hall since 2018. A former urban planner, he brings practical, evidence-based thinking to housing, transit, and neighbourhood planning. He has championed the renewal of the Ontario Line, advocated for more housing supply near transit corridors, and worked to preserve what makes the east end a great place to raise a family.",
+      tagline: "East York's voice at City Hall.",
+      profileMode: "officeholder",
+      postalCodes: ["M4E", "M4L", "M4M", "M4J"],
+      subscriptionStatus: "free",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2018-12-03"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  const officialPatrickBrown = await prisma.official.upsert({
+    where: { id: "off-brampton-mayor" }, update: {},
+    create: {
+      id: "off-brampton-mayor",
+      name: "Patrick Brown",
+      firstName: "Patrick",
+      lastName: "Brown",
+      title: "Mayor of Brampton",
+      level: GovernmentLevel.municipal,
+      district: "City of Brampton",
+      districtCode: "BRA",
+      province: "ON",
+      email: "mayor.brown@brampton.ca",
+      phone: "905-874-2649",
+      website: "https://brampton.ca",
+      bio: "Patrick Brown has served as Mayor of Brampton since 2018 and was re-elected in 2022. During his tenure, Brampton has pursued a new hospital campus, invested in transit expansion, and worked to position itself as a tech and innovation hub in the Greater Toronto Area. Before city hall, Brown served federally and provincially, giving him deep intergovernmental experience that has helped Brampton secure provincial and federal infrastructure investments.",
+      tagline: "Building Brampton's future.",
+      profileMode: "officeholder",
+      postalCodes: ["L6P", "L6R", "L6S", "L6T", "L6V", "L6W", "L6X", "L6Y", "L6Z", "L7A"],
+      subscriptionStatus: "free",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2022-10-24"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  const officialCarolynParrish = await prisma.official.upsert({
+    where: { id: "off-mississauga-mayor" }, update: {},
+    create: {
+      id: "off-mississauga-mayor",
+      name: "Carolyn Parrish",
+      firstName: "Carolyn",
+      lastName: "Parrish",
+      title: "Mayor of Mississauga",
+      level: GovernmentLevel.municipal,
+      district: "City of Mississauga",
+      districtCode: "MIS",
+      province: "ON",
+      email: "mayorparrish@mississauga.ca",
+      phone: "905-615-3200",
+      website: "https://mississauga.ca",
+      bio: "Carolyn Parrish has been a Mississauga City Councillor for Ward 6 since 2010, and was previously a Member of Parliament for Mississauga Centre from 1993 to 2006. She is known as a straight-talking advocate with deep roots in the community. She serves as Mayor of Mississauga, continuing the city's tradition of stable, fiscally-sound municipal leadership as Mississauga charts its own course following years of change at the top.",
+      tagline: "Mississauga. Moving forward.",
+      profileMode: "officeholder",
+      postalCodes: ["L4T", "L4W", "L4X", "L4Y", "L4Z", "L5A", "L5B", "L5C", "L5E", "L5G", "L5H", "L5J", "L5K", "L5L", "L5M", "L5N", "L5R", "L5T", "L5V", "L5W"],
+      subscriptionStatus: "free",
+      isClaimed: false,
+      isActive: true,
+      termStart: new Date("2022-10-24"),
+      termEnd: new Date("2026-10-26"),
+    },
+  });
+
+  // ── Posts for new officials ────────────────────────────────────────────────
+  await prisma.politicianPost.upsert({ where: { id: "post-chow-2026-1" }, update: {}, create: { id: "post-chow-2026-1", officialId: officialOliviaChow.id, authorName: "Olivia Chow", postType: "announcement", title: "1,200 New Affordable Homes — Housing Now Phase 4", body: "Today we announced 1,200 new affordable homes as part of our Housing Now phase four initiative. Affordable housing is not a slogan — it is a policy choice. We are making it.", municipalScope: "toronto", isPublished: true, createdAt: new Date("2026-04-18T10:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-chow-2026-2" }, update: {}, create: { id: "post-chow-2026-2", officialId: officialOliviaChow.id, authorName: "Olivia Chow", postType: "project_update", title: "Federal Funding Confirmed — Eglinton Crosstown Extension", body: "Transit is the circulatory system of a great city. I am proud to confirm federal co-funding for the Eglinton Crosstown extension — Toronto commuters deserve better, and we are delivering it.", municipalScope: "toronto", isPublished: true, createdAt: new Date("2026-04-10T09:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-chow-2026-3" }, update: {}, create: { id: "post-chow-2026-3", officialId: officialOliviaChow.id, authorName: "Olivia Chow", postType: "civic_update", title: "First GTA Mayor Summit of 2026", body: "Met with Mississauga Mayor Parrish and Brampton Mayor Brown today for the first GTA Mayor Summit of 2026. Three cities, one region, one goal: make the GTHA work for the people who live here.", municipalScope: "toronto", isPublished: true, createdAt: new Date("2026-04-03T14:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-bradford-2026-1" }, update: {}, create: { id: "post-bradford-2026-1", officialId: officialBradBradford.id, authorName: "Brad Bradford", postType: "project_update", title: "Ontario Line — Gerrard and Eastern Stations Fully Funded", body: "The Ontario Line stations at Gerrard and Eastern are fully funded and breaking ground this fall. Six years of advocacy by our community is finally paying off.", municipalScope: "toronto", isPublished: true, createdAt: new Date("2026-04-15T11:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-bradford-2026-2" }, update: {}, create: { id: "post-bradford-2026-2", officialId: officialBradBradford.id, authorName: "Brad Bradford", postType: "civic_update", title: "Missing Middle — Four Multiplex Approvals in Ward 19 This Week", body: "Missing middle housing is the single most important thing Toronto can do to house its next generation. Ward 19 is leading the way — four new multiplex approvals this week alone.", municipalScope: "toronto", isPublished: true, createdAt: new Date("2026-04-08T09:30:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-brown-2026-1" }, update: {}, create: { id: "post-brown-2026-1", officialId: officialPatrickBrown.id, authorName: "Patrick Brown", postType: "announcement", title: "Brampton Civic Hospital Expansion — Provincial Approval Received", body: "Major announcement: the new Brampton Civic Hospital expansion has received provincial approval. This was years in the making. Brampton residents deserve healthcare close to home.", municipalScope: "brampton", isPublished: true, createdAt: new Date("2026-04-20T10:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-brown-2026-2" }, update: {}, create: { id: "post-brown-2026-2", officialId: officialPatrickBrown.id, authorName: "Patrick Brown", postType: "civic_update", title: "800 New Jobs — Three Innovation Employers Choose Brampton", body: "Tech companies are choosing Brampton. We welcomed three new innovation-sector employers this quarter — over 800 jobs. Brampton is not just growing, it is maturing into a city that creates real opportunity.", municipalScope: "brampton", isPublished: true, createdAt: new Date("2026-04-11T08:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-parrish-2026-1" }, update: {}, create: { id: "post-parrish-2026-1", officialId: officialCarolynParrish.id, authorName: "Carolyn Parrish", postType: "project_update", title: "Hazel McCallion LRT — Downtown Segment Ribbon Cut This Spring", body: "Mississauga is getting its own transit. The Hazel McCallion LRT line is not just infrastructure — it is the spine of a city finally building its own identity. Proud to cut the ribbon on the downtown segment this spring.", municipalScope: "mississauga", isPublished: true, createdAt: new Date("2026-04-17T12:00:00Z") } });
+  await prisma.politicianPost.upsert({ where: { id: "post-parrish-2026-2" }, update: {}, create: { id: "post-parrish-2026-2", officialId: officialCarolynParrish.id, authorName: "Carolyn Parrish", postType: "civic_update", title: "Budget 2026 — Balanced. No Tax Increase Above Inflation.", body: "We balanced the budget again. No tax increase above inflation. High-quality services maintained. Mississauga residents should expect nothing less — and I will never stop delivering it.", municipalScope: "mississauga", isPublished: true, createdAt: new Date("2026-04-05T09:00:00Z") } });
+
+  console.log("✅ Toronto / Brampton / Mississauga officials seeded (Olivia Chow, Brad Bradford, Patrick Brown, Carolyn Parrish)");
+
   // ── Campaign ───────────────────────────────────────────────────────────────
   const campaign = await prisma.campaign.upsert({
     where: { slug: "ward-12-2026" }, update: {},

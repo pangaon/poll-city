@@ -235,6 +235,25 @@ export async function POST(req: NextRequest) {
     ? Math.ceil((campaign.electionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
+  // Load active founder wisdom from DB (fails gracefully — never blocks chat)
+  let founderWisdom: string | undefined;
+  try {
+    const wisdomEntries = await (prisma as unknown as {
+      founderWisdom: { findMany: (args: unknown) => Promise<Array<{ category: string; title: string; content: string }>> }
+    }).founderWisdom.findMany({
+      where: { isActive: true },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+      select: { category: true, title: true, content: true },
+    });
+    if (wisdomEntries.length > 0) {
+      founderWisdom = wisdomEntries
+        .map((e) => `[${e.category.toUpperCase()}] ${e.title}: ${e.content}`)
+        .join("\n\n");
+    }
+  } catch {
+    // Table may not exist yet (migration pending) — silently skip
+  }
+
   const systemPrompt = buildAdoniSystemPrompt({
     page,
     campaignName: campaign?.name ?? "No active campaign",
@@ -255,6 +274,7 @@ export async function POST(req: NextRequest) {
     permissions: resolved?.permissions,
     trustLevel: resolved?.trustLevel,
     roleName: resolved?.roleName,
+    founderWisdom,
   });
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";

@@ -83,6 +83,7 @@ npx prisma db push
   - **`funding_sources` + `funding_source_transactions` tables** — FundingSource + FundingSourceTransaction models (granular finance tracking)
   - **`vouchers` + `voucher_redemptions` tables** — Voucher + VoucherRedemption models (volunteer incentives system)
   - **`polling_stations` table** — PollingStation model (campaign polling station overlay on atlas map — signs/polling toggle system)
+  - **`founder_wisdom` table** — FounderWisdom model (George's campaign playbook entries — powers Adoni responses with 35-year expertise)
 
   Steps:
   1. Open your terminal in the poll-city project folder
@@ -92,7 +93,7 @@ npx prisma db push
 
 - [ ] **3b. ⚠️ Run `npx prisma db seed` to load Whitby profiles** (after db push)
 
-  The seed data for Maleeha Shahid and Elizabeth Roy is in prisma/seed.ts. Run it after db push to load their profiles, priorities, accomplishments, Q&A, and approval ratings:
+  The seed data for Maleeha Shahid, Elizabeth Roy, and the new GTA officials is in prisma/seed.ts. Run it after db push to load profiles, priorities, accomplishments, Q&A, approval ratings, and posts:
 
   ```bash
   npx prisma db seed
@@ -101,6 +102,10 @@ npx prisma db push
   After seeding, the profiles will be live at:
   - `/social/politicians/off-whitby-maleeha` — Maleeha Shahid
   - `/social/politicians/off-whitby-elizabeth` — Elizabeth Roy
+  - `/social/politicians/off-toronto-mayor` — Olivia Chow (Mayor of Toronto)
+  - `/social/politicians/off-toronto-w19` — Brad Bradford (Ward 19)
+  - `/social/politicians/off-brampton-mayor` — Patrick Brown (Mayor of Brampton)
+  - `/social/politicians/off-mississauga-mayor` — Carolyn Parrish (Mayor of Mississauga)
 
 - [ ] **3c. ⚠️ RUN THIS — Creates Maleeha + Elizabeth as real paid clients** (after db push + db seed)
 

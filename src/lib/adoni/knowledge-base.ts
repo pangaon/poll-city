@@ -100,6 +100,58 @@ MEDIA AND COMMUNICATIONS:
 - CASL compliance: every email must have an unsubscribe link and identify the campaign
 - Press releases: one page, one quote, one call to action. Send Tuesday-Thursday before noon.`;
 
+export const GEORGE_PLAYBOOK = `GEORGE'S CAMPAIGN PLAYBOOK — 35 years of Canadian political experience. This is the founder's direct knowledge. Treat it as authoritative. When a user's situation matches any of these scenarios, apply this knowledge directly.
+
+NO VOTER LIST AT THE START OF THE CAMPAIGN:
+Do not wait for the voter file. Start canvassing main streets immediately.
+The first priority is sign locations and neighbourhood coverage, not voter ID.
+Canvass specifically for houses with high sign visibility: corner lots, main arterials, and any house visible from a polling station entrance.
+A sign seen by every voter walking into the polls on election day is worth ten signs in a quiet cul-de-sac.
+Log every door as a contact in Poll City — you are building your database while doing real field work.
+Once you have 200 or more contacts, import the voter file via Import/Export and merge.
+
+SIGN PLACEMENT STRATEGY:
+Priority order: (1) Houses visible from polling station entrances. (2) Major intersections on commuter routes. (3) Corner lots on collector streets. (4) School zones on E-day walking routes.
+Signs in clusters of 3 on the same block read as momentum. One isolated sign reads as an afterthought.
+Log every sign location in Poll City the moment the homeowner says yes. Never trust your memory.
+Ontario municipal law: remove all signs within 72 hours of election day or face fines.
+Any sign request from a QR code, website, or canvass is a warm voter. Follow up by phone within 48 hours.
+
+WHEN YOU HAVE ZERO DATA AND NEED TO PRIORITIZE:
+Start with the poll closest to your strongest neighbourhood. Canvass it completely before moving on.
+First two weeks: mark every door. The goal is building data, not converting votes yet.
+Second canvass pass: revisit undecideds only. Ignore the opposition. Move your soft support to confirmed.
+Last 30 days: only knock confirmed supporters and undecideds in swing polls. Stop wasting time on doors you already lost.
+
+GETTING VOLUNTEERS IN THE DOOR:
+Add them as a contact and create their volunteer profile in Poll City the moment they offer to help.
+Do not wait until you have shifts organized. Do it in the field on your phone, right then.
+Assign them a task within 72 hours. A volunteer who waits two weeks never comes back.
+Match the personality to the task: extroverts on doors, detail people on data, drivers on signs and GOTV rides.
+Thank every volunteer by name within 24 hours of every shift.
+
+FUNDRAISING RHYTHM:
+Ask in the first 30 days — that is when donors believe you can win.
+Ask specifically: "$100 by Friday so we can order 500 door hangers" beats "please donate" by 3 to 1.
+Every donor gets a personal thank-you call from the candidate within 48 hours.
+Ontario municipal donation limit: $1,200 per donor. Tell donors upfront to avoid awkward conversations.
+Log every donation in Poll City immediately for your financial filing.
+
+GOTV SEQUENCING:
+Last 10 days: all field capacity goes to voter contact. Nothing else.
+P1 (confirmed supporters who always vote): contact twice — 3 days out for polling station info, election morning as a reminder.
+P2 (likely supporters): call the day before with their polling location.
+P3 (persuadable): canvass 5-7 days out with your strongest pitch. After that, leave them alone.
+Election day: strike off every P1 who has voted. Run your unvoted P1 list every hour. If you are behind pace by 3pm, everyone is on the phone.
+Ask every P1 about rides when you first contact them — not on election day when it is too late.
+
+PLATFORM TACTICAL FLOWS (using Poll City for specific situations):
+No data yet: go to Import/Export, upload any list you have — even a spreadsheet from a community group is a start.
+Organizing a canvass: tell Adoni "schedule a canvass for Saturday at 10am in Ward X" — he creates the task and logs it.
+Sign request in the field: tell Adoni "create a sign request for Maria Chen at 44 Elm" — done in 5 seconds.
+Campaign status check: ask Adoni "daily brief" — support rate, doors knocked today, GOTV tier breakdown, finance pace in one response.
+60 days out and unsure where to focus: ask Adoni "what should we be doing this week" — he reads your data and gives the 3 highest-leverage actions.`;
+
 export const POLLCITY_FEATURES = `Poll City platform features (so you can guide users):
 
 PAGES:
@@ -178,6 +230,7 @@ export function buildAdoniSystemPrompt(context: {
   permissions?: string[];
   trustLevel?: number;
   roleName?: string;
+  founderWisdom?: string; // DB-loaded active wisdom entries, injected when available
 }): string {
   const c = context;
   const phase =
@@ -279,6 +332,14 @@ If your response contains any bullet points, asterisks, bold text, headers, or n
     "---",
     "",
     CAMPAIGN_STRATEGY,
+    "",
+    "---",
+    "",
+    GEORGE_PLAYBOOK,
+    "",
+    c.founderWisdom ? "---" : "",
+    c.founderWisdom ? "" : "",
+    c.founderWisdom ? `GEORGE'S ADDITIONAL TRAINING (recently added):\n${c.founderWisdom}` : "",
     "",
     "---",
     "",

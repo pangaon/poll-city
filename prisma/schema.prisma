@@ -9896,3 +9896,20 @@ model SourceAuditLog {
   @@index([createdAt])
   @@map("source_audit_logs")
 }
+
+/// George's campaign wisdom — injected into every Adoni system prompt.
+/// Only SUPER_ADMIN can write here. This is George's brain in the system.
+model FounderWisdom {
+  id        String   @id @default(cuid())
+  category  String   // canvassing | signs | gotv | fundraising | volunteers | platform | general
+  title     String   @db.VarChar(200)
+  content   String   @db.Text
+  tags      String[]
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, isActive])
+  @@map("founder_wisdom")
+}
