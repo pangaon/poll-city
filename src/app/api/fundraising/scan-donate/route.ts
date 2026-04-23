@@ -31,24 +31,27 @@ export async function GET(req: NextRequest) {
     },
   });
   if (!qr) return NextResponse.json({ error: "QR code not found" }, { status: 404 });
+  if (!qr.campaignId) return NextResponse.json({ error: "QR code not linked to a campaign" }, { status: 400 });
+
+  const campaignId = qr.campaignId;
 
   const donationPage = qr.entityId
     ? await prisma.donationPage.findFirst({
-        where: { campaignId: qr.campaignId, id: qr.entityId, pageStatus: "active" },
+        where: { campaignId, id: qr.entityId, pageStatus: "active" },
       })
     : await prisma.donationPage.findFirst({
-        where: { campaignId: qr.campaignId, pageStatus: "active" },
+        where: { campaignId, pageStatus: "active" },
       });
 
   // Find or create a DonationSource for QR attribution tracking
   let source = await prisma.donationSource.findFirst({
-    where: { campaignId: qr.campaignId, qrCodeId: qrId },
+    where: { campaignId, qrCodeId: qrId },
   });
 
   if (!source) {
     source = await prisma.donationSource.create({
       data: {
-        campaignId: qr.campaignId,
+        campaignId,
         name: `QR Scan — ${qr.id.slice(-8).toUpperCase()}`,
         qrCodeId: qrId,
         active: true,
@@ -62,9 +65,9 @@ export async function GET(req: NextRequest) {
       ? {
           id: donationPage.id,
           title: donationPage.title,
-          suggestedAmounts: donationPage.suggestedAmounts,
-          allowCustomAmount: donationPage.allowCustomAmount,
-          currency: donationPage.currency,
+          suggestedAmounts: donationPage.suggestedAmountsJson,
+          allowCustomAmount: true,
+          currency: "CAD",
         }
       : null,
     sourceId: source.id,

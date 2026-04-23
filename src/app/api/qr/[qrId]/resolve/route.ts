@@ -64,10 +64,11 @@ export async function GET(
   });
 
   // Fall back to QR type default if no rule matched
+  const qrTypeStr = qr.type as string;
   const defaultAction = resolved ?? {
-    actionType: qr.type === "donation"
+    actionType: qrTypeStr === "donation"
       ? "donation_flow"
-      : qr.type === "sign"
+      : qrTypeStr === "sign"
       ? "sign_action"
       : "contact_capture",
     actionPayload: {},

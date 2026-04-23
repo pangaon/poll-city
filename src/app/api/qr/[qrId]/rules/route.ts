@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { apiAuth } from "@/lib/auth/helpers";
 import { z } from "zod";
-import { QrConditionType, QrActionType } from "@prisma/client";
+import { QrConditionType, QrActionType, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -69,9 +69,9 @@ export async function POST(
       campaignId: qr.campaignId,
       priority: parsed.data.priority,
       conditionType: parsed.data.conditionType,
-      conditionValue: parsed.data.conditionValue,
+      conditionValue: parsed.data.conditionValue as Prisma.InputJsonValue,
       actionType: parsed.data.actionType,
-      actionPayload: parsed.data.actionPayload,
+      actionPayload: parsed.data.actionPayload as Prisma.InputJsonValue,
       isActive: parsed.data.isActive,
     },
   });

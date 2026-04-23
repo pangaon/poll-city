@@ -20,7 +20,7 @@ function parseXmlTitle(xml: string, tag: string): string | undefined {
 
 function parseRssItems(xml: string): { title: string; pubDate?: string }[] {
   const items: { title: string; pubDate?: string }[] = [];
-  const itemMatches = xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/g);
+  const itemMatches = Array.from(xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/g));
   for (const m of itemMatches) {
     const block = m[1];
     const title = parseXmlTitle(block, "title") ?? "";
@@ -102,7 +102,7 @@ export async function validateSourceUrl(url: string): Promise<SourceValidationRe
         "This URL returns an HTML page, not a feed. Consider using 'website_page' or 'newsroom_page' as the source type."
       );
       // Check for feed autodiscovery links
-      const feedLinks = [...body.matchAll(/rel=["']alternate["'][^>]+type=["']application\/(rss|atom)\+xml["'][^>]+href=["']([^"']+)["']/gi)];
+      const feedLinks = Array.from(body.matchAll(/rel=["']alternate["'][^>]+type=["']application\/(rss|atom)\+xml["'][^>]+href=["']([^"']+)["']/gi));
       for (const fl of feedLinks) {
         const href = fl[2];
         const resolved = href.startsWith("http") ? href : `${parsedUrl.origin}${href}`;
@@ -193,7 +193,7 @@ export async function discoverFeedsFromUrl(baseUrl: string): Promise<SourceDisco
       });
       if (!res.ok) return [];
       const body = await res.text();
-      const matches = [...body.matchAll(/<link[^>]+rel=["']alternate["'][^>]+>/gi)];
+      const matches = Array.from(body.matchAll(/<link[^>]+rel=["']alternate["'][^>]+>/gi));
       const feeds: { url: string; type: string; title?: string }[] = [];
       for (const m of matches) {
         const tag = m[0];

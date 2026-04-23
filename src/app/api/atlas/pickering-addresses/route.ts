@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
         geometry: { type: "Point" as const, coordinates: f.geometry!.coordinates },
         properties: { id: i, ...normPickering(f.properties ?? {}) },
       }))
-      .filter((f) => (f.properties.address as string).length > 0);
+      .filter((f) => ((f.properties as unknown as { address?: string }).address ?? "").length > 0);
 
     return NextResponse.json(
       { type: "FeatureCollection", features, meta: { count: features.length, source: "pickering-opendata", bbox } },
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
         geometry: { type: "Point" as const, coordinates: f.geometry!.coordinates },
         properties: { id: i, ...normDurham(f.properties ?? {}) },
       }))
-      .filter((f) => (f.properties.address as string).length > 0);
+      .filter((f) => ((f.properties as unknown as { address?: string }).address ?? "").length > 0);
 
     return NextResponse.json(
       { type: "FeatureCollection", features, meta: { count: features.length, source: "durham-opendata", bbox } },

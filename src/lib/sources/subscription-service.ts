@@ -1,7 +1,10 @@
 import prisma from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import type {
   SourceActivationStatus,
   SourceAlertThreshold,
+  SourceOwnershipType,
+  SourceType,
 } from "@prisma/client";
 
 export async function getCampaignActivations(campaignId: string) {
@@ -147,22 +150,7 @@ export async function browseSources(
 ) {
   const { municipality, sourceType, isRecommended, search, page = 1, limit = 50 } = filters;
 
-  const where: {
-    isActive: boolean;
-    sourceStatus: string;
-    OR: Array<{ ownershipType: string } | { ownershipType: string; ownerTenantId: string }>;
-    sourceType?: { equals: string };
-    municipality?: { contains: string; mode: "insensitive" };
-    isRecommended?: boolean;
-    AND?: Array<{
-      OR: Array<{
-        name?: { contains: string; mode: "insensitive" };
-        description?: { contains: string; mode: "insensitive" };
-        canonicalUrl?: { contains: string; mode: "insensitive" };
-        municipality?: { contains: string; mode: "insensitive" };
-      }>;
-    }>;
-  } = {
+  const where: Prisma.PlatformSourceWhereInput = {
     isActive: true,
     sourceStatus: "active",
     OR: [
@@ -171,7 +159,7 @@ export async function browseSources(
     ],
   };
 
-  if (sourceType) where.sourceType = { equals: sourceType };
+  if (sourceType) where.sourceType = { equals: sourceType as SourceType };
   if (municipality) where.municipality = { contains: municipality, mode: "insensitive" };
   if (isRecommended !== undefined) where.isRecommended = isRecommended;
   if (search) {
@@ -191,7 +179,7 @@ export async function browseSources(
 
   const [sources, total, myActivations] = await Promise.all([
     prisma.platformSource.findMany({
-      where,
+      where: where as Prisma.PlatformSourceWhereInput,
       orderBy: [{ isRecommended: "desc" }, { priorityScore: "desc" }, { name: "asc" }],
       skip,
       take: limit,
@@ -215,7 +203,7 @@ export async function browseSources(
         topicTagsJson: true,
       },
     }),
-    prisma.platformSource.count({ where }),
+    prisma.platformSource.count({ where: where as Prisma.PlatformSourceWhereInput }),
     prisma.campaignSourceActivation.findMany({
       where: { campaignId },
       select: { sourceId: true, status: true },

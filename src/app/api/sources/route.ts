@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/auth-options";
 import { z } from "zod";
 import { listSources, createSource, getSourceStats } from "@/lib/sources/source-service";
 import type { SourceType, SourceIngestionMethod, SourceAlertThreshold } from "@prisma/client";
+import type { SourceFilters } from "@/lib/sources/types";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +32,9 @@ export async function GET(req: NextRequest) {
 
   const result = await listSources({
     sourceType: (p.get("sourceType") as SourceType) || undefined,
-    sourceStatus: (p.get("sourceStatus") as Parameters<typeof listSources>[0]["sourceStatus"]) || undefined,
-    verificationStatus: (p.get("verificationStatus") as Parameters<typeof listSources>[0]["verificationStatus"]) || undefined,
-    ownershipType: (p.get("ownershipType") as Parameters<typeof listSources>[0]["ownershipType"]) || undefined,
+    sourceStatus: (p.get("sourceStatus") as SourceFilters["sourceStatus"]) || undefined,
+    verificationStatus: (p.get("verificationStatus") as SourceFilters["verificationStatus"]) || undefined,
+    ownershipType: (p.get("ownershipType") as SourceFilters["ownershipType"]) || undefined,
     municipality: p.get("municipality") || undefined,
     province: p.get("province") || undefined,
     isRecommended: p.get("isRecommended") === "true" ? true : p.get("isRecommended") === "false" ? false : undefined,
