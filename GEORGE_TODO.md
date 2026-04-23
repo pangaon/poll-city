@@ -1015,6 +1015,35 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
 
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-20*
+---
+
+## 🗓️ Demo Prep — Run before Maleeha / Mayor demo
+
+- [ ] **80. Fix demo task due dates**
+
+  Existing demo campaign tasks have stale/2024 due dates that look rough in the Tasks UI. Run this to push them all forward to realistic future dates:
+
+  ```bash
+  npx tsx scripts/fix-demo-dates.ts
+  ```
+
+  **Requires `npx prisma db push` (item 3 / 78) to have run first** (Tasks v2 schema needed).
+  Safe to re-run. Only touches Demo Campaign 2026 and Toronto Mayoral Campaign 2026.
+
+- [ ] **81. Seed Ontario ward boundaries** (AFTER `npx prisma db push`)
+
+  The ward seed endpoint was rate-limited last time — the fix is now shipped (Represent calls serialized with 3s gaps). Re-run it to get all 28 municipalities:
+
+  1. Find your `CRON_SECRET` in Vercel → Project Settings → Environment Variables
+  2. Open in a browser: `https://app.poll.city/api/atlas/seed-wards?secret=YOUR_CRON_SECRET`
+  3. Wait 60–90 seconds (serial Represent calls take longer but won't fail)
+  4. Expected: JSON with `seeded: [...]` listing all 28 municipalities
+  5. Hard refresh `/atlas/map` — all municipalities should render
+
+  The daily 3am cron will keep it current after this first seed.
+
+---
+
+*This file is maintained by AI sessions. Last updated: 2026-04-23*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

@@ -3551,6 +3551,7 @@ model CanvassingScript {
   openingLine    String
   keyMessages    String[]   @default([])
   issueResponses Json?
+  branchLogic    Json?
   closingAsk     String
   literature     String?
   isActive       Boolean    @default(true)

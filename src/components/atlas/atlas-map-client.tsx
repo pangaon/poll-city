@@ -78,7 +78,12 @@ type TurfData = {
   buildingUnits: number;
   estHours: number;
   canvasserName: string;
+  volunteerId?: string;
+  volunteerPhone?: string;
 };
+
+type VolunteerOption = { id: string; name: string; phone?: string };
+type TurfMode = "quick" | "manual";
 
 type MapFeatureEvent = MapMouseEvent & {
   features?: Array<{ properties: Record<string, unknown>; layer: { id: string }; geometry: unknown }>;
@@ -209,7 +214,7 @@ function cutTurfs(streets: StreetData[], n: number): TurfData[] {
         color: TURF_COLORS[result.length % TURF_COLORS.length],
         streets: bucket, doors: bucketDoors, units, houses, buildings, buildingUnits,
         estHours: Math.round(estMins / 60 * 10) / 10,
-        canvasserName: "",
+        canvasserName: "", volunteerId: undefined, volunteerPhone: undefined,
       });
       bucket = []; bucketDoors = 0;
     }
@@ -495,6 +500,15 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
   const [allAddresses, setAllAddresses] = useState<FeatureCollection | null>(null);
 
+  // Phase 3 — turf cutting enhancements
+  const [turfMode, setTurfMode] = useState<TurfMode>("quick");
+  const [streetSearch, setStreetSearch] = useState("");
+  const [selectedStreets, setSelectedStreets] = useState<Set<string>>(new Set());
+  const [volunteers, setVolunteers] = useState<VolunteerOption[]>([]);
+  const [volSearch, setVolSearch] = useState<Record<number, string>>({});
+  const [volDropdownOpen, setVolDropdownOpen] = useState<number | null>(null);
+  const [showAutoCutConfirm, setShowAutoCutConfirm] = useState(false);
+
   // Optional features
   const [wardSearch, setWardSearch] = useState("");
   const [includeCommercial, setIncludeCommercial] = useState(false);
@@ -602,12 +616,23 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWard?.properties?.wardIndex]);
 
+  // Ward change → fetch volunteers for turf canvasser combobox (auth-gated, silent fallback)
+  useEffect(() => {
+    if (!selectedWard) { setVolunteers([]); return; }
+    fetch("/api/atlas/volunteers-for-map")
+      .then(r => r.ok ? r.json() as Promise<{ data: VolunteerOption[] }> : null)
+      .then(d => { if (d) setVolunteers(d.data); })
+      .catch(() => { /* anonymous — free-text only */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWard?.properties?.wardIndex]);
+
   // Ward change → reload addresses
   useEffect(() => {
     setAddresses(null); setStreets([]); setTurfs([]);
     setDisplayAddresses(null); setSelectedAddress(null); setShowTurfPanel(false);
     setSignsOverlay(null); setPollingOverlay(null); setShowSigns(false); setShowPolling(false);
     setSelectedSign(null); setSelectedPolling(null); setViewMode("dots");
+    setTurfMode("quick"); setStreetSearch(""); setSelectedStreets(new Set()); setVolSearch({});
     if (!selectedWard) return;
 
     const params = wardBboxParams(selectedWard);
@@ -744,6 +769,62 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
 
   const updateCanvasserName = useCallback((index: number, name: string) => {
     setTurfs(prev => prev.map(t => t.index === index ? { ...t, canvasserName: name } : t));
+  }, []);
+
+  const assignVolunteer = useCallback((turfIndex: number, vol: VolunteerOption) => {
+    setTurfs(prev => prev.map(t => t.index === turfIndex ? { ...t, canvasserName: vol.name, volunteerId: vol.id, volunteerPhone: vol.phone } : t));
+    setVolSearch(prev => ({ ...prev, [turfIndex]: vol.name }));
+    setVolDropdownOpen(null);
+  }, []);
+
+  const handleCreateManualTurf = useCallback(() => {
+    if (selectedStreets.size === 0) return;
+    const chosenStreets = streets.filter(s => selectedStreets.has(s.name));
+    if (!chosenStreets.length) return;
+    const nextIndex = turfs.length;
+    const doors = chosenStreets.reduce((s, st) => s + st.doors, 0);
+    const units = chosenStreets.reduce((s, st) => s + st.units, 0);
+    const houses = chosenStreets.reduce((s, st) => s + st.houses, 0);
+    const buildings = chosenStreets.reduce((s, st) => s + st.buildings, 0);
+    const buildingUnits = chosenStreets.reduce((s, st) => s + st.buildingUnits, 0);
+    const estMins = chosenStreets.reduce((s, st) => s + st.estMinutes, 0);
+    const newTurf: TurfData = {
+      index: nextIndex,
+      color: TURF_COLORS[nextIndex % TURF_COLORS.length],
+      streets: chosenStreets, doors, units, houses, buildings, buildingUnits,
+      estHours: Math.round(estMins / 60 * 10) / 10,
+      canvasserName: "", volunteerId: undefined, volunteerPhone: undefined,
+    };
+    const nextTurfs = [...turfs, newTurf];
+    setTurfs(nextTurfs);
+    setSelectedStreets(new Set());
+    if (displayAddresses) setDisplayAddresses(applyTurfColors(displayAddresses, nextTurfs));
+  }, [selectedStreets, streets, turfs, displayAddresses]);
+
+  const handleRemoveStreetFromTurf = useCallback((turfIndex: number, streetName: string) => {
+    setTurfs(prev => {
+      const updated = prev.map(t => {
+        if (t.index !== turfIndex) return t;
+        const remaining = t.streets.filter(s => s.name !== streetName);
+        if (!remaining.length) return null;
+        const doors = remaining.reduce((s, st) => s + st.doors, 0);
+        const units = remaining.reduce((s, st) => s + st.units, 0);
+        const houses = remaining.reduce((s, st) => s + st.houses, 0);
+        const buildings = remaining.reduce((s, st) => s + st.buildings, 0);
+        const buildingUnits = remaining.reduce((s, st) => s + st.buildingUnits, 0);
+        const estMins = remaining.reduce((s, st) => s + st.estMinutes, 0);
+        return { ...t, streets: remaining, doors, units, houses, buildings, buildingUnits, estHours: Math.round(estMins / 60 * 10) / 10 };
+      }).filter(Boolean) as TurfData[];
+      // Re-index
+      const reindexed = updated.map((t, i) => ({ ...t, index: i, color: TURF_COLORS[i % TURF_COLORS.length] }));
+      if (displayAddresses) setDisplayAddresses(applyTurfColors(displayAddresses, reindexed));
+      return reindexed;
+    });
+  }, [displayAddresses]);
+
+  const flyToStreet = useCallback((st: StreetData) => {
+    if (!mapRef.current) return;
+    try { mapRef.current.flyTo({ center: st.centroid, zoom: 16, duration: 700 }); } catch { /* ignore */ }
   }, []);
 
   const retryWards = useCallback(() => {
@@ -1095,10 +1176,11 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
             key="turf-panel"
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            style={{ ...G, position: "absolute", top: 80, right: 16, bottom: 24, zIndex: 10, width: 340, display: "flex", flexDirection: "column", overflow: "hidden" }}
+            style={{ ...G, position: "absolute", top: 80, right: 16, bottom: 24, zIndex: 10, width: 350, display: "flex", flexDirection: "column", overflow: "hidden" }}
           >
             <div style={{ height: 4, background: getProp(selectedProps, "wardFill"), flexShrink: 0 }} />
 
+            {/* Header */}
             <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <button onClick={() => setShowTurfPanel(false)}
@@ -1115,45 +1197,131 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
               {config.features?.canvassingModes && (
                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                   {(["persuasion", "gotv"] as const).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setCanvassingMode(mode)}
-                      style={{ flex: 1, padding: "5px 8px", borderRadius: 7, border: `1px solid ${canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.12)"}`, background: canvassingMode === mode ? "rgba(29,158,117,0.2)" : "transparent", color: canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}
-                    >
+                    <button key={mode} onClick={() => setCanvassingMode(mode)}
+                      style={{ flex: 1, padding: "5px 8px", borderRadius: 7, border: `1px solid ${canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.12)"}`, background: canvassingMode === mode ? "rgba(29,158,117,0.2)" : "transparent", color: canvassingMode === mode ? "#1D9E75" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                       {mode === "persuasion" ? "Persuasion" : "GOTV"}
                     </button>
                   ))}
                 </div>
               )}
-            </div>
 
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
-              <div style={{ ...labelStyle, marginBottom: 10 }}>How many canvassers?</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button onClick={() => setCanvasserCount(c => Math.max(1, c - 1))}
-                  style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>−</button>
-                <div style={{ flex: 1, textAlign: "center" }}>
-                  <span style={{ color: "#fff", fontSize: 28, fontWeight: 800 }}>{canvasserCount}</span>
-                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>
-                    ~{uniqueDoors > 0 ? Math.round(uniqueDoors / canvasserCount).toLocaleString() : 0} doors each
-                  </div>
-                </div>
-                <button onClick={() => setCanvasserCount(c => Math.min(20, c + 1))}
-                  style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
+              {/* Mode tabs */}
+              <div style={{ display: "flex", gap: 4, marginTop: 12, background: "rgba(255,255,255,0.05)", borderRadius: 9, padding: 3 }}>
+                {(["quick", "manual"] as const).map(m => (
+                  <button key={m} onClick={() => setTurfMode(m)}
+                    style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "none", background: turfMode === m ? "rgba(255,255,255,0.12)" : "transparent", color: turfMode === m ? "#fff" : "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em" }}>
+                    {m === "quick" ? "⚡ Quick Cut" : "✏️ Manual"}
+                  </button>
+                ))}
               </div>
-
-              <button onClick={handleCutTurfs}
-                style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: "#1D9E75", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
-                ✂️ Cut {canvasserCount} Turfs
-              </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
-              {turfs.length === 0 ? (
+            {/* Auto-cut confirm dialog */}
+            <AnimatePresence>
+              {showAutoCutConfirm && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  style={{ margin: "10px 12px 0", background: "rgba(239,159,39,0.12)", border: "1px solid rgba(239,159,39,0.3)", borderRadius: 10, padding: "10px 14px" }}>
+                  <div style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>⚠️ Clear manual turfs?</div>
+                  <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, marginBottom: 10 }}>Auto-cut will replace your {turfs.length} manually built turfs.</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setShowAutoCutConfirm(false)}
+                      style={{ flex: 1, padding: "6px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => { setShowAutoCutConfirm(false); handleCutTurfs(); }}
+                      style={{ flex: 1, padding: "6px", borderRadius: 7, border: "none", background: "#EF9F27", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      Replace
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ── QUICK MODE ── */}
+            {turfMode === "quick" && (
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+                <div style={{ ...labelStyle, marginBottom: 10 }}>How many canvassers?</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button onClick={() => setCanvasserCount(c => Math.max(1, c - 1))}
+                    style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>−</button>
+                  <div style={{ flex: 1, textAlign: "center" }}>
+                    <span style={{ color: "#fff", fontSize: 28, fontWeight: 800 }}>{canvasserCount}</span>
+                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>
+                      ~{uniqueDoors > 0 ? Math.round(uniqueDoors / canvasserCount).toLocaleString() : 0} doors each
+                    </div>
+                  </div>
+                  <button onClick={() => setCanvasserCount(c => Math.min(20, c + 1))}
+                    style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
+                </div>
+                <button
+                  onClick={() => { if (turfs.length > 0) { setShowAutoCutConfirm(true); } else { handleCutTurfs(); } }}
+                  style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: "#1D9E75", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
+                  ✂️ Cut {canvasserCount} Turfs
+                </button>
+              </div>
+            )}
+
+            {/* ── MANUAL MODE — street search + checkboxes ── */}
+            {turfMode === "manual" && (
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+                <input
+                  type="text"
+                  placeholder="Search streets…"
+                  value={streetSearch}
+                  onChange={e => setStreetSearch(e.target.value)}
+                  style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "7px 12px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                />
+                {selectedStreets.size > 0 && (
+                  <button
+                    onClick={handleCreateManualTurf}
+                    style={{ width: "100%", marginTop: 8, padding: "9px", borderRadius: 9, border: "none", background: "#1D9E75", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    + Create Turf from {selectedStreets.size} street{selectedStreets.size !== 1 ? "s" : ""} ({Array.from(selectedStreets).reduce((s, n) => s + (streets.find(st => st.name === n)?.doors ?? 0), 0)} doors)
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }} onClick={() => setVolDropdownOpen(null)}>
+
+              {/* ── MANUAL MODE: street list with checkboxes ── */}
+              {turfMode === "manual" && turfs.length === 0 && (
+                <div>
+                  <div style={{ padding: "4px 18px 8px", ...labelStyle }}>Streets ({streets.filter(s => !streetSearch || s.name.toLowerCase().includes(streetSearch.toLowerCase())).length})</div>
+                  {streets
+                    .filter(s => !streetSearch || s.name.toLowerCase().includes(streetSearch.toLowerCase()))
+                    .map((st) => {
+                      const inTurf = turfs.some(t => t.streets.some(s => s.name === st.name));
+                      const checked = selectedStreets.has(st.name);
+                      return (
+                        <div key={st.name}
+                          style={{ padding: "8px 14px 8px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: checked ? "rgba(29,158,117,0.08)" : "transparent" }}
+                          onClick={(e) => { e.stopPropagation(); if (inTurf) return; const next = new Set(selectedStreets); if (checked) next.delete(st.name); else next.add(st.name); setSelectedStreets(next); }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${checked ? "#1D9E75" : "rgba(255,255,255,0.2)"}`, background: checked ? "#1D9E75" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {checked && <span style={{ color: "#fff", fontSize: 10, fontWeight: 900 }}>✓</span>}
+                          </div>
+                          <div style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); flyToStreet(st); }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                              <span style={{ color: inTurf ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 13, fontWeight: 600 }}>{st.name}</span>
+                              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{st.doors}d</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                              {st.houses > 0 && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>🏠 {st.houses}</span>}
+                              {st.buildings > 0 && <span style={{ color: "#EF9F27", fontSize: 10 }}>🏢 {st.buildings}×{Math.round(st.buildingUnits / st.buildings)}</span>}
+                              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10 }}>~{Math.round(st.estMinutes)}m</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* ── QUICK MODE: street list before cut ── */}
+              {turfMode === "quick" && turfs.length === 0 && (
                 <div>
                   <div style={{ padding: "4px 18px 8px", ...labelStyle }}>Street Intelligence ({streets.length} streets)</div>
                   {streets.map((st, i) => (
-                    <div key={i} style={{ padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div key={i} style={{ padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }} onClick={() => flyToStreet(st)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                         <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{st.name}</span>
                         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11 }}>{st.doors} doors</span>
@@ -1166,57 +1334,134 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
                     </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {/* ── TURF CARDS (both modes) ── */}
+              {turfs.length > 0 && (
                 <div>
                   <div style={{ padding: "4px 18px 8px", ...labelStyle }}>
-                    {turfs.length} Turfs
-                    {config.features?.canvassingModes ? ` — ${canvassingMode === "gotv" ? "GOTV Mode" : "Persuasion Mode"}` : " — Tap name to assign canvasser"}
+                    {turfs.length} Turf{turfs.length !== 1 ? "s" : ""}
+                    {config.features?.canvassingModes ? ` — ${canvassingMode === "gotv" ? "GOTV" : "Persuasion"}` : ""}
+                    {volunteers.length > 0 && <span style={{ color: "#1D9E75", marginLeft: 6, fontSize: 10 }}>· {volunteers.length} volunteers in DB</span>}
                   </div>
-                  {turfs.map((turf) => (
-                    <div key={turf.index} style={{ margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden", border: `1px solid ${turf.color}30` }}>
-                      <div style={{ height: 3, background: turf.color }} />
-                      <div style={{ padding: "10px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: turf.color, display: "inline-block" }} />
-                            <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>Turf {turf.index + 1}</span>
-                          </div>
-                          <div style={{ display: "flex", gap: 10 }}>
-                            <span style={{ ...subval, fontSize: 11 }}>{turf.doors.toLocaleString()} doors</span>
-                            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>~{turf.estHours}h</span>
-                          </div>
-                        </div>
 
-                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>🏠 {turf.houses}</span>
-                          {turf.buildings > 0 && <span style={{ fontSize: 10, color: "#EF9F27" }}>🏢 {turf.buildings} bldg ({turf.buildingUnits} units)</span>}
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
-                        </div>
+                  {/* Manual mode: street selector still visible above turfs */}
+                  {turfMode === "manual" && (
+                    <div style={{ margin: "0 10px 8px", padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.1)" }}>
+                      <div style={{ ...labelStyle, marginBottom: 6 }}>Add more streets to a new turf</div>
+                      <input
+                        type="text"
+                        placeholder="Search streets…"
+                        value={streetSearch}
+                        onChange={e => setStreetSearch(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                      />
+                      <div style={{ maxHeight: 120, overflowY: "auto", marginTop: 4 }}>
+                        {streets
+                          .filter(s => streetSearch && s.name.toLowerCase().includes(streetSearch.toLowerCase()) && !turfs.some(t => t.streets.some(ts => ts.name === s.name)))
+                          .slice(0, 8)
+                          .map(st => {
+                            const checked = selectedStreets.has(st.name);
+                            return (
+                              <div key={st.name} onClick={(e) => { e.stopPropagation(); const next = new Set(selectedStreets); if (checked) next.delete(st.name); else next.add(st.name); setSelectedStreets(next); }}
+                                style={{ padding: "5px 4px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                                <div style={{ width: 14, height: 14, borderRadius: 3, border: `2px solid ${checked ? "#1D9E75" : "rgba(255,255,255,0.2)"}`, background: checked ? "#1D9E75" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {checked && <span style={{ color: "#fff", fontSize: 9 }}>✓</span>}
+                                </div>
+                                <span style={{ color: "#fff", fontSize: 12 }}>{st.name}</span>
+                                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, marginLeft: "auto" }}>{st.doors}d</span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                      {selectedStreets.size > 0 && (
+                        <button onClick={handleCreateManualTurf}
+                          style={{ width: "100%", marginTop: 6, padding: "7px", borderRadius: 7, border: "none", background: "#1D9E75", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          + Create Turf from {selectedStreets.size} street{selectedStreets.size !== 1 ? "s" : ""}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
-                        <input
-                          type="text"
-                          placeholder="Assign canvasser name…"
-                          value={turf.canvasserName}
-                          onChange={e => updateCanvasserName(turf.index, e.target.value)}
-                          style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
-                        />
-
-                        <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6 }}>
-                          {turf.streets.slice(0, 4).map((st, i) => (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-                              <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>{st.name}</span>
-                              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>
-                                {st.doors}d{st.buildings > 0 ? ` · 🏢${st.buildings}` : ""}
-                              </span>
+                  {turfs.map((turf) => {
+                    const currentVolSearch = volSearch[turf.index] ?? turf.canvasserName;
+                    const filteredVols = volunteers.filter(v => v.name.toLowerCase().includes(currentVolSearch.toLowerCase()));
+                    const isDropOpen = volDropdownOpen === turf.index;
+                    return (
+                      <div key={turf.index} style={{ margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "visible", border: `1px solid ${turf.color}30`, position: "relative" }}>
+                        <div style={{ height: 3, background: turf.color, borderRadius: "12px 12px 0 0" }} />
+                        <div style={{ padding: "10px 12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: turf.color, display: "inline-block" }} />
+                              <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>Turf {turf.index + 1}</span>
                             </div>
-                          ))}
-                          {turf.streets.length > 4 && (
-                            <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, marginTop: 2 }}>+{turf.streets.length - 4} more streets</div>
-                          )}
+                            <div style={{ display: "flex", gap: 10 }}>
+                              <span style={{ ...subval, fontSize: 11 }}>{turf.doors.toLocaleString()} doors</span>
+                              <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>~{turf.estHours}h</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>🏠 {turf.houses}</span>
+                            {turf.buildings > 0 && <span style={{ fontSize: 10, color: "#EF9F27" }}>🏢 {turf.buildings} bldg ({turf.buildingUnits} units)</span>}
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
+                          </div>
+
+                          {/* Volunteer combobox */}
+                          <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              placeholder={volunteers.length > 0 ? "Search volunteers or type name…" : "Assign canvasser name…"}
+                              value={isDropOpen ? (volSearch[turf.index] ?? turf.canvasserName) : turf.canvasserName}
+                              onFocus={() => { setVolDropdownOpen(turf.index); setVolSearch(prev => ({ ...prev, [turf.index]: turf.canvasserName })); }}
+                              onChange={e => { setVolSearch(prev => ({ ...prev, [turf.index]: e.target.value })); updateCanvasserName(turf.index, e.target.value); }}
+                              onBlur={() => setTimeout(() => setVolDropdownOpen(null), 150)}
+                              style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: `1px solid ${isDropOpen ? "#1D9E75" : "rgba(255,255,255,0.1)"}`, borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                            />
+                            {turf.volunteerPhone && (
+                              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, marginTop: 2 }}>📞 {turf.volunteerPhone}</div>
+                            )}
+                            {isDropOpen && volunteers.length > 0 && (
+                              <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, background: "#0D1B2A", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, zIndex: 50, maxHeight: 160, overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                                {filteredVols.length === 0 ? (
+                                  <div style={{ padding: "8px 12px", color: "rgba(255,255,255,0.35)", fontSize: 11 }}>No volunteers match — name will be saved as typed</div>
+                                ) : filteredVols.slice(0, 8).map(v => (
+                                  <div key={v.id} onMouseDown={() => assignVolunteer(turf.index, v)}
+                                    style={{ padding: "8px 12px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(29,158,117,0.12)")}
+                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                                    <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{v.name}</span>
+                                    {v.phone && <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>{v.phone}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Streets in turf */}
+                          <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6 }}>
+                            {turf.streets.slice(0, turfMode === "manual" ? undefined : 4).map((st, i) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", alignItems: "center" }}>
+                                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }} onClick={() => flyToStreet(st)}>{st.name}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>{st.doors}d{st.buildings > 0 ? ` · 🏢${st.buildings}` : ""}</span>
+                                  {turfMode === "manual" && (
+                                    <button onClick={() => handleRemoveStreetFromTurf(turf.index, st.name)}
+                                      style={{ background: "transparent", border: "none", color: "rgba(226,75,74,0.6)", cursor: "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>✕</button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {turfMode === "quick" && turf.streets.length > 4 && (
+                              <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, marginTop: 2 }}>+{turf.streets.length - 4} more streets</div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   <div style={{ padding: "10px 10px 4px" }}>
                     <button style={{ width: "100%", padding: "11px", borderRadius: 10, background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", color: "#1D9E75", fontSize: 13, fontWeight: 700, cursor: "pointer" } as React.CSSProperties}>
