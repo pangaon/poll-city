@@ -24,6 +24,8 @@ export const HELP_CATEGORIES = [
   { id: "team", label: "Team & Permissions", emoji: "🔐" },
   { id: "billing", label: "Plans & Billing", emoji: "💳" },
   { id: "privacy", label: "Privacy & Security", emoji: "🛡️" },
+  { id: "tasks", label: "Tasks & Accountability", emoji: "✅" },
+  { id: "finance", label: "Finance & Funding", emoji: "🏦" },
 ];
 
 export const HELP_ARTICLES: HelpArticle[] = [
@@ -464,8 +466,6 @@ Export Donations → generates Ontario-compliant CSV for your Election Finances 
 - \`Enter\` — Open contact detail
 - \`Space\` — Select row for bulk action`,
   },
-];
-
   {
     id: "atlas-1",
     slug: "ontario-map-turf-cutting",
@@ -844,6 +844,315 @@ If you hit a limit, the app will tell you to try again later. Normal campaigns n
 
 Adoni remembers key facts and decisions from earlier in your conversation, but his memory resets when you start a new session.`,
   },
+
+  // ── New articles — April 2026 features ───────────────────────────────────────
+
+  {
+    id: "adoni-2",
+    slug: "adoni-voice-and-file-upload",
+    category: "getting-started",
+    title: "Using voice input and file upload with Adoni",
+    excerpt: "Speak to Adoni instead of typing, and upload CSVs to bulk-add volunteers — no keyboard required.",
+    keywords: ["adoni", "voice", "microphone", "file upload", "csv", "volunteers", "speech"],
+    body: `Adoni supports two time-saving input methods beyond typing: voice dictation and file upload.
+
+## Voice input
+
+Click the microphone icon in the Adoni message bar. Speak naturally — Adoni transcribes your words in real time and fills the input box. Click the mic again to stop and send, or keep speaking to add more.
+
+Voice input works in Chrome and Safari on any device. It uses your browser's built-in speech recognition — no API key, no cost, no data sent to a third party.
+
+What it's good for: hands-free strategy questions while reviewing your map, quick field updates when you're between doors, and dictating long instructions without hunting for keys on a phone screen.
+
+## File upload
+
+Click the paperclip icon to attach a file to your message.
+
+**CSV files** are parsed automatically. If your file looks like a volunteer list — columns for name, email, phone — Adoni reads it and prompts you to confirm bulk-adding everyone to your campaign. A 40-person volunteer CSV becomes 40 VolunteerProfile records in one shot.
+
+**Text files** are forwarded to Adoni as context. Paste briefing notes, a voter file excerpt, or a list of addresses — Adoni reads the content and works with it.
+
+## Tips
+
+- For CSV uploads, column names don't need to be perfect. Adoni recognises common variants: firstName / first / fname, email / emailAddress, phone / cell / mobile.
+- If your voice isn't being picked up, check that your browser has microphone permission (usually a lock icon in the address bar).
+- You can combine voice and file: attach a CSV, then dictate "add all of these as volunteers for Saturday's canvass shift."`,
+  },
+
+  {
+    id: "adoni-3",
+    slug: "adoni-command-centre",
+    category: "getting-started",
+    title: "AI Assist — the Adoni Command Centre",
+    excerpt: "A dedicated workspace for deep campaign strategy sessions with Adoni — with category shortcuts, voice, file upload, and your full campaign context loaded.",
+    keywords: ["ai assist", "adoni", "command centre", "strategy", "prompt bank", "voice"],
+    body: `The AI Assist Command Centre at /ai-assist is a dedicated page for longer, more focused conversations with Adoni. It has everything the panel chat has, plus a full-screen layout and a library of pre-built prompts organised by campaign function.
+
+## Five category prompt banks
+
+At the top of the page you'll find five categories:
+
+- **Field** — turf coverage, canvassing efficiency, door targets, volunteer deployment
+- **Comms** — message strategy, email blast timing, social media, media relations
+- **Strategy** — voter coalition analysis, priority neighbourhood decisions, final week planning
+- **Finance** — fundraising projections, expense tracking, donor outreach, compliance questions
+- **Volunteers** — recruitment, scheduling, retention, recognition, skill matching
+
+Click any category to see a set of prompt shortcuts. Click a prompt to pre-fill the message box — then customise it or send as-is.
+
+## Full campaign context
+
+Adoni loads your campaign data at the start of every Command Centre session: contact count, support breakdown, days to election, doors knocked, volunteer roster, sign inventory, recent activity. You don't need to brief him — he already knows where you stand.
+
+## Voice and file upload
+
+Both are available in the Command Centre, same as the main panel. The mic button and paperclip are in the message bar. Use them the same way.
+
+## When to use the Command Centre vs the panel
+
+Use the **floating panel** (Ask Adoni button) for quick questions while you're working on another page — checking a contact, reviewing your task list, mid-canvass.
+
+Use the **Command Centre** (/ai-assist) for longer strategy conversations, when you want to upload files, or when you want to use a structured prompt from the category banks.`,
+  },
+
+  {
+    id: "tasks-1",
+    slug: "tasks-campaign-accountability",
+    category: "tasks",
+    title: "Tasks — your campaign accountability board",
+    excerpt: "Tasks is not a to-do list. It is a full campaign accountability engine with categories, kanban board, resolution tracking, and an Adoni follow-up loop.",
+    keywords: ["tasks", "accountability", "kanban", "resolve", "follow-up", "recurring", "playbook"],
+    body: `The Tasks module at /tasks is rebuilt from the ground up. Every task on a real campaign has a type, a resolution, and a follow-up — and now the platform tracks all three.
+
+## Categories
+
+Every task belongs to one of five categories:
+- **Admin** — scheduling, logistics, coordination
+- **Field** — door knocking, sign installs, event setup
+- **Comms** — drafts, approvals, social media, press
+- **Finance** — expense approvals, donor follow-ups, reporting
+- **Volunteers** — recruitment, scheduling, recognition
+
+Filter the task list by category using the tabs at the top.
+
+## Creating tasks fast
+
+The quick-add bar is always visible at the top. Type 3+ characters and press Enter to create a task instantly — no modal, no form. Press N from anywhere on the page to focus the quick-add bar.
+
+Smart due date shortcuts appear in the create form: Today, Tomorrow, +3 days, This Friday, +1 week, +2 weeks. Click once to set the date.
+
+## Resolving tasks
+
+Every task has a **Resolve** action instead of a simple checkmark. When you resolve a task, you pick what actually happened:
+
+- Met In Person
+- Left Voicemail
+- Email Sent
+- Recruited
+- Not Reached
+- Blocked
+- Completed
+- Followed Up
+- Referred
+- No Action Needed
+
+The resolution gets logged, and if the task is linked to a contact, an interaction is automatically recorded on their profile.
+
+## Adoni follow-up loop
+
+After you resolve a task, Adoni's panel slides in with a contextual suggestion based on what happened. Left a voicemail? He suggests a follow-up call in 3 days and offers to create it for you. Met the person in person? He asks what the next step is. Accept his suggestion with one click to auto-create the follow-up task linked to the original.
+
+## Recurring tasks
+
+Check the "Recurring" box on any task and set a frequency: weekly, biweekly, or monthly. When you complete the task, the next instance is automatically created with the correct due date.
+
+## Campaign Playbook
+
+Click the Playbook button to import pre-built task sets:
+- **Early Campaign** (8 tasks) — voter file import, canvassing setup, volunteer recruitment
+- **Field Ops** (7 tasks) — turf assignments, canvassing goals, sign deployment
+- **GOTV** (6 tasks) — final voter contact, election day logistics, scrutineer assignments
+
+These are the task sets that winning campaigns run. Import them and work through them.
+
+## Kanban board
+
+Toggle to Board view to see your tasks in a classic kanban layout: To Do and In Progress columns. Drag cards or click to move them between columns.`,
+  },
+
+  {
+    id: "tasks-2",
+    slug: "task-health-and-urgency",
+    category: "tasks",
+    title: "Task health stats and urgency escalation",
+    excerpt: "The stats bar shows overdue and urgent counts at a glance, and overdue tasks get a pulsing flame so nothing slips through.",
+    keywords: ["tasks", "overdue", "urgent", "health", "escalation", "badge"],
+    body: `The Tasks module tracks urgency automatically so you don't have to.
+
+## Task Health Stats bar
+
+At the top of the task list, four animated counters give you the state of your campaign at a glance:
+- **Active** — tasks currently open
+- **Overdue** — past their due date with no resolution
+- **Urgent** — due within 24 hours
+- **In Progress** — actively being worked on
+
+The stats bar hides automatically when you have no tasks.
+
+## Urgency badges
+
+Every task row shows its urgency inline:
+- A pulsing flame and "Overdue" in red if the task is past due
+- A pulsing clock and "Due in Xh" if the deadline is within 24 hours
+
+These are visible on every view — list, board, and My Tasks.
+
+## Sidebar badge
+
+The Tasks entry in the sidebar shows a count of your open tasks. It pulses when any task is overdue. This is always visible no matter which page you are on.
+
+## Bulk actions
+
+Hover any task row to reveal a checkbox. Select multiple tasks to get the floating action bar: Complete, Delete, or Reassign. Use bulk complete at the end of a canvass shift to close out field tasks fast.`,
+  },
+
+  {
+    id: "signs-2",
+    slug: "sign-field-ops-and-history",
+    category: "signs",
+    title: "Sign field ops — logging actions and viewing history",
+    excerpt: "Every sign install, removal, damage report, and repair gets logged with GPS and a timestamp. View the full event timeline for any sign.",
+    keywords: ["signs", "field ops", "install", "remove", "damage", "history", "gps", "event log"],
+    body: `The Signs module tracks not just where your signs are — it tracks everything that happens to them. Every action is logged with GPS coordinates, a timestamp, and the name of the person who took the action.
+
+## Logging a sign action
+
+From /signs, click any sign row to open the sign detail. You'll see two buttons:
+
+**Log Action** — opens a mobile-friendly action sheet with these options:
+- Install — mark a new sign as physically installed at the location
+- Remove — remove a sign from a location (end of campaign, request, damage)
+- Damage Report — flag that the sign was damaged or vandalized
+- Missing — report a sign that was confirmed installed but is now gone
+- Repair — log that a damaged sign was repaired or replaced
+- Audit — note that you drove by and confirmed the sign is still up
+
+After selecting the action type, you can add notes (e.g. "leaning slightly, may need stake reinforcement") and the GPS coordinates are captured automatically from your device.
+
+## Viewing sign history
+
+Click the **History** button on any sign to open the event timeline. You'll see every logged action in reverse-chronological order, with:
+- Action type (Install / Damage / Audit / etc.)
+- Who took the action
+- When it happened
+- GPS coordinates with a small map preview
+- Any notes they added
+
+This is useful for accountability (did the volunteer actually install this sign?) and for tracking problem locations (signs on a particular corner that keep getting taken down).
+
+## Sign status
+
+A sign's status updates automatically when you log certain actions:
+- Log Install → status becomes "Installed"
+- Log Damage → status becomes "Damaged"
+- Log Missing → status becomes "Missing"
+- Log Remove → status becomes "Removed"
+- Log Repair → status returns to "Installed"
+
+The status is visible on the sign list and the signs overlay on the Ontario Map.
+
+## Tips
+- Photograph damaged signs before removing them — useful for complaint reports
+- Use the Audit action on a weekly drive-around so you always know your active sign inventory
+- Signs flagged Missing automatically appear on your coordinator's list for follow-up`,
+  },
+
+  {
+    id: "finance-1",
+    slug: "funding-sources",
+    category: "finance",
+    title: "Funding sources — tracking money by source",
+    excerpt: "Create a funding source for each pool of money your campaign uses — donations, grants, personal contributions — and track every credit and debit against it.",
+    keywords: ["finance", "funding", "source", "ledger", "credit", "debit", "budget", "revenue"],
+    body: `Funding Sources let you track where your campaign money comes from and how it moves. Think of each funding source as a named ledger.
+
+## What is a funding source?
+
+A funding source is a named pool of funds with a balance you track. Examples:
+- "Individual Donations" — money raised from individual donors
+- "Candidate Contribution" — the candidate's own contribution to the campaign
+- "Fundraising Events Q1" — proceeds from a specific event
+- "Digital Fundraising" — online donations
+
+You can have as many funding sources as your campaign's finances require.
+
+## Creating a funding source
+
+Go to Finance → Funding Sources → Add Source. Enter:
+- **Name** — what to call this pool
+- **Description** — a note for your records (not shown publicly)
+- **Type** — Donation / Contribution / Transfer / Grant / Other
+- **Initial balance** — starting amount if you are importing existing data
+
+## Ledger view
+
+Click any funding source card to open its ledger. You'll see every transaction — credits (money in) and debits (money out) — in reverse-chronological order with running balance.
+
+Add transactions directly from the ledger:
+- **Credit** — money received (e.g. a batch of donations deposited)
+- **Debit** — money spent from this source (e.g. a print shop payment)
+
+Each transaction records the amount, date, a description, and the person who entered it.
+
+## Why use funding sources instead of just tracking donations?
+
+Funding sources give you a clear picture of campaign liquidity by category. On election finance reporting day, you'll know exactly how much came from individual donors vs the candidate's own money vs event proceeds — and you'll have the line-item backup for every figure.`,
+  },
+
+  {
+    id: "finance-2",
+    slug: "vouchers-volunteer-incentives",
+    category: "finance",
+    title: "Vouchers — rewarding volunteers and tracking redemptions",
+    excerpt: "Create vouchers for volunteer recognition — coffee, campaign merch, event tickets — and track when they're redeemed and by whom.",
+    keywords: ["vouchers", "volunteers", "incentives", "recognition", "redeem", "reward"],
+    body: `Vouchers give you a structured way to offer and track volunteer incentives — without handing out cash or running a manual spreadsheet.
+
+## What a voucher is
+
+A voucher is a named, trackable reward with a defined value and redemption conditions. Examples:
+- "Tim Hortons gift card — $10" — reward after completing 5 canvass shifts
+- "Campaign merch pack" — reward for recruiting 3 new volunteers
+- "VIP event ticket" — reward for top canvassers in final 2 weeks
+
+## Creating a voucher
+
+Go to Finance → Vouchers → Create Voucher:
+- **Name** — what the reward is
+- **Value** — dollar value or description
+- **Total quantity** — how many you have to give out
+- **Redemption condition** — the milestone that earns it
+- **Expiry date** — when they must be redeemed by
+
+## Issuing and redeeming
+
+From the voucher detail panel, you can:
+- **Issue** — assign a voucher to a specific volunteer (they appear by name and contact record)
+- **Redeem** — mark a voucher as redeemed when the volunteer collects their reward
+- **View history** — see who has been issued vouchers and who has redeemed them
+
+## The status flow
+
+Every voucher moves through: Active → Issued → Redeemed (or Expired).
+
+The summary strip at the top of the Vouchers page shows total Active, Issued, Redeemed, and Expired counts at a glance. Your finance team can account for the total liability (issued-but-not-yet-redeemed) at any point.
+
+## Why this matters for Ontario campaign finance
+
+Any non-cash consideration given to volunteers is a campaign expense. Vouchers give you the paper trail: who received what, when, and whether it was redeemed. That documentation goes in your Election Finances Statement.`,
+  },
+
+];
 
 export function getArticleBySlug(slug: string): HelpArticle | undefined {
   return HELP_ARTICLES.find((a) => a.slug === slug);
