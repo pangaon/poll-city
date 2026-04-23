@@ -2,11 +2,53 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-23
-**Updated by:** Claude Sonnet 4.6 — Official site redesign (Maleeha-ready), newsletter subscribe endpoint. Build green, pushed.
+**Updated by:** Claude Sonnet 4.6 — PCS crash fixed, contrast overhauled, GTA officials seeded, Adoni Trainer shipped. Build green, pushed.
 
 ---
 
-## 🏛️ OFFICIAL SITE REDESIGN — LIVE (this session, 2026-04-23)
+## 🎨 PCS SOCIAL — CRASH FIX + CONTRAST OVERHAUL (this session, 2026-04-23)
+
+**Hydration crash fixed. Text is now readable. GTA officials in seed.**
+
+### What shipped
+
+**Modified:**
+- `src/components/social/pcs-right-rail.tsx` — Fixed hydration crash: `useState(0)` init + `useEffect`-only `Date.now()` for countdown. All `text-white/40` → `text-slate-400/500/600`. Card backgrounds `bg-[#111827]`.
+- `src/components/social/pcs-left-sidebar.tsx` — All `text-white/50` → `text-slate-400`. Active nav `text-white`. Section headers `text-slate-600`. Trending box `bg-[#111827]`.
+- `src/components/social/pcs-header.tsx` — Fixed `bg-[#080D14]/80 bg-white/80` conflict → `bg-white/80 dark:bg-[#080D14]/80`. Fixed `flex hidden sm:flex` → `hidden sm:flex`. All icon text `text-white/40` → `text-slate-400/500`.
+- `prisma/seed.ts` — Added Olivia Chow (Mayor Toronto), Brad Bradford (Ward 19), Patrick Brown (Mayor Brampton), Carolyn Parrish (Mayor Mississauga). 9 `PoliticianPost.upsert` entries with real civic content.
+
+### Root causes fixed
+- **Runtime crash**: `useState(target.getTime() - Date.now())` computes different values server vs client → React error boundary. Fixed: `useState(0)` server-safe init.
+- **Low contrast**: `text-white/50` = rgba(255,255,255,0.5) on `#080D14` — nearly invisible. Named Tailwind slate colors are far more readable.
+
+### George actions required
+- **Run `npx prisma db push`** — `FounderWisdom` model added to schema (Adoni Trainer feature, see below). Also covers all prior pending schema items.
+- **Run `npx prisma db seed`** — Loads Olivia Chow, Brad Bradford, Patrick Brown, Carolyn Parrish + their posts. Also re-seeds Maleeha + Elizabeth posts. Idempotent (all upserts).
+
+### Risk
+The GTA officials won't appear in Find My Reps or the officials list until seed is run.
+
+---
+
+## 🧠 ADONI TRAINER — LIVE AT /ops/adoni (this session, 2026-04-23)
+
+**George can now inject his 35-year campaign expertise directly into Adoni.**
+
+### What shipped
+- `src/app/(app)/ops/adoni/` — Adoni Trainer UI (SUPER_ADMIN only). CRUD for wisdom entries by category (canvassing, signs, GOTV, etc.). Otter transcript paste → AI extraction of wisdom entries.
+- `src/app/api/ops/adoni-wisdom/` — Full CRUD API + `/extract` endpoint (AI extraction from Otter transcripts).
+- `prisma/schema.prisma` — `FounderWisdom` model added (`founder_wisdom` table). **Requires `npx prisma db push`.**
+- `src/lib/adoni/knowledge-base.ts` — `GEORGE_PLAYBOOK` added (canvassing, sign placement, GOTV strategy from George's experience).
+- `src/app/api/adoni/chat/route.ts` — Loads active `FounderWisdom` entries from DB and injects into Adoni's system prompt before every chat.
+- `src/components/layout/sidebar.tsx` — "Adoni Training" link added under Ops section for SUPER_ADMIN.
+
+### How to reach it
+Ops → Adoni Training (Brain icon) — SUPER_ADMIN only.
+
+---
+
+## 🏛️ OFFICIAL SITE REDESIGN — LIVE (previous session, 2026-04-23)
 
 **Maleeha-ready. Production-quality official profile page deployed.**
 
