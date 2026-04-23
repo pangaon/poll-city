@@ -2,17 +2,31 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-22
-**Updated by:** Claude Sonnet 4.6 — Source Intelligence Hub shipped, build GREEN on 7ca8495
+**Updated by:** Claude Sonnet 4.6 — QR intelligence + Sign field ops + Vouchers + Funding Sources + Scan-to-Donate shipped, build GREEN, pushed to origin/main
 
 ---
 
-## 🗳️ ELECTION OVERLAY — CODE LIVE, DB SEED REQUIRED
+## 🗳️ ELECTION OVERLAY — LIVE, NO SEED REQUIRED
 
-**What shipped:** Ontario Open Data election results (2014/2018/2022) overlaid on the Whitby map.
-- Toggle: "📊 Election History" button in Whitby map header
-- API: `GET /api/atlas/election-results?municipality=Whitby+T`
+**What shipped:** Ontario Open Data election results (2014/2018/2022) overlaid on the map.
+- Toggle: "📊 Election History" button in Whitby/any municipality map header
+- API: `GET /api/atlas/election-results?municipality=Whitby+T` — reads CSV files directly from `data/ontario-elections/` using `fs.readFileSync`, **no database, no seed script required**
+- George had previously been told to run a seed script — that step is eliminated. The CSVs are in the repo and deploy with the app automatically.
 
-**George must run:** `npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"` — without this the toggle shows a graceful "no data" state.
+## 🗺️ PICKERING — ADDED TO ONTARIO MAP (this session)
+
+**What shipped:**
+- `src/app/api/atlas/pickering-wards/route.ts` — fetches Pickering ward polygons from MapServer layer 5. Uses `TEXT_` field for ward names (Pickering-specific). Blue accent (`#3B82F6`). Falls back to Represent `pickering-wards`.
+- `src/app/api/atlas/pickering-addresses/route.ts` — three-tier fallback: (1) Pickering MapServer layer 0 (42,610 points), (2) Durham Region MapServer filtered to Pickering (253,329 total, has postal codes), (3) OSM Overpass. Hard bounds `{ south: 43.76, west: -79.25, north: 44.02, east: -78.98 }`.
+- `src/config/ward-asset-registry.ts` — Pickering entry added (Durham Region section, between Ajax and Clarington).
+- `src/lib/atlas/ward-ingestor.ts` — added `TEXT_` field to `extractWardName` so DB seeding works for Pickering.
+- `src/components/atlas/atlas-all-map-client.tsx` — `Pickering: "#3B82F6"` added to `MUNI_ACCENT`, subtitle and attribution updated.
+
+**George action:** Re-run the ward seed endpoint to pick up Pickering:
+```
+https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
+```
+No `npx prisma db push` needed for Pickering — no schema changes.
 
 ---
 
@@ -31,12 +45,40 @@ Wait 3–4 minutes — Represent calls are now serial, so it takes longer but wi
 
 ---
 
+## 🚨 WHAT SHIPPED THIS SESSION — 2026-04-22 🚨
+
+Build GREEN. Pushed to origin/main. All code verified compiles cleanly.
+
+### Sign Field Ops — Complete
+- **`src/components/signs/sign-action-modal.tsx`** — mobile bottom sheet, GPS capture, action grid (install/remove/damage/missing/repair/audit), status-aware available actions, notes textarea
+- **`src/components/signs/sign-event-timeline.tsx`** — vertical timeline fetching `GET /api/signs/[signId]/events`, photos, GPS, actor name
+- **`src/app/api/signs/[signId]/events/route.ts`** — GET (list events) + POST (create event + update sign status in transaction)
+- **`src/app/(app)/field-ops/signs/signs-field-client.tsx`** — wired: action button → `SignActionModal` → optimistic status update; history button → `SignEventTimeline` drawer
+- Navigation: Sidebar → Field Ops → Signs → click any sign → "Log Action" / "History" buttons
+
+### Finance — Complete
+- **`src/app/(app)/finance/funding-sources/`** — Funding Sources tab: list, add, ledger drawer, credit/debit transactions
+- **`src/app/(app)/finance/vouchers/`** — Vouchers tab: summary strip, status filter, card list, create/redeem/detail drawer
+- **APIs:** `/api/finance/funding-sources/`, `/api/finance/funding-sources/[id]/`, `/api/finance/funding-sources/[id]/ledger`, `/api/finance/vouchers/`, `/api/finance/vouchers/[id]/`, `/api/finance/vouchers/[id]/redeem`
+- Navigation: Sidebar → Finance → Funding Sources tab / Vouchers tab
+
+### QR & Scan-to-Donate — Complete
+- **`src/app/q/[token]/`** — public QR landing page (resolves token → context → redirects or shows donation page)
+- **`src/app/api/qr/[qrId]/resolve/route.ts`** — resolves QR context rules to determine destination
+- **`src/app/api/fundraising/scan-donate/route.ts`** — public endpoint: QR → campaign branding + donation page config + DonationSource attribution
+- Navigation: Any printed QR code → `poll.city/q/[token]` → donation page with attribution
+
+### Election Results — Refactored
+- **`src/app/api/atlas/election-results/route.ts`** — now reads from `data/ontario-elections/*.csv` directly (no DB seed required). CSVs deploy with the app.
+
+---
+
 ## 🚨 SCHEMA — `npx prisma db push` STILL REQUIRED 🚨
 
-New models committed but not yet in Railway (see GEORGE_TODO item 3):
+New models in Railway pending push (see GEORGE_TODO item 3):
 - SignEvent, SignBatch, QrContextRule, FundingSource, FundingSourceTransaction, Voucher, VoucherRedemption
-- **Source Intelligence Hub (added 2026-04-22):** PlatformSource, SourceEndpoint, SourceHealthCheck, CampaignSourceActivation, SourceItem, SourceItemEntity, SourcePack, SourcePackItem, CampaignPackActivation, SourceAuditLog
-- Plus all earlier models in the item 3 list
+- **Source Intelligence Hub:** PlatformSource, SourceEndpoint, SourceHealthCheck, CampaignSourceActivation, SourceItem, SourceItemEntity, SourcePack, SourcePackItem, CampaignPackActivation, SourceAuditLog
+- Plus all earlier models in item 3
 
 **Run:** `npx prisma db push` in your terminal. Takes 30 seconds.
 
