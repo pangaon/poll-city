@@ -6,6 +6,8 @@ import {
   ElectionType,
   TaskStatus,
   TaskPriority,
+  TaskCategory,
+  TaskResolutionType,
   Role,
   DonationStatus,
 } from "@prisma/client";
@@ -135,16 +137,33 @@ export const createTaskSchema = z.object({
   campaignId: z.string().cuid(),
   contactId: z.string().cuid().optional().nullable(),
   assignedToId: z.string().cuid().optional().nullable(),
+  parentTaskId: z.string().cuid().optional().nullable(),
   title: z.string().min(3, "Task title is required").max(200),
   description: z.string().max(2000).optional(),
   status: z.nativeEnum(TaskStatus).optional(),
   priority: z.nativeEnum(TaskPriority).optional(),
+  category: z.nativeEnum(TaskCategory).optional(),
   dueDate: z.string().datetime().optional().nullable(),
+  isRecurring: z.boolean().optional(),
+  recurringInterval: z.enum(["weekly", "biweekly", "monthly"]).optional().nullable(),
 });
 
 export const updateTaskSchema = createTaskSchema
   .omit({ campaignId: true })
+  .extend({
+    resolutionType: z.nativeEnum(TaskResolutionType).optional().nullable(),
+    resolutionNote: z.string().max(500).optional().nullable(),
+  })
   .partial();
+
+export const resolveTaskSchema = z.object({
+  resolutionType: z.nativeEnum(TaskResolutionType),
+  resolutionNote: z.string().max(500).optional(),
+  createFollowUp: z.boolean().optional(),
+  followUpTitle: z.string().max(200).optional(),
+  followUpDueDays: z.number().int().min(1).max(365).optional(),
+  followUpAssignedToId: z.string().cuid().optional().nullable(),
+});
 
 // ─── Donation ─────────────────────────────────────────────────────────────
 
@@ -201,6 +220,7 @@ export type UpdateContactInput = z.infer<typeof updateContactSchema>;
 export type CreateInteractionInput = z.infer<typeof createInteractionSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type ResolveTaskInput = z.infer<typeof resolveTaskSchema>;
 export type CreateCanvassListInput = z.infer<typeof createCanvassListSchema>;
 export type BulkAssignCanvassInput = z.infer<typeof bulkAssignCanvassSchema>;
 export type ImportContactRow = z.infer<typeof importContactRowSchema>;

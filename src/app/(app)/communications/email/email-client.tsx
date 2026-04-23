@@ -7,6 +7,7 @@ import {
   FileText, AlertTriangle, Clock, X,
 } from "lucide-react";
 import { FieldHelp, WriteAssistTextarea } from "@/components/ui";
+import { AdoniChip } from "@/components/adoni/adoni-chip";
 
 interface Props {
   campaignId: string;
@@ -286,6 +287,7 @@ export default function EmailClient({ campaignId, tags, wards }: Props) {
                         example="Can I count on your support, {{firstName}}?"
                         tip="Questions and personal names in subject lines increase open rates significantly."
                       />
+                      <AdoniChip prefill="Write a subject line for a campaign email blast" label="Ask Adoni for a subject line" />
                     </span>
                     <input
                       type="text"

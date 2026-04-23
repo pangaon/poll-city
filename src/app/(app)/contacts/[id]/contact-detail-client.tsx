@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit2, Phone, Mail, MapPin, Flag, MessageSquare, CheckSquare, Sparkles, Save, X } from "lucide-react";
 import { Button, Card, CardHeader, CardContent, SupportLevelBadge, Badge, FormField, Input, Select, Textarea, Checkbox, Modal, WriteAssistTextarea } from "@/components/ui";
+import { AdoniChip } from "@/components/adoni/adoni-chip";
 import { fullName, formatDate, formatDateTime, formatPhone, cn } from "@/lib/utils";
 import { SUPPORT_LEVEL_LABELS, INTERACTION_TYPE_LABELS, TASK_STATUS_LABELS, TASK_PRIORITY_COLORS, COMMON_ISSUES, SupportLevel, InteractionType } from "@/types";
 import { toast } from "sonner";
@@ -1133,7 +1134,7 @@ function LogInteractionModal({ open, onClose, contactId, contactName, onLogged }
             {Object.entries(SUPPORT_LEVEL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </FormField>
-        <FormField label="Notes" help={{ content: "What happened during this interaction? What did they say? What are their concerns? This goes into your contact history and informs future visits.", tip: "Even a few words help. 'Supportive, transit concerns' beats nothing." }}>
+        <FormField label="Notes" help={{ content: "What happened during this interaction? What did they say? What are their concerns? This goes into your contact history and informs future visits.", tip: "Even a few words help. 'Supportive, transit concerns' beats nothing." }} labelSuffix={<AdoniChip prefill="Write interaction notes for a door knock" label="Ask Adoni to draft notes" />}>
           <Controller
             name="notes"
             control={control}

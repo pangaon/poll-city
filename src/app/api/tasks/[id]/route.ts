@@ -4,11 +4,15 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { updateTaskSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
+import { createBackboneTask } from "@/lib/operations/task-backbone";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
-  const task = await prisma.task.findUnique({ where: { id: params.id }, select: { id: true, campaignId: true, contactId: true } });
+  const task = await prisma.task.findUnique({
+    where: { id: params.id },
+    select: { id: true, campaignId: true, contactId: true, title: true, priority: true, category: true, assignedToId: true, isRecurring: true, recurringInterval: true, dueDate: true },
+  });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { forbidden } = await guardCampaignRoute(session!.user.id, task.campaignId, "tasks:write");
@@ -21,22 +25,46 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 422 });
 
   const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.status === "completed") updateData.completedAt = new Date();
+  const isBeingCompleted = parsed.data.status === "completed";
+  if (isBeingCompleted) updateData.completedAt = new Date();
   if (parsed.data.dueDate) updateData.dueDate = new Date(parsed.data.dueDate as string);
 
   const updated = await prisma.task.update({
     where: { id: params.id },
     data: updateData,
     include: {
-      assignedTo: { select: { id: true, name: true } },
-      contact: { select: { id: true, firstName: true, lastName: true } },
+      assignedTo: { select: { id: true, name: true, email: true } },
+      contact: { select: { id: true, firstName: true, lastName: true, supportLevel: true } },
+      parentTask: { select: { id: true, title: true } },
+      _count: { select: { followUps: true } },
     },
   });
 
-  if (parsed.data.status === "completed" && task.contactId) {
+  if (isBeingCompleted && task.contactId) {
     await prisma.contact.update({
       where: { id: task.contactId },
       data: { lastContactedAt: new Date() },
+    }).catch(() => {});
+  }
+
+  // Auto-create next recurring task on completion
+  if (isBeingCompleted && task.isRecurring && task.recurringInterval && task.dueDate) {
+    const next = new Date(task.dueDate);
+    if (task.recurringInterval === "weekly") next.setDate(next.getDate() + 7);
+    else if (task.recurringInterval === "biweekly") next.setDate(next.getDate() + 14);
+    else if (task.recurringInterval === "monthly") next.setMonth(next.getMonth() + 1);
+    await createBackboneTask({
+      campaignId: task.campaignId,
+      actorUserId: session!.user.id,
+      title: task.title,
+      assignedToId: task.assignedToId ?? null,
+      priority: task.priority,
+      category: task.category,
+      dueDate: next,
+      isRecurring: true,
+      recurringInterval: task.recurringInterval,
+      parentTaskId: task.id,
+      sourceAction: "tasks.recurring_auto_create",
     }).catch(() => {});
   }
 

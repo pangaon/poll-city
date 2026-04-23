@@ -574,6 +574,57 @@ export const ADONI_TOOLS = [
       required: ["contactQuery"],
     },
   },
+  {
+    name: "create_volunteer",
+    description:
+      "Add a single volunteer to the campaign. Creates a contact record (or links to existing) and creates their volunteer profile with skills and availability. Use when someone says 'add Maria Chen as a volunteer' or 'sign up John Smith — he can door knock on weekends and has a car'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        firstName: { type: "string" as const, description: "First name" },
+        lastName: { type: "string" as const, description: "Last name" },
+        phone: { type: "string" as const, description: "Phone number" },
+        email: { type: "string" as const, description: "Email address" },
+        address1: { type: "string" as const, description: "Street address" },
+        ward: { type: "string" as const, description: "Ward" },
+        skills: { type: "string" as const, description: "Comma-separated skills: door_knocking, phone_banking, driving, data_entry, sign_installation, events, social_media, languages" },
+        availability: { type: "string" as const, description: "Free text: 'weekends', 'evenings after 6pm', 'flexible', etc." },
+        hasVehicle: { type: "boolean" as const, description: "Has a vehicle they can use" },
+        notes: { type: "string" as const, description: "Any notes about this volunteer" },
+      },
+      required: ["firstName", "lastName"],
+    },
+  },
+  {
+    name: "bulk_create_volunteers",
+    description:
+      "Add multiple volunteers to the campaign at once from a list. Use when someone pastes a list of names/numbers or uploads a CSV. Each entry should have at minimum a first name and last name. Returns count of created profiles. IMPORTANT: When told to add a list of real volunteers, use this tool immediately — do not ask for a CSV file.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        volunteers: {
+          type: "array" as const,
+          description: "Array of volunteer objects",
+          items: {
+            type: "object" as const,
+            properties: {
+              firstName: { type: "string" as const },
+              lastName: { type: "string" as const },
+              phone: { type: "string" as const },
+              email: { type: "string" as const },
+              skills: { type: "string" as const },
+              availability: { type: "string" as const },
+              hasVehicle: { type: "boolean" as const },
+            },
+            required: ["firstName", "lastName"],
+          },
+        },
+        defaultSkills: { type: "string" as const, description: "Default skills to apply to all if not specified per volunteer" },
+        defaultAvailability: { type: "string" as const, description: "Default availability if not specified" },
+      },
+      required: ["volunteers"],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -620,6 +671,8 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   create_qr_codes: "qr:write",
   get_qr_stats: "qr:read",
   mark_voted: "gotv:write",
+  create_volunteer: "volunteers:write",
+  bulk_create_volunteers: "volunteers:write",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -747,6 +800,10 @@ export async function executeAction(
         return await getQrStats(input, ctx);
       case "mark_voted":
         return await markVoted(input, ctx);
+      case "create_volunteer":
+        return await createVolunteer(input, ctx);
+      case "bulk_create_volunteers":
+        return await bulkCreateVolunteers(input, ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -2504,5 +2561,177 @@ async function markVoted(input: Record<string, unknown>, ctx: ActionContext): Pr
     success: true,
     message: `Struck off: ${contact.firstName} ${contact.lastName} marked as voted.`,
     data: { contactId: contact.id },
+  };
+}
+
+async function createVolunteer(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const firstName = String(input.firstName);
+  const lastName = String(input.lastName);
+
+  // Find existing contact or create one
+  let contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      firstName: { equals: firstName, mode: "insensitive" },
+      lastName: { equals: lastName, mode: "insensitive" },
+      deletedAt: null,
+    },
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  if (!contact) {
+    contact = await prisma.contact.create({
+      data: {
+        campaignId: ctx.campaignId,
+        firstName,
+        lastName,
+        phone: input.phone ? String(input.phone) : null,
+        email: input.email ? String(input.email) : null,
+        address1: input.address1 ? String(input.address1) : null,
+        ward: input.ward ? String(input.ward) : null,
+        volunteerInterest: true,
+        supportLevel: "strong_support" as never,
+      },
+      select: { id: true, firstName: true, lastName: true },
+    });
+  }
+
+  // Check if volunteer profile already exists
+  const existing = await prisma.volunteerProfile.findUnique({
+    where: { contactId: contact.id },
+    select: { id: true },
+  });
+  if (existing) {
+    return { success: true, message: `${firstName} ${lastName} is already in the volunteer system.`, data: { contactId: contact.id } };
+  }
+
+  const skillList = input.skills
+    ? String(input.skills).split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const volunteer = await prisma.volunteerProfile.create({
+    data: {
+      contactId: contact.id,
+      campaignId: ctx.campaignId,
+      skills: skillList,
+      availability: input.availability ? String(input.availability) : null,
+      hasVehicle: Boolean(input.hasVehicle ?? false),
+      notes: input.notes ? String(input.notes) : null,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "volunteer_created_by_adoni",
+      entityType: "volunteerProfile",
+      entityId: volunteer.id,
+      details: { name: `${firstName} ${lastName}`, skills: skillList },
+    },
+  }).catch(() => {});
+
+  const skillsSummary = skillList.length > 0 ? ` Skills: ${skillList.join(", ")}.` : "";
+  const vehicleSummary = input.hasVehicle ? " Has vehicle." : "";
+  return {
+    success: true,
+    message: `Volunteer added: ${firstName} ${lastName}.${input.phone ? ` Phone: ${input.phone}.` : ""}${skillsSummary}${vehicleSummary}`,
+    data: { contactId: contact.id, volunteerId: volunteer.id },
+  };
+}
+
+async function bulkCreateVolunteers(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const rawList = input.volunteers;
+  if (!Array.isArray(rawList) || rawList.length === 0) {
+    return { success: false, message: "No volunteers provided in the list." };
+  }
+
+  const defaultSkills = input.defaultSkills
+    ? String(input.defaultSkills).split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const defaultAvailability = input.defaultAvailability ? String(input.defaultAvailability) : null;
+
+  let created = 0;
+  let skipped = 0;
+  const names: string[] = [];
+
+  for (const item of rawList as Array<Record<string, unknown>>) {
+    const firstName = String(item.firstName ?? "").trim();
+    const lastName = String(item.lastName ?? "").trim();
+    if (!firstName || !lastName) { skipped++; continue; }
+
+    try {
+      let contact = await prisma.contact.findFirst({
+        where: {
+          campaignId: ctx.campaignId,
+          firstName: { equals: firstName, mode: "insensitive" },
+          lastName: { equals: lastName, mode: "insensitive" },
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (!contact) {
+        contact = await prisma.contact.create({
+          data: {
+            campaignId: ctx.campaignId,
+            firstName,
+            lastName,
+            phone: item.phone ? String(item.phone) : null,
+            email: item.email ? String(item.email) : null,
+            volunteerInterest: true,
+            supportLevel: "strong_support" as never,
+          },
+          select: { id: true },
+        });
+      }
+
+      const existing = await prisma.volunteerProfile.findUnique({
+        where: { contactId: contact.id },
+        select: { id: true },
+      });
+      if (existing) { skipped++; continue; }
+
+      const skillList = item.skills
+        ? String(item.skills).split(",").map((s) => s.trim()).filter(Boolean)
+        : defaultSkills;
+
+      await prisma.volunteerProfile.create({
+        data: {
+          contactId: contact.id,
+          campaignId: ctx.campaignId,
+          skills: skillList,
+          availability: item.availability ? String(item.availability) : defaultAvailability,
+          hasVehicle: Boolean(item.hasVehicle ?? false),
+          isActive: true,
+        },
+      });
+
+      created++;
+      names.push(`${firstName} ${lastName}`);
+    } catch {
+      skipped++;
+    }
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "volunteers_bulk_created_by_adoni",
+      entityType: "volunteerProfile",
+      entityId: ctx.campaignId,
+      details: { created, skipped, names: names.slice(0, 10) },
+    },
+  }).catch(() => {});
+
+  const preview = names.slice(0, 5).join(", ");
+  const more = names.length > 5 ? ` and ${names.length - 5} more` : "";
+  return {
+    success: true,
+    message: `Added ${created} volunteer${created !== 1 ? "s" : ""}${skipped > 0 ? ` (${skipped} skipped — already in system or missing names)` : ""}. ${preview}${more}.`,
+    data: { created, skipped, names },
   };
 }

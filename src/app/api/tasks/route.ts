@@ -4,7 +4,7 @@ import { apiAuth } from "@/lib/auth/helpers";
 import { guardCampaignRoute } from "@/lib/permissions/engine";
 import { createTaskSchema } from "@/lib/validators";
 import { parsePagination, paginate } from "@/lib/utils";
-import { TaskStatus } from "@prisma/client";
+import { TaskCategory, TaskStatus } from "@prisma/client";
 import { createBackboneTask } from "@/lib/operations/task-backbone";
 import { postTaskCalendarItem } from "@/lib/calendar/post-calendar-item";
 
@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
   const { page, pageSize, skip } = parsePagination(sp);
   const status = sp.get("status") as TaskStatus | null;
   const assignedToId = sp.get("assignedToId");
+  const category = sp.get("category") as TaskCategory | null;
   const mine = sp.get("mine") === "true";
+  const dueBefore = sp.get("dueBefore");
+  const dueAfter = sp.get("dueAfter");
 
   const where = {
     campaignId,
@@ -32,6 +35,13 @@ export async function GET(req: NextRequest) {
     ...(status && { status }),
     ...(assignedToId && { assignedToId }),
     ...(mine && { assignedToId: session!.user.id }),
+    ...(category && { category }),
+    ...(dueBefore || dueAfter ? {
+      dueDate: {
+        ...(dueAfter && { gte: new Date(dueAfter) }),
+        ...(dueBefore && { lte: new Date(dueBefore) }),
+      },
+    } : {}),
   };
 
   const [tasks, total] = await Promise.all([
@@ -43,7 +53,9 @@ export async function GET(req: NextRequest) {
       include: {
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },
-        contact: { select: { id: true, firstName: true, lastName: true } },
+        contact: { select: { id: true, firstName: true, lastName: true, supportLevel: true } },
+        parentTask: { select: { id: true, title: true } },
+        _count: { select: { followUps: true } },
       },
     }),
     prisma.task.count({ where }),
@@ -76,9 +88,13 @@ export async function POST(req: NextRequest) {
     description: data.description ?? null,
     assignedToId: data.assignedToId ?? null,
     contactId: data.contactId ?? null,
+    parentTaskId: data.parentTaskId ?? null,
     status: data.status,
     priority: data.priority,
+    category: data.category,
     dueDate: data.dueDate ? new Date(data.dueDate) : null,
+    isRecurring: data.isRecurring,
+    recurringInterval: data.recurringInterval ?? null,
     sourceAction: "tasks.api_create",
   });
 

@@ -1,4 +1,4 @@
-import { TaskPriority, TaskStatus } from "@prisma/client";
+import { TaskCategory, TaskPriority, TaskStatus } from "@prisma/client";
 import prisma from "@/lib/db/prisma";
 import { audit } from "@/lib/audit";
 
@@ -9,9 +9,13 @@ export interface CreateTaskBackboneInput {
   description?: string | null;
   assignedToId?: string | null;
   contactId?: string | null;
+  parentTaskId?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
+  category?: TaskCategory;
   dueDate?: Date | null;
+  isRecurring?: boolean;
+  recurringInterval?: string | null;
   sourceAction?: string;
   sourceMetadata?: Record<string, unknown>;
 }
@@ -41,9 +45,13 @@ export async function createBackboneTask(input: CreateTaskBackboneInput) {
       description: input.description ?? null,
       assignedToId: input.assignedToId ?? null,
       contactId: input.contactId ?? null,
+      parentTaskId: input.parentTaskId ?? null,
       priority: input.priority ?? TaskPriority.medium,
       status: input.status ?? TaskStatus.pending,
+      category: input.category ?? TaskCategory.OTHER,
       dueDate: input.dueDate ?? null,
+      isRecurring: input.isRecurring ?? false,
+      recurringInterval: input.recurringInterval ?? null,
     },
     include: {
       assignedTo: { select: { id: true, name: true, email: true } },

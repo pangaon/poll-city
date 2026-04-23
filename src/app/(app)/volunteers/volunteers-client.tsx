@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { fullName, formatPhone } from "@/lib/utils";
 import { AdoniPageAssist } from "@/components/adoni/adoni-page-assist";
+import { AdoniChip } from "@/components/adoni/adoni-chip";
 
 /* ─── types ─────────────────────────────────────────────────────────── */
 interface VolunteerProfileRow {
@@ -928,7 +929,7 @@ export default function VolunteersClient({ campaignId }: Props) {
           <p className="text-sm text-gray-600">
             Creating task for {taskTargets.length} volunteer{taskTargets.length !== 1 ? "s" : ""}.
           </p>
-          <FormField label="Title" help={{ content: "A short, clear description of what needs to be done. One task per action.", example: "Call to confirm Saturday shift", tip: "Tasks assigned to volunteers show up on their dashboard." }}>
+          <FormField label="Title" help={{ content: "A short, clear description of what needs to be done. One task per action.", example: "Call to confirm Saturday shift", tip: "Tasks assigned to volunteers show up on their dashboard." }} labelSuffix={<AdoniChip prefill="Suggest a task for a volunteer" label="Ask Adoni for a volunteer task idea" />}>
             <Input
               value={taskForm.title}
               onChange={(e) => setTaskForm((s) => ({ ...s, title: e.target.value }))}

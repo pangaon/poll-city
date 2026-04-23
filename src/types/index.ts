@@ -1,4 +1,4 @@
-import { Role, SupportLevel, InteractionType, TaskStatus, TaskPriority, CanvassStatus, ElectionType } from "@prisma/client";
+import { Role, SupportLevel, InteractionType, TaskStatus, TaskPriority, TaskCategory, TaskResolutionType, CanvassStatus, ElectionType } from "@prisma/client";
 import "next-auth";
 
 // ─── NextAuth Augmentation ─────────────────────────────────────────────────
@@ -29,7 +29,7 @@ declare module "next-auth/jwt" {
 }
 
 // ─── Re-export Prisma Enums ─────────────────────────────────────────────────
-export { Role, SupportLevel, InteractionType, TaskStatus, TaskPriority, CanvassStatus, ElectionType };
+export { Role, SupportLevel, InteractionType, TaskStatus, TaskPriority, TaskCategory, TaskResolutionType, CanvassStatus, ElectionType };
 
 // ─── UI-facing Type Helpers ────────────────────────────────────────────────
 
@@ -132,6 +132,63 @@ export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
   medium: "bg-blue-100 text-blue-700",
   high: "bg-orange-100 text-orange-700",
   urgent: "bg-red-100 text-red-700",
+};
+
+export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
+  ADMIN: "Admin",
+  FIELD: "Field",
+  COMMS: "Comms",
+  FINANCE: "Finance",
+  VOLUNTEERS: "Volunteers",
+  OTHER: "Other",
+};
+
+export const TASK_CATEGORY_ICONS: Record<TaskCategory, string> = {
+  ADMIN: "⚙️",
+  FIELD: "🏃",
+  COMMS: "📢",
+  FINANCE: "💰",
+  VOLUNTEERS: "🤝",
+  OTHER: "📋",
+};
+
+export const TASK_CATEGORY_COLORS: Record<TaskCategory, string> = {
+  ADMIN: "bg-slate-100 text-slate-700 border-slate-200",
+  FIELD: "bg-green-100 text-green-700 border-green-200",
+  COMMS: "bg-purple-100 text-purple-700 border-purple-200",
+  FINANCE: "bg-amber-100 text-amber-700 border-amber-200",
+  VOLUNTEERS: "bg-teal-100 text-teal-700 border-teal-200",
+  OTHER: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+export const TASK_RESOLUTION_LABELS: Record<TaskResolutionType, string> = {
+  COMPLETED: "Completed",
+  VOICEMAIL_LEFT: "Left Voicemail",
+  MET_IN_PERSON: "Met In Person",
+  EMAIL_SENT: "Email Sent",
+  NOT_REACHED: "Not Reached",
+  WRONG_NUMBER: "Wrong Number",
+  RECRUITED: "Recruited",
+  DECLINED: "Declined",
+  FOLLOW_UP_NEEDED: "Follow Up Needed",
+  BLOCKED: "Blocked",
+  DELEGATED: "Delegated",
+  WONT_DO: "Won't Do",
+};
+
+export const TASK_RESOLUTION_ICONS: Record<TaskResolutionType, string> = {
+  COMPLETED: "✓",
+  VOICEMAIL_LEFT: "📱",
+  MET_IN_PERSON: "🤝",
+  EMAIL_SENT: "✉️",
+  NOT_REACHED: "📵",
+  WRONG_NUMBER: "🚫",
+  RECRUITED: "🌟",
+  DECLINED: "👎",
+  FOLLOW_UP_NEEDED: "🔄",
+  BLOCKED: "🚧",
+  DELEGATED: "➤",
+  WONT_DO: "✕",
 };
 
 export const COMMON_ISSUES = [

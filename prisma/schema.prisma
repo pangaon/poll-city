@@ -110,6 +110,30 @@ enum TaskPriority {
   urgent
 }
 
+enum TaskCategory {
+  ADMIN
+  FIELD
+  COMMS
+  FINANCE
+  VOLUNTEERS
+  OTHER
+}
+
+enum TaskResolutionType {
+  COMPLETED
+  VOICEMAIL_LEFT
+  MET_IN_PERSON
+  EMAIL_SENT
+  NOT_REACHED
+  WRONG_NUMBER
+  RECRUITED
+  DECLINED
+  FOLLOW_UP_NEEDED
+  BLOCKED
+  DELEGATED
+  WONT_DO
+}
+
 enum CanvassStatus {
   not_started
   in_progress
@@ -1534,29 +1558,38 @@ model Interaction {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Task {
-  id           String       @id @default(cuid())
-  campaignId   String
-  contactId    String?
-  assignedToId String?
-  createdById  String
-  title        String
-  description  String?
-  status       TaskStatus   @default(pending)
-  priority     TaskPriority @default(medium)
-  dueDate      DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  deletedAt    DateTime?
-  deletedById  String?
+  id                String              @id @default(cuid())
+  campaignId        String
+  contactId         String?
+  assignedToId      String?
+  createdById       String
+  title             String
+  description       String?
+  status            TaskStatus          @default(pending)
+  priority          TaskPriority        @default(medium)
+  category          TaskCategory        @default(OTHER)
+  dueDate           DateTime?
+  completedAt       DateTime?
+  resolutionType    TaskResolutionType?
+  resolutionNote    String?
+  parentTaskId      String?
+  isRecurring       Boolean             @default(false)
+  recurringInterval String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+  deletedById       String?
 
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact    Contact? @relation(fields: [contactId], references: [id])
   assignedTo User?    @relation("AssignedTasks", fields: [assignedToId], references: [id])
   createdBy  User     @relation("CreatedTasks", fields: [createdById], references: [id])
+  parentTask Task?    @relation("TaskChain", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  followUps  Task[]   @relation("TaskChain")
 
   @@index([campaignId])
   @@index([assignedToId])
+  @@index([category])
   @@map("tasks")
 }
 

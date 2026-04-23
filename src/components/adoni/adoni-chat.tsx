@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Maximize2,
   Minimize2,
+  Paperclip,
   Send,
   Sparkles,
   X,
@@ -329,6 +330,45 @@ function MessageArea({
 /*  InputBar                                                           */
 /* ------------------------------------------------------------------ */
 
+/* Parse a CSV string into an array of objects using the first row as headers */
+function parseCsv(text: string): Array<Record<string, string>> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map((line) => {
+    const vals = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
+  });
+}
+
+/* Build an Adoni message from a CSV file — maps common column names to volunteer fields */
+function csvToVolunteerMessage(rows: Array<Record<string, string>>, fileName: string): string {
+  const volunteers = rows.map((row) => {
+    const get = (...keys: string[]) => {
+      for (const k of keys) {
+        const found = Object.entries(row).find(([key]) => key.toLowerCase().includes(k.toLowerCase()));
+        if (found?.[1]) return found[1];
+      }
+      return "";
+    };
+    return {
+      firstName: get("first", "fname", "given"),
+      lastName: get("last", "lname", "surname", "family"),
+      phone: get("phone", "mobile", "cell", "tel"),
+      email: get("email", "mail"),
+      skills: get("skill", "role", "type"),
+      availability: get("avail", "when", "hours"),
+      hasVehicle: get("vehicle", "car", "drive").toLowerCase().includes("y") || get("vehicle", "car", "drive") === "1",
+    };
+  }).filter((v) => v.firstName && v.lastName);
+
+  if (volunteers.length === 0) {
+    return `I uploaded "${fileName}" but could not find firstName/lastName columns. Please paste the list as text instead.`;
+  }
+
+  return `I have a list of ${volunteers.length} volunteers from "${fileName}". Please add them all using bulk_create_volunteers: ${JSON.stringify(volunteers)}`;
+}
+
 function InputBar({
   prompt,
   setPrompt,
@@ -342,44 +382,117 @@ function InputBar({
   onSend: (text: string) => void;
   suggestions: string[];
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? "");
+      const isCsv = file.name.toLowerCase().endsWith(".csv");
+      let content: string;
+      if (isCsv) {
+        const rows = parseCsv(text);
+        content = csvToVolunteerMessage(rows, file.name);
+      } else {
+        // Text / transcript file — include raw content, let Adoni interpret
+        content = `I am sharing a file "${file.name}":\n\n${text.slice(0, 8000)}`;
+      }
+      setAttachedFile({ name: file.name, content });
+    };
+    reader.readAsText(file);
+    // Reset so same file can be re-uploaded
+    e.target.value = "";
+  }
+
+  function handleSend() {
+    if (attachedFile) {
+      onSend(attachedFile.content);
+      setAttachedFile(null);
+    } else if (prompt.trim()) {
+      onSend(prompt);
+    }
+  }
+
+  const canSend = !streaming && (!!prompt.trim() || !!attachedFile);
+
   return (
     <div className="border-t border-slate-200 px-3 pt-2 pb-3 bg-white">
-      <div className="mb-2 flex gap-2 overflow-x-auto">
-        {suggestions.map((item) => (
+      {suggestions.length > 0 && (
+        <div className="mb-2 flex gap-2 overflow-x-auto">
+          {suggestions.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onSend(item)}
+              className="whitespace-nowrap rounded-full border px-3 py-1 text-xs hover:opacity-80"
+              style={{
+                borderColor: GREEN,
+                color: GREEN,
+                backgroundColor: "rgba(29,158,117,0.06)",
+                minHeight: 44,
+              }}
+            >
+              <Sparkles className="inline mr-1 h-3.5 w-3.5" />
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Attached file chip */}
+      {attachedFile && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700">
+          <Paperclip className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+          <span className="flex-1 truncate">{attachedFile.name}</span>
           <button
-            key={item}
             type="button"
-            onClick={() => onSend(item)}
-            className="whitespace-nowrap rounded-full border px-3 py-1 text-xs hover:opacity-80"
-            style={{
-              borderColor: GREEN,
-              color: GREEN,
-              backgroundColor: "rgba(29,158,117,0.06)",
-              minHeight: 44,
-            }}
+            onClick={() => setAttachedFile(null)}
+            className="text-slate-400 hover:text-red-500 transition-colors"
+            aria-label="Remove file"
           >
-            <Sparkles className="inline mr-1 h-3.5 w-3.5" />
-            {item}
+            <X className="h-3.5 w-3.5" />
           </button>
-        ))}
-      </div>
+        </div>
+      )}
       <form
         className="flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          onSend(prompt);
+          handleSend();
         }}
       >
+        {/* Hidden file input */}
         <input
-          value={prompt}
+          ref={fileRef}
+          type="file"
+          accept=".csv,.txt,.md"
+          className="hidden"
+          onChange={handleFile}
+        />
+        {/* Attach button */}
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={streaming}
+          title="Attach a CSV or text file"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 disabled:opacity-40 transition-colors"
+          style={{ height: 44, width: 40 }}
+        >
+          <Paperclip className="h-4 w-4" />
+        </button>
+        <input
+          value={attachedFile ? "" : prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ask Adoni"
+          placeholder={attachedFile ? `Send "${attachedFile.name}" to Adoni` : "Ask Adoni"}
+          readOnly={!!attachedFile}
           className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
           style={{ minHeight: 44, "--tw-ring-color": GREEN } as React.CSSProperties}
         />
         <button
           type="submit"
-          disabled={streaming || !prompt.trim()}
+          disabled={!canSend}
           className="inline-flex items-center justify-center rounded-lg text-white disabled:opacity-50"
           style={{ backgroundColor: NAVY, height: 44, width: 44 }}
         >

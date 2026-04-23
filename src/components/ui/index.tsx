@@ -421,7 +421,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
 
 // ─── Form Field wrapper ───────────────────────────────────────────────────────
 
-export function FormField({ label, error, required, help, hint, children }: {
+export function FormField({ label, error, required, help, hint, labelSuffix, children }: {
   label: string;
   error?: string;
   required?: boolean;
@@ -429,6 +429,8 @@ export function FormField({ label, error, required, help, hint, children }: {
   help?: FieldHelpProps;
   /** Inline grey hint text shown below the input (e.g. format guidance). */
   hint?: string;
+  /** Optional element rendered after the label (e.g. AdoniChip). */
+  labelSuffix?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -438,6 +440,7 @@ export function FormField({ label, error, required, help, hint, children }: {
           {label}
           {required && <span className="text-red-500">*</span>}
           {help && <FieldHelp {...help} />}
+          {labelSuffix}
         </span>
       </label>
       {children}

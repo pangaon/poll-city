@@ -2,11 +2,70 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-23
-**Updated by:** Claude Sonnet 4.6 — PCS crash fixed, contrast overhauled, GTA officials seeded, Adoni Trainer shipped. Build green, pushed.
+**Updated by:** Claude Sonnet 4.6 — Tasks v2 complete: resolution loop, Adoni intelligence, Kanban board, Playbook templates, 15 new features. Build green, pushed.
 
 ---
 
-## 🎨 PCS SOCIAL — CRASH FIX + CONTRAST OVERHAUL (this session, 2026-04-23)
+## ✅ TASKS V2 — FULL REBUILD (this session, 2026-04-23)
+
+**Tasks is now a campaign accountability engine, not a to-do list.**
+
+### What shipped
+
+**Schema changes (requires `npx prisma db push` — item #78 in GEORGE_TODO.md):**
+- `TaskCategory` enum: ADMIN / FIELD / COMMS / FINANCE / VOLUNTEERS / OTHER
+- `TaskResolutionType` enum: 12 values (COMPLETED, VOICEMAIL_LEFT, MET_IN_PERSON, etc.)
+- 6 new Task fields: `category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`
+- Self-referential `TaskChain` relation: follow-up tasks link back to their parent
+
+**New API:**
+- `POST /api/tasks/[id]/resolve` — full resolution flow: updates task, logs contact interaction, generates Adoni follow-up suggestion via AI, creates follow-up task if requested, returns Adoni message
+
+**Modified files:**
+- `src/app/(app)/tasks/tasks-client.tsx` — complete rebuild (see features below)
+- `src/app/api/tasks/route.ts` — `category` + `dueBefore`/`dueAfter` filters, `supportLevel` + `parentTask` + `_count` in response
+- `src/app/api/tasks/[id]/route.ts` — supports new fields + **auto-creates next recurring task on completion**
+- `src/lib/validators/index.ts` — updated schemas, new `resolveTaskSchema`
+- `src/types/index.ts` — `TaskCategory` + `TaskResolutionType` exports + 4 new label/color/icon maps
+- `src/lib/operations/task-backbone.ts` — `category`, `parentTaskId`, `isRecurring`, `recurringInterval` support
+
+**New files:**
+- `src/app/api/tasks/[id]/resolve/route.ts` — resolve endpoint with Adoni AI loop
+
+### The 15 features (explain this to Maleeha/the Mayor)
+
+1. **Category system** — Admin / Field / Comms / Finance / Volunteers. Every task tagged. Filter by category tab.
+2. **My Tasks tab** — First view a team member sees: only their tasks, their count.
+3. **This Week tab** — Tasks due in the next 7 days, organized in one view.
+4. **Resolution picker** — When resolving a task, pick exactly what happened: Left Voicemail, Met In Person, Recruited, Not Reached, Blocked, etc. Category-aware (Field tasks show field resolutions, Volunteer tasks show volunteer resolutions).
+5. **Adoni follow-up loop** — After resolution, Adoni's panel slides in with a contextual suggestion based on what happened. If you left a voicemail, he suggests a follow-up call in 3 days. Real AI if API key set, deterministic fallback if not.
+6. **Auto-create follow-up task** — From the resolution panel, one checkbox creates a follow-up task linked to the parent. The chain is visible in the detail panel.
+7. **Kanban board view** — Toggle between List and Board. Board shows To Do / In Progress columns with click-to-move cards.
+8. **Campaign Playbook templates** — "Playbook" button imports pre-built task sets for 3 campaign phases: Early Campaign (8 tasks), Field Ops (7 tasks), GOTV (6 tasks). Every winning campaign runs these tasks.
+9. **Task Health Stats bar** — Animated counters at top: Active, Overdue, Urgent, In Progress. Disappears when no tasks.
+10. **Smart due date shortcuts** — In the create form: "Today", "Tomorrow", "+3 days", "This Friday", "+1 week", "+2 weeks" chips. Click = set. No date picker fumbling.
+11. **Urgency escalation badge** — Overdue tasks get a pulsing 🔥 flame + "Overdue" in red. Due within 24h get a pulsing clock "Due in Xh". The sidebar badge pulses.
+12. **Recurring tasks** — Mark any task as recurring (weekly / biweekly / monthly). On completion, the next instance is auto-created with the next due date.
+13. **Quick-add bar** — Always visible at top of task list. Type 3+ chars + Enter to instantly add a task. No modal. Press N from anywhere on the page to focus it.
+14. **Task chain indicator** — If a task was auto-created as a follow-up, the detail panel shows "↳ Follow-up from: [parent title]" with a link.
+15. **Contact support level chip** — If a task is linked to a contact, their support level emoji (💚 / 🟡 / 🔴) appears inline in the task row.
+
+**Bonus:**
+- **Bulk multi-select** — Checkbox on hover, floating action bar with Complete / Delete / Reassign.
+- **Collapsible priority groups** — Urgent / High / Medium / Low groups can be collapsed.
+- **Interaction auto-logging** — When resolving a contact-linked task with MET_IN_PERSON, VOICEMAIL_LEFT, EMAIL_SENT, or RECRUITED, a contact interaction is automatically logged.
+
+### George actions required
+- **Run `npx prisma db push`** — Tasks v2 schema (item #78 in GEORGE_TODO.md). **Until this runs, Tasks page will 500.**
+- That's it. The rest is code-complete and live on next deployment.
+
+### Risk
+- Zero data loss risk: all schema changes are purely additive.
+- Tasks created before this build will have `category = OTHER` (default) — they will appear in the "Other" category tab. George can recategorize them in the detail panel.
+
+---
+
+## 🎨 PCS SOCIAL — CRASH FIX + CONTRAST OVERHAUL (previous session, 2026-04-23)
 
 **Hydration crash fixed. Text is now readable. GTA officials in seed.**
 

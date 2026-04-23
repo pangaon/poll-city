@@ -989,6 +989,7 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 - [ ] **75. Run `npm run scrape:install-browsers`** — install Playwright Chromium
 - [ ] **76. Run `npm run scrape:toronto:dry`** — verify scraper reaches Toronto Open Data
 - [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB
+- [ ] **78. Run `npx prisma db push`** — Tasks v2 schema: adds `TaskCategory` enum, `TaskResolutionType` enum, and 6 new fields on the `tasks` table (`category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`). Zero risk — purely additive. Until this runs, the Tasks page will 500 on load. Run from the repo root: `npx prisma db push`
 
 ---
 

@@ -12,6 +12,7 @@ import {
   Badge, Button, Card, CardContent, CardHeader, CardTitle, FormField,
   Input, Label, Modal, PageHeader, Select, StatCard, Textarea, EmptyState,
 } from "@/components/ui";
+import { AdoniChip } from "@/components/adoni/adoni-chip";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 
@@ -664,7 +665,15 @@ function NewSignModal({ open, onClose, onCreate }: { open: boolean; onClose: () 
             {SIGN_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </Select>
         </div>
-        <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special instructions..." /></div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            <span className="inline-flex items-center gap-1">
+              Notes
+              <AdoniChip prefill="Add notes for a lawn sign installation" label="Ask Adoni for sign notes" />
+            </span>
+          </label>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special instructions..." />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose} className="min-h-[44px]">Cancel</Button>
           <MotionButton onClick={handleSubmit} loading={submitting} className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white">Create Request</MotionButton>
