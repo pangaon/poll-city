@@ -2,59 +2,43 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-22
-**Updated by:** Claude Sonnet 4.6 — Ontario election overlay shipped (Whitby test run)
+**Updated by:** Claude Sonnet 4.6 — Source Intelligence Hub shipped, build GREEN on 7ca8495
 
 ---
 
-## 🗳️ ELECTION OVERLAY — LIVE ON /whitby (George must seed DB)
+## 🗳️ ELECTION OVERLAY — CODE LIVE, DB SEED REQUIRED
 
-**What shipped:** Ontario Open Data election results (2014/2018/2022) are now overlaid on the Whitby map.
-- Toggle: "📊 Election History" button in the Whitby map header (amber colour, right of header)
-- Shows: turnout choropleth on ward polygons + race results panel (Mayor + 6 councillors) per year
-- Year tabs: switch between 2014/2018/2022. Year-over-year turnout bars. Incumbent badges.
-- API: `GET /api/atlas/election-results?municipality=Whitby+T` — no auth required, public data
-- Data lives in 6 CSVs at `data/ontario-elections/` (Ontario Open Government Licence)
+**What shipped:** Ontario Open Data election results (2014/2018/2022) overlaid on the Whitby map.
+- Toggle: "📊 Election History" button in Whitby map header
+- API: `GET /api/atlas/election-results?municipality=Whitby+T`
 
-**George must do ONE thing:** Run `npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"` to populate the DB. Without this, the toggle shows a "no data" graceful state. Code is live and deployed. Data is not yet in Railway DB.
-
-**Future extension:** Any other municipality can use the same API + toggle by adding `electionResultsApi` to its `MunicipalityConfig` object. The seed script accepts `--municipality` flag for any Ontario municipality.
+**George must run:** `npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"` — without this the toggle shows a graceful "no data" state.
 
 ---
 
-## 🚨 WEDNESDAY DEMO — APRIL 22, 2026 (Maleeha + Mayor of Whitby) 🚨
+## 🗺️ WARD INFRASTRUCTURE — PARTIALLY SEEDED, RE-SEED REQUIRED
 
-**Demo is TOMORROW. Platform is ready. Here's exactly what to do:**
+**Status as of last seed run (this session):**
+- **10 municipalities seeded (58 wards):** Toronto (25), Markham (8), Oshawa (5), Vaughan (5), Whitby (4), Milton (4), Brampton (4), Clarington (1), Hamilton (1), Oakville (1)
+- **20 municipalities failed** — all due to Represent API rate limiting (not bad URLs)
+- **Fix shipped:** `ward-ingestor.ts` now serializes all Represent calls with 3s gaps. ArcGIS/CKAN run in parallel. Fix is in `origin/main` (commit `e682625`).
 
-### Before the demo (George does these)
-1. `npx prisma db push` — critical, fixes CASL/Analytics/Atlas cache tables (see GEORGE_TODO item 3)
-2. Log in as the demo account, confirm dashboard loads with Ward 20 data
-3. Test Atlas Command: type "Whitby" → click Fetch → addresses should load (Overpass mirror fix is live)
-
-### Demo click path
-1. **Dashboard** `/dashboard` — KPI cards, health score, 14,179 contacts
-2. **Briefing** `/briefing` — morning summary, priorities (needs ANTHROPIC_API_KEY in Vercel for Adoni to speak)
-3. **Contacts** `/contacts` — search "Maleeha", show supporter pipeline, filter by ward
-4. **Field Ops** `/field-ops` — turf map, canvasser assignments, routes
-5. **Polls** `/polls` — create a live poll in real time during the demo
-6. **Atlas Command** `/atlas/import` → Address Pre-List → type "Whitby" → Fetch → shows real OSM addresses
-
-### What's fixed since last session
-- `b12d084` — Overpass GET + 3 mirror fallback (overpass-api.de blocks Vercel IPs)
-- `c98808f` — maxDuration=60 + per-mirror timeout 15s (prevents Vercel function timeout on slow mirrors)
-- Ward 20 seed: 14,179 contacts, 4,837 supporters, 290 donations loaded ✓
-
-### Known demo risks
-- Adoni (Briefing page) is silent without `ANTHROPIC_API_KEY` in Vercel
-- CASL / Analytics pages crash without `npx prisma db push`
-- Atlas Command works but first fetch for "Whitby" is live (not cached) — will take 10–30s
+**George must re-run the seed endpoint to get the remaining 20 municipalities:**
+```
+https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
+```
+Wait 3–4 minutes — Represent calls are now serial, so it takes longer but will complete. Expected result: all 28 municipalities seeded. Hamilton should show 15 wards, Oakville 7, Ottawa 24.
 
 ---
 
-## 🚨 WARD INFRASTRUCTURE — BUILD GREEN, AWAITING GEORGE ACTIVATION 🚨
+## 🚨 SCHEMA — `npx prisma db push` STILL REQUIRED 🚨
 
-**Status:** Code complete and pushed (commits baef811 + dc0b180). Build passes.
-**George must do:** `npx prisma db push` → hit seed endpoint (see GEORGE_TODO items 3 + 3f)
-**After activation:** All 28 Ontario municipalities load from DB at sub-10ms on election night.
+New models committed but not yet in Railway (see GEORGE_TODO item 3):
+- SignEvent, SignBatch, QrContextRule, FundingSource, FundingSourceTransaction, Voucher, VoucherRedemption
+- **Source Intelligence Hub (added 2026-04-22):** PlatformSource, SourceEndpoint, SourceHealthCheck, CampaignSourceActivation, SourceItem, SourceItemEntity, SourcePack, SourcePackItem, CampaignPackActivation, SourceAuditLog
+- Plus all earlier models in the item 3 list
+
+**Run:** `npx prisma db push` in your terminal. Takes 30 seconds.
 
 ---
 
@@ -519,7 +503,7 @@ MunicipalityConfig {
 ## CURRENT PLATFORM STATE (as of 2026-04-22 — Whitby Phase 1 + Task Autocomplete + Session Close)
 
 ### Build
-- **GREEN** — latest commit `9780c2f` on origin/main, working tree clean
+- **GREEN** — latest commit `7ca8495` on origin/main, working tree clean
 - Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`, `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`
 - George MUST run `npx prisma db push` then `npx prisma db seed` to activate Whitby profiles
 

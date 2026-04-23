@@ -78,6 +78,12 @@ Everything below is built, pushed, and accessible in the app.
 
 ## REMAINING WORK
 
+### ACTIVE BUILD (2026-04-22)
+
+| Task | Status | Notes |
+|---|---|---|
+| Source Intelligence Hub — platform-level monitored source repository + subscription system | DONE — commit e682625 + 44ed332 | 10 new Prisma models (PlatformSource, SourceEndpoint, SourceHealthCheck, CampaignSourceActivation, SourceItem, SourceItemEntity, SourcePack, SourcePackItem, CampaignPackActivation, SourceAuditLog). Service layer: source-service.ts, source-validator.ts, subscription-service.ts. 12 API routes under /api/sources/* (SUPER_ADMIN only) + 3 routes under /api/campaign/sources/* (campaign-scoped). UI: /ops/sources (source library), /ops/sources/[id] (detail + health + audit), /ops/sources/packs (pack management), /reputation/sources (campaign subscribe). Both sidebar entries wired. Build GREEN 7ca8495. George must run npx prisma db push (10 new tables). |
+
 ### ACTIVE BUILD (2026-04-18 → 2026-04-22)
 
 | Task | Status | Notes |
