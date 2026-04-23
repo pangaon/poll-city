@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   const years: Record<string, YearData> = {};
 
-  for (const [year, yearRows] of byYear.entries()) {
+  for (const [year, yearRows] of Array.from(byYear.entries())) {
     // Separate stats record from candidate records
     const statsRow = yearRows.find(r => r.candidateName === "_STATS_");
     const candidateRows = yearRows.filter(r => r.candidateName !== "_STATS_");
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
 
     const races: Race[] = [];
-    for (const [office, candidates] of byOffice.entries()) {
+    for (const [office, candidates] of Array.from(byOffice.entries())) {
       const acclaimed = candidates.some(c => c.source?.includes("_acclaimed"));
       const winner = candidates.find(c => c.won);
       const sorted = [...candidates].sort((a, b) => b.votesReceived - a.votesReceived);

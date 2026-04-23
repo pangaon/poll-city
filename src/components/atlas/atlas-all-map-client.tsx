@@ -1292,7 +1292,7 @@ export default function AtlasAllMapClient() {
               <div>
                 <div style={labelStyle}>🪧 Campaign Sign</div>
                 <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, marginTop: 3 }}>{String(selectedSign.address ?? "")}</div>
-                {selectedSign.city && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedSign.city)}</div>}
+                {!!selectedSign.city && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedSign.city)}</div>}
               </div>
               <button onClick={() => setSelectedSign(null)}
                 style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
@@ -1313,12 +1313,12 @@ export default function AtlasAllMapClient() {
                 <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>×{String(selectedSign.quantity)}</span>
               </div>
             )}
-            {selectedSign.isOpponent && (
+            {!!selectedSign.isOpponent && (
               <div style={{ background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 7, padding: "5px 9px", marginTop: 6 }}>
                 <span style={{ color: "#E24B4A", fontSize: 11, fontWeight: 700 }}>⚠️ Opponent sign</span>
               </div>
             )}
-            {selectedSign.notes && (
+            {!!selectedSign.notes && (
               <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 6, lineHeight: 1.5 }}>{String(selectedSign.notes)}</div>
             )}
           </motion.div>
@@ -1354,13 +1354,13 @@ export default function AtlasAllMapClient() {
               <span style={{ ...subval, fontSize: 11 }}>Accessible</span>
               <span style={{ color: selectedPolling.isAccessible ? "#1D9E75" : "#E24B4A", fontSize: 12, fontWeight: 700 }}>{selectedPolling.isAccessible ? "Yes ♿" : "No"}</span>
             </div>
-            {selectedPolling.wardName && (
+            {!!selectedPolling.wardName && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Ward</span>
                 <span style={{ color: "#fff", fontSize: 11 }}>{String(selectedPolling.wardName)}</span>
               </div>
             )}
-            {selectedPolling.notes && (
+            {!!selectedPolling.notes && (
               <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 6, lineHeight: 1.5 }}>{String(selectedPolling.notes)}</div>
             )}
           </motion.div>

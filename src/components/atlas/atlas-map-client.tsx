@@ -1528,7 +1528,7 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
               <div>
                 <div style={labelStyle}>{selectedSign.isOpponent ? "Opponent Sign" : "Campaign Sign"}</div>
                 <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, marginTop: 3 }}>{String(selectedSign.address ?? "")}</div>
-                {selectedSign.city && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedSign.city)}</div>}
+                {!!selectedSign.city && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedSign.city)}</div>}
               </div>
               <button onClick={() => setSelectedSign(null)}
                 style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
@@ -1537,19 +1537,19 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
               <span style={{ ...subval, fontSize: 11 }}>Status</span>
               <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{String(selectedSign.status ?? "")}</span>
             </div>
-            {selectedSign.signType && (
+            {!!selectedSign.signType && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Type</span>
                 <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>{String(selectedSign.signType)}</span>
               </div>
             )}
-            {selectedSign.quantity && Number(selectedSign.quantity) > 1 && (
+            {!!selectedSign.quantity && Number(selectedSign.quantity) > 1 && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Quantity</span>
                 <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{String(selectedSign.quantity)}</span>
               </div>
             )}
-            {selectedSign.notes && (
+            {!!selectedSign.notes && (
               <div style={{ marginTop: 6, padding: "6px 8px", background: "rgba(255,255,255,0.05)", borderRadius: 6, color: "rgba(255,255,255,0.55)", fontSize: 11 }}>
                 {String(selectedSign.notes)}
               </div>
@@ -1580,13 +1580,13 @@ export default function AtlasMapClient({ config }: { config: MunicipalityConfig 
               <span style={{ ...subval, fontSize: 11 }}>Address</span>
               <span style={{ color: "#fff", fontSize: 11 }}>{String(selectedPolling.address ?? "")}</span>
             </div>
-            {selectedPolling.wardName && (
+            {!!selectedPolling.wardName && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Ward</span>
                 <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>{String(selectedPolling.wardName)}</span>
               </div>
             )}
-            {selectedPolling.electorCount && Number(selectedPolling.electorCount) > 0 && (
+            {!!selectedPolling.electorCount && Number(selectedPolling.electorCount) > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ ...subval, fontSize: 11 }}>Electors</span>
                 <span style={{ color: "#1D9E75", fontSize: 12, fontWeight: 700 }}>{Number(selectedPolling.electorCount).toLocaleString()}</span>
