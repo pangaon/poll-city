@@ -1021,8 +1021,8 @@ export default function SocialFeedClient() {
     <>
       <AppDownloadBanner />
       <div className="min-h-screen bg-[#F0F4F8] dark:bg-[#080D14]">
-        {/* Sticky header */}
-        <div className="sticky top-0 z-20 bg-[#F0F4F8]/95 dark:bg-[#080D14]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/[0.06]">
+        {/* Sticky header — offset by PCSHeader height */}
+        <div className="sticky top-[57px] z-20 bg-[#F0F4F8]/95 dark:bg-[#080D14]/95 backdrop-blur-md border-b border-gray-200 dark:border-white/[0.06]">
           <div className="max-w-2xl mx-auto px-4 h-11 flex items-center justify-between gap-3">
             <div className="flex items-center gap-1">
               {(["for_you", "local"] as const).map((t) => (
@@ -1040,7 +1040,6 @@ export default function SocialFeedClient() {
                 </button>
               ))}
             </div>
-            <ThemeToggle />
           </div>
         </div>
 

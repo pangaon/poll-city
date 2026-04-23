@@ -349,6 +349,53 @@ async function main() {
     },
   });
 
+  // ── Maleeha Shahid — Recent 2026 posts (feed looks alive on demo) ───────
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-2026-1" },
+    update: {},
+    create: {
+      id: "post-maleeha-2026-1",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "announcement",
+      title: "East Whitby Hospital Site Selection — April Update",
+      body: "We have reached a major milestone. Durham Region has formally submitted the preferred site selection for the new East Whitby hospital to the province for approval. I want to thank every resident who signed the petition, attended the town halls, and sent letters to their MPP. This campaign worked. We are not done — provincial approval and construction timelines are still ahead — but today is a real victory. I'll be posting a full breakdown of what happens next.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2026-04-20"),
+    },
+  });
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-2026-2" },
+    update: {},
+    create: {
+      id: "post-maleeha-2026-2",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "civic_update",
+      title: "Budget 2026 — What East Whitby Won",
+      body: "The 2026 Regional Budget passed last week and I want to give you a straight summary of what it means for our community. East Whitby secured funding for: two new traffic signals at Taunton and Rossland, accelerated design work on the Whitby recreation campus, and a pilot for expanded GO Bus service to Brooklin. We also held the line on residential tax increases — 2.8%, below inflation. I voted yes on the full budget and no on two amendments that would have cut transit service. Full breakdown at maleehashahid.ca.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2026-04-15"),
+    },
+  });
+  await prisma.politicianPost.upsert({
+    where: { id: "post-maleeha-2026-3" },
+    update: {},
+    create: {
+      id: "post-maleeha-2026-3",
+      officialId: officialMaleeha.id,
+      authorName: "Maleeha Shahid",
+      postType: "civic_update",
+      title: "October 2026 Election — My Commitment to Whitby",
+      body: "This October, Whitby residents will choose who represents them at Durham Regional Council. I'm running again — and I want to be direct about why. We have unfinished work. The hospital site is approved but not funded. Brooklin's growth needs better transit. And East Whitby's infrastructure is still catching up to a decade of rapid development. I'm not done yet. Details on the campaign launch coming soon.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2026-04-10"),
+    },
+  });
+
   // ── Maleeha Shahid — Q&A ────────────────────────────────────────────────
   await prisma.publicQuestion.upsert({
     where: { id: "qa-maleeha-1" },
@@ -609,6 +656,38 @@ async function main() {
       },
     });
   }
+
+  // ── Elizabeth Roy — Recent 2026 posts ───────────────────────────────────
+  await prisma.politicianPost.upsert({
+    where: { id: "post-elizabeth-2026-1" },
+    update: {},
+    create: {
+      id: "post-elizabeth-2026-1",
+      officialId: officialElizabeth.id,
+      authorName: "Elizabeth Roy",
+      postType: "announcement",
+      title: "Whitby Ward System — First Election Under the New Structure",
+      body: "This October, Whitby residents will vote for their councillor by ward for the first time in our Town's history. I championed this change because ward-based representation means your councillor lives in your neighbourhood, knows your streets, and answers directly to your community. I'm proud of how far Whitby has come. As we head into this election, my commitment is the same as it was in 2014: transparent, accountable, and working every day for the residents of this town.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2026-04-21"),
+    },
+  });
+  await prisma.politicianPost.upsert({
+    where: { id: "post-elizabeth-2026-2" },
+    update: {},
+    create: {
+      id: "post-elizabeth-2026-2",
+      officialId: officialElizabeth.id,
+      authorName: "Elizabeth Roy",
+      postType: "civic_update",
+      title: "Downtown Whitby Master Plan — Public Input Period Open",
+      body: "The draft Downtown Whitby Master Plan is now available for public review. This plan sets the vision for downtown over the next 20 years — housing density, heritage conservation, the waterfront, retail mix, and transportation. I want as many residents as possible to weigh in before we finalize it. Review sessions are happening at Town Hall on April 28 and May 5. You can also submit comments online at whitby.ca/masterplan. This is your downtown. Help us plan it.",
+      municipalScope: "whitby",
+      isPublished: true,
+      createdAt: new Date("2026-04-17"),
+    },
+  });
 
   // ── Elizabeth Roy — Q&A ("Because You Asked" series) ────────────────────
   const elizabethQA = [

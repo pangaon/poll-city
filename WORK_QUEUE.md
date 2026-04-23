@@ -151,7 +151,7 @@ This is the business model. Every gap below undermines the conversion funnel.
 | Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
 | `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
 | `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
-| Social feed | DONE — commit 0e5ff04 | Discover officials, vote on polls | Phase 1 live: home feed, politician profiles, groups, notifications, fan-out engine |
+| Social feed | DONE — commit 0e5ff04 + this session | Discover officials, vote on polls | Phase 1 live. Desktop 3-column shell: PCSHeader, PCSLeftSidebar, PCSRightRail. Blank page fixed (nested html/body). PCS Feed tab in campaign social manager. 5 recent 2026 seed posts added. George must run seed script. |
 | Politician profile — full councillor-website standard | DONE — commit 19a595f | Full profile: events, promises tracker, newsletter subscribe, share button, claim CTA, approval rating fix, ward info, campaign site link | — |
 | Weather integration | PENDING | None | Simple weather API for canvassing day planning |
 | Marketing site content | DONE — commit 8aed4ad | Full content pass: copy, social proof, pricing, CTAs, About page, /contact, email capture, Poll City Social section, Officials vertical | — |

@@ -1,26 +1,42 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-22
-**Updated by:** Claude Sonnet 4.6 — Fixed 23 TypeScript errors blocking Vercel (commit 44ed332). Build green locally. Push running in background.
+**Last updated:** 2026-04-23
+**Updated by:** Claude Sonnet 4.6 — Poll City Social full desktop rebuild (3-column shell, PCSHeader, left sidebar, right rail, feed fixed, PCS Feed tab wired to campaign app). Build green.
 
 ---
 
-## 🚨 PUSH STATUS — IN PROGRESS 🚨
+## 🏙️ POLL CITY SOCIAL — DESKTOP REBUILD (this session, 2026-04-23)
 
-`npm run push:safe` is running in the background on this machine (started ~23:17 local time).
-It takes 15-20 minutes on Windows. It will push to `origin/main` automatically when complete.
+**Blank page fixed. Full 3-column Facebook-style desktop shell live.**
 
-**George: Check your Vercel dashboard.** When the push completes, Vercel starts a deploy automatically.
-If the push failed, open a terminal and run `npm run push:safe` — it takes 15-20 min, let it run.
+### Root cause of blank page
+`src/app/social/layout.tsx` had `<html><body>` nested under the root layout's `<html><body>`. Browser silently discards nested html content. Fixed: layout now a standard nested layout with a `<div id="pcs-root" class="dark">`.
 
-**6 commits waiting to push:**
-- `de1283f` fix(build): stub _document.js in Windows pre-build — fixes ENOENT race
-- `4ef01df` chore(todo): remove completed Whitby election seed item
-- `4727988` docs: session close — sign field ops + finance + QR scan-to-donate
-- `2d63040` chore(queue): ward infra status update
-- `1928f86` chore: linter formatting on election route + atlas clients
-- `44ed332` fix(ts): resolve 23 TypeScript errors blocking Vercel build ← **THE IMPORTANT ONE**
+### What shipped
+
+**New files:**
+- `src/app/social/layout.tsx` — 3-column shell: sticky PCSHeader + left nav sidebar + right rail + mobile SocialNav. Dark by default. Theme persisted in localStorage as `pcs-theme`.
+- `src/components/social/pcs-header.tsx` — Fixed-position glassmorphic header: brand logo, desktop search bar, notification bell with live unread count, auth dropdown (avatar, sign out, profile links), theme toggle.
+- `src/components/social/pcs-left-sidebar.tsx` — Left nav: Discover section (Feed/Polls/Representatives/Elections 2026/Groups), You section (Profile/Notifications), trending tags, sign-in CTA or user card.
+- `src/components/social/pcs-right-rail.tsx` — Right rail: Ontario election countdown (Oct 26 2026 live seconds), Find My Reps postal lookup (→ `/api/officials?postalCode=`), trending polls, Claim Your Profile CTA.
+
+**Modified:**
+- `src/app/social/social-feed-client.tsx` — feed's sticky tab bar moved to `top-[57px]` (accounts for fixed header), duplicate ThemeToggle removed (PCSHeader handles it now).
+- `src/app/(app)/communications/social/social-manager-client.tsx` — new **PCS Feed** tab (4th tab): compose + publish PoliticianPost directly to the civic feed, list of existing campaign PCS posts.
+- `src/app/api/social/posts/route.ts` — GET now returns `isPublished` in select.
+- `prisma/seed.ts` — added 5 recent 2026-dated posts (3 for Maleeha, 2 for Elizabeth) so feed looks alive on demo.
+
+### Navigation paths
+
+**View the rebuilt PCS:** poll.city/social → full desktop 3-column shell
+**Left sidebar:** Feed / Polls / Representatives / Elections 2026 / Groups / Profile / Notifications
+**Right rail:** Live election countdown + Find My Reps postal lookup + Trending polls + Claim CTA
+**Post to PCS from campaign app:** Communications → Social → PCS Feed tab → New PCS Post
+
+### George actions required
+- `npm run seed` (or `npx tsx prisma/seed.ts`) to load the 5 new 2026-dated posts into the DB so the feed shows real recent content
+- No schema changes — all existing tables
 
 ---
 

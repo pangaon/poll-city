@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       imageUrl: true,
       municipalScope: true,
       pollId: true,
+      isPublished: true,
       createdAt: true,
       poll: {
         select: { id: true, question: true, type: true, totalResponses: true, isActive: true },

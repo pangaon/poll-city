@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FieldHelp, WriteAssistTextarea } from "@/components/ui";
 import {
   Share2, Plus, Send, Clock, CheckCircle2, XCircle, AlertCircle,
-  MessageCircle, Loader2, Globe, Trash2, ChevronDown,
+  MessageCircle, Loader2, Globe, Landmark, ExternalLink,
 } from "lucide-react";
 
 const PLATFORMS = ["x", "facebook", "instagram", "linkedin", "tiktok", "youtube", "threads", "bluesky"] as const;
@@ -101,8 +101,18 @@ function SentimentDot({ sentiment }: { sentiment: string }) {
   );
 }
 
+type PCSPost = {
+  id: string;
+  postType: string;
+  title: string;
+  body: string;
+  municipalScope: string | null;
+  createdAt: string;
+  isPublished: boolean;
+};
+
 export default function SocialManagerClient({ campaignId }: { campaignId: string }) {
-  const [activeTab, setActiveTab] = useState<"posts" | "accounts" | "mentions">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "accounts" | "mentions" | "pcs_feed">("posts");
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [mentions, setMentions] = useState<SocialMention[]>([]);
@@ -126,6 +136,19 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
 
   const [postFilter, setPostFilter] = useState<string>("all");
   const [busy, setBusy] = useState(false);
+
+  // PCS Feed state
+  const [pcsPosts, setPcsPosts] = useState<PCSPost[]>([]);
+  const [pcsLoading, setPcsLoading] = useState(false);
+  const [showPcsComposer, setShowPcsComposer] = useState(false);
+  const [pcsForm, setPcsForm] = useState({
+    postType: "civic_update" as string,
+    title: "",
+    body: "",
+    municipalScope: "",
+    isPublished: true,
+  });
+  const [pcsSubmitting, setPcsSubmitting] = useState(false);
 
   // character limit based on selected platforms
   const activeCharLimit = useMemo(() => {
@@ -172,6 +195,50 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId]);
+
+  async function loadPcsPosts() {
+    setPcsLoading(true);
+    try {
+      const res = await fetch(`/api/social/posts?campaignId=${campaignId}&limit=20`);
+      const data = await res.json();
+      setPcsPosts(data.data ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setPcsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "pcs_feed") loadPcsPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  async function submitPcsPost() {
+    if (!pcsForm.title.trim() || !pcsForm.body.trim()) return;
+    setPcsSubmitting(true);
+    try {
+      const res = await fetch("/api/social/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          postType: pcsForm.postType,
+          title: pcsForm.title,
+          body: pcsForm.body,
+          municipalScope: pcsForm.municipalScope || null,
+          isPublished: pcsForm.isPublished,
+        }),
+      });
+      if (res.ok) {
+        setPcsForm({ postType: "civic_update", title: "", body: "", municipalScope: "", isPublished: true });
+        setShowPcsComposer(false);
+        await loadPcsPosts();
+      }
+    } finally {
+      setPcsSubmitting(false);
+    }
+  }
 
   async function addAccount() {
     if (!accountForm.handle.trim()) return;
@@ -290,12 +357,13 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
       </motion.header>
 
       {/* tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6">
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6 overflow-x-auto">
         {(
           [
             { key: "posts" as const, label: "Posts", icon: Send },
             { key: "accounts" as const, label: "Accounts", icon: Globe },
             { key: "mentions" as const, label: `Mentions${unrespondedMentions.length > 0 ? ` (${unrespondedMentions.length})` : ""}`, icon: MessageCircle },
+            { key: "pcs_feed" as const, label: "PCS Feed", icon: Landmark },
           ] as const
         ).map((t) => {
           const Icon = t.icon;
@@ -903,6 +971,198 @@ export default function SocialManagerClient({ campaignId }: { campaignId: string
                           <CheckCircle2 className="w-3 h-3" /> Responded
                         </button>
                       )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+        {/* ──── PCS FEED TAB ──── */}
+        {activeTab === "pcs_feed" && (
+          <motion.div
+            key="pcs_feed"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={spring}
+            className="space-y-4"
+          >
+            {/* explanation banner */}
+            <div className="bg-[#0A2342]/[0.04] border border-[#0A2342]/10 rounded-xl p-4 flex items-start gap-3">
+              <Landmark className="w-5 h-5 text-[#1D9E75] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-[#0A2342]">Post directly to Poll City Social</p>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  These posts appear in the civic feed on poll.city/social — visible to constituents following your campaign profile. Every post is an opportunity for voters to discover and follow your campaign.
+                </p>
+                <a
+                  href="/social"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-1.5 text-xs font-semibold text-[#1D9E75] hover:underline"
+                >
+                  View your PCS profile <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* new post button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowPcsComposer((v) => !v)}
+                className="min-h-[44px] px-4 rounded-lg bg-[#1D9E75] text-white font-semibold text-sm hover:bg-[#1D9E75]/90 flex items-center gap-1.5 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> New PCS Post
+              </button>
+            </div>
+
+            {/* composer */}
+            <AnimatePresence>
+              {showPcsComposer && (
+                <motion.section
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
+                >
+                  <div className="p-4 md:p-5 space-y-4">
+                    <h2 className="font-bold text-[#0A2342] text-sm uppercase tracking-wide">Compose PCS Post</h2>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-xs font-semibold text-slate-600">Post type</span>
+                        <select
+                          className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors"
+                          value={pcsForm.postType}
+                          onChange={(e) => setPcsForm((c) => ({ ...c, postType: e.target.value }))}
+                        >
+                          <option value="announcement">Announcement</option>
+                          <option value="civic_update">Civic Update</option>
+                          <option value="bill_update">Bill / Policy Update</option>
+                          <option value="project_update">Project Update</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          Municipal scope
+                          <FieldHelp
+                            content="The municipality or ward this post is relevant to. Residents who have set their location to this area will see this post in their LOCAL tab."
+                            example="Whitby, Oshawa, Durham Region"
+                          />
+                        </span>
+                        <input
+                          className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                          placeholder="e.g. Whitby"
+                          value={pcsForm.municipalScope}
+                          onChange={(e) => setPcsForm((c) => ({ ...c, municipalScope: e.target.value }))}
+                        />
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-600">
+                        Title <span className="text-red-500">*</span>
+                      </span>
+                      <input
+                        className="mt-1 w-full min-h-[44px] px-3 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:outline-none transition-colors text-sm"
+                        placeholder="A clear, compelling headline for your post"
+                        maxLength={200}
+                        value={pcsForm.title}
+                        onChange={(e) => setPcsForm((c) => ({ ...c, title: e.target.value }))}
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-xs font-semibold text-slate-600">
+                        Body <span className="text-red-500">*</span>
+                      </span>
+                      <WriteAssistTextarea
+                        className="mt-1 border-2 border-slate-300 rounded-lg focus:border-[#1D9E75] focus:ring-0 text-sm min-h-[140px]"
+                        placeholder="Write your update here. Be direct and specific — voters want to know what you did, not just that you were busy."
+                        value={pcsForm.body}
+                        onChange={(v) => setPcsForm((c) => ({ ...c, body: v }))}
+                        context="social-post"
+                        campaignId={campaignId}
+                        maxLength={5000}
+                      />
+                      <p className="text-xs text-slate-400 text-right mt-0.5">
+                        {pcsForm.body.length}/5000
+                      </p>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pcsForm.isPublished}
+                        onChange={(e) => setPcsForm((c) => ({ ...c, isPublished: e.target.checked }))}
+                        className="w-4 h-4 rounded border-slate-300 accent-[#1D9E75]"
+                      />
+                      <span className="text-sm text-slate-700">Publish immediately (visible to voters)</span>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={submitPcsPost}
+                        disabled={pcsSubmitting || !pcsForm.title.trim() || !pcsForm.body.trim()}
+                        className="min-h-[44px] px-5 rounded-lg bg-[#0A2342] text-white font-semibold text-sm hover:bg-[#0A2342]/90 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                      >
+                        {pcsSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {pcsForm.isPublished ? "Publish to PCS" : "Save as Draft"}
+                      </button>
+                      <button
+                        onClick={() => setShowPcsComposer(false)}
+                        className="min-h-[44px] px-4 rounded-lg border-2 border-slate-300 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* posts list */}
+            {pcsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <ShimmerBlock key={i} className="h-24 w-full" />)}
+              </div>
+            ) : pcsPosts.length === 0 ? (
+              <div className="text-center py-20">
+                <Landmark className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-lg font-bold text-slate-700">No PCS posts yet</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Post your first civic update — it will appear in the voter feed.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pcsPosts.map((post) => (
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-xl border border-slate-200 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${post.isPublished ? "bg-[#1D9E75]/10 text-[#1D9E75]" : "bg-slate-100 text-slate-600"}`}>
+                            {post.isPublished ? "Published" : "Draft"}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            {post.postType.replace(/_/g, " ")}
+                          </span>
+                          {post.municipalScope && (
+                            <span className="text-[10px] text-slate-400">{post.municipalScope}</span>
+                          )}
+                        </div>
+                        <p className="font-semibold text-[#0A2342] text-sm">{post.title}</p>
+                        <p className="text-sm text-slate-600 mt-1 line-clamp-2">{post.body}</p>
+                        <p className="text-xs text-slate-400 mt-2">
+                          {new Date(post.createdAt).toLocaleString("en-CA")}
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
