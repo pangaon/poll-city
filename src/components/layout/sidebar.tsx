@@ -73,9 +73,9 @@ const COMMAND_SECTION: NavSection = {
   id: "command",
   label: "Command",
   items: [
-    { href: "/dashboard",  icon: LayoutDashboard, label: "Dashboard"  },
-    { href: "/briefing",   icon: Newspaper,       label: "Briefing"   },
-    { href: "/ai-assist",  icon: Bot,             label: "AI Assist"  },
+    { href: "/dashboard",  icon: LayoutDashboard, label: "Dashboard"           },
+    { href: "/briefing",   icon: Newspaper,       label: "Briefing"            },
+    { href: "/ai-assist",  icon: Bot,             label: "AI Assist", isNew: true },
   ],
 };
 
@@ -86,7 +86,7 @@ const PEOPLE_SECTION: NavSection = {
     { href: "/contacts",        icon: Users,          label: "Contacts"       },
     { href: "/volunteers",      icon: HeartHandshake, label: "Volunteers"     },
     { href: "/coalitions",      icon: Network,        label: "Coalitions"     },
-    { href: "/tasks",           icon: CheckSquare,    label: "Tasks"          },
+    { href: "/tasks",           icon: CheckSquare,    label: "Tasks",          isNew: true },
     { href: "/supporters/super", icon: Star,          label: "VIP Supporters" },
     { href: "/lookup",          icon: Search,         label: "Voter Lookup"   },
   ],
@@ -96,14 +96,14 @@ const FIELD_SECTION: NavSection = {
   id: "field",
   label: "Field",
   items: [
-    { href: "/field-ops",              icon: ClipboardList, label: "Field Ops"         },
+    { href: "/field-ops",              icon: ClipboardList, label: "Field Ops",          isNew: true },
     { href: "/gotv",                   icon: Target,        label: "GOTV"              },
     { href: "/eday",                   icon: Vote,          label: "Election Day"      },
     { href: "/eday/capture",           icon: Radio,         label: "Quick Capture",    isNew: true },
     { href: "/eday/capture/war-room",  icon: MonitorPlay,   label: "War Room",         isNew: true },
     { href: "/eday/hq",                icon: Tv,            label: "Election Night",   isNew: true },
     { href: "/call-list",              icon: Phone,         label: "Call List"         },
-    { href: "/signs",                  icon: PenSquare,     label: "Signs"             },
+    { href: "/signs",                  icon: PenSquare,     label: "Signs",             isNew: true },
     { href: "/events",                 icon: CalendarDays,  label: "Events"            },
     { href: "/qr",                     icon: QrCode,        label: "QR Capture",       isNew: true },
     { href: "/fuel",                   icon: Truck,         label: "Logistics",        isNew: true },
@@ -127,8 +127,8 @@ const MONEY_SECTION: NavSection = {
   id: "money",
   label: "Money",
   items: [
-    { href: "/fundraising", icon: DollarSign, label: "Fundraising" },
-    { href: "/finance",     icon: CreditCard, label: "Finance"     },
+    { href: "/fundraising", icon: DollarSign, label: "Fundraising"                },
+    { href: "/finance",     icon: CreditCard, label: "Finance",     isNew: true },
   ],
 };
 
@@ -269,7 +269,7 @@ export default function Sidebar() {
     const platformItems = [...PLATFORM_SECTION.items];
     if (isSuperAdmin) {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
-      platformItems.push({ href: "/ops/adoni", icon: Brain, label: "Adoni Training" });
+      platformItems.push({ href: "/ops/adoni", icon: Brain, label: "Adoni Training", isNew: true });
       platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
       platformItems.push({ href: "/ops/sources", icon: Library, label: "Source Library" });
       platformItems.push({ href: "/design-preview", icon: Smartphone, label: "Mobile Preview" });
