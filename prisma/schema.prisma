@@ -1031,6 +1031,10 @@ model Campaign {
   repKeywords               RepKeyword[]
   repMonitoredSources       RepMonitoredSource[]
 
+  // Source Intelligence Hub
+  sourceActivations      CampaignSourceActivation[]
+  packActivations        CampaignPackActivation[]
+
   // Quick Capture
   captureEvents      CaptureEvent[]
   captureSubmissions CaptureSubmission[]
@@ -1055,6 +1059,7 @@ model Campaign {
   fundingSourceTransactions FundingSourceTransaction[]
   vouchers                 Voucher[]
   voucherRedemptions       VoucherRedemption[]
+  pollingStations          PollingStation[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -3062,6 +3067,32 @@ model SignRequest {
 
   @@index([campaignId])
   @@map("sign_requests")
+}
+
+model PollingStation {
+  id            String    @id @default(cuid())
+  campaignId    String
+  stationNumber String
+  name          String
+  address       String
+  city          String?
+  postalCode    String?
+  wardName      String?
+  lat           Float?
+  lng           Float?
+  electorCount  Int?
+  isAccessible  Boolean   @default(true)
+  notes         String?
+  electionYear  String    @default("2026")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, wardName])
+  @@index([lat, lng])
+  @@map("polling_stations")
 }
 
 model Question {
@@ -9498,4 +9529,370 @@ model VoucherRedemption {
   @@index([voucherId])
   @@index([campaignId, createdAt])
   @@map("voucher_redemptions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOURCE INTELLIGENCE HUB
+// Platform-level master source repository + campaign subscription layer
+// Three layers: PlatformSource → CampaignSourceActivation → SourceItem/alerts
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SourceType {
+  rss_feed
+  atom_feed
+  website_page
+  newsroom_page
+  press_release_page
+  sitemap_news
+  sitemap_general
+  search_query
+  google_news_query
+  youtube_channel
+  youtube_search
+  reddit_query
+  facebook_page
+  x_profile
+  instagram_profile
+  pdf_notice_page
+  agenda_minutes_page
+  candidate_site
+  competitor_site
+  government_page
+  election_office_page
+  community_group_page
+  custom_url_monitor
+}
+
+enum SourceIngestionMethod {
+  feed_poller
+  html_scraper
+  structured_parser
+  sitemap_scanner
+  search_ingestor
+  manual_review_only
+  webhook_ingest
+  future_api_connector
+}
+
+enum SourceVerificationStatus {
+  unverified
+  verified
+  needs_review
+  rejected
+}
+
+enum SourceStatus {
+  draft
+  active
+  paused
+  broken
+  archived
+  restricted
+}
+
+enum SourceOwnershipType {
+  global
+  tenant_private
+}
+
+enum SourceAlertThreshold {
+  all_alerts
+  important_only
+  critical_only
+  digest_only
+  muted
+}
+
+enum SourceActivationStatus {
+  active
+  paused
+  muted
+  disabled
+  error
+  pending_approval
+}
+
+enum SourceEndpointType {
+  homepage
+  feed
+  rss
+  atom
+  sitemap
+  search
+  about
+  newsroom
+  media
+}
+
+/// Platform-level master source registry — controlled by Poll City SUPER_ADMIN.
+/// Campaign subscriptions reference this model; source items are ingested here.
+model PlatformSource {
+  id                    String                   @id @default(cuid())
+  name                  String
+  slug                  String                   @unique
+  description           String?
+  sourceType            SourceType
+  ingestionMethod       SourceIngestionMethod    @default(feed_poller)
+  platform              String?
+  canonicalUrl          String?
+  feedUrl               String?
+  baseUrl               String?
+  language              String                   @default("en")
+  country               String                   @default("CA")
+  province              String?
+  region                String?
+  municipality          String?
+  wardJson              Json?
+  officeRelevanceJson   Json?
+  topicTagsJson         Json?
+  credibilityScore      Float                    @default(5.0)
+  priorityScore         Int                      @default(50)
+  defaultAlertThreshold SourceAlertThreshold     @default(important_only)
+  verificationStatus    SourceVerificationStatus @default(unverified)
+  sourceStatus          SourceStatus             @default(draft)
+  ownershipType         SourceOwnershipType      @default(global)
+  ownerTenantId         String?
+  visibilityScope       String                   @default("global")
+  parserType            String?
+  parserConfigJson      Json?
+  discoveryMethod       String?
+  pollingCadenceMinutes Int                      @default(60)
+  lastCheckedAt         DateTime?
+  lastSuccessAt         DateTime?
+  lastErrorAt           DateTime?
+  errorCount            Int                      @default(0)
+  isActive              Boolean                  @default(true)
+  isRecommended         Boolean                  @default(false)
+  isFeatured            Boolean                  @default(false)
+  notesInternal         String?
+  createdByUserId       String?
+  updatedByUserId       String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  archivedAt            DateTime?
+
+  endpoints           SourceEndpoint[]
+  healthChecks        SourceHealthCheck[]
+  items               SourceItem[]
+  activations         CampaignSourceActivation[]
+  packItems           SourcePackItem[]
+  auditLogs           SourceAuditLog[]
+
+  @@index([sourceType])
+  @@index([sourceStatus])
+  @@index([municipality])
+  @@index([ownershipType])
+  @@index([isActive])
+  @@map("platform_sources")
+}
+
+model SourceEndpoint {
+  id           String             @id @default(cuid())
+  sourceId     String
+  endpointType SourceEndpointType
+  url          String
+  isPrimary    Boolean            @default(false)
+  isActive     Boolean            @default(true)
+  lastStatus   Int?
+  lastChecked  DateTime?
+  notes        String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  source PlatformSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@map("source_endpoints")
+}
+
+model SourceHealthCheck {
+  id                  String   @id @default(cuid())
+  sourceId            String
+  checkedAt           DateTime @default(now())
+  httpStatus          Int?
+  latencyMs           Int?
+  isReachable         Boolean  @default(false)
+  isFeedValid         Boolean  @default(false)
+  isContentFresh      Boolean  @default(false)
+  parserSuccess       Boolean  @default(false)
+  itemsFound          Int      @default(0)
+  itemsNew            Int      @default(0)
+  duplicateRatio      Float    @default(0)
+  consecutiveFailures Int      @default(0)
+  errorMessage        String?
+  validationNotes     String?
+  createdAt           DateTime @default(now())
+
+  source PlatformSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([checkedAt])
+  @@map("source_health_checks")
+}
+
+/// Campaign-level activation of a platform source.
+/// This is the subscription layer between the master library and a campaign workspace.
+model CampaignSourceActivation {
+  id                       String                 @id @default(cuid())
+  campaignId               String
+  sourceId                 String
+  status                   SourceActivationStatus @default(active)
+  mutedUntil               DateTime?
+  customAlertThreshold     SourceAlertThreshold?
+  monitoringModesJson      Json?
+  keywordProfileJson       Json?
+  mentionTrackingEnabled   Boolean                @default(true)
+  sentimentTrackingEnabled Boolean                @default(true)
+  issueTrackingEnabled     Boolean                @default(true)
+  opponentTrackingEnabled  Boolean                @default(false)
+  dailyDigestEnabled       Boolean                @default(true)
+  realTimeAlertsEnabled    Boolean                @default(false)
+  assignedTeamIdsJson      Json?
+  createdByUserId          String?
+  updatedByUserId          String?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  source   PlatformSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, sourceId])
+  @@index([campaignId])
+  @@index([sourceId])
+  @@map("campaign_source_activations")
+}
+
+/// Ingested items from monitored sources.
+/// Deduplicated by contentHash. ProcessingStatus drives the alert pipeline.
+model SourceItem {
+  id               String   @id @default(cuid())
+  sourceId         String
+  externalItemId   String?
+  canonicalItemUrl String
+  title            String?
+  excerpt          String?  @db.Text
+  rawContent       String?  @db.Text
+  cleanedContent   String?  @db.Text
+  author           String?
+  publishedAt      DateTime?
+  discoveredAt     DateTime @default(now())
+  itemType         String?
+  contentHash      String?
+  dedupeHash       String?
+  language         String?
+  metadataJson     Json?
+  fetchStatus      String   @default("success")
+  processingStatus String   @default("pending")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  source   PlatformSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  entities SourceItemEntity[]
+
+  @@unique([sourceId, contentHash])
+  @@index([sourceId])
+  @@index([publishedAt])
+  @@index([processingStatus])
+  @@map("source_items")
+}
+
+/// Entities detected in source items: people, candidates, offices, issues, locations.
+model SourceItemEntity {
+  id         String   @id @default(cuid())
+  itemId     String
+  entityType String
+  entityName String
+  aliases    Json?
+  confidence Float    @default(0.5)
+  campaignId String?
+  sourceRef  String?
+  createdAt  DateTime @default(now())
+
+  item SourceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([entityType])
+  @@index([campaignId])
+  @@map("source_item_entities")
+}
+
+/// Platform-managed source packs (Municipality Pack, Ward Pack, Local Media Pack, etc.)
+/// Campaigns activate entire packs to onboard sets of relevant sources at once.
+model SourcePack {
+  id                         String   @id @default(cuid())
+  name                       String
+  slug                       String   @unique
+  description                String?
+  visibility                 String   @default("global")
+  municipality               String?
+  geographyScope             String?
+  officeScope                String?
+  packType                   String
+  defaultMonitoringModesJson Json?
+  recommendedRulesJson       Json?
+  isActive                   Boolean  @default(true)
+  isRecommended              Boolean  @default(false)
+  createdByUserId            String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  items               SourcePackItem[]
+  campaignActivations CampaignPackActivation[]
+
+  @@index([packType])
+  @@index([municipality])
+  @@map("source_packs")
+}
+
+model SourcePackItem {
+  id       String   @id @default(cuid())
+  packId   String
+  sourceId String
+  addedAt  DateTime @default(now())
+
+  pack   SourcePack     @relation(fields: [packId], references: [id], onDelete: Cascade)
+  source PlatformSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([packId, sourceId])
+  @@index([packId])
+  @@map("source_pack_items")
+}
+
+/// Campaign activation of a source pack — enables all sources in the pack for a campaign.
+model CampaignPackActivation {
+  id            String    @id @default(cuid())
+  campaignId    String
+  packId        String
+  isEnabled     Boolean   @default(true)
+  activatedById String?
+  activatedAt   DateTime  @default(now())
+  deactivatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pack     SourcePack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, packId])
+  @@index([campaignId])
+  @@map("campaign_pack_activations")
+}
+
+/// Immutable audit trail for all changes to platform sources.
+model SourceAuditLog {
+  id        String   @id @default(cuid())
+  sourceId  String
+  action    String
+  actorId   String?
+  actorRole String?
+  before    Json?
+  after     Json?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  source PlatformSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([createdAt])
+  @@map("source_audit_logs")
 }

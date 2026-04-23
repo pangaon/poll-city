@@ -27,14 +27,20 @@ const SUPPORT_LABELS: Record<string, string> = {
   leaning_opposition: "Leaning Opposition", strong_opposition: "Strong Opposition", unknown: "Unknown",
 };
 
-const MUNI_ACCENT: Record<string, string> = {
-  Whitby:   "#1D9E75",
-  Toronto:  "#0EA5E9",
-  Markham:  "#EF9F27",
-  Brampton: "#8B5CF6",
+const SIGN_STATUS_COLOR: Record<string, string> = {
+  requested: "#EF9F27", approved: "#6366F1", installed: "#1D9E75",
+  removed: "#6B7280", declined: "#E24B4A",
+};
+const SIGN_STATUS_LABELS: Record<string, string> = {
+  requested: "Requested", approved: "Approved", installed: "Installed",
+  removed: "Removed", declined: "Declined",
 };
 
-// Extract numeric ward number for natural sort ("Ward 5 Centre" → 5, "Ward 12" → 12, other → Infinity)
+const MUNI_ACCENT: Record<string, string> = {
+  Whitby: "#1D9E75", Toronto: "#0EA5E9", Markham: "#EF9F27",
+  Brampton: "#8B5CF6", Pickering: "#3B82F6",
+};
+
 function wardSortKey(name: string): [number, string] {
   const m = /\b(\d+)\b/.exec(name);
   return m ? [parseInt(m[1], 10), name] : [Infinity, name];
@@ -42,7 +48,11 @@ function wardSortKey(name: string): [number, string] {
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type AddrProps = { address: string; civic: string; street: string; postalCode: string; city: string; unit: string; source?: string; supportLevel?: string; skipHouse?: boolean; visited?: boolean; visitCount?: number };
+type AddrProps = {
+  address: string; civic: string; street: string; postalCode: string;
+  city: string; unit: string; source?: string; supportLevel?: string;
+  skipHouse?: boolean; visited?: boolean; visitCount?: number;
+};
 
 type StreetData = {
   name: string; doors: number; units: number; houses: number;
@@ -62,6 +72,15 @@ type MapFeatureEvent = MapMouseEvent & {
 
 type ContactOverlayEntry = { supportLevel: string; skipHouse: boolean; visitCount: number };
 type ContactOverlayStats = { totalContacts: number; doorsWithData: number; doorsVisited: number; supporters: number };
+
+type SignsOverlayStats = { total: number; installed: number; requested: number; opponent: number };
+type PollingStats = { total: number; withCoordinates: number; withoutCoordinates: number; accessible: number };
+
+// View mode = how addresses are rendered (mutually exclusive)
+type ViewMode = "dots" | "heatmap" | "support" | "dnk";
+
+// Campaign layers = additional overlays toggled independently
+type CampaignLayer = "signs" | "polling";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -219,9 +238,7 @@ const wardLabelLayer: Omit<SymbolLayerSpecification, "source"> = {
   layout: {
     "text-field": ["get", "wardName"], "text-size": 11,
     "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-    "text-anchor": "center", "text-max-width": 7,
-    // Only show labels when zoomed in enough to be readable
-    "text-optional": true,
+    "text-anchor": "center", "text-max-width": 7, "text-optional": true,
   },
   paint: { "text-color": "#0A2342", "text-halo-color": "rgba(255,255,255,0.95)", "text-halo-width": 2.5 },
   minzoom: 10,
@@ -273,22 +290,49 @@ const heatmapLayerSpec: Omit<HeatmapLayerSpecification, "source"> = {
       "interpolate", ["linear"], ["heatmap-density"],
       0, "rgba(0,0,0,0)", 0.2, "rgba(29,158,117,0.2)", 0.6, "#10B981", 1, "#1D9E75",
     ],
-    "heatmap-radius": 25,
-    "heatmap-opacity": 0.85,
+    "heatmap-radius": 25, "heatmap-opacity": 0.85,
   },
 };
 const supportPointLayerSpec: Omit<CircleLayerSpecification, "source"> = {
   id: "addr-support-point", type: "circle",
   paint: {
-    "circle-color": [
-      "match", ["get", "supportLevel"],
+    "circle-color": ["match", ["get", "supportLevel"],
       "strong_support", "#1D9E75", "leaning_support", "#10B981", "undecided", "#EF9F27",
       "leaning_opposition", "#F97316", "strong_opposition", "#E24B4A", "#6366F1",
     ],
-    "circle-radius": 6,
-    "circle-stroke-width": 1.5,
+    "circle-radius": 6, "circle-stroke-width": 1.5,
     "circle-stroke-color": ["case", ["boolean", ["get", "visited"], false], "#FFD700", "#fff"],
     "circle-opacity": ["case", ["boolean", ["get", "skipHouse"], false], 0.45, 0.92],
+  },
+};
+const dnkPointLayerSpec: Omit<CircleLayerSpecification, "source"> = {
+  id: "addr-dnk-point", type: "circle",
+  paint: {
+    "circle-color": ["case", ["boolean", ["get", "skipHouse"], false], "#E24B4A", "rgba(100,160,220,0.2)"],
+    "circle-radius": ["case", ["boolean", ["get", "skipHouse"], false], 7, 4],
+    "circle-stroke-width": ["case", ["boolean", ["get", "skipHouse"], false], 2, 0],
+    "circle-stroke-color": "#fff",
+    "circle-opacity": ["case", ["boolean", ["get", "skipHouse"], false], 1, 0.3],
+  },
+};
+const signsLayerSpec: Omit<CircleLayerSpecification, "source"> = {
+  id: "signs-point", type: "circle",
+  paint: {
+    "circle-color": ["coalesce", ["get", "color"], "#EF9F27"],
+    "circle-radius": 7,
+    "circle-stroke-width": 2.5,
+    "circle-stroke-color": "#fff",
+    "circle-opacity": 0.95,
+  },
+};
+const pollingLayerSpec: Omit<CircleLayerSpecification, "source"> = {
+  id: "polling-point", type: "circle",
+  paint: {
+    "circle-color": "#0A2342",
+    "circle-radius": 9,
+    "circle-stroke-width": 3,
+    "circle-stroke-color": "#EF9F27",
+    "circle-opacity": 0.95,
   },
 };
 
@@ -334,23 +378,88 @@ function BuildingRow({ icon, text, count, pct }: { icon: string; text: string; c
   );
 }
 
-// ─── view mode pill ───────────────────────────────────────────────────────────
+// ─── dynamic view mode pill ───────────────────────────────────────────────────
 
-type ViewMode = "dots" | "heatmap" | "support";
-const VIEW_MODES: Array<{ key: ViewMode; label: string }> = [
-  { key: "dots", label: "Dots" },
-  { key: "heatmap", label: "Heat" },
-  { key: "support", label: "Support" },
-];
+interface AvailableMode {
+  key: ViewMode;
+  label: string;
+  count?: number;
+  available: boolean;
+}
 
-function ViewModePill({ viewMode, setViewMode, accent }: { viewMode: ViewMode; setViewMode: (m: ViewMode) => void; accent: string }) {
+function ViewModePill({
+  viewMode, setViewMode, accent, modes,
+}: {
+  viewMode: ViewMode;
+  setViewMode: (m: ViewMode) => void;
+  accent: string;
+  modes: AvailableMode[];
+}) {
+  const available = modes.filter(m => m.available);
+  if (available.length === 0) return null;
   return (
     <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: 2, gap: 2 }}>
-      {VIEW_MODES.map(m => (
+      {available.map(m => (
         <button key={m.key} onClick={() => setViewMode(m.key)}
-          style={{ padding: "3px 8px", borderRadius: 6, border: "none", fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", background: viewMode === m.key ? accent : "transparent", color: viewMode === m.key ? "#fff" : "rgba(255,255,255,0.45)" }}
-        >{m.label}</button>
+          style={{
+            padding: "3px 8px", borderRadius: 6, border: "none", fontSize: 10, fontWeight: 700,
+            cursor: "pointer", letterSpacing: "0.04em",
+            background: viewMode === m.key ? accent : "transparent",
+            color: viewMode === m.key ? "#fff" : "rgba(255,255,255,0.45)",
+            position: "relative",
+          }}
+        >
+          {m.label}
+          {m.count != null && m.count > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -4,
+              background: accent, color: "#fff", fontSize: 7, fontWeight: 800,
+              borderRadius: 6, padding: "1px 3px", minWidth: 12, textAlign: "center",
+              border: "1px solid rgba(8,28,54,0.8)",
+            }}>{m.count > 99 ? "99+" : m.count}</span>
+          )}
+        </button>
       ))}
+    </div>
+  );
+}
+
+// ─── campaign layer toggle ────────────────────────────────────────────────────
+
+function LayerToggle({
+  icon, label, count, active, onToggle, color,
+}: {
+  icon: string; label: string; count: number; active: boolean; onToggle: () => void; color: string;
+}) {
+  return (
+    <div
+      onClick={onToggle}
+      style={{
+        display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+        background: active ? `${color}14` : "rgba(255,255,255,0.03)",
+        border: `1px solid ${active ? color + "40" : "rgba(255,255,255,0.07)"}`,
+        borderRadius: 9, cursor: "pointer", transition: "all 0.2s",
+      }}
+    >
+      <span style={{ fontSize: 14 }}>{icon}</span>
+      <span style={{ color: active ? "#fff" : "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 600, flex: 1 }}>{label}</span>
+      {count > 0 && (
+        <span style={{
+          background: active ? color : "rgba(255,255,255,0.1)",
+          color: active ? "#fff" : "rgba(255,255,255,0.4)",
+          fontSize: 9, fontWeight: 800, borderRadius: 8, padding: "2px 6px",
+        }}>{count}</span>
+      )}
+      <div style={{
+        width: 28, height: 16, borderRadius: 8,
+        background: active ? color : "rgba(255,255,255,0.12)",
+        position: "relative", transition: "background 0.2s", flexShrink: 0,
+      }}>
+        <span style={{
+          position: "absolute", top: 2, left: active ? 14 : 2, width: 12, height: 12,
+          borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+        }} />
+      </div>
     </div>
   );
 }
@@ -360,11 +469,16 @@ function ViewModePill({ viewMode, setViewMode, accent }: { viewMode: ViewMode; s
 export default function AtlasAllMapClient() {
   const mapRef = useRef<MapRef>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  // Display modes
+
+  // Address view mode
   const [viewMode, setViewMode] = useState<ViewMode>("dots");
   const [show3D, setShow3D] = useState(false);
 
-  // Ward
+  // Campaign layer toggles
+  const [showSigns, setShowSigns] = useState(false);
+  const [showPolling, setShowPolling] = useState(false);
+
+  // Ward state
   const [wards, setWards] = useState<FeatureCollection | null>(null);
   const [selectedWard, setSelectedWard] = useState<Feature | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
@@ -385,14 +499,24 @@ export default function AtlasAllMapClient() {
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
   const [allAddresses, setAllAddresses] = useState<FeatureCollection | null>(null);
 
-  // Sidebar state
+  // Sidebar
   const [wardSearch, setWardSearch] = useState("");
   const [collapsedMunis, setCollapsedMunis] = useState<Set<string>>(new Set());
   const [streetSearch, setStreetSearch] = useState("");
 
-  // Campaign DB overlay
+  // Campaign overlays
   const [contactsOverlay, setContactsOverlay] = useState<{ contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats } | null>(null);
   const [overlayLoading, setOverlayLoading] = useState(false);
+
+  const [signsOverlay, setSignsOverlay] = useState<(FeatureCollection & { stats?: SignsOverlayStats }) | null>(null);
+  const [signsLoading, setSignsLoading] = useState(false);
+
+  const [pollingOverlay, setPollingOverlay] = useState<(FeatureCollection & { stats?: PollingStats }) | null>(null);
+  const [pollingLoading, setPollingLoading] = useState(false);
+
+  // ── selected feature detail
+  const [selectedSign, setSelectedSign] = useState<Record<string, unknown> | null>(null);
+  const [selectedPolling, setSelectedPolling] = useState<Record<string, unknown> | null>(null);
 
   // Fetch all wards
   useEffect(() => {
@@ -402,7 +526,6 @@ export default function AtlasAllMapClient() {
       .catch((e: Error) => { setWardError(e.message); setWardLoading(false); });
   }, []);
 
-  // On ward load: fit bounds
   useEffect(() => {
     if (!mapLoaded || !wards || !mapRef.current) return;
     const bbox = computeBbox(wards);
@@ -410,7 +533,7 @@ export default function AtlasAllMapClient() {
     try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 1200, maxZoom: 10 }); } catch { /* ignore */ }
   }, [mapLoaded, wards]);
 
-  // Preload all ward addresses — dim background dots on pan
+  // Preload all ward addresses
   useEffect(() => {
     if (!wards) return;
     Promise.all(
@@ -426,30 +549,50 @@ export default function AtlasAllMapClient() {
     ).then(all => setAllAddresses({ type: "FeatureCollection", features: all.flat() }));
   }, [wards]);
 
-  // Campaign overlay — auth-gated, 401 = silent no-op
+  // Ward change → campaign contact overlay
   useEffect(() => {
     setContactsOverlay(null);
+    setSignsOverlay(null);
+    setPollingOverlay(null);
     if (!selectedWard) return;
+
     const wardName = getProp(selectedWard.properties as Record<string, unknown>, "wardName");
+    const qs = wardName ? `?wardName=${encodeURIComponent(wardName)}` : "";
+
     setOverlayLoading(true);
-    fetch(`/api/atlas/contacts-overlay${wardName ? `?wardName=${encodeURIComponent(wardName)}` : ""}`)
+    fetch(`/api/atlas/contacts-overlay${qs}`)
       .then(r => { if (r.status === 401) return null; if (!r.ok) throw new Error(); return r.json(); })
       .then(d => { if (d) setContactsOverlay(d as { contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats }); })
       .catch(() => { /* anonymous users see base map */ })
       .finally(() => setOverlayLoading(false));
+
+    // Signs overlay (auth-gated — 401 = silent)
+    setSignsLoading(true);
+    fetch(`/api/atlas/signs-overlay${qs}`)
+      .then(r => { if (r.status === 401) return null; if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { if (d) setSignsOverlay(d as FeatureCollection & { stats: SignsOverlayStats }); })
+      .catch(() => { /* no signs data */ })
+      .finally(() => setSignsLoading(false));
+
+    // Polling stations overlay (auth-gated)
+    setPollingLoading(true);
+    fetch(`/api/atlas/polling-stations${qs}`)
+      .then(r => { if (r.status === 401) return null; if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { if (d) setPollingOverlay(d as FeatureCollection & { stats: PollingStats }); })
+      .catch(() => { /* no polling data */ })
+      .finally(() => setPollingLoading(false));
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWard?.properties?.wardIndex]);
 
-  // Ward change → reload addresses from that ward's own addressesApi
+  // Ward change → reload addresses
   useEffect(() => {
     setAddresses(null); setStreets([]); setTurfs([]);
     setDisplayAddresses(null); setSelectedAddress(null); setShowTurfPanel(false);
-    setStreetSearch("");
+    setStreetSearch(""); setSelectedSign(null); setSelectedPolling(null);
     if (!selectedWard) return;
-
     const addressesApi = getProp(selectedWard.properties as Record<string, unknown>, "addressesApi");
     if (!addressesApi) return;
-
     const params = wardBboxParams(selectedWard);
     if (!params) return;
     setAddrLoading(true); setAddrError(null);
@@ -470,7 +613,15 @@ export default function AtlasAllMapClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addresses, contactsOverlay]);
 
-  // Grouped sidebar — wards by municipality
+  // Auto-enable layers when data arrives
+  useEffect(() => {
+    if (signsOverlay && signsOverlay.features.length > 0) setShowSigns(true);
+  }, [signsOverlay]);
+  useEffect(() => {
+    if (pollingOverlay && pollingOverlay.features.length > 0) setShowPolling(true);
+  }, [pollingOverlay]);
+
+  // Grouped sidebar
   const municipalityGroups = useMemo(() => {
     if (!wards) return [];
     const groups = new Map<string, Feature[]>();
@@ -514,7 +665,7 @@ export default function AtlasAllMapClient() {
       map.setFeatureState({ source: "wards", id }, { hover: true });
       setHoveredId(id);
       map.getCanvas().style.cursor = "pointer";
-    } else if (e.features?.some(f => ["addr-clusters", "addr-point", "addr-support-point"].includes(f.layer.id))) {
+    } else if (e.features?.some(f => ["addr-clusters", "addr-point", "addr-support-point", "addr-dnk-point", "signs-point", "polling-point"].includes(f.layer.id))) {
       map.getCanvas().style.cursor = "pointer";
     } else {
       if (hoveredId !== null) map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
@@ -531,6 +682,13 @@ export default function AtlasAllMapClient() {
   // Click
   const handleClick = useCallback((e: MapFeatureEvent) => {
     if (!mapRef.current) return;
+
+    const pollingF = e.features?.find(f => f.layer.id === "polling-point");
+    if (pollingF) { setSelectedPolling(pollingF.properties); setSelectedSign(null); setSelectedAddress(null); return; }
+
+    const signF = e.features?.find(f => f.layer.id === "signs-point");
+    if (signF) { setSelectedSign(signF.properties); setSelectedPolling(null); setSelectedAddress(null); return; }
+
     const cluster = e.features?.find(f => f.layer.id === "addr-clusters");
     if (cluster) {
       const map = mapRef.current.getMap();
@@ -541,22 +699,24 @@ export default function AtlasAllMapClient() {
       else mapRef.current?.flyTo({ center: coords, zoom: (map.getZoom() ?? 11) + 2 });
       return;
     }
-    const af = e.features?.find(f => f.layer.id === "addr-point" || f.layer.id === "addr-support-point");
-    if (af) { setSelectedAddress(af.properties as unknown as AddrProps); return; }
+
+    const af = e.features?.find(f => ["addr-point", "addr-support-point", "addr-dnk-point"].includes(f.layer.id));
+    if (af) { setSelectedAddress(af.properties as unknown as AddrProps); setSelectedSign(null); setSelectedPolling(null); return; }
+
     const wf = e.features?.find(f => f.layer.id === "ward-fill");
     if (wf) {
       const feat = wf as unknown as Feature;
-      setSelectedWard(feat); setSelectedAddress(null);
+      setSelectedWard(feat); setSelectedAddress(null); setSelectedSign(null); setSelectedPolling(null);
       const fc: FeatureCollection = { type: "FeatureCollection", features: [feat] };
       const bbox = computeBbox(fc);
       if (bbox) try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 700, maxZoom: 14 }); } catch { /* ignore */ }
     } else {
-      setSelectedWard(null); setSelectedAddress(null);
+      setSelectedWard(null); setSelectedAddress(null); setSelectedSign(null); setSelectedPolling(null);
     }
   }, []);
 
   const handleSidebarWardClick = useCallback((f: Feature) => {
-    setSelectedWard(f); setSelectedAddress(null);
+    setSelectedWard(f); setSelectedAddress(null); setSelectedSign(null); setSelectedPolling(null);
     const fc: FeatureCollection = { type: "FeatureCollection", features: [f] };
     const bbox = computeBbox(fc);
     if (bbox) try { mapRef.current?.fitBounds(bbox, { padding: 60, duration: 700, maxZoom: 14 }); } catch { /* ignore */ }
@@ -595,26 +755,31 @@ export default function AtlasAllMapClient() {
   const uniqueDoors = streets.reduce((s, st) => s + st.doors, 0);
   const litRec = Math.ceil(addrCount * 1.1);
   const canBeginCanvassing = addrCount > 0 && !addrLoading;
-  const interactiveLayers = [
-    "ward-fill",
-    ...(displayAddresses
-      ? viewMode === "dots" ? ["addr-clusters", "addr-point"]
-        : viewMode === "support" ? ["addr-support-point"]
-        : [] // heatmap — no individual point clicks
-      : []),
-  ];
 
   const selectedMuni = selectedProps ? getProp(selectedProps, "municipality") : "";
   const muniAccent = MUNI_ACCENT[selectedMuni] ?? "#1D9E75";
 
-  // Dynamic 3D layer spec — depends on muniAccent which changes per ward
+  // Dynamic view modes — only show when data exists
+  const hasSupportData = !!(contactsOverlay && contactsOverlay.stats.totalContacts > 0);
+  const hasDnkData = !!(contactsOverlay && Object.values(contactsOverlay.contacts).some(c => c.skipHouse));
+  const availableModes: AvailableMode[] = [
+    { key: "dots", label: "Dots", available: true },
+    { key: "heatmap", label: "Heat", available: true },
+    { key: "support", label: "Support", available: hasSupportData, count: hasSupportData ? contactsOverlay!.stats.supporters : undefined },
+    { key: "dnk", label: "DNK", available: hasDnkData },
+  ];
+
+  // Campaign layer availability
+  const hasSignsData = !!(signsOverlay && signsOverlay.features.length > 0);
+  const hasPollingData = !!(pollingOverlay && pollingOverlay.features.length > 0);
+
+  // 3D extrusion layer (depends on muniAccent)
   const extrusion3DLayerSpec = useMemo((): Omit<FillExtrusionLayerSpecification, "source"> => ({
     id: "addr-3d-extrusion", type: "fill-extrusion",
     paint: {
       "fill-extrusion-height": ["case",
         [">", ["coalesce", ["to-number", ["get", "buildingUnits"]], 0], 1],
-        ["*", ["coalesce", ["to-number", ["get", "buildingUnits"]], 1], 3],
-        4,
+        ["*", ["coalesce", ["to-number", ["get", "buildingUnits"]], 1], 3], 4,
       ],
       "fill-extrusion-color": muniAccent,
       "fill-extrusion-opacity": 0.75,
@@ -625,6 +790,19 @@ export default function AtlasAllMapClient() {
     const q = streetSearch.toLowerCase().trim();
     return q ? streets.filter(st => st.name.toLowerCase().includes(q)) : streets;
   }, [streets, streetSearch]);
+
+  // Interactive layer ids
+  const interactiveLayers = [
+    "ward-fill",
+    ...(displayAddresses
+      ? viewMode === "dots" ? ["addr-clusters", "addr-point"]
+        : viewMode === "support" ? ["addr-support-point"]
+        : viewMode === "dnk" ? ["addr-dnk-point"]
+        : []
+      : []),
+    ...(showSigns && hasSignsData ? ["signs-point"] : []),
+    ...(showPolling && hasPollingData ? ["polling-point"] : []),
+  ];
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#050e1c" }}>
@@ -666,11 +844,29 @@ export default function AtlasAllMapClient() {
             <Layer {...addrClusterLayer} /><Layer {...addrClusterCountLayer} /><Layer {...addrPointLayer} />
           </Source>
         )}
-        {displayAddresses && (viewMode !== "dots" || (show3D && !!selectedWard)) && (
+        {displayAddresses && viewMode !== "dots" && (
           <Source id="addresses-flat" type="geojson" data={displayAddresses}>
             {viewMode === "heatmap" && <Layer {...heatmapLayerSpec} />}
             {viewMode === "support" && <Layer {...supportPointLayerSpec} />}
+            {viewMode === "dnk" && <Layer {...dnkPointLayerSpec} />}
             {show3D && selectedWard && <Layer {...extrusion3DLayerSpec} />}
+          </Source>
+        )}
+        {displayAddresses && viewMode === "dots" && show3D && selectedWard && (
+          <Source id="addresses-3d" type="geojson" data={displayAddresses}>
+            <Layer {...extrusion3DLayerSpec} />
+          </Source>
+        )}
+
+        {/* Campaign overlays */}
+        {showSigns && signsOverlay && signsOverlay.features.length > 0 && (
+          <Source id="signs-overlay" type="geojson" data={signsOverlay}>
+            <Layer {...signsLayerSpec} />
+          </Source>
+        )}
+        {showPolling && pollingOverlay && pollingOverlay.features.length > 0 && (
+          <Source id="polling-overlay" type="geojson" data={pollingOverlay}>
+            <Layer {...pollingLayerSpec} />
           </Source>
         )}
       </MapGL>
@@ -684,7 +880,7 @@ export default function AtlasAllMapClient() {
           <span style={{ fontSize: 18 }}>🗺️</span>
           <div>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: 15, letterSpacing: "0.05em" }}>GREATER TORONTO AREA</div>
-            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Whitby · Toronto · Markham · Brampton · Ward Boundaries</div>
+            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Whitby · Toronto · Markham · Brampton · Pickering · Ward Boundaries</div>
           </div>
           {wardCount > 0 && (
             <span style={{ marginLeft: 8, background: "rgba(29,158,117,0.2)", border: "1px solid rgba(29,158,117,0.45)", color: "#1D9E75", fontSize: 11, fontWeight: 700, borderRadius: 20, padding: "3px 10px" }}>
@@ -694,7 +890,7 @@ export default function AtlasAllMapClient() {
         </div>
       </motion.div>
 
-      {/* ── LEFT SIDEBAR — ward directory grouped by municipality ─────── */}
+      {/* ── LEFT SIDEBAR — ward directory ────────────────────────────── */}
       <motion.div data-print-hide
         initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.15 }}
         style={{ ...G, position: "absolute", top: 80, left: 16, zIndex: 10, width: 236, maxHeight: "calc(100vh - 180px)", overflowY: "auto", padding: "14px 0" }}
@@ -703,9 +899,7 @@ export default function AtlasAllMapClient() {
           <div style={labelStyle}>Ontario 2026</div>
           <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, marginTop: 3 }}>Ward Directory</div>
           <input
-            type="text"
-            placeholder="Search wards…"
-            value={wardSearch}
+            type="text" placeholder="Search wards…" value={wardSearch}
             onChange={e => setWardSearch(e.target.value)}
             style={{ width: "100%", marginTop: 8, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "5px 9px", color: "#fff", fontSize: 11, outline: "none", boxSizing: "border-box" }}
           />
@@ -720,7 +914,6 @@ export default function AtlasAllMapClient() {
             const accent = MUNI_ACCENT[group.name] ?? "#1D9E75";
             return (
               <div key={group.name}>
-                {/* Municipality header with collapse toggle */}
                 <button
                   onClick={() => toggleMuni(group.name)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "8px 14px 6px", border: "none", background: "transparent", cursor: "pointer", borderTop: "1px solid rgba(255,255,255,0.05)" }}
@@ -758,7 +951,7 @@ export default function AtlasAllMapClient() {
         <div style={{ padding: "10px 14px 2px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, lineHeight: 1.6 }}>
             {selectedWard ? "Click another ward to switch." : "Pan + click any ward to load doors."}<br />
-            Data: Whitby GeoHub · Toronto Open Data · Markham Open Data
+            Data: Whitby GeoHub · Toronto Open Data · Markham · Pickering · Durham Region
           </div>
         </div>
       </motion.div>
@@ -770,7 +963,7 @@ export default function AtlasAllMapClient() {
             key={`ops-${getProp(selectedProps, "wardIndex")}`}
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            style={{ ...G, position: "absolute", bottom: 24, right: 16, zIndex: 10, width: 310, maxHeight: "calc(100vh - 120px)", overflow: "hidden", display: "flex", flexDirection: "column" }}
+            style={{ ...G, position: "absolute", bottom: 24, right: 16, zIndex: 10, width: 320, maxHeight: "calc(100vh - 120px)", overflow: "hidden", display: "flex", flexDirection: "column" }}
           >
             <div style={{ height: 4, background: muniAccent, flexShrink: 0 }} />
             <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1 }}>
@@ -784,9 +977,10 @@ export default function AtlasAllMapClient() {
                   style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.45)", cursor: "pointer", borderRadius: 7, width: 26, height: 26, fontSize: 13 }}>✕</button>
               </div>
 
+              {/* Address view mode controls */}
               {displayAddresses && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} />
+                  <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} modes={availableModes} />
                   <button
                     onClick={() => setShow3D(v => !v)}
                     style={{ padding: "3px 9px", borderRadius: 6, border: `1px solid ${show3D ? muniAccent : "rgba(255,255,255,0.12)"}`, background: show3D ? `${muniAccent}22` : "transparent", color: show3D ? muniAccent : "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
@@ -824,11 +1018,55 @@ export default function AtlasAllMapClient() {
                     </div>
                   )}
 
-                  <div style={{ background: "rgba(239,159,39,0.09)", border: "1px solid rgba(239,159,39,0.22)", borderRadius: 9, padding: "9px 12px", marginBottom: 12 }}>
+                  <div style={{ background: "rgba(239,159,39,0.09)", border: "1px solid rgba(239,159,39,0.22)", borderRadius: 9, padding: "9px 12px", marginBottom: 10 }}>
                     <div style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700 }}>📄 Literature: {litRec.toLocaleString()} pieces</div>
                     <div style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 2 }}>Includes 10% buffer · Adjust for multi-piece drops</div>
                   </div>
                 </>
+              )}
+
+              {/* Campaign map layers — dynamic, shown only when data exists */}
+              {(hasSignsData || hasPollingData || signsLoading || pollingLoading) && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ ...labelStyle, marginBottom: 8 }}>
+                    Campaign Layers
+                    {(signsLoading || pollingLoading) && (
+                      <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400, marginLeft: 6 }}>loading…</span>
+                    )}
+                  </div>
+
+                  {hasSignsData && (
+                    <div style={{ marginBottom: 6 }}>
+                      <LayerToggle
+                        icon="🪧"
+                        label={`Signs (${signsOverlay!.stats?.installed ?? 0} installed · ${signsOverlay!.stats?.requested ?? 0} pending)`}
+                        count={signsOverlay!.features.length}
+                        active={showSigns}
+                        onToggle={() => setShowSigns(v => !v)}
+                        color="#1D9E75"
+                      />
+                    </div>
+                  )}
+
+                  {hasPollingData && (
+                    <div style={{ marginBottom: 6 }}>
+                      <LayerToggle
+                        icon="🗳️"
+                        label={`Polling Stations (${pollingOverlay!.stats?.accessible ?? 0} accessible)`}
+                        count={pollingOverlay!.features.length}
+                        active={showPolling}
+                        onToggle={() => setShowPolling(v => !v)}
+                        color="#EF9F27"
+                      />
+                    </div>
+                  )}
+
+                  {!hasSignsData && !hasPollingData && !signsLoading && !pollingLoading && (
+                    <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, padding: "6px 0" }}>
+                      No campaign layers yet. <a href="/atlas/layers" style={{ color: muniAccent, textDecoration: "none" }}>Manage layers →</a>
+                    </div>
+                  )}
+                </div>
               )}
 
               <button
@@ -877,12 +1115,10 @@ export default function AtlasAllMapClient() {
               <div style={{ color: "#fff", fontSize: 16, fontWeight: 800, marginTop: 8 }}>{getProp(selectedProps, "wardName")}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
                 <div style={{ ...subval, fontSize: 11 }}>{uniqueDoors.toLocaleString()} doors · {streets.length} streets</div>
-                <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} />
+                <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} modes={availableModes} />
               </div>
               <input
-                type="text"
-                placeholder="Search streets…"
-                value={streetSearch}
+                type="text" placeholder="Search streets…" value={streetSearch}
                 onChange={e => setStreetSearch(e.target.value)}
                 style={{ width: "100%", marginTop: 8, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "5px 9px", color: "#fff", fontSize: 11, outline: "none", boxSizing: "border-box" }}
               />
@@ -902,7 +1138,6 @@ export default function AtlasAllMapClient() {
                 <button onClick={() => setCanvasserCount(c => Math.min(20, c + 1))}
                   style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
               </div>
-
               <button onClick={handleCutTurfs}
                 style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: muniAccent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
                 ✂️ Cut {canvasserCount} Turfs
@@ -957,9 +1192,7 @@ export default function AtlasAllMapClient() {
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
                         </div>
                         <input
-                          type="text"
-                          placeholder="Assign canvasser name…"
-                          value={turf.canvasserName}
+                          type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
                           onChange={e => updateCanvasserName(turf.index, e.target.value)}
                           style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
                         />
@@ -1045,6 +1278,95 @@ export default function AtlasAllMapClient() {
         )}
       </AnimatePresence>
 
+      {/* ── SIGN DETAIL ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedSign && !showTurfPanel && (
+          <motion.div data-print-hide
+            key="sign-detail"
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{ ...GL, position: "absolute", bottom: 24, right: 16, zIndex: 11, width: 260, padding: "14px 16px" }}
+          >
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: SIGN_STATUS_COLOR[String(selectedSign.status ?? "")] ?? "#EF9F27", borderRadius: "12px 12px 0 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={labelStyle}>🪧 Campaign Sign</div>
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, marginTop: 3 }}>{String(selectedSign.address ?? "")}</div>
+                {selectedSign.city && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedSign.city)}</div>}
+              </div>
+              <button onClick={() => setSelectedSign(null)}
+                style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+              <span style={{ ...subval, fontSize: 11 }}>Status</span>
+              <span style={{ color: SIGN_STATUS_COLOR[String(selectedSign.status ?? "")] ?? "#fff", fontSize: 12, fontWeight: 700 }}>
+                {SIGN_STATUS_LABELS[String(selectedSign.status ?? "")] ?? String(selectedSign.status)}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+              <span style={{ ...subval, fontSize: 11 }}>Type</span>
+              <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{String(selectedSign.signType ?? "standard")}</span>
+            </div>
+            {selectedSign.quantity != null && Number(selectedSign.quantity) > 1 && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span style={{ ...subval, fontSize: 11 }}>Quantity</span>
+                <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>×{String(selectedSign.quantity)}</span>
+              </div>
+            )}
+            {selectedSign.isOpponent && (
+              <div style={{ background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.3)", borderRadius: 7, padding: "5px 9px", marginTop: 6 }}>
+                <span style={{ color: "#E24B4A", fontSize: 11, fontWeight: 700 }}>⚠️ Opponent sign</span>
+              </div>
+            )}
+            {selectedSign.notes && (
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 6, lineHeight: 1.5 }}>{String(selectedSign.notes)}</div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── POLLING STATION DETAIL ────────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedPolling && !showTurfPanel && (
+          <motion.div data-print-hide
+            key="polling-detail"
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{ ...GL, position: "absolute", bottom: 24, right: 16, zIndex: 11, width: 260, padding: "14px 16px" }}
+          >
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "#EF9F27", borderRadius: "12px 12px 0 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <div style={labelStyle}>🗳️ Polling Station {String(selectedPolling.stationNumber ?? "")}</div>
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, marginTop: 3 }}>{String(selectedPolling.name ?? "")}</div>
+                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{String(selectedPolling.address ?? "")}</div>
+              </div>
+              <button onClick={() => setSelectedPolling(null)}
+                style={{ background: "rgba(255,255,255,0.07)", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", borderRadius: 6, width: 24, height: 24, fontSize: 12 }}>✕</button>
+            </div>
+            {Number(selectedPolling.electorCount ?? 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span style={{ ...subval, fontSize: 11 }}>Electors</span>
+                <span style={{ color: "#EF9F27", fontSize: 12, fontWeight: 700 }}>{Number(selectedPolling.electorCount).toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+              <span style={{ ...subval, fontSize: 11 }}>Accessible</span>
+              <span style={{ color: selectedPolling.isAccessible ? "#1D9E75" : "#E24B4A", fontSize: 12, fontWeight: 700 }}>{selectedPolling.isAccessible ? "Yes ♿" : "No"}</span>
+            </div>
+            {selectedPolling.wardName && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span style={{ ...subval, fontSize: 11 }}>Ward</span>
+                <span style={{ color: "#fff", fontSize: 11 }}>{String(selectedPolling.wardName)}</span>
+              </div>
+            )}
+            {selectedPolling.notes && (
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, marginTop: 6, lineHeight: 1.5 }}>{String(selectedPolling.notes)}</div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── ADDRESS LOADING ───────────────────────────────────────────── */}
       <AnimatePresence>
         {addrLoading && (
@@ -1059,21 +1381,47 @@ export default function AtlasAllMapClient() {
         )}
       </AnimatePresence>
 
-      {/* ── SUPPORT LEVEL LEGEND ─────────────────────────────────────── */}
+      {/* ── LEGEND ───────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {contactsOverlay && contactsOverlay.stats.totalContacts > 0 && (
+        {(contactsOverlay && contactsOverlay.stats.totalContacts > 0) || showSigns || showPolling ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-            style={{ ...GL, position: "absolute", bottom: 16, left: 268, zIndex: 10, padding: "8px 12px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+            style={{ ...GL, position: "absolute", bottom: 16, left: 268, zIndex: 10, padding: "8px 12px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", maxWidth: "calc(100vw - 400px)" }}
           >
-            {Object.entries(SUPPORT_COLORS).map(([k, color]) => (
-              <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />
-                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>{SUPPORT_LABELS[k]}</span>
+            {(viewMode === "support" || viewMode === "dots") && contactsOverlay && contactsOverlay.stats.totalContacts > 0 && (
+              <>
+                {Object.entries(SUPPORT_COLORS).map(([k, color]) => (
+                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />
+                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>{SUPPORT_LABELS[k]}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {viewMode === "dnk" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", display: "inline-block" }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>Do Not Knock</span>
               </div>
-            ))}
+            )}
+            {showSigns && hasSignsData && (
+              <>
+                {Object.entries(SIGN_STATUS_COLOR).map(([k, color]) => (
+                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, border: "1.5px solid rgba(255,255,255,0.4)", display: "inline-block" }} />
+                    <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🪧 {SIGN_STATUS_LABELS[k]}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {showPolling && hasPollingData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#0A2342", border: "2px solid #EF9F27", display: "inline-block" }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🗳️ Polling Station</span>
+              </div>
+            )}
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
       {/* ── BRAND ────────────────────────────────────────────────────── */}
@@ -1115,7 +1463,7 @@ export default function AtlasAllMapClient() {
         )}
       </AnimatePresence>
 
-      {/* ── PRINT CSS — hides all UI overlays, shows only the map canvas ── */}
+      {/* ── PRINT CSS ────────────────────────────────────────────────── */}
       <style>{`
         @media print {
           [data-print-hide] { display: none !important; }

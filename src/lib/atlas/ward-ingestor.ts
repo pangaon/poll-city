@@ -206,7 +206,8 @@ function extractWardName(props: Record<string, unknown> | null, fallbackIndex: n
     (props["AREA_NAME"] as string) ||
     (props["NAME"] as string) ||
     (props["name"] as string) ||
-    (props["WARD"] as string);
+    (props["WARD"] as string) ||
+    (props["TEXT_"] as string);  // Pickering Open Data uses TEXT_ for ward name
   if (raw) {
     const s = String(raw).trim();
     return /^\d+$/.test(s) ? `Ward ${s}` : s;
@@ -311,28 +312,51 @@ export async function ingestMunicipality(
 }
 
 /**
- * Ingest all municipalities in the registry (with a concurrency cap of 3).
- * wardIndex is stable: registry position × 200 — no Ontario city has 200 wards,
- * so there is zero overlap between municipalities regardless of actual ward count.
+ * Ingest all municipalities in the registry.
+ *
+ * Strategy: ArcGIS/CKAN sources are parallel (no rate limit). Represent sources
+ * are fully serial with a 3s gap — Represent silently returns empty results (not 429)
+ * when overwhelmed, so batching is not safe. Serial guarantees every city gets a
+ * clean window. 28 cities × ~6s = ~168s, well within the 300s seed timeout.
+ *
+ * wardIndex offset: registry position × 200 — no Ontario city has 200 wards,
+ * so cross-municipality collisions are impossible.
  */
 export async function ingestAllMunicipalities(): Promise<IngestResult[]> {
   const results: IngestResult[] = [];
 
-  // Process in batches of 3 — reduces concurrent Represent API pressure
-  const BATCH = 3;
-  for (let i = 0; i < WARD_ASSET_REGISTRY.length; i += BATCH) {
-    if (i > 0) await new Promise((r) => setTimeout(r, 1500)); // pace to avoid Represent 429
-    const batch = WARD_ASSET_REGISTRY.slice(i, i + BATCH);
+  const representPrimary = (e: WardAssetEntry) => e.wardSources[0]?.type === "represent";
+  const fastEntries = WARD_ASSET_REGISTRY.filter((e) => !representPrimary(e));
+  const slowEntries = WARD_ASSET_REGISTRY.filter((e) => representPrimary(e));
+
+  // ─── Fast pass: ArcGIS / CKAN — parallel, no rate limit ─────────────────
+  const FAST_BATCH = 4;
+  for (let i = 0; i < fastEntries.length; i += FAST_BATCH) {
+    const batch = fastEntries.slice(i, i + FAST_BATCH);
     const batchResults = await Promise.allSettled(
-      // Stable offset: registry index × 200 guarantees no cross-municipality collisions
-      batch.map((entry, j) => ingestMunicipality(entry, (i + j) * 200)),
+      batch.map((entry) => {
+        const idx = WARD_ASSET_REGISTRY.indexOf(entry);
+        return ingestMunicipality(entry, idx * 200);
+      }),
     );
     for (const r of batchResults) {
-      if (r.status === "fulfilled") {
-        results.push(r.value);
-      } else {
-        results.push({ municipality: "unknown", count: 0, sourceUrl: "", sourceType: "none", error: String(r.reason) });
-      }
+      results.push(
+        r.status === "fulfilled"
+          ? r.value
+          : { municipality: "unknown", count: 0, sourceUrl: "", sourceType: "none", error: String(r.reason) },
+      );
+    }
+  }
+
+  // ─── Slow pass: Represent — fully serial, 3s gap between each ───────────
+  // Represent throttles concurrent callers and returns empty objects (not 429) when overwhelmed.
+  for (const entry of slowEntries) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const idx = WARD_ASSET_REGISTRY.indexOf(entry);
+    try {
+      results.push(await ingestMunicipality(entry, idx * 200));
+    } catch (err) {
+      results.push({ municipality: entry.municipality, count: 0, sourceUrl: "", sourceType: "none", error: String(err) });
     }
   }
 

@@ -13,7 +13,13 @@
       "PowerShell(Resolve-DnsName \"represent.opennorth.ca\" -ErrorAction SilentlyContinue)",
       "PowerShell(Resolve-DnsName \"opendata.arcgis.com\" -ErrorAction SilentlyContinue)",
       "PowerShell(Resolve-DnsName \"api.milton.ca\" -ErrorAction SilentlyContinue)",
-      "PowerShell($r = Invoke-RestMethod \"https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=1\" -TimeoutSec 30; Write-Host \"TOTAL: $\\($r.meta.total\\)\"; $r.data | ForEach-Object { $a=$_.attributes; Write-Host \"$\\($a.name\\)|||$\\($a.url\\)|||$\\($a.tags -join ','\\)\" })"
+      "PowerShell($r = Invoke-RestMethod \"https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=1\" -TimeoutSec 30; Write-Host \"TOTAL: $\\($r.meta.total\\)\"; $r.data | ForEach-Object { $a=$_.attributes; Write-Host \"$\\($a.name\\)|||$\\($a.url\\)|||$\\($a.tags -join ','\\)\" })",
+      "Bash(rm -rf .next/*)",
+      "Bash(mkdir -p .next/server/pages)",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT:$?\")",
+      "PowerShell(Stop-Process -Name node -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\14168\\\\Documents\\\\Projects\\\\poll-city\"; $env:Path = \"C:\\\\Program Files\\\\nodejs;$env:Path\"; npm run build 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\turf\\[id]\\stops",
@@ -23,7 +29,8 @@
       "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\budget",
       "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\budget\\rules",
       "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\contacts\\filter-presets",
-      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\officials\\[id]"
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\src\\app\\api\\officials\\[id]",
+      "C:\\Users\\14168\\Documents\\Projects\\poll-city\\.next"
     ]
   }
 }

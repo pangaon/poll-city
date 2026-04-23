@@ -7,6 +7,7 @@ import {
   ChevronRight, RefreshCw, User2, MapPin, AlertTriangle,
   Search, SlidersHorizontal, ArrowLeft,
   Camera, Home, Maximize2, AppWindow, Grid3X3, CornerDownRight, Building2, Minus, Plus,
+  History, Zap,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardContent, EmptyState, FormField,
@@ -14,10 +15,12 @@ import {
 } from "@/components/ui";
 import { toast } from "sonner";
 import Link from "next/link";
+import { SignActionModal } from "@/components/signs/sign-action-modal";
+import { SignEventTimeline } from "@/components/signs/sign-event-timeline";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type SignStatus = "requested" | "scheduled" | "installed" | "removed" | "declined";
+type SignStatus = "requested" | "scheduled" | "installed" | "removed" | "declined" | "damaged" | "missing" | "needs_repair";
 
 interface FollowUpSnap {
   id: string;
@@ -74,11 +77,14 @@ interface Props {
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<SignStatus, { label: string; badge: "default" | "success" | "warning" | "danger" | "info" }> = {
-  requested: { label: "Requested", badge: "warning" },
-  scheduled: { label: "Scheduled", badge: "info" },
-  installed: { label: "Installed", badge: "success" },
-  removed:   { label: "Removed",   badge: "default" },
-  declined:  { label: "Declined",  badge: "danger" },
+  requested:    { label: "Requested",    badge: "warning" },
+  scheduled:    { label: "Scheduled",    badge: "info" },
+  installed:    { label: "Installed",    badge: "success" },
+  removed:      { label: "Removed",      badge: "default" },
+  declined:     { label: "Declined",     badge: "danger" },
+  damaged:      { label: "Damaged",      badge: "warning" },
+  missing:      { label: "Missing",      badge: "danger" },
+  needs_repair: { label: "Needs Repair", badge: "warning" },
 };
 
 const SIGN_TYPE_LABEL: Record<string, string> = {
@@ -132,6 +138,8 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [actionModalSign, setActionModalSign] = useState<SignRow | null>(null);
+  const [historySignId, setHistorySignId] = useState<string | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -321,6 +329,14 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
                       <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
                         <Button
                           size="sm"
+                          onClick={() => setActionModalSign(sign)}
+                          className="bg-[#0A2342] hover:bg-[#0A2342]/90 text-white"
+                        >
+                          <Zap className="h-3.5 w-3.5" />
+                          <span className="ml-1.5">Log Action</span>
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="outline"
                           disabled={isUpdating}
                           onClick={() => updateSign(sign.id, { status: "scheduled" })}
@@ -331,13 +347,12 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
-                          disabled={isUpdating}
-                          onClick={() => updateSign(sign.id, { status: "installed" })}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
+                          variant="ghost"
+                          onClick={() => setHistorySignId(sign.id)}
+                          className="text-gray-400 hover:text-gray-600 text-xs"
                         >
-                          {isUpdating ? <Spinner className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          <span className="ml-1.5">Installed</span>
+                          <History className="h-3.5 w-3.5" />
+                          <span className="ml-1.5">History</span>
                         </Button>
                         <Button
                           size="sm"
@@ -455,40 +470,23 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
                               {sign.assignedUser?.name ?? <span className="text-gray-400">—</span>}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-1">
-                                {sign.status === "requested" && (
-                                  <Button
-                                    size="sm" variant="ghost"
-                                    disabled={isUpdating}
-                                    onClick={() => updateSign(sign.id, { status: "scheduled" })}
-                                    title="Mark scheduled"
-                                    className="text-blue-500 hover:text-blue-700 text-xs"
-                                  >
-                                    Schedule
-                                  </Button>
-                                )}
-                                {(sign.status === "requested" || sign.status === "scheduled") && (
-                                  <Button
-                                    size="sm" variant="ghost"
-                                    disabled={isUpdating}
-                                    onClick={() => updateSign(sign.id, { status: "installed" })}
-                                    title="Confirm installed"
-                                    className="text-green-600 hover:text-green-800 text-xs"
-                                  >
-                                    {isUpdating ? <Spinner className="h-3 w-3" /> : "Installed"}
-                                  </Button>
-                                )}
-                                {sign.status === "installed" && (
-                                  <Button
-                                    size="sm" variant="ghost"
-                                    disabled={isUpdating}
-                                    onClick={() => updateSign(sign.id, { status: "removed" })}
-                                    title="Confirm removed"
-                                    className="text-amber-600 hover:text-amber-800 text-xs"
-                                  >
-                                    Remove
-                                  </Button>
-                                )}
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <Button
+                                  size="sm" variant="ghost"
+                                  onClick={() => setActionModalSign(sign)}
+                                  title="Log a field action"
+                                  className="text-[#0A2342] hover:text-[#0A2342]/80 text-xs font-medium"
+                                >
+                                  <Zap className="h-3 w-3 mr-1" /> Log Action
+                                </Button>
+                                <Button
+                                  size="sm" variant="ghost"
+                                  onClick={() => setHistorySignId(sign.id)}
+                                  title="View event history"
+                                  className="text-gray-400 hover:text-gray-600 text-xs"
+                                >
+                                  <History className="h-3 w-3" />
+                                </Button>
                                 {!["installed", "removed", "declined"].includes(sign.status) && (
                                   <Button
                                     size="sm" variant="ghost"
@@ -525,6 +523,44 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
           </div>
         )}
       </div>
+    );
+  }
+
+  // ── Sign Action Modal ─────────────────────────────────────────────────────
+
+  function SignActionModalWrapper() {
+    if (!actionModalSign) return null;
+    return (
+      <SignActionModal
+        signId={actionModalSign.id}
+        signAddress={[actionModalSign.address1, actionModalSign.city].filter(Boolean).join(", ")}
+        currentStatus={actionModalSign.status}
+        campaignId={campaignId}
+        onClose={() => setActionModalSign(null)}
+        onSuccess={({ newStatus }) => {
+          setSigns((prev) =>
+            prev.map((s) => (s.id === actionModalSign.id ? { ...s, status: newStatus as SignStatus } : s))
+          );
+          setActionModalSign(null);
+          load();
+        }}
+      />
+    );
+  }
+
+  function SignHistoryDrawer() {
+    if (!historySignId) return null;
+    const sign = signs.find((s) => s.id === historySignId);
+    return (
+      <Modal
+        open
+        onClose={() => setHistorySignId(null)}
+        title={`Sign History — ${sign?.address1 ?? ""}`}
+      >
+        <div className="max-h-96 overflow-y-auto pr-1">
+          <SignEventTimeline signId={historySignId} />
+        </div>
+      </Modal>
     );
   }
 
@@ -586,6 +622,8 @@ export default function SignsFieldClient({ campaignId, teamMembers }: Props) {
       </div>
 
       <QuickCaptureModal open={showQuickCapture} onClose={() => setShowQuickCapture(false)} onCreate={createSign} />
+      <SignActionModalWrapper />
+      <SignHistoryDrawer />
 
       {/* Tab content */}
       <AnimatePresence mode="wait">

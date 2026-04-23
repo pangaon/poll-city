@@ -2,7 +2,22 @@
 ## The Army of One Coordination File
 
 **Last updated:** 2026-04-22
-**Updated by:** Claude Sonnet 4.6 — Print Vendor Portal shipped (P0 cleared)
+**Updated by:** Claude Sonnet 4.6 — Ontario election overlay shipped (Whitby test run)
+
+---
+
+## 🗳️ ELECTION OVERLAY — LIVE ON /whitby (George must seed DB)
+
+**What shipped:** Ontario Open Data election results (2014/2018/2022) are now overlaid on the Whitby map.
+- Toggle: "📊 Election History" button in the Whitby map header (amber colour, right of header)
+- Shows: turnout choropleth on ward polygons + race results panel (Mayor + 6 councillors) per year
+- Year tabs: switch between 2014/2018/2022. Year-over-year turnout bars. Incumbent badges.
+- API: `GET /api/atlas/election-results?municipality=Whitby+T` — no auth required, public data
+- Data lives in 6 CSVs at `data/ontario-elections/` (Ontario Open Government Licence)
+
+**George must do ONE thing:** Run `npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"` to populate the DB. Without this, the toggle shows a "no data" graceful state. Code is live and deployed. Data is not yet in Railway DB.
+
+**Future extension:** Any other municipality can use the same API + toggle by adding `electionResultsApi` to its `MunicipalityConfig` object. The seed script accepts `--municipality` flag for any Ontario municipality.
 
 ---
 

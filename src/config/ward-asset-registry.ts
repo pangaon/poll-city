@@ -234,6 +234,53 @@ export const WARD_ASSET_REGISTRY: WardAssetEntry[] = [
   },
 
   {
+    municipality: "Pickering",
+    slug: "pickering",
+    region: "Durham Region",
+    accentColor: "#3B82F6",
+    accentStroke: "#1d4ed8",
+    addressesApi: "/api/atlas/pickering-addresses",
+    wardSources: [
+      {
+        type: "arcgis-rest",
+        url: "https://maps.pickering.ca/arcgisinter/rest/services/public/OpenData/MapServer",
+        layer: 5,
+        outSR: 4326,
+        verified: true,
+        verifiedAt: "2026-04-22",
+        notes: "Pickering Open Data MapServer layer 5 — ward polygons, TEXT_ field = ward name, includes RegionalCouncillor/LocalCouncillor/Mayor fields",
+      },
+      {
+        type: "represent",
+        url: "https://represent.opennorth.ca/boundaries/?sets=pickering-wards&limit=20&format=json",
+        verified: false,
+        notes: "Represent slug unverified — fallback only",
+      },
+    ],
+    addressSources: [
+      {
+        type: "arcgis-rest",
+        url: "https://maps.pickering.ca/arcgisinter/rest/services/public/OpenData/MapServer",
+        layer: 0,
+        outSR: 4326,
+        verified: true,
+        verifiedAt: "2026-04-22",
+        notes: "Pickering address points — 42,610 points, fields: HOUSENUMBE, STREET, STREETTYPE, STREETDIRE, UNITTYPE, UNITNUMBER, CITY",
+      },
+      {
+        type: "arcgis-rest",
+        url: "https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer",
+        layer: 0,
+        filter: "TOWN='Pickering'",
+        outSR: 4326,
+        verified: true,
+        verifiedAt: "2026-04-22",
+        notes: "Durham Region civic addresses — 253,329 total, filter TOWN='Pickering'; richer data (includes POSTAL_CODE)",
+      },
+    ],
+  },
+
+  {
     municipality: "Clarington",
     slug: "clarington",
     region: "Durham Region",

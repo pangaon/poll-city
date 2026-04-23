@@ -1,0 +1,445 @@
+MUNICIPALITY NAME,TOTAL NUMBER OF ELECTORS,NUMBER OF ELECTORS WHO VOTED,ADVANCED POLLS - ALTERNATE VOTING METHODS,ADVANCED POLLS - VOTE BY MAIL,ADVANCED POLLS - TELEPHONE VOTING,ADVANCED POLLS - INTERNET VOTING,ADVANCED POLLS - VOTING TABULATORS,ADVANCED POLLS - RANKED BALLOTS,ADVANCED POLLS - TOUCH SCREEN,ADVANCED POLLS - ACCESSIBLE METHODS,ADVANCED POLLS - OTHER,ADVANCED POLLS - OTHER DESCRIPTION,VOTING DAY - ALTERNATE VOTING METHODS,VOTING DAY - VOTE BY MAIL,VOTING DAY - TELEPHONE VOTING,VOTING DAY - INTERNET VOTING,VOTING DAY - VOTING TABULATORS,VOTING DAY - RANKED BALLOTS,VOTING DAY - TOUCH SCREEN,VOTING DAY - ACCESSIBLE METHODS,VOTING DAY - OTHER,VOTING DAY - OTHER DESCRIPTION,NOMINATION PERIOD EXTENDED?,SEATS VACANT,QUESTION ON BALLOT,BALLOT QUESTION 1,QUESTION 1 - NUMBER OF YES VOTES,QUESTION 1 - NUMBER OF NO VOTES,QUESTION 1 - TOTAL BALLOTS CAST,QUESTION 1 - ELIGIBLE VOTERS,BALLOT QUESTION 2,QUESTION 2 - NUMBER OF YES VOTES,QUESTION 2 - NUMBER OF NO VOTES,QUESTION 2 - TOTAL BALLOTS CAST,QUESTION 2 - ELIGIBLE VOTERS,THIRD PARTY ADVERTISERS,MAYOR - NUMBER OF CANDIDATES FOR EACH OFFICE,DEPUTY MAYOR - NUMBER OF CANDIDATES FOR EACH OFFICE,VICE DEPUTY MAYOR - NUMBER OF CANDIDATES FOR EACH OFFICE,REEVE - NUMBER OF CANDIDATES FOR EACH OFFICE,DEPUTY REEVE - NUMBER OF CANDIDATES FOR EACH OFFICE,COUNCILLOR - NUMBER OF CANDIDATES FOR EACH OFFICE,REGIONAL CHAIR - NUMBER OF CANDIDATES FOR EACH OFFICE,DISTRICT CHAIR - NUMBER OF CANDIDATES FOR EACH OFFICE
+Toronto C,"1,676,236","755,493",YES,NO,NO,NO,YES,NO,YES,NO,NO,,YES,NO,NO,NO,YES,NO,YES,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,12,35,0,0,0,0,242,0,0
+Durham R,"458,221","135,210",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,5,0
+Oshawa C,"108,138","26,238",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,7,0,0,0,0,43,5,0
+Pickering C,"67,748","19,777",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,23,0,0
+Ajax T,"77,885","25,634",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,5,0,0,0,0,26,5,0
+Clarington M,"65,373","18,678",YES,YES,NO,NO,YES,NO,NO,YES,NO,,YES,YES,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,6,3,0,0,0,0,21,5,0
+Whitby T,"90,099","23,712",YES,YES,NO,NO,YES,NO,NO,YES,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,28,5,0
+Brock Tp,"10,042","4,687",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,17,5,0
+Scugog Tp,"17,296","7,908",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,20,5,0
+Uxbridge Tp,"16,840","8,576",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,4,1,0,0,0,0,6,1,0
+Halton R,"359,898","120,911",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,2,0
+Burlington C,"128,238","51,021",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,6,4,0,0,0,0,33,2,0
+Halton Hills T,"43,211","12,713",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,23,2,0
+Milton T,"62,521","23,139",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,32,2,0
+Oakville T,"125,718","46,624",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,42,0,0
+Hamilton C,"361,212","138,549",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,15,0,0,0,0,89,0,0
+Niagara R,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Niagara Falls C,"61,859","24,242",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,4,4,0,0,0,0,46,0,0
+Port Colborne C,"15,240","6,646",YES,NO,NO,NO,YES,NO,NO,NO,YES,Optical Scanners,YES,NO,NO,NO,YES,NO,NO,NO,YES,Optical Scanners,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,22,0,0
+St Catharines C,"91,047","31,021",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,54,0,0
+Welland C,"39,102","13,222",YES,NO,NO,NO,YES,NO,YES,YES,NO,,YES,NO,NO,NO,YES,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,37,0,0
+Thorold C,"14,471","5,219",YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,20,0,0
+Fort Erie T,"23,559","9,584",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,19,0,0
+Grimsby T,"20,566","9,004",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,0,0,0,0,19,0,0
+Lincoln T,"17,139","6,694",YES,NO,NO,YES,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,20,0,0
+Niagara-on-the-Lake T,"14,213","8,394",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,25,0,0
+Pelham T,"14,264","7,195",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,4,3,0,0,0,0,25,0,0
+Wainfleet Tp,"5,929","2,879",YES,YES,NO,NO,YES,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,6,0,0,0,0,13,0,0
+West Lincoln Tp,"11,651","4,474",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,4,0,0,0,0,4,0,0
+Peel R,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Brampton C,"313,273","108,070",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,9,7,0,0,0,0,69,0,0
+Mississauga C,"432,029","119,229",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,5,8,0,0,0,0,71,0,0
+Caledon T,"51,192","16,531",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,5,3,0,0,0,0,24,0,0
+York R,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Vaughan C,"201,488","54,434",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,36,0,0
+Markham C,"196,689","77,503",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,YES,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,5,0,0,0,0,67,0,0
+Aurora T,"38,935","12,511",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,16,0,0
+Newmarket T,"56,749","19,662",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,3,0,0,0,14,0,0
+Richmond Hill T,"116,080","31,521",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,5,0,0,0,0,27,0,0
+Whitchurch - Stouffville T,"30,025","14,300",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,5,0,0,0,0,20,0,0
+East Gwillimbury T,"19,568","6,010",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,13,0,0
+Georgina T,"33,844","9,047",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,9,0,0
+King Tp,"18,803","5,802",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,14,0,0
+Muskoka D,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Bracebridge T,"14,977","5,910",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,0,0,0,0,14,0,0
+Gravenhurst T,"14,161","4,297",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,1,0,0,0,0,8,0,0
+Huntsville T,"18,277","6,572",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,15,0,0
+Georgian Bay Tp,"9,533","3,632",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,11,0,0
+Lake of Bays Tp,"8,001","3,054",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,13,0,0
+Muskoka Lakes Tp,"17,006","6,943",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,18,0,0
+Simcoe Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Barrie C,"88,540","41,996",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,2,0,0,0,0,50,0,0
+Orillia C,"23,766","8,596",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,19,0,0
+Collingwood T,"19,713","9,374",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,2,0,0,0,19,0,0
+Midland T,"13,200","4,687",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,3,0,0,0,22,0,0
+Penetanguishene T,"6,802","2,858",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,20,0,0
+Wasaga Beach T,"21,874","10,177",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,YES,"At present we use the at-large system to vote for Councillor positions, should we use a ward system instead?","3,498","4,934","8,432","21,874",,  ,  ,  ,  ,5,2,2,0,0,0,18,0,0
+Innisfil T,"27,904","9,066",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,5,0,0,0,15,0,0
+Bradford-West Gwillimbury T,"23,808","8,219",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,2,0,0,0,19,0,0
+New Tecumseth T,"27,773","9,493",NO,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,3,0,0,0,26,0,0
+Essa Tp,"13,086","3,782",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,5,0,0
+Tiny Tp,"18,496","4,748",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,4,0,0
+Adjala-Tosorontio Tp,"8,719","3,731",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,2,3,0,0,0,12,0,0
+Clearview Tp,"11,981","4,532",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,1,0,0,0,13,0,0
+Oro-Medonte Tp,"18,044","7,550",YES,NO,YES,YES,NO,NO,NO,YES,YES,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,11,0,0
+Ramara Tp,"10,881","4,344",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,4,0,0,0,16,0,0
+Severn Tp,"13,747","3,051",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,11,0,0
+Springwater Tp,"15,895","5,903",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,2,0,0,0,12,0,0
+Tay Tp,"9,441","3,796",YES,YES,NO,NO,NO,NO,NO,YES,NO,,YES,YES,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,10,0,0
+Ottawa C,"633,946","269,772",YES,NO,NO,NO,YES,NO,YES,YES,NO,,YES,NO,NO,NO,YES,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,5,12,0,0,0,0,102,0,0
+Frontenac Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Kingston C,"83,608","34,529",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,YES,YES,NO,NO,YES,NO,,NO,NO,YES,Are you in favour of using Ranked Ballot Voting to elect the Mayor and District Councillors in the City of Kingston?,"20,642","12,161","32,803","83,608",,  ,  ,  ,  ,3,4,0,0,0,0,38,0,0
+Central Frontenac Tp,"7,397","1,725",NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+Frontenac Islands Tp,704,418,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper ballots at poll,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+North Frontenac Tp,"5,984",37,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+South Frontenac Tp,"17,610","6,738",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,13,0,0
+Haliburton Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Dysart et al Tp,"13,526","6,112",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,11,0,0
+Minden Hills Tp,"11,562","3,847",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,1,0,0,0,12,0,0
+Highlands East M,"8,851","2,796",NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Algonquin Highlands Tp,"3,361",995,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Hastings Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Belleville C,"34,136","14,633",YES,NO,NO,YES,NO,NO,YES,NO,NO,,YES,NO,NO,YES,NO,NO,NO,NO,YES,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,23,0,0
+Quinte West C,"30,089","10,532",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,23,0,0
+Deseronto T,"1,228",339,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,5,0,0
+Bancroft T,"3,579","1,602",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Faraday Tp,"2,468",760,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,1,5,0,0
+Limerick Tp,997,318,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,4,0,0
+Madoc Tp,"1,988",832,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,2,5,0,0
+Tudor and Cashel Tp,"1,681",582,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,2,4,0,0
+Tyendinaga Tp,"3,371","1,703",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,1,3,0,0
+Wollaston Tp,"2,545","1,470",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,3,2,8,0,0
+Centre Hastings M,"4,040","1,778",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,2,0,0,0,6,0,0
+Stirling-Rawdon Tp,"3,959","1,894",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,"3,959","1,894",,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+Tweed M,"5,888","2,449",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,3,0,0,0,6,0,0
+Hastings Highlands M,"7,070","2,701",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,10,0,0
+Carlow-Mayo Tp,693,311,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Marmora and Lake M,"4,837","1,875",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,7,0,0
+Lanark Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Smiths Falls ST,"6,498","3,241",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,13,0,0
+Carleton Place T,"7,819","4,301",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,3,0,0,0,13,0,0
+Perth T,"4,647","2,354",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,6,0,0
+Mississippi Mills M,"10,704","6,390",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,5,0,0,0,11,0,0
+Beckwith Tp,"6,512","1,618",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,1,6,0,0
+Montague Tp,"3,100","1,482",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,3,6,0,0
+Lanark Highlands Tp,"6,778","2,990",YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper Ballot,YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper Ballot,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,3,0,0,0,11,0,0
+Drummond-North Elmsley Tp,"7,001","1,456",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,4,0,0
+Tay Valley Tp,"6,900","3,449",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,0,0,0,3,2,10,0,0
+Leeds and Grenville UCo,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Brockville C,"15,600","7,829",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,21,0,0
+Gananoque ST,"4,018","2,182",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,5,0,0,0,0,14,0,0
+Prescott ST,"3,216","1,290",YES,NO,YES,YES,NO,NO,YES,YES,NO,,YES,NO,YES,YES,NO,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,11,0,0
+Westport V,628,392,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Merrickville-Wolford V,"2,708","1,484",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,8,0,0
+Augusta Tp,"5,962","2,565",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,3,0,0,0,6,0,0
+Front of Yonge Tp,"2,312",672,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+North Grenville M,"12,650","5,960",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,8,0,0
+Rideau Lakes Tp,"12,417","5,137",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,16,0,0
+Athens Tp,"2,688",722,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+Edwardsburgh-Cardinal Tp,"5,064","2,688",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,8,0,0
+Leeds and the Thousand Islands Tp,"9,818","4,529",YES,NO,YES,YES,YES,NO,YES,NO,NO,,YES,NO,YES,YES,YES,NO,YES,NO,NO,,NO,NO,YES,Are you in favour of the Township of Leeds and the Thousand Islands passing a by-law to change the current ward structure?,"1,611","1,837","4,529","9,818",,  ,  ,  ,  ,2,4,0,0,0,0,16,0,0
+Elizabethtown-Kitley Tp,"8,325","3,275",YES,NO,YES,YES,NO,NO,NO,YES,NO,,YES,NO,YES,YES,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,11,0,0
+Lennox and Addington Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Greater Napanee T,"12,094","6,098",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,5,2,0,0,0,17,0,0
+Addington Highlands Tp,"4,608","1,442",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,6,0,0
+Loyalist Tp,"12,129","4,445",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,9,0,0
+Stone Mills Tp,"6,757","3,062",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,3,2,11,0,0
+Northumberland Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Cobourg T,"14,930","6,480",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,2,0,0,0,9,0,0
+Brighton M,"9,346","5,316",NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,11,0,0
+Trent Hills M,"11,803","4,386",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Port Hope M,"13,034","5,846",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,16,0,0
+Hamilton Tp,"9,055","2,512",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,6,0,0
+Alnwick-Haldimand Tp,"6,364","1,517",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,2,0,0,0,4,0,0
+Cramahe Tp,"5,223","2,373",YES,YES,NO,NO,YES,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+Peterborough Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Peterborough C,"58,022","28,030",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,YES,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,0,0,0,0,25,0,0
+Asphodel-Norwood Tp,"3,401","1,750",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,5,0,0
+North Kawartha Tp,"6,762","3,064",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,2,0,0,0,5,0,0
+Cavan Monaghan Tp,"7,098","3,388",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,4,0,0
+Douro-Dummer Tp,"6,878","2,385",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,0,0,0,5,0,0
+Trent Lakes M,"11,362","3,992",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+Havelock-Belmont-Methuen Tp,"7,255","2,924",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+Otonabee-South Monaghan Tp,"5,828","2,476",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,2,7,0,0
+Selwyn Tp,"15,890","6,317",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,1,0,0,0,4,0,0
+Prescott and Russell UCo,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Clarence-Rockland C,"18,182","7,714",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,16,0,0
+Hawkesbury T,"8,365","4,367",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,No,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,15,0,0
+Casselman V,"2,756","1,681",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+East Hawkesbury Tp,"2,733",0,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,3,0,0
+Russell Tp,"12,655","6,058",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,9,0,0
+Alfred and Plantagenet Tp,"7,759","3,817",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,11,0,0
+Champlain Tp,"7,370","4,630",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,15,0,0
+The Nation M,"9,792","4,820",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,8,0,0
+Prince Edward County C,"23,164","10,032",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,34,0,0
+Renfrew Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Pembroke C,"9,579","4,358",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper ballots,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,20,0,0
+Arnprior T,"6,420","3,059",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,1,0,11,0,0
+Deep River T,"3,167","2,055",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,2,0,11,0,0
+Renfrew T,"5,939","2,883",YES,NO,YES,YES,YES,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,1,0,9,0,0
+Petawawa T,"12,929","3,799",YES,NO,YES,YES,NO,NO,NO,YES,NO,,YES,NO,YES,YES,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,12,0,0
+Laurentian Hills T,"2,396",937,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,2,0,0
+"Head, Clara and Maria Tp",614,302,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,10,0,0
+Horton Tp,"2,831","1,482",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+McNab-Braeside Tp,"6,202","2,614",YES,NO,YES,YES,NO,NO,YES,YES,NO,,YES,NO,YES,YES,NO,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,1,0,0,0,5,0,0
+"Brudenell, Lyndoch and Raglan Tp","2,200","1,094",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,No,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+North Algona-Wilberforce Tp,"3,465","1,935",NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,12,0,0
+Admaston-Bromley Tp,"2,965",809,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Laurentian Valley Tp,"7,722","3,448",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,1,0,7,0,0
+"Killaloe, Hagarty and Richards Tp","3,111","1,825",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Madawaska Valley Tp,"5,642","3,157",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+Bonnechere Valley Tp,"4,151","1,972",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,YES,Traditional poll,NO,NO,YES,"Are you in favour of The Corporation of the Township of Bonnechere Valley passing a by-law so that all councillors, including the Mayor, are elected by general vote instead of the current system of voting?",948,570,"1,972","4,151",,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Whitewater Region Tp,"6,344","3,073",YES,NO,YES,YES,YES,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,2,0,13,0,0
+Greater Madawaska Tp,"4,925","1,901",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,6,0,0
+"Stormont, Dundas and Glengarry UCo",,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Cornwall C,"32,794","12,488",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,31,0,0
+North Dundas Tp,"8,321","4,077",YES,NO,YES,YES,NO,NO,YES,YES,NO,,YES,NO,YES,YES,NO,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+South Dundas Tp,"7,834","4,214",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,3,0,0,0,6,0,0
+North Glengarry Tp,"8,057","3,526",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,YES,At present one councillor is elected at-large and four councillors are elected using the ward system.  Are you in favour of changing to use the at-large system to elect all five councillors?  ,"1,231","1,734","2,965","8,057",,  ,  ,  ,  ,0,1,3,0,0,0,10,0,0
+South Glengarry Tp,"10,379","4,636",YES,NO,YES,YES,YES,NO,NO,NO,NO,,YES,NO,YES,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,12,0,0
+North Stormont Tp,"5,242","2,068",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,6,0,0
+South Stormont Tp,"10,622","5,119",YES,NO,NO,YES,YES,NO,YES,YES,NO,,YES,NO,NO,YES,YES,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,2,0,0,0,9,0,0
+Kawartha Lakes C,"66,441","25,280",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,4,0,0,0,0,36,0,0
+Greater Sudbury C,"115,784","52,087",YES,NO,NO,YES,NO,NO,NO,NO,NO,,YES,NO,NO,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,11,0,0,0,0,43,0,0
+Sault Ste Marie C,"55,261","22,269",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,25,0,0
+Elliot Lake C,"9,529","3,284",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,15,0,0
+Blind River T,"3,445","1,543",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,7,0,0
+Bruce Mines T,529,219,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Thessalon T,"1,200",383,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Spanish T,755,370,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+Hilton Beach V,229,76,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Hilton Tp,726,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Jocelyn Tp,813,349,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Johnson Tp,894,376,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Laird Tp,"1,150",313,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,No,No,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Macdonald Meredith et al Tp,"1,704",669,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+Wawa M,"2,103",837,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Plummer Additional Tp,922,162,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Prince Tp,"1,103",0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+St Joseph Tp,"1,579",705,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Tarbutt Tp,652,233,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,4,0,0
+Hornepayne Tp,822,508,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,11,0,0
+The North Shore Tp,916,316,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+White River Tp,599,386,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Dubreuilville Tp,474,248,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Huron Shores M,"2,331",473,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Timmins C,"29,507","16,197",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,YES,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,5,0,0,0,0,26,0,0
+Hearst T,"3,838","1,711",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Iroquois Falls T,"3,701","1,918",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,5,0,0,0,0,7,0,0
+Kapuskasing T,"6,573","3,064",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,15,0,0
+Smooth Rock Falls T,"1,024",428,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Cochrane T,"4,244","2,181",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,18,0,0
+Moosonee T,"1,026",171,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Black River - Matheson Tp,"2,597","1,578",YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Moonbeam Tp,"1,515",790,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+Fauquier-Strickland Tp,618,262,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Val Rita-Harty Tp,683,305,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,4,0,0
+Mattice - Val Cote Tp,626,314,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,No,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Opasatika Tp,227,139,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Gore Bay T,717,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Northeastern Manitoulin & The Isl T,"3,301","1,424",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,11,0,0
+Assiginack Tp,"1,612",819,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,5,0,0,0,0,9,0,0
+Billings Tp,"1,509",819,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,7,0,0
+Burpee and Mills Tp,789,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Cockburn Island Tp,233,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Tehkummah Tp,743,497,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,9,0,0
+Central Manitoulin M,"3,186","1,086",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Gordon-Barrie Island M,614,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+North Bay C,"37,272","16,866",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,4,5,0,0,0,0,26,0,0
+Mattawa T,"1,599",726,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Temagami M,"2,059","1,284",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,12,0,0
+West Nipissing M,"12,150","6,996",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,22,0,0
+South Algonquin Tp,636,397,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,10,0,0
+Bonfield Tp,"1,839",753,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Calvin Tp,604,256,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Chisholm Tp,"1,360",0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+East Ferris M,"4,466","1,359",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,0,0,0,0,0,7,0,0
+Mattawan Tp,221,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Papineau-Cameron Tp,"1,121",491,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Kearney T,"2,441","1,073",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Parry Sound T,"4,960","2,520",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,YES,Are you in favour of the fluoridation of the public water supply of this municipality?,882,"1,506","2,454","4,960",,  ,  ,  ,  ,2,3,0,0,0,0,14,0,0
+Powassan M,"2,839","1,007",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Burk's Falls V,719,206,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,6,0,0
+South River V,812,229,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,no,no,no,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Sundridge V,939,376,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Armour Tp,"2,247",753,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,5,0,0
+Carling Tp,"3,166","1,104",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Whitestone M,"3,673","1,213",YES,YES,YES,YES,NO,NO,NO,NO,NO,,YES,YES,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Callander M,"3,412","1,029",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+Joly Tp,658,331,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+Machar Tp,"1,781",784,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+McDougall Tp,"3,666","1,150",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+McKellar Tp,"3,044","1,451",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,7,0,0
+McMurrich-Monteith Tp,"1,737",583,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,5,0,0
+Nipissing Tp,"2,683",396,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Perry Tp,"2,917",873,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Ryerson Tp,"1,190",470,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,5,0,0
+Strong Tp,"2,033",576,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,10,0,0
+The Archipelago Tp,"4,769","1,802",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,15,0,0
+Magnetawan M,"3,738","1,207",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Seguin Tp,"9,109","4,313",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,17,0,0
+Espanola T,"3,838","1,940",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,0,0,0,0,7,0,0
+French River M,"4,049","2,122",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,9,0,0
+Killarney M,"1,302",537,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+Markstay-Warren M,"2,445",970,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+St-Charles M,"1,760",877,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Baldwin Tp,648,198,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Chapleau Tp,"1,694","1,021",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,6,0,0
+Nairn and Hyman Tp,575,148,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Sables-Spanish Rivers Tp,"3,212","1,014",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,13,0,0
+Temiskaming Shores C,"7,766","2,568",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Cobalt T,929,457,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,10,0,0
+Englehart T,"1,097",540,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,8,0,0
+Kirkland Lake T,"6,010","2,651",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,13,0,0
+Latchford T,400,230,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+Thornloe V,79,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Armstrong Tp,815,430,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+Brethour Tp,113,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Casey Tp,351,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Chamberlain Tp,353,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Coleman Tp,811,295,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,9,0,0
+Evanturel Tp,406,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,3,0,0
+Harley Tp,478,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Harris Tp,432,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Hilliard Tp,187,78,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,4,0,0
+Hudson Tp,574,139,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,6,0,0
+James Tp,432,245,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,7,0,0
+Kerns Tp,259,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Larder Lake Tp,"1,025",382,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+McGarry Tp,641,369,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Gauthier Tp,141,57,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Matachewan Tp,435,196,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,10,0,0
+Charlton-Dack M,587,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Dryden C,"5,561","2,938",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,14,0,0
+Kenora C,"10,676","5,317",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,14,0,0
+Sioux Lookout M,"3,200","1,767",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,11,0,0
+Red Lake M,"2,829","1,879",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,12,0,0
+Ignace Tp,"1,031",616,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,9,0,0
+Machin Tp,926,361,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,10,0,0
+Ear Falls Tp,772,459,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,10,0,0
+Pickle Lake Tp,285,113,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Sioux Narrows-Nestor Falls Tp,995,431,NO,NO,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Fort Frances T,"5,286","2,712",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,8,0,0
+Rainy River T,644,256,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,10,0,0
+Alberton Tp,702,361,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,4,0,0
+Atikokan Tp,"2,164",924,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+Chapple Tp,752,201,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,4,0,4,0,0
+Emo Tp,"1,030",605,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,6,0,0
+La Vallee Tp,753,341,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,4,0,4,0,0
+Morley Tp,581,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Dawson Tp,625,93,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Lake of The Woods Tp,633,0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Thunder Bay C,"81,135","41,361",YES,NO,YES,YES,YES,NO,NO,YES,NO,,YES,NO,YES,YES,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,11,0,0,0,0,50,0,0
+Marathon T,"2,459",858,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,8,0,0
+Greenstone M,"3,510","1,868",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,10,0,0
+Conmee Tp,727,306,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Dorion Tp,327,0,NO,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Gillies Tp,530,158,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,6,0,0
+Neebing M,"2,604",475,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Nipigon Tp,"1,290",592,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,5,0,0
+O'Connor Tp,619,152,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,5,0,0
+Schreiber Tp,981,600,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+Shuniah M,"3,855","1,474",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Terrace Bay Tp,"1,201",630,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Manitouwadge Tp,"1,634",827,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,12,0,0
+Red Rock Tp,740,338,YES,NO,NO,NO,NO,NO,NO,YES,NO,,YES,NO,NO,NO,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Oliver Paipoonge M,"4,984","1,615",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,0,0,0,0,7,0,0
+Haldimand County,"37,325","13,275",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,17,0,0
+Norfolk County,"48,696","20,222",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,33,0,0
+Waterloo R,"361,694","111,315",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,19,4,0
+Cambridge C,"87,750","28,292",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,YES,YES,NO,NO,YES,NO,,NO,NO,YES,Are you in favour of having a ranked ballot voting system for the 2022 municipal election?,"13,488","10,449","23,937","87,750",,  ,  ,  ,  ,4,5,0,0,0,0,38,0,0
+Kitchener C,"148,584","41,933",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,46,0,0
+Waterloo C,"72,598","24,843",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,23,0,0
+North Dumfries Tp,"7,742","2,911",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,9,0,0
+Wellesley Tp,"7,913","2,530",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,8,0,0
+Wilmot Tp,"15,919","6,021",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,11,0,0
+Woolwich Tp,"17,384","5,490",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Oxford Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Woodstock C,"29,678","9,287",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,12,0,0
+Ingersoll T,"9,285","4,186",YES,YES,NO,NO,YES,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,2,0,0,0,13,0,0
+Tillsonburg T,"12,339","4,942",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,12,0,0
+Blandford - Blenheim Tp,"5,928","2,129",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,9,0,0
+East Zorra - Tavistock Tp,"5,201","2,137",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,6,0,0
+Norwich Tp,"7,711","2,930",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+South-West Oxford Tp,"5,367",892,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,9,0,0
+Zorra Tp,"6,174","2,702",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,6,0,0
+Brantford C,"66,619","24,477",YES,NO,NO,YES,YES,NO,NO,YES,NO,,YES,NO,NO,YES,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,7,0,0,0,0,34,0,0
+Brant County,"26,571","9,528",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,4,0,0,0,0,25,0,0
+Bruce Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+The South Bruce Peninsula T,"12,489","5,903",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,2,0,0,0,7,0,0
+Saugeen Shores T,"12,252","6,066",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,3,0,0,11,0,0
+Arran-Elderslie M,"5,139","2,737",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,8,0,0
+Brockton M,"7,712","3,781",YES,NO,YES,YES,NO,NO,YES,YES,NO,,YES,NO,YES,YES,NO,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,1,0,0,0,7,0,0
+Northern Bruce Peninsula M,"9,644","3,965",YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,9,0,0
+Huron-Kinloss Tp,"7,158","2,779",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,5,0,0
+Kincardine M,"9,961","3,923",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,12,0,0
+South Bruce M,"4,685","2,182",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,10,0,0
+Dufferin Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Orangeville T,"20,321","7,899",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,12,0,0
+Shelburne T,"4,876","1,876",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,2,0,0,0,9,0,0
+Mono T,"7,157","2,344",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,2,0,0,0,5,0,0
+Grand Valley T,"2,530",919,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,5,0,0
+Amaranth Tp,"3,385","1,360",YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper Ballots Manual Count,YES,NO,YES,YES,NO,NO,NO,NO,YES,Paper Ballots Manual Count,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,1,0,0,0,5,0,0
+East Garafraxa Tp,,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,3,0,0
+Melancthon Tp,"2,444",598,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,0,0,0,3,0,0
+Mulmur Tp,"3,565","1,517",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,4,0,0
+Elgin Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+St Thomas C,"28,423","10,259",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,19,0,0
+Aylmer T,"5,081","1,499",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,10,0,0
+Southwold Tp,"3,604","1,686",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,2,0,0,0,6,0,0
+Bayham M,"5,166","1,098",NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,4,0,0
+Central Elgin M,"10,717","4,334",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,3,0,0,0,10,0,0
+Dutton-Dunwich M,"3,402","1,486",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+Malahide Tp,"5,919","2,232",Yes,YES,NO,NO,YES,NO,NO,YES,NO,,YES,YES,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,9,0,0
+West Elgin M,"4,931","1,752",YES,NO,YES,YES,NO,NO,NO,YES,NO,,YES,NO,YES,YES,NO,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,1,0,0,0,8,0,0
+Essex Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Windsor C,"150,602","53,026",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,5,0,0,0,0,45,0,0
+LaSalle T,"23,342","9,832",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,1,0,0,0,9,0,0
+Amherstburg T,"17,324","7,403",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,4,0,0,0,14,0,0
+Essex T,"15,417","6,938",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,2,0,0,0,13,0,0
+Kingsville T,"15,118","7,074",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,No,No,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,15,0,0
+Lakeshore T,"27,356","11,522",YES,YES,NO,NO,YES,NO,NO,NO,YES,Canada Post strike required the municipality to hand deliver voting kits and create voting kit return centres for vote by mail voting kits.,YES,YES,NO,NO,YES,NO,NO,NO,YES,Canada Post strike required the municipality to hand deliver voting kits and create voting kit return centres for vote by mail voting kits.,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,21,0,0
+Leamington M,"16,607","7,281",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,14,0,0
+Tecumseh T,"18,779","7,029",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,3,0,0,0,8,0,0
+Pelee Tp,483,308,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,6,0,0
+Grey Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Owen Sound C,"15,257","6,762",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,14,0,0
+Hanover T,"5,411","2,632",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,11,0,0
+The Blue Mountains T,"12,066","4,785",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,3,0,0,0,10,0,0
+Meaford M,"10,309","4,515",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,2,0,0,0,11,0,0
+Chatsworth Tp,"6,101","2,202",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,1,0,0,0,5,0,0
+Southgate Tp,"5,852","1,834",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+Georgian Bluffs Tp,"10,051","3,736",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,1,0,0,0,14,0,0
+Grey Highlands M,"9,887","3,666",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,8,0,0
+West Grey M,"10,941","4,616",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,2,0,0,0,12,0,0
+Huron Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Goderich T,"6,343","3,905",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,3,0,0,0,6,0,0
+Bluewater M,"8,768","3,794",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,7,0,0
+South Huron M,"7,516","4,075",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,2,0,0,0,10,0,0
+Huron East M,"7,022","2,643",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,13,0,0
+Howick Tp,"2,995","1,153",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,3,3,7,0,0
+Central Huron M,"6,797","2,255",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,0,0,0,8,0,0
+Ashfield-Colborne-Wawanosh Tp,"5,786","2,095",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,1,8,0,0
+Morris-Turnberry M,"2,897","1,088",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+North Huron Tp,"3,852","1,948",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,2,0,14,0,0
+Chatham-Kent M,"76,418","34,722",YES,NO,NO,YES,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,6,0,0,0,0,45,0,0
+Lambton Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Sarnia C,"51,581","25,207",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,4,0,0,0,0,40,0,0
+Lambton Shores M,"11,532","4,997",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,18,0,0
+Petrolia T,"4,229","2,262",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,0,0,0,0,9,0,0
+Plympton-Wyoming T,"6,393","2,949",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,2,0,0,0,9,0,0
+Oil Springs V,561,0,YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Point Edward V,"1,604",853,YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,1,0,0,0,0,5,0,0
+Enniskillen Tp,"2,574",0,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,4,0,0
+Dawn-Euphemia Tp,"1,823",832,YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,7,0,0
+Warwick Tp,"2,717","1,271",Yes,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,5,0,0
+Brooke-Alvinston M,"2,055","1,229",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,0,0,0,0,9,0,0
+St Clair Tp,"11,704","5,668",YES,YES,NO,NO,YES,NO,NO,NO,NO,,YES,YES,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,4,2,0,0,0,8,0,0
+Middlesex Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+London C,"248,212","97,947",YES,YES,NO,NO,YES,YES,NO,YES,NO,,YES,YES,NO,NO,YES,YES,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,3,14,0,0,0,0,66,0,0
+Newbury V,371,20,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,1,0,4,0,0
+Middlesex Centre M,"12,338","5,226",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,2,0,0,0,10,0,0
+Lucan Biddulph Tp,"3,533","1,477",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,0,0,0,5,0,0
+Adelaide-Metcalfe Tp,"2,414","1,135",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,5,0,0
+North Middlesex M,"4,837","2,245",YES,NO,YES,YES,NO,NO,YES,YES,NO,,YES,NO,YES,YES,NO,NO,YES,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,3,0,0,0,10,0,0
+Southwest Middlesex M,"4,205","2,231",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,2,0,0,0,9,0,0
+Strathroy-Caradoc M,"16,242","6,141",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,2,0,0,0,14,0,0
+Thames Centre M,"9,979","4,702",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,2,0,0,0,5,0,0
+Perth Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Stratford C,"23,478","11,679",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,3,0,0,0,0,23,0,0
+St Marys ST,"5,771","2,079",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,0,0,0,0,11,0,0
+North Perth M,"9,687","2,987",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,1,0,0,0,10,0,0
+Perth East Tp,"8,495","3,531",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,3,3,0,0,0,10,0,0
+Perth South Tp,"3,079","1,265",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,7,0,0
+West Perth M,"6,772","2,327",YES,NO,YES,YES,NO,NO,NO,NO,NO,,YES,NO,YES,YES,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,1,2,0,0,0,14,0,0
+Wellington Co,,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,0,0,0,0,0,0,0,0
+Guelph C,"93,650","33,732",YES,NO,NO,NO,YES,NO,NO,YES,NO,,YES,NO,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,2,2,0,0,0,0,35,0,0
+Erin T,"8,685","3,208",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,3,0,0,0,0,10,0,0
+Minto T,"6,275","3,242",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,1,0,0,0,7,0,0
+Puslinch Tp,"5,741","2,147",YES,NO,NO,NO,YES,NO,NO,NO,NO,,YES,NO,NO,NO,YES,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,5,0,0
+Centre Wellington Tp,"20,266","8,533",YES,NO,YES,YES,NO,NO,YES,NO,NO,,YES,NO,YES,YES,NO,NO,YES,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,22,0,0
+Guelph-Eramosa Tp,"9,279","4,073",YES,YES,NO,NO,NO,NO,NO,NO,NO,,YES,YES,NO,NO,NO,NO,NO,NO,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,1,2,0,0,0,0,10,0,0
+Mapleton Tp,"6,762","2,074",YES,YES,NO,NO,YES,NO,NO,YES,NO,,YES,YES,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,4,0,0
+Wellington North Tp,"8,124","3,471",YES,YES,NO,NO,YES,NO,NO,YES,NO,,YES,YES,NO,NO,YES,NO,NO,YES,NO,,NO,NO,NO,,  ,  ,  ,  ,,  ,  ,  ,  ,0,2,0,0,0,0,4,0,0

@@ -13,6 +13,7 @@ const CONFIG: MunicipalityConfig = {
   initialView: { longitude: -78.959477, latitude: 43.942973, zoom: 11 },
   wardsApi: "/api/atlas/whitby-wards",
   addressesApi: "/api/atlas/whitby-addresses",
+  electionResultsApi: "/api/atlas/election-results?municipality=Whitby+T",
   features: {
     commercialFilter: true,
     canvassingModes: true,

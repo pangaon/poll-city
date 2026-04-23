@@ -57,6 +57,8 @@ import {
   AlertTriangle,
   Gauge,
   FileSearch,
+  Library,
+  Layers,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -143,10 +145,11 @@ const COMPLIANCE_SECTION: NavSection = {
   id: "compliance",
   label: "Compliance",
   items: [
-    { href: "/compliance",          icon: ScrollText,    label: "CASL Compliance",  isNew: true },
-    { href: "/reputation/alerts",   icon: AlertTriangle, label: "Rep: Alerts",      isNew: true },
-    { href: "/reputation/command",  icon: Gauge,         label: "Rep: Command",     isNew: true },
-    { href: "/reputation/pages",    icon: FileSearch,    label: "Rep: Monitored",   isNew: true },
+    { href: "/compliance",             icon: ScrollText,    label: "CASL Compliance",  isNew: true },
+    { href: "/reputation/alerts",      icon: AlertTriangle, label: "Rep: Alerts",      isNew: true },
+    { href: "/reputation/command",     icon: Gauge,         label: "Rep: Command",     isNew: true },
+    { href: "/reputation/sources",     icon: Library,       label: "Source Library",   isNew: true },
+    { href: "/reputation/pages",       icon: FileSearch,    label: "Rep: Monitored",   isNew: true },
   ],
 };
 
@@ -177,6 +180,7 @@ const POLLING_ATLAS_SECTION: NavSection = {
   label: "Polling Atlas",
   items: [
     { href: "/atlas/map",          icon: Map,           label: "Ontario Map",       isNew: true },
+    { href: "/atlas/layers",       icon: Layers,        label: "Map Layers",        isNew: true },
     { href: "/atlas/import",       icon: Compass,       label: "Atlas Command",     isNew: true },
     { href: "/atlas/boundaries",   icon: MapPinned,     label: "Boundary Manager",  isNew: true },
     { href: "/atlas/results",      icon: BarChart2,     label: "Historical Results", isNew: true },
@@ -266,6 +270,7 @@ export default function Sidebar() {
     if (isSuperAdmin) {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
       platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
+      platformItems.push({ href: "/ops/sources", icon: Library, label: "Source Library" });
       platformItems.push({ href: "/design-preview", icon: Smartphone, label: "Mobile Preview" });
     }
 

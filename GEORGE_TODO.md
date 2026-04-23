@@ -31,6 +31,18 @@ npx prisma db push
   npx prisma db push
   ```
 
+  **New models added in this session (Source Intelligence Hub):**
+  - `platform_sources` — Master source registry
+  - `source_endpoints` — Multiple endpoints per source
+  - `source_health_checks` — Validation + health tracking
+  - `campaign_source_activations` — Campaign subscriptions to sources
+  - `source_items` — Ingested content from sources
+  - `source_item_entities` — Entity detection results
+  - `source_packs` — Platform-managed source bundles
+  - `source_pack_items` — Sources within packs
+  - `campaign_pack_activations` — Campaign pack subscriptions
+  - `source_audit_logs` — Immutable audit trail
+
 - [ ] **4. 🗺️ Seed Ontario ward boundaries into DB — run AFTER item 3**
 
   After `npx prisma db push` completes, hit this URL in your browser (replace YOUR_CRON_SECRET with the value from `.env.local`):
@@ -70,6 +82,7 @@ npx prisma db push
   - **`qr_context_rules` table** — QrContextRule model (QR conditional routing rules)
   - **`funding_sources` + `funding_source_transactions` tables** — FundingSource + FundingSourceTransaction models (granular finance tracking)
   - **`vouchers` + `voucher_redemptions` tables** — Voucher + VoucherRedemption models (volunteer incentives system)
+  - **`polling_stations` table** — PollingStation model (campaign polling station overlay on atlas map — signs/polling toggle system)
 
   Steps:
   1. Open your terminal in the poll-city project folder
@@ -159,6 +172,20 @@ npx prisma db push
   Both are required. The public key is safe to expose (used by browsers). The private key must stay secret.
 
   **After adding:** Redeploy (Vercel will auto-deploy on next push, or hit Redeploy in dashboard).
+
+- [ ] **3g. 🗳️ Seed Ontario election results for Whitby (run once — no DB migration required)**
+
+  The election history toggle is live on `/whitby`. Seed results so the data shows:
+
+  ```bash
+  npx tsx scripts/seed-ontario-elections.ts --municipality "Whitby T"
+  ```
+
+  **What this populates:** 2014, 2018, 2022 election results for Whitby (Mayor + 6 councillors),
+  turnout %, total electors, total votes cast. Uses existing `ElectionResult` table — no schema
+  migration needed. Script is safe to re-run (deterministic upsert IDs).
+
+  **After seeding:** Go to `/whitby` → toggle "📊 Election History" in the header → data appears.
 
 - [ ] **3f. ⚠️ Seed Ontario ward boundaries into DB** (run ONCE after item 3 `npx prisma db push`)
 
