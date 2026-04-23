@@ -1,8 +1,32 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23
-**Updated by:** Claude Sonnet 4.6 — Tasks v2 complete: resolution loop, Adoni intelligence, Kanban board, Playbook templates, 15 new features. Build green, pushed.
+**Last updated:** 2026-04-23 (overnight session)
+**Updated by:** Claude Sonnet 4.6 — Adoni fully autonomous: volunteer tools, inline chips, voice input, file upload, Command Centre. Build green × 2, pushed × 2.
+
+---
+
+## ✅ ADONI OVERNIGHT BUILD (2026-04-23 overnight, 2 commits, all live)
+
+### What shipped — Adoni is now fully autonomous
+
+**Commit 1: feat(adoni): add volunteer tools, inline chips, file upload**
+- `create_volunteer` tool — adds single volunteer + VolunteerProfile, finds or creates Contact
+- `bulk_create_volunteers` tool — adds a list of volunteers in one call, no lecturing
+- `AdoniChip` component — navy/green pulse button wired to 5 pages: tasks, contacts, email, signs, volunteers
+- File upload in Adoni panel — paperclip button accepts CSV (auto-parses to volunteers) and text files
+- Build: green ✓ Pushed ✓
+
+**Commit 2: feat(adoni): voice input + ai-assist command centre**
+- Mic button on Adoni panel — Web Speech API (Chrome/Safari, zero API key), tap to start/stop dictation
+- `/ai-assist` transformed into Adoni Command Centre — uses `/api/adoni/chat` real streaming endpoint, shows Adoni face image, 5 category prompt banks, voice + file upload
+- Build: green ✓ Pushed ✓
+
+**The Adoni fix you saw:** Adoni was refusing to add volunteers because there was no `create_volunteer` tool — he literally couldn't do it. Now he can. Upload a CSV of 40 volunteers and they all get added in one shot.
+
+### George actions required
+- **`npx prisma db push`** still needed for `founder_wisdom` table + Tasks v2 schema (see item #78 in GEORGE_TODO.md)
+- No new schema changes in this overnight session
 
 ---
 
