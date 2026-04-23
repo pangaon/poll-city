@@ -61,6 +61,8 @@ export default function LoginPage() {
           router.push("/social/profile");
         } else if (role === "SUPER_ADMIN") {
           router.push("/ops");
+        } else if (role === "PRINT_VENDOR") {
+          router.push("/vendor/dashboard");
         } else {
           router.push("/dashboard");
         }

@@ -3,13 +3,14 @@
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Briefcase, FileText, LogOut, Printer } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, LogOut, Printer, UserCircle, CreditCard } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 const NAV = [
   { href: "/vendor/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/vendor/jobs", label: "Available Jobs", icon: Briefcase },
   { href: "/vendor/bids", label: "My Bids", icon: FileText },
+  { href: "/vendor/profile", label: "My Profile", icon: UserCircle },
 ];
 
 export default function VendorLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
   }
 
   if (!session || session.user?.role !== "PRINT_VENDOR") {
-    router.push("/login");
+    router.push("/vendor/login");
     return null;
   }
 
@@ -59,8 +60,15 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
         </nav>
         <div className="px-3 py-4 border-t border-white/10">
           <div className="px-3 py-2 text-xs text-white/50 truncate">{session.user?.email}</div>
+          <Link
+            href="/vendor/profile?tab=stripe"
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <CreditCard className="w-4 h-4" />
+            Stripe Setup
+          </Link>
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => signOut({ callbackUrl: "/vendor/login" })}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors"
           >
             <LogOut className="w-4 h-4" />

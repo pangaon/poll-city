@@ -51,11 +51,11 @@ export default function VendorJobDetailPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch(`/api/vendor/jobs?page=1`)
+    fetch(`/api/vendor/jobs/${id}`)
       .then((r) => r.json())
       .then((d) => {
-        const found = (d.data ?? []).find((j: Job) => j.id === id);
-        setJob(found ?? null);
+        const found: Job | null = d.data ?? null;
+        setJob(found);
         if (found) {
           // Default to in_production when job is awarded (not yet started)
           const effectiveStatus = found.status === "awarded" ? "in_production" : found.status;
