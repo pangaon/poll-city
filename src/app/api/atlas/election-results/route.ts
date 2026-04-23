@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db/prisma";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
+
+// Election dates for Ontario municipal elections
+const ELECTION_DATES: Record<string, string> = {
+  "2014": "2014-10-27",
+  "2018": "2018-10-22",
+  "2022": "2022-10-24",
+};
 
 interface Candidate {
   name: string;
@@ -31,88 +39,129 @@ interface YearData {
   races: Race[];
 }
 
+function parseCSV(content: string): Record<string, string>[] {
+  const lines = content.replace(/^﻿/, "").split("\n").filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map(line => {
+    // Simple CSV parse — handles basic quoting
+    const cols: string[] = [];
+    let cur = "";
+    let inQuote = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === "," && !inQuote) { cols.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = (cols[i] ?? "").replace(/^"|"$/g, ""); });
+    return row;
+  });
+}
+
+function readYear(year: string, municipality: string): { candidates: Record<string, string>[]; stats: Record<string, string> | null } {
+  const dir = path.join(process.cwd(), "data", "ontario-elections");
+
+  const candidateFile = path.join(dir, `${year}_candidates.csv`);
+  const municipalFile = path.join(dir, `${year}_municipal.csv`);
+
+  if (!fs.existsSync(candidateFile)) return { candidates: [], stats: null };
+
+  const muniLower = municipality.toLowerCase();
+
+  const allCandidates = parseCSV(fs.readFileSync(candidateFile, "utf8"));
+  const candidates = allCandidates.filter(r =>
+    (r["MUNICIPALITY"] ?? "").toLowerCase().includes(muniLower)
+  );
+
+  let stats: Record<string, string> | null = null;
+  if (fs.existsSync(municipalFile)) {
+    const allStats = parseCSV(fs.readFileSync(municipalFile, "utf8"));
+    stats = allStats.find(r =>
+      (r["MUNICIPALITY"] ?? "").toLowerCase().includes(muniLower)
+    ) ?? null;
+  }
+
+  return { candidates, stats };
+}
+
 export async function GET(req: NextRequest) {
   const municipality = req.nextUrl.searchParams.get("municipality");
   if (!municipality) {
     return NextResponse.json({ error: "municipality query param required" }, { status: 400 });
   }
 
-  const rows = await prisma.electionResult.findMany({
-    where: {
-      jurisdiction: { startsWith: `${municipality} |` },
-      electionType: "municipal",
-      province: "ON",
-    },
-    orderBy: [{ electionDate: "desc" }, { jurisdiction: "asc" }, { percentage: "desc" }],
-  });
-
-  // Group by year
-  const byYear = new Map<string, typeof rows>();
-  for (const r of rows) {
-    const y = r.electionDate.getFullYear().toString();
-    if (!byYear.has(y)) byYear.set(y, []);
-    byYear.get(y)!.push(r);
-  }
-
   const years: Record<string, YearData> = {};
 
-  for (const [year, yearRows] of Array.from(byYear.entries())) {
-    // Separate stats record from candidate records
-    const statsRow = yearRows.find(r => r.candidateName === "_STATS_");
-    const candidateRows = yearRows.filter(r => r.candidateName !== "_STATS_");
+  for (const year of ["2022", "2018", "2014"]) {
+    const { candidates, stats } = readYear(year, municipality);
+    if (candidates.length === 0) continue;
 
-    const electors = statsRow?.totalVotesCast ?? 0;
-    const voted = statsRow?.votesReceived ?? 0;
-    const turnoutPct = statsRow?.percentage ?? 0;
+    const electors = parseInt(stats?.["NUMBER_OF_ELECTORS"] ?? "0", 10);
+    const voted = parseInt(stats?.["NUMBER_OF_ELECTORS_WHO_VOTED"] ?? "0", 10);
+    const turnoutPct = electors > 0 ? Math.round((voted / electors) * 1000) / 10 : 0;
 
-    // Group candidates by office (everything after the | )
-    const byOffice = new Map<string, typeof candidateRows>();
-    for (const c of candidateRows) {
-      const office = c.jurisdiction.split(" | ").slice(1).join(" | ");
+    // Group by office
+    const byOffice = new Map<string, Record<string, string>[]>();
+    for (const c of candidates) {
+      const office = c["OFFICE_FILLED"] ?? "Unknown";
       if (!byOffice.has(office)) byOffice.set(office, []);
       byOffice.get(office)!.push(c);
     }
 
     const races: Race[] = [];
-    for (const [office, candidates] of Array.from(byOffice.entries())) {
-      const acclaimed = candidates.some(c => c.source?.includes("_acclaimed"));
-      const winner = candidates.find(c => c.won);
-      const sorted = [...candidates].sort((a, b) => b.votesReceived - a.votesReceived);
+    for (const [office, offCandidates] of Array.from(byOffice.entries())) {
+      const acclaimed = offCandidates.some(c => c["ELECTED_OR_ACCLAIMED"] === "Acclaimed");
+      const sorted = [...offCandidates].sort(
+        (a, b) => parseInt(b["VOTES_FOR_CANDIDATE"] ?? "0", 10) - parseInt(a["VOTES_FOR_CANDIDATE"] ?? "0", 10)
+      );
 
+      const totalVotes = parseInt(sorted[0]?.["VOTES_FOR_OFFICE"] ?? "0", 10);
       const top = sorted[0];
       const second = sorted[1];
-      const margin = top && second && top.votesReceived > 0 && second.votesReceived >= 0
-        ? Math.round((top.percentage - second.percentage) * 10) / 10
-        : null;
+      const topVotes = parseInt(top?.["VOTES_FOR_CANDIDATE"] ?? "0", 10);
+      const secondVotes = parseInt(second?.["VOTES_FOR_CANDIDATE"] ?? "0", 10);
+      const topPct = totalVotes > 0 ? Math.round((topVotes / totalVotes) * 1000) / 10 : 0;
+      const secondPct = totalVotes > 0 ? Math.round((secondVotes / totalVotes) * 1000) / 10 : 0;
+      const margin = second ? Math.round((topPct - secondPct) * 10) / 10 : null;
+
+      const winner = sorted.find(c => c["ELECTED_OR_ACCLAIMED"] === "Elected" || c["ELECTED_OR_ACCLAIMED"] === "Acclaimed");
 
       races.push({
         office,
-        candidates: sorted.map(c => ({
-          name: c.candidateName,
-          votes: c.votesReceived,
-          totalVotes: c.totalVotesCast,
-          pct: c.percentage,
-          won: c.won,
-          incumbent: c.partyName === "incumbent",
-          acclaimed: c.source?.includes("_acclaimed") ?? false,
-        })),
-        winner: winner?.candidateName ?? null,
-        winnerPct: winner?.percentage ?? null,
+        candidates: sorted.map(c => {
+          const votes = parseInt(c["VOTES_FOR_CANDIDATE"] ?? "0", 10);
+          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 1000) / 10 : 0;
+          return {
+            name: `${c["FIRST_NAME"] ?? ""} ${c["LAST_NAME"] ?? ""}`.trim(),
+            votes,
+            totalVotes,
+            pct,
+            won: c["ELECTED_OR_ACCLAIMED"] === "Elected" || c["ELECTED_OR_ACCLAIMED"] === "Acclaimed",
+            incumbent: c["OFFICE_INCUMBENT"] === "Yes",
+            acclaimed: c["ELECTED_OR_ACCLAIMED"] === "Acclaimed",
+          };
+        }),
+        winner: winner ? `${winner["FIRST_NAME"] ?? ""} ${winner["LAST_NAME"] ?? ""}`.trim() : null,
+        winnerPct: winner ? (totalVotes > 0 ? Math.round((parseInt(winner["VOTES_FOR_CANDIDATE"] ?? "0", 10) / totalVotes) * 1000) / 10 : 0) : null,
         margin,
         acclaimed,
-        totalVotes: candidates[0]?.totalVotesCast ?? 0,
+        totalVotes,
       });
     }
 
-    // Sort races: Mayor first, then alphabetically
+    // Sort: Mayor first, then alphabetical
     races.sort((a, b) => {
-      if (a.office.toLowerCase().includes("mayor") && !a.office.toLowerCase().includes("deputy")) return -1;
-      if (b.office.toLowerCase().includes("mayor") && !b.office.toLowerCase().includes("deputy")) return 1;
+      const aM = a.office.toLowerCase().includes("mayor") && !a.office.toLowerCase().includes("deputy");
+      const bM = b.office.toLowerCase().includes("mayor") && !b.office.toLowerCase().includes("deputy");
+      if (aM) return -1;
+      if (bM) return 1;
       return a.office.localeCompare(b.office);
     });
 
     years[year] = {
-      electionDate: `${year}-10-${year === "2022" ? "24" : year === "2018" ? "22" : "27"}`,
+      electionDate: ELECTION_DATES[year],
       electors,
       voted,
       turnoutPct,
@@ -120,13 +169,17 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  const sortedYears = Object.fromEntries(
-    Object.entries(years).sort(([a], [b]) => parseInt(b) - parseInt(a))
-  );
+  const availableYears = Object.keys(years).sort((a, b) => parseInt(b) - parseInt(a));
 
-  return NextResponse.json({
-    municipality,
-    availableYears: Object.keys(sortedYears).sort((a, b) => parseInt(b) - parseInt(a)),
-    years: sortedYears,
-  });
+  if (availableYears.length === 0) {
+    return NextResponse.json(
+      { error: `No election data found for "${municipality}". Check that the municipality name matches Ontario open data spelling.` },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json(
+    { municipality, availableYears, years },
+    { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } },
+  );
 }
