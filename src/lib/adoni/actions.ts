@@ -492,6 +492,88 @@ export const ADONI_TOOLS = [
       required: [] as string[],
     },
   },
+  {
+    name: "create_contact",
+    description:
+      "Add a new contact to the campaign CRM. Use when someone says 'add Maria Chen at 44 Elm St' or 'create a contact for John Smith'. Can set support level, phone, email, address, ward.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        firstName: { type: "string" as const, description: "First name" },
+        lastName: { type: "string" as const, description: "Last name" },
+        phone: { type: "string" as const, description: "Phone number" },
+        email: { type: "string" as const, description: "Email address" },
+        address1: { type: "string" as const, description: "Street address" },
+        city: { type: "string" as const, description: "City" },
+        ward: { type: "string" as const, description: "Ward name or number" },
+        supportLevel: { type: "string" as const, description: "strong_support, leaning_support, undecided, leaning_opposition, strong_opposition, or unknown" },
+        notes: { type: "string" as const, description: "Any notes about the contact" },
+        volunteerInterest: { type: "boolean" as const, description: "Are they interested in volunteering?" },
+      },
+      required: ["firstName", "lastName"],
+    },
+  },
+  {
+    name: "update_contact_details",
+    description:
+      "Update a contact's information — phone, email, address, ward, notes. Use when someone says 'update Maria's phone number' or 'add email for John at 44 Elm'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, phone, or address to find the contact" },
+        phone: { type: "string" as const, description: "New phone number" },
+        email: { type: "string" as const, description: "New email address" },
+        address1: { type: "string" as const, description: "New street address" },
+        city: { type: "string" as const, description: "New city" },
+        ward: { type: "string" as const, description: "New ward" },
+        notes: { type: "string" as const, description: "New or appended notes" },
+        doNotContact: { type: "boolean" as const, description: "Mark or unmark as do not contact" },
+      },
+      required: ["contactQuery"],
+    },
+  },
+  {
+    name: "create_qr_codes",
+    description:
+      "Create one or more QR codes for the campaign. Use when someone says 'create 15 QR codes for the Ward 5 canvass' or 'make a QR code for the donation page'. Can set type, funnel, placement, and labels.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        count: { type: "number" as const, description: "How many QR codes to create (default 1, max 30)" },
+        labelPrefix: { type: "string" as const, description: "Label prefix — each code gets prefix + number, e.g. 'Ward5' → 'Ward5-001'" },
+        labels: { type: "string" as const, description: "Comma-separated specific labels (overrides labelPrefix when provided)" },
+        type: { type: "string" as const, description: "QR type: campaign, lawn_sign, flyer_print, event, event_booth, smart_dynamic, volunteer_capture, issue_petition — default: campaign" },
+        funnelType: { type: "string" as const, description: "Funnel goal: supporter_capture, volunteer_signup, sign_request, event_rsvp, donation, general_engagement, survey — default: general_engagement" },
+        placementType: { type: "string" as const, description: "Where it will be placed: lawn_sign, flyer, door_hanger, event_booth, print_material, public_handout, other" },
+        locationName: { type: "string" as const, description: "Location name (e.g. 'Ward 5 Office')" },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_qr_stats",
+    description:
+      "Get QR code scan analytics: total codes, total scans, top performing codes, recent activity. Use when someone asks 'how are my QR codes doing' or 'do I have any QR code scans'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        since: { type: "string" as const, description: "ISO date to filter from (optional)" },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "mark_voted",
+    description:
+      "Mark a contact as having voted on election day. Use when someone says 'John Smith voted' or 'strike off Maria at 44 Elm'. Critical GOTV action.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, phone, or address to find the contact" },
+      },
+      required: ["contactQuery"],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -533,6 +615,11 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   get_field_summary: "canvassing:read",
   get_shift_status: "canvassing:read",
   get_lit_drop_progress: "canvassing:read",
+  create_contact: "contacts:write",
+  update_contact_details: "contacts:write",
+  create_qr_codes: "qr:write",
+  get_qr_stats: "qr:read",
+  mark_voted: "gotv:write",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -650,6 +737,16 @@ export async function executeAction(
         return await getShiftStatus(input, ctx);
       case "get_lit_drop_progress":
         return await getLitDropProgress(ctx);
+      case "create_contact":
+        return await createContact(input, ctx);
+      case "update_contact_details":
+        return await updateContactDetails(input, ctx);
+      case "create_qr_codes":
+        return await createQrCodes(input, ctx);
+      case "get_qr_stats":
+        return await getQrStats(input, ctx);
+      case "mark_voted":
+        return await markVoted(input, ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -2200,5 +2297,212 @@ async function getLitDropProgress(ctx: ActionContext): Promise<ActionResult> {
     success: true,
     message: `Lit drop progress: ${total} total run${total !== 1 ? "s" : ""} (${active} active, ${completed} completed). ${totalDeliveries.toLocaleString()} stops recorded. ${missed} building${missed !== 1 ? "s" : ""} flagged as inaccessible still need a retry.`,
     data: { total, active, completed, totalDeliveries, missedBuildings: missed },
+  };
+}
+
+async function createContact(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const contact = await prisma.contact.create({
+    data: {
+      campaignId: ctx.campaignId,
+      firstName: String(input.firstName),
+      lastName: String(input.lastName),
+      phone: input.phone ? String(input.phone) : null,
+      email: input.email ? String(input.email) : null,
+      address1: input.address1 ? String(input.address1) : null,
+      city: input.city ? String(input.city) : null,
+      ward: input.ward ? String(input.ward) : null,
+      supportLevel: (input.supportLevel as never) ?? "unknown",
+      notes: input.notes ? String(input.notes) : null,
+      volunteerInterest: Boolean(input.volunteerInterest ?? false),
+    },
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "contact_created_by_adoni",
+      entityType: "contact",
+      entityId: contact.id,
+      details: { name: `${contact.firstName} ${contact.lastName}` },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Contact created: ${contact.firstName} ${contact.lastName}.${input.phone ? ` Phone: ${input.phone}.` : ""}${input.ward ? ` Ward: ${input.ward}.` : ""}`,
+    data: { contactId: contact.id },
+  };
+}
+
+async function updateContactDetails(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true, notes: true },
+  });
+
+  if (!contact) return { success: false, message: `No contact found matching "${query}".` };
+
+  const updates: Record<string, unknown> = {};
+  if (input.phone !== undefined) updates.phone = String(input.phone);
+  if (input.email !== undefined) updates.email = String(input.email);
+  if (input.address1 !== undefined) updates.address1 = String(input.address1);
+  if (input.city !== undefined) updates.city = String(input.city);
+  if (input.ward !== undefined) updates.ward = String(input.ward);
+  if (input.doNotContact !== undefined) updates.doNotContact = Boolean(input.doNotContact);
+  if (input.notes !== undefined) {
+    // Append to existing notes rather than overwrite
+    updates.notes = contact.notes ? `${contact.notes}\n\n${input.notes}` : String(input.notes);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { success: false, message: "No fields to update were provided." };
+  }
+
+  await prisma.contact.update({ where: { id: contact.id }, data: updates as never });
+
+  const changed = Object.keys(updates).join(", ");
+  return {
+    success: true,
+    message: `Updated ${contact.firstName} ${contact.lastName}: ${changed}.`,
+    data: { contactId: contact.id },
+  };
+}
+
+async function createQrCodes(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const { generateQrSlug } = await import("@/lib/qr/generate");
+  const { Prisma } = await import("@prisma/client");
+
+  const count = Math.min(Number(input.count ?? 1), 30);
+  const labelPrefix = input.labelPrefix ? String(input.labelPrefix) : null;
+  const specificLabels = input.labels
+    ? String(input.labels).split(",").map((l) => l.trim()).filter(Boolean)
+    : null;
+  const qrType = (input.type as string | undefined) ?? "campaign";
+  const funnelType = (input.funnelType as string | undefined) ?? "general_engagement";
+  const placementType = (input.placementType as string | undefined) ?? null;
+  const locationName = input.locationName ? String(input.locationName) : null;
+
+  const created = await Promise.all(
+    Array.from({ length: count }, async (_, i) => {
+      const idx = String(i + 1).padStart(3, "0");
+      const label = specificLabels?.[i] ?? (labelPrefix ? `${labelPrefix}-${idx}` : null);
+      const slug = await generateQrSlug(labelPrefix ?? undefined);
+      return prisma.qrCode.create({
+        data: {
+          campaignId: ctx.campaignId,
+          type: qrType as never,
+          funnelType: funnelType as never,
+          placementType: placementType as never,
+          label: label ?? undefined,
+          locationName: locationName ?? undefined,
+          landingConfig: Prisma.JsonNull,
+          slug,
+          createdById: ctx.userId,
+        },
+        select: { id: true, token: true, label: true, slug: true },
+      });
+    }),
+  );
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "qr_codes_created_by_adoni",
+      entityType: "qrCode",
+      entityId: created[0]?.id ?? "",
+      details: { count, labelPrefix: labelPrefix ?? "", qrType },
+    },
+  }).catch(() => {});
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "";
+  const sample = created.slice(0, 3).map((q) => q.label ?? q.slug).join(", ");
+  return {
+    success: true,
+    message: `Created ${created.length} QR code${created.length !== 1 ? "s" : ""}${labelPrefix ? ` (${labelPrefix}-001 through ${labelPrefix}-${String(count).padStart(3, "0")})` : ""}. Go to /qr to download them. ${created.length > 3 ? `First 3: ${sample}...` : `Labels: ${sample}.`}`,
+    data: { count: created.length, ids: created.map((q) => q.id), baseUrl },
+  };
+}
+
+async function getQrStats(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const since = input.since ? new Date(String(input.since)) : null;
+  const scanWhere = since ? { createdAt: { gte: since } } : {};
+
+  const [totalCodes, activeCodes, totalScans, topCodes] = await Promise.all([
+    prisma.qrCode.count({ where: { campaignId: ctx.campaignId } }),
+    prisma.qrCode.count({ where: { campaignId: ctx.campaignId, status: "active" as never } }),
+    prisma.qrScan.count({ where: { qrCode: { campaignId: ctx.campaignId }, ...scanWhere } }),
+    prisma.qrCode.findMany({
+      where: { campaignId: ctx.campaignId, scanCount: { gt: 0 } },
+      orderBy: { scanCount: "desc" },
+      take: 5,
+      select: { label: true, slug: true, scanCount: true, type: true },
+    }),
+  ]);
+
+  if (totalCodes === 0) {
+    return { success: true, message: "No QR codes created yet for this campaign." };
+  }
+
+  const topList = topCodes.length > 0
+    ? topCodes.map((q) => `${q.label ?? q.slug} (${q.scanCount} scans)`).join(", ")
+    : "none scanned yet";
+
+  return {
+    success: true,
+    message: `${totalCodes} QR codes (${activeCodes} active), ${totalScans.toLocaleString()} total scans${since ? ` since ${since.toLocaleDateString("en-CA")}` : ""}. Top performers: ${topList}.`,
+    data: { totalCodes, activeCodes, totalScans, topCodes },
+  };
+}
+
+async function markVoted(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true, voted: true },
+  });
+
+  if (!contact) return { success: false, message: `No contact found matching "${query}".` };
+  if (contact.voted) return { success: true, message: `${contact.firstName} ${contact.lastName} is already marked as voted.` };
+
+  await prisma.contact.update({
+    where: { id: contact.id },
+    data: { voted: true, gotvStatus: "voted" as never },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "contact_marked_voted_by_adoni",
+      entityType: "contact",
+      entityId: contact.id,
+      details: { name: `${contact.firstName} ${contact.lastName}` },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Struck off: ${contact.firstName} ${contact.lastName} marked as voted.`,
+    data: { contactId: contact.id },
   };
 }
