@@ -1,12 +1,36 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23 (morning session — session close)
-**Updated by:** Claude Sonnet 4.6 — Atlas Phase 3, canvassing scripts overhaul, forms analytics, demo date fix, NEW badges. Build green × 3, pushed × 3. Session closed cleanly.
+**Last updated:** 2026-04-23 (afternoon session — session close)
+**Updated by:** Claude Sonnet 4.6 — Adoni daily cap, comms fatigue guard, print shop filters + quote modal, weather widget, user guide articles. Build green, pushed. Session closed cleanly.
 
 ---
 
-## ✅ THIS SESSION (2026-04-23 morning, 5 commits, all live on origin/main)
+## ✅ THIS SESSION (2026-04-23 afternoon, commit 79102ea, all live on origin/main)
+
+### What shipped
+
+**commit 79102ea — Adoni cap + fatigue guard + print shops + weather**
+- `src/lib/rate-limit-redis.ts` — `adoni_daily` limiter added (100/24h on top of existing 50/hr)
+- `src/app/api/adoni/chat/route.ts` — daily cap enforced; `max_tokens` cut 2000→1200 (~40% cheaper per call)
+- `src/app/api/communications/email/route.ts` — 24h fatigue guard: skips contacts with `lastContactedAt >= now-24h`; updates `lastContactedAt` for every sent recipient; returns `fatigueSuppressed` count
+- `src/app/api/communications/sms/route.ts` — same fatigue guard wired (SMS already updated `lastContactedAt`; now also checks before send)
+- `src/app/api/print/shops/route.ts` — `province` filter param added
+- `src/app/(app)/print/shops/shops-client.tsx` — province + specialty filter dropdowns; Quote Request modal (pre-filled mailto)
+- `src/components/weather/weather-widget.tsx` — new component: browser geolocation + Open-Meteo free API, current conditions, 3-day forecast, canvassing-readiness badge
+- `src/app/(app)/field-ops/field-ops-client.tsx` — WeatherWidget dynamically imported and rendered above pipeline grid on Dashboard tab
+- `src/app/(app)/help/help-data.ts` — 4 new user guide articles added (weather for canvassing, fatigue guard, finding a print shop, Adoni guide)
+- Build: green ✓ Pushed ✓
+
+### George actions required
+None new from this session. All prior `npx prisma db push` requirements still outstanding — see GEORGE_TODO.md.
+
+### Next session opener
+Remaining PENDING items in WORK_QUEUE are largely P2/P3 (volunteer reimbursement → payment, comms Phase 8 social publishing, calendar OAuth). The platform is coherent and demo-ready. Next session can either polish for the Maleeha/Whitby mayor demo or tackle comms Phase 8.
+
+---
+
+## ✅ PRIOR SESSION (2026-04-23 morning, 5 commits, all live on origin/main)
 
 ### What shipped
 
