@@ -31,7 +31,7 @@ npx prisma db push
   npx prisma db push
   ```
 
-  **New models added (Source Intelligence Hub + Adoni Training):**
+  **New models/fields added:**
   - `platform_sources` — Master source registry
   - `source_endpoints` — Multiple endpoints per source
   - `source_health_checks` — Validation + health tracking
@@ -43,6 +43,7 @@ npx prisma db push
   - `campaign_pack_activations` — Campaign pack subscriptions
   - `source_audit_logs` — Immutable audit trail
   - `founder_wisdom` — George's campaign knowledge base for Adoni training (new — needed for /ops/adoni)
+  - `branchLogic Json?` on `canvassing_scripts` — needed for script branching editor (save button will 500 until migrated)
 
 - [ ] **4. 🗺️ Seed Ontario ward boundaries into DB — run AFTER item 3**
 

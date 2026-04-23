@@ -148,9 +148,9 @@ This is the business model. Every gap below undermines the conversion funnel.
 | Marketing nav overlap | DONE — commit 4020505 | Election countdown bar and navbar were stacked on top of each other. Wrapped in sticky container — both now visible. |
 | SUPER_ADMIN → /ops routing | DONE — commits b1c8131, 45bdcdc | George lands on /ops on login. Redirected from /dashboard if no activeCampaignId. Null guards added. |
 | Founder campaign view UX | DONE — commits 71a98f5, 1b1e6ce | "Enter Campaign View" in Ops→Clients. Navy banner shows campaign name when inside client view. "Exit to Founder View" clears activeCampaignId and returns to /ops. |
-| Canvassing script branching | PENDING | View static scripts | Conditional logic: if voter says X, go to branch Y |
+| Canvassing script branching | DONE — commit 7fe5cf1 | Full branch editor: edit mode (add/wire nodes + responses), interactive preview mode (step-through with back/restart), save per-script to DB. George must run `npx prisma db push` to activate branchLogic column. |
 | `/print/shops` — vendor depth | PENDING | Browse shops, search | Distance filter, capacity/turnaround display, direct quote button |
-| `/forms/[id]/results` — analytics | PENDING | See raw submission table | Aggregated charts per field (bar/pie/average), CSV export |
+| `/forms/[id]/results` — analytics | DONE — commit 7fe5cf1 | Charts tab: bar chart per field (option fields), trend line, answer rate per field, 4 stat cards. Responses tab: paginated table (50/page). CSV export always visible. |
 | Social feed | DONE — commit 0e5ff04 + this session | Discover officials, vote on polls | Phase 1 live. Desktop 3-column shell: PCSHeader, PCSLeftSidebar, PCSRightRail. Blank page fixed (nested html/body). PCS Feed tab in campaign social manager. 5 recent 2026 seed posts added. George must run seed script. |
 | Politician profile — full councillor-website standard | DONE — commit 19a595f | Full profile: events, promises tracker, newsletter subscribe, share button, claim CTA, approval rating fix, ward info, campaign site link | — |
 | Weather integration | PENDING | None | Simple weather API for canvassing day planning |
