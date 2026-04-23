@@ -97,6 +97,7 @@ const FIELD_SECTION: NavSection = {
   label: "Field",
   items: [
     { href: "/field-ops",              icon: ClipboardList, label: "Field Ops",          isNew: true },
+    { href: "/field-ops/scripts",      icon: ScrollText,    label: "Scripts",            isNew: true },
     { href: "/gotv",                   icon: Target,        label: "GOTV"              },
     { href: "/eday",                   icon: Vote,          label: "Election Day"      },
     { href: "/eday/capture",           icon: Radio,         label: "Quick Capture",    isNew: true },
@@ -118,7 +119,7 @@ const OUTREACH_SECTION: NavSection = {
     { href: "/communications/qa", icon: MessageSquare, label: "PCS Social Hub",   isNew: true },
     { href: "/calendar",          icon: Calendar,      label: "Calendar"         },
     { href: "/polls",             icon: BarChart3,     label: "Polls"            },
-    { href: "/forms",             icon: FileText,      label: "Forms"            },
+    { href: "/forms",             icon: FileText,      label: "Forms",            isNew: true },
     { href: "/notifications",     icon: Bell,          label: "Voter Outreach"   },
   ],
 };
