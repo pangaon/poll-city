@@ -992,24 +992,9 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 - [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB
 - [ ] **78. Run `npx prisma db push`** — Tasks v2 schema: adds `TaskCategory` enum, `TaskResolutionType` enum, and 6 new fields on the `tasks` table (`category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`). Zero risk — purely additive. Until this runs, the Tasks page will 500 on load. Run from the repo root: `npx prisma db push`
 
-- [ ] **78b. ⚠️ CRITICAL — Run `npx prisma db push` for Vendor Ecosystem Layer 1**
+- [x] **78b. ✅ DONE 2026-04-24 — `npx prisma db push` for Vendor Ecosystem Layer 1 — COMPLETE**
 
-  The unified vendor foundation has been added to the schema. Until this runs, ALL vendor registrations at `/vendor/signup` will 500 because the `vendors` table doesn't exist yet.
-
-  ```bash
-  npx prisma db push
-  ```
-
-  **What it adds:**
-  - `VENDOR` value in `Role` enum — new role for all non-print vendors
-  - `VendorCategory` enum — 23 categories (print_shop, sign_crew, video_production, photography, graphic_design, digital_advertising, phone_banking, canvassing_crew, campaign_manager, financial_agent, accountant, election_lawyer, polling_firm, opposition_research, event_planning, translation_services, speaking_coach, media_trainer, mail_house, merchandise, data_analytics, website_tech, other)
-  - `vendors` table — Layer 1 universal vendor record (all vendor types)
-  - `vendorId` column on `print_shops` — links print shops to their Layer 1 Vendor record
-
-  **After running:**
-  - New vendor registrations at `/vendor/signup` will work for ALL 23 categories
-  - Existing PRINT_VENDOR accounts continue working unchanged
-  - `/ops/vendors` will show all vendor types (not just print shops)
+  `vendors` table live in production. All 23 vendor categories operational. Google OAuth published.
 
 ---
 

@@ -1,12 +1,35 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23 (session close — mobile-pcs PCS app code audit + Expo connectivity)
-**Updated by:** Claude Sonnet 4.6 — Poll City Social Expo app audited and fixed. Nothing is live. App has never loaded in Expo Go. Blocked on network connectivity between dev machine and phone.
+**Last updated:** 2026-04-24 (session close — Vendor Ecosystem Layer 1 + Google OAuth fully live)
+**Updated by:** Claude Sonnet 4.6 — Unified vendor system shipped. 23 categories. Email + Google signup. DB live. Google OAuth published.
 
 ---
 
-## ✅ THIS SESSION (2026-04-23 — mobile-pcs PCS app audit)
+## ✅ THIS SESSION (2026-04-24 — Vendor Ecosystem Layer 1 complete)
+
+### What shipped
+- **`vendors` table** — created in production via `npx prisma db push` ✓
+- **Google OAuth** — `GOOGLE_CLIENT_ID` added to Vercel, published to production in Google Cloud Console ✓
+- **`/vendor/signup`** — multi-step wizard, 23 categories, email + Google OAuth flows ✓
+- **`/vendor/login`** — Google sign-in button added, accepts VENDOR + PRINT_VENDOR ✓
+- **`/vendor/dashboard`** — accepts VENDOR role; shows categories, profile-live card, non-print "coming soon" card, print stats for print vendors ✓
+- **`/api/vendor/signup`** — creates Vendor (Layer 1) + optional PrintShop (Layer 2) in one transaction ✓
+- **`/api/vendor/google-signup`** — NEW endpoint: upgrades VOLUNTEER → VENDOR after Google OAuth ✓
+- **`/api/ops/vendors`** — queries both Vendor table and legacy PrintShops, normalises to one shape ✓
+- **`/ops/vendors` UI** — 23-category color-coded badges, legacy flag for old print shops ✓
+- **Select All** on print specialties step ✓
+- **Email-exists error** routed back to account step correctly ✓
+
+### George action required
+None. Everything is live.
+
+### Next session opener (paste verbatim)
+> Vendor Ecosystem Layer 1 is fully live as of 2026-04-24. `vendors` table in production, Google OAuth published, email + Google signup flows working, dashboard accepts VENDOR role. Next: build the vendor public profile page at `/vendors/[id]` so campaigns can discover and contact vendors from the campaign app. Also: `/vendor/profile` edit page so vendors can update their info after signup. Check WORK_QUEUE.md for current task status before starting.
+
+---
+
+## ✅ PREV SESSION (2026-04-23 — mobile-pcs PCS app code audit + Expo connectivity)
 
 ### What changed (mobile-pcs/ only — no web changes)
 - `package.json` — fixed: `babel-preset-expo` corrected to `~54.0.10` (SDK-matched version), removed duplicate entry from dependencies

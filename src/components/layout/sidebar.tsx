@@ -58,6 +58,7 @@ import {
   FileSearch,
   Library,
   Layers,
+  Store,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -168,6 +169,7 @@ const PLATFORM_SECTION: NavSection = {
   id: "platform",
   label: "Platform",
   items: [
+    { href: "/vendors",       icon: Store,      label: "Vendor Network",  isNew: true },
     { href: "/print",         icon: Printer,    label: "Print"           },
     { href: "/import-export", icon: ArrowUpDown, label: "Import / Export" },
     { href: "/billing",       icon: Receipt,    label: "Billing"         },
