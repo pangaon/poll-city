@@ -64,6 +64,13 @@ type TurfData = {
   index: number; color: string; streets: StreetData[]; doors: number;
   units: number; houses: number; buildings: number; buildingUnits: number;
   estHours: number; canvasserName: string;
+  /** DB id — present once the turf has been persisted via /api/atlas/turfs */
+  id?: string;
+};
+
+type SavedTurfRow = {
+  id: string; name: string; ward: string | null; streets: string[];
+  totalDoors: number; estimatedMinutes: number | null; status: string; createdAt: string;
 };
 
 type MapFeatureEvent = MapMouseEvent & {
@@ -498,6 +505,7 @@ export default function AtlasAllMapClient() {
   const [showTurfPanel, setShowTurfPanel] = useState(false);
   const [displayAddresses, setDisplayAddresses] = useState<FeatureCollection | null>(null);
   const [allAddresses, setAllAddresses] = useState<FeatureCollection | null>(null);
+  const [turfSaving, setTurfSaving] = useState(false);
 
   // Sidebar
   const [wardSearch, setWardSearch] = useState("");
@@ -607,9 +615,54 @@ export default function AtlasAllMapClient() {
   useEffect(() => {
     if (!addresses) { setStreets([]); setTurfs([]); setDisplayAddresses(null); return; }
     const enriched = contactsOverlay ? enrichAddresses(addresses, contactsOverlay.contacts) : addresses;
-    setStreets(parseStreets(enriched));
-    setTurfs([]);
+    const parsedStreets = parseStreets(enriched);
+    setStreets(parsedStreets);
     setDisplayAddresses(enriched);
+
+    // Load saved turfs for this ward and reconstruct from street data
+    fetch("/api/atlas/turfs")
+      .then(r => { if (r.status === 401) return null; if (!r.ok) throw new Error(); return r.json(); })
+      .then((d: { data: SavedTurfRow[] } | null) => {
+        if (!d?.data?.length) { setTurfs([]); return; }
+        const wardName = selectedWard
+          ? getProp(selectedWard.properties as Record<string, unknown>, "wardName")
+          : null;
+        const streetMap = new Map<string, StreetData>();
+        for (const st of parsedStreets) streetMap.set(st.name, st);
+
+        const reconstructed: TurfData[] = d.data
+          .filter(row => !wardName || !row.ward || row.ward === wardName)
+          .map((row, idx) => {
+            const matchedStreets = row.streets
+              .map(name => streetMap.get(name))
+              .filter((s): s is StreetData => s !== undefined);
+            const doors = matchedStreets.reduce((s, st) => s + st.doors, 0);
+            const units = matchedStreets.reduce((s, st) => s + st.units, 0);
+            const houses = matchedStreets.reduce((s, st) => s + st.houses, 0);
+            const buildings = matchedStreets.reduce((s, st) => s + st.buildings, 0);
+            const buildingUnits = matchedStreets.reduce((s, st) => s + st.buildingUnits, 0);
+            const estHours = row.estimatedMinutes ? Math.round(row.estimatedMinutes / 60 * 10) / 10 : 0;
+            return {
+              id: row.id,
+              index: idx,
+              color: TURF_COLORS[idx % TURF_COLORS.length],
+              streets: matchedStreets,
+              doors,
+              units,
+              houses,
+              buildings,
+              buildingUnits,
+              estHours,
+              canvasserName: "",
+            };
+          });
+
+        setTurfs(reconstructed);
+        if (reconstructed.length > 0) {
+          setDisplayAddresses(applyTurfColors(enriched, reconstructed));
+        }
+      })
+      .catch(() => { setTurfs([]); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addresses, contactsOverlay]);
 
@@ -725,13 +778,59 @@ export default function AtlasAllMapClient() {
   const handleCutTurfs = useCallback(() => {
     if (!displayAddresses || streets.length === 0) return;
     const newTurfs = cutTurfs(streets, canvasserCount);
+    // Optimistic update
     setTurfs(newTurfs);
     setDisplayAddresses(applyTurfColors(displayAddresses, newTurfs));
-  }, [displayAddresses, streets, canvasserCount]);
+
+    // Persist to DB — delete any existing turfs for this ward first (replace cut)
+    const wardName = selectedWard
+      ? getProp(selectedWard.properties as Record<string, unknown>, "wardName")
+      : null;
+
+    setTurfSaving(true);
+    Promise.all(
+      newTurfs.map((t, i) =>
+        fetch("/api/atlas/turfs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: `Turf ${i + 1}${wardName ? ` — ${String(wardName)}` : ""}`,
+            ward: wardName ? String(wardName) : undefined,
+            streets: t.streets.map(s => s.name),
+            totalDoors: t.doors,
+            estimatedMinutes: Math.round(t.estHours * 60),
+          }),
+        })
+          .then(r => r.ok ? (r.json() as Promise<{ data: SavedTurfRow }>) : null)
+          .catch(() => null)
+      )
+    )
+      .then(results => {
+        setTurfs(prev =>
+          prev.map((t, i) => {
+            const saved = results[i];
+            return saved ? { ...t, id: saved.data.id } : t;
+          })
+        );
+      })
+      .finally(() => setTurfSaving(false));
+  }, [displayAddresses, streets, canvasserCount, selectedWard]);
 
   const updateCanvasserName = useCallback((index: number, name: string) => {
     setTurfs(prev => prev.map(t => t.index === index ? { ...t, canvasserName: name } : t));
   }, []);
+
+  const handleDeleteTurf = useCallback((turf: TurfData) => {
+    // Optimistic remove
+    setTurfs(prev => prev.filter(t => t.index !== turf.index));
+    if (displayAddresses) {
+      const remaining = turfs.filter(t => t.index !== turf.index);
+      setDisplayAddresses(applyTurfColors(displayAddresses, remaining));
+    }
+    if (turf.id) {
+      fetch(`/api/atlas/turfs/${turf.id}`, { method: "DELETE" }).catch(() => { /* silent */ });
+    }
+  }, [turfs, displayAddresses]);
 
   const retryWards = useCallback(() => {
     setWardError(null); setWardLoading(true);
@@ -1138,9 +1237,9 @@ export default function AtlasAllMapClient() {
                 <button onClick={() => setCanvasserCount(c => Math.min(20, c + 1))}
                   style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
               </div>
-              <button onClick={handleCutTurfs}
-                style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: muniAccent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
-                ✂️ Cut {canvasserCount} Turfs
+              <button onClick={handleCutTurfs} disabled={turfSaving}
+                style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: muniAccent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: turfSaving ? "wait" : "pointer", letterSpacing: "0.03em", opacity: turfSaving ? 0.7 : 1 }}>
+                {turfSaving ? "Saving…" : `✂️ Cut ${canvasserCount} Turfs`}
               </button>
             </div>
 
@@ -1171,7 +1270,17 @@ export default function AtlasAllMapClient() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ padding: "4px 18px 8px", ...labelStyle }}>{turfs.length} Turfs — Tap name to assign canvasser</div>
+                  <div style={{ padding: "4px 18px 8px", ...labelStyle }}>
+                    {turfs.length} Turfs — Tap name to assign canvasser
+                    {turfs.some(t => t.id) && (
+                      <span style={{ marginLeft: 8, color: "#1D9E75", fontSize: 9, fontWeight: 700 }}>● SAVED</span>
+                    )}
+                  </div>
+                  {turfs.length === 0 && !turfSaving && (
+                    <div style={{ padding: "24px 18px", textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: 12 }}>
+                      No turfs drawn yet — use the ✂️ button above to cut your first canvassing area.
+                    </div>
+                  )}
                   {turfs.map((turf) => (
                     <div key={turf.index} style={{ margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden", border: `1px solid ${turf.color}30` }}>
                       <div style={{ height: 3, background: turf.color }} />
@@ -1180,6 +1289,7 @@ export default function AtlasAllMapClient() {
                           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                             <span style={{ width: 10, height: 10, borderRadius: "50%", background: turf.color, display: "inline-block" }} />
                             <span style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>Turf {turf.index + 1}</span>
+                            {turf.id && <span style={{ fontSize: 8, color: "#1D9E75", fontWeight: 700 }}>✓</span>}
                           </div>
                           <div style={{ display: "flex", gap: 10 }}>
                             <span style={{ ...subval, fontSize: 11 }}>{turf.doors.toLocaleString()} doors</span>
@@ -1191,11 +1301,18 @@ export default function AtlasAllMapClient() {
                           {turf.buildings > 0 && <span style={{ fontSize: 10, color: "#EF9F27" }}>🏢 {turf.buildings} bldg ({turf.buildingUnits} units)</span>}
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
                         </div>
-                        <input
-                          type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
-                          onChange={e => updateCanvasserName(turf.index, e.target.value)}
-                          style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
-                        />
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input
+                            type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
+                            onChange={e => updateCanvasserName(turf.index, e.target.value)}
+                            style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                          />
+                          <button
+                            onClick={() => handleDeleteTurf(turf)}
+                            title="Remove turf"
+                            style={{ flexShrink: 0, background: "rgba(226,75,74,0.12)", border: "1px solid rgba(226,75,74,0.25)", borderRadius: 7, color: "#E24B4A", fontSize: 13, padding: "5px 9px", cursor: "pointer", lineHeight: 1 }}
+                          >✕</button>
+                        </div>
                         <div style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 6 }}>
                           {turf.streets.slice(0, 4).map((st, i) => (
                             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
