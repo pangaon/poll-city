@@ -77,6 +77,8 @@ export async function processNextChunk(importLogId: string): Promise<{
   let updatedInChunk = 0;
   let skippedInChunk = 0;   // Fix 3/4: intentional skips (duplicates with skip strategy, missing name)
   let errorsInChunk = 0;    // Fix 4: unexpected DB/processing errors only
+  let caslIssuesInChunk = 0; // contacts imported without a valid consent date
+  let missingNameInChunk = 0; // rows skipped due to missing both first+last name
   const newErrors: string[] = [];
   const createdIds: string[] = ((job.rollbackData as string[]) ?? []);
   const newlyCreatedIds: string[] = [];
@@ -92,6 +94,7 @@ export async function processNextChunk(importLogId: string): Promise<{
         const rawLast = (row.lastName ?? "").trim();
         if (!rawFirst && !rawLast) {
           skippedInChunk++;
+          missingNameInChunk++;
           newErrors.push(`Row ${chunkStart + i + 1}: skipped — missing both firstName and lastName`);
           continue;
         }
@@ -154,6 +157,9 @@ export async function processNextChunk(importLogId: string): Promise<{
                   notes: "Mapped from import CSV consent column",
                 },
               });
+            } else if (consent?.consentGiven && consent.collectedAt === null) {
+              // Consent indicated in CSV but date was missing or invalid — count for CASL reporting
+              caslIssuesInChunk++;
             }
           }
         } catch (e) {
@@ -183,6 +189,7 @@ export async function processNextChunk(importLogId: string): Promise<{
   const existingErrors = (job.errors as string[]) ?? [];
   const allErrors = [...existingErrors, ...newErrors].slice(0, 500);
   const isDone = chunkEnd >= rows.length;
+  const existingWarnings = (job.warnings as { caslIssueCount?: number; missingNameCount?: number } | null) ?? {};
 
   // Fix 4: skippedCount = intentional skips; errorCount = unexpected errors. Never mix.
   await prisma.importLog.update({
@@ -196,6 +203,10 @@ export async function processNextChunk(importLogId: string): Promise<{
       errorCount: (job.errorCount ?? 0) + errorsInChunk,         // Fix 4: only unexpected errors
       errors: allErrors.length > 0 ? allErrors : undefined,
       rollbackData: createdIds,
+      warnings: {
+        caslIssueCount: (existingWarnings.caslIssueCount ?? 0) + caslIssuesInChunk,
+        missingNameCount: (existingWarnings.missingNameCount ?? 0) + missingNameInChunk,
+      },
       ...(isDone
         ? {
             status: (errorsInChunk > 0 || (job.errorCount ?? 0) > 0) ? "completed_with_errors" : "completed",

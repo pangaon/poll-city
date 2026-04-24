@@ -74,8 +74,11 @@ export async function POST(req: NextRequest) {
       processedRows: true,
       totalRows: true,
       errors: true,
+      warnings: true,
     },
   });
+
+  const warningsJson = (finalJob?.warnings as { caslIssueCount?: number; missingNameCount?: number } | null) ?? {};
 
   return NextResponse.json({
     jobId,
@@ -88,5 +91,7 @@ export async function POST(req: NextRequest) {
     errors: finalJob?.errorCount ?? totalErrors,
     errorMessages: (finalJob?.errors as string[])?.slice(0, 20) ?? [],
     chunksProcessed: chunks,
+    caslIssueCount: warningsJson.caslIssueCount ?? 0,
+    missingNameCount: warningsJson.missingNameCount ?? 0,
   });
 }

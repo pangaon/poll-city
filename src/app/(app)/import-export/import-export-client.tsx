@@ -1191,27 +1191,40 @@ export default function ImportExportClient({ campaignId }: Props) {
             className="space-y-5"
           >
             {/* Smart Import Wizard — primary CTA */}
-            <motion.a
-              href="/import-export/smart-import"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              transition={spring}
-              className="flex items-center justify-between gap-4 p-5 rounded-2xl border-2 cursor-pointer group"
-              style={{ borderColor: GREEN, backgroundColor: `${GREEN}06` }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}15` }}>
-                  <ArrowUpFromLine className="w-6 h-6" style={{ color: GREEN }} />
+            <div className="space-y-2">
+              <motion.a
+                href="/import-export/smart-import"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                transition={spring}
+                className="flex items-center justify-between gap-4 p-5 rounded-2xl border-2 cursor-pointer group"
+                style={{ borderColor: GREEN, backgroundColor: `${GREEN}06` }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}15` }}>
+                    <ArrowUpFromLine className="w-6 h-6" style={{ color: GREEN }} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-base" style={{ color: NAVY }}>Smart Import Wizard</p>
+                    <p className="text-sm text-gray-500">Guided 5-step flow — upload, map columns, preview duplicates, choose merge strategy, import. Recommended for all new imports.</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-base" style={{ color: NAVY }}>Smart Import Wizard</p>
-                  <p className="text-sm text-gray-500">Guided 5-step flow — upload, map columns, preview duplicates, choose merge strategy, import. Recommended for all new imports.</p>
+                <div className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white group-hover:opacity-90" style={{ backgroundColor: GREEN }}>
+                  Start <ArrowUpFromLine className="w-4 h-4" />
                 </div>
-              </div>
-              <div className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white group-hover:opacity-90" style={{ backgroundColor: GREEN }}>
-                Start <ArrowUpFromLine className="w-4 h-4" />
-              </div>
-            </motion.a>
+              </motion.a>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("pollcity:open-adoni", {
+                  detail: { prefill: "I'm about to import my voter file. What should I know?" }
+                }))}
+                className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border transition-colors min-h-[36px]"
+                style={{ borderColor: `${NAVY}20`, color: NAVY, backgroundColor: `${NAVY}03` }}
+              >
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: NAVY }}>A</span>
+                Ask Adoni what to know before importing
+              </button>
+            </div>
 
             {/* Manual Import card */}
             <Card className="overflow-hidden">

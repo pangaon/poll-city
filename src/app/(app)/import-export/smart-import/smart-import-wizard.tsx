@@ -12,9 +12,9 @@ import {
   Upload, ChevronRight, Check, AlertTriangle, ArrowLeft, X,
   Sparkles, FileSpreadsheet, ShieldCheck, Merge, Play,
   Scissors, GitMerge, TextSearch, Plus, Wand2, ChevronDown,
-  MapPin, Loader2,
+  MapPin, Loader2, MessageCircle, Users,
 } from "lucide-react";
-import { Card, CardHeader, CardContent, Select, FeatureGuide } from "@/components/ui";
+import { Card, CardHeader, CardContent, Select, FeatureGuide, FieldHelp } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ColumnMapping } from "@/lib/import/column-mapper";
@@ -67,6 +67,7 @@ interface ImportResult {
   // Fix 10: detailed summary from the import record
   errorCount?: number;
   caslIssues?: number;
+  missingName?: number;
   geocodingFailed?: number;
   householdGroupingFailed?: boolean;
   warnings?: string[];
@@ -199,6 +200,8 @@ export default function SmartImportWizard({ campaignId }: Props) {
   } | null>(null);
   // Track the jobId for geocoding progress linking (Fix 9)
   const [lastJobId, setLastJobId] = useState<string | null>(null);
+  // Prevent double-firing the post-import Adoni dispatch
+  const adoniDoneFiredRef = useRef(false);
 
   // Auto-trigger geocoding when import completes
   useEffect(() => {
@@ -225,6 +228,15 @@ export default function SmartImportWizard({ campaignId }: Props) {
       }
     })();
   }, [step, campaignId, lastJobId]);
+
+  // Post-import Adoni: fire once when done step is entered with a result
+  useEffect(() => {
+    if (step !== "done" || !importResult || adoniDoneFiredRef.current) return;
+    adoniDoneFiredRef.current = true;
+    const errorCount = importResult.errorCount ?? importResult.errors.length;
+    const prefill = `My voter file import just finished. ${importResult.imported.toLocaleString()} contacts imported${errorCount > 0 ? `, ${errorCount} had issues` : ""}. What should I do next?`;
+    window.dispatchEvent(new CustomEvent("pollcity:open-adoni", { detail: { prefill } }));
+  }, [step, importResult]);
 
   const STEPS: Step[] = ["upload", "map", "duplicates", "strategy", "done"];
   const STEP_LABELS = ["Upload", "Map Columns", "Preview", "Strategy", "Done"];
@@ -462,6 +474,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
     if (!analysis || !file) return;
     setImporting(true);
     setImportProgress(0);
+    adoniDoneFiredRef.current = false;
 
     try {
       const mappingConfig = Object.fromEntries(
@@ -503,12 +516,15 @@ export default function SmartImportWizard({ campaignId }: Props) {
               if (["completed", "completed_with_errors", "failed"].includes(pData.status)) {
                 clearInterval(poll);
                 setImportProgress(100);
+                const pWarnings = pData.warnings as { caslIssueCount?: number; missingNameCount?: number } | null;
                 setImportResult({
                   imported: pData.importedCount ?? 0,
                   updated: pData.updatedCount ?? 0,
                   skipped: pData.skippedCount ?? 0,
                   errors: pData.errors ?? [],
                   errorCount: pData.errorCount ?? 0,
+                  caslIssues: pWarnings?.caslIssueCount ?? 0,
+                  missingName: pWarnings?.missingNameCount ?? 0,
                 });
                 resolve();
               }
@@ -521,6 +537,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
               const triggerData = await triggerRes.json() as {
                 imported?: number; updated?: number; skipped?: number;
                 errors?: number; errorMessages?: string[]; status?: string;
+                caslIssueCount?: number; missingNameCount?: number;
               };
               clearInterval(poll);
               setImportProgress(100);
@@ -530,6 +547,8 @@ export default function SmartImportWizard({ campaignId }: Props) {
                 skipped: triggerData.skipped ?? 0,
                 errors: triggerData.errorMessages ?? [],
                 errorCount: triggerData.errors ?? 0,
+                caslIssues: triggerData.caslIssueCount ?? 0,
+                missingName: triggerData.missingNameCount ?? 0,
               });
               resolve();
             }
@@ -596,6 +615,22 @@ export default function SmartImportWizard({ campaignId }: Props) {
         ]}
         caution="Your voter file is confidential. Do not import files from unknown sources."
       />
+
+      {/* Ask Adoni button — always visible, always ready */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("pollcity:open-adoni", {
+            detail: { prefill: "I'm about to import my voter file. What should I know?" }
+          }))}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors min-h-[36px]"
+          style={{ borderColor: `${NAVY}25`, color: NAVY, backgroundColor: `${NAVY}04` }}
+        >
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: NAVY }}>A</span>
+          Ask Adoni about importing
+        </button>
+      </div>
+
       {/* Progress steps */}
       <div className="flex items-center gap-1 sm:gap-2">
         {STEPS.map((s, i) => {
@@ -634,7 +669,10 @@ export default function SmartImportWizard({ campaignId }: Props) {
                 <div>
                   <h2 className="text-lg font-bold" style={{ color: NAVY }}>Upload your voter list</h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    Any format works — Excel, CSV, tab-separated, pipe-delimited. We will figure it out.
+                    Your voter file is the foundation of your campaign — it tells your team exactly who to contact and where they live.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Any format works — Excel, CSV, tab-separated, pipe-delimited. Next, we will map your columns automatically.
                   </p>
                 </div>
 
@@ -659,7 +697,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
                       <Shimmer className="h-4 w-full" />
                       <Shimmer className="h-4 w-3/4" />
                       <Shimmer className="h-4 w-1/2" />
-                      <p className="text-sm font-medium text-center" style={{ color: GREEN }}>Analyzing your file...</p>
+                      <p className="text-sm font-medium text-center" style={{ color: GREEN }}>Reading your file and mapping columns — just a moment...</p>
                     </div>
                   ) : (
                     <>
@@ -695,7 +733,26 @@ export default function SmartImportWizard({ campaignId }: Props) {
         {step === "map" && analysis && (
           <motion.div key="map" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <Card>
-              <CardContent className="py-4">
+              <CardContent className="py-4 space-y-3">
+                <div>
+                  <h2 className="text-lg font-bold" style={{ color: NAVY }}>Review your column mapping</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This tells Poll City which column in your file contains each piece of information. Getting &quot;First Name&quot;, &quot;Last Name&quot;, and &quot;Address&quot; right means your canvassers can find every door.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Once you confirm, we will check for contacts that already exist in your campaign.
+                  </p>
+                </div>
+
+                {/* Adoni tip — inline, static */}
+                <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: `${NAVY}05`, border: `1px solid ${NAVY}15` }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5" style={{ backgroundColor: NAVY }}>A</span>
+                  <div>
+                    <p className="text-xs font-semibold mb-0.5" style={{ color: NAVY }}>Adoni tip</p>
+                    <p className="text-xs text-gray-600">Map &quot;First Name&quot;, &quot;Last Name&quot;, and &quot;Address&quot; first — those are required for canvassing. The system has pre-filled what it detected automatically.</p>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${GREEN}12` }}>
                     <Sparkles className="w-4 h-4" style={{ color: GREEN }} />
@@ -1140,9 +1197,12 @@ export default function SmartImportWizard({ campaignId }: Props) {
           <motion.div key="duplicates" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <Card>
               <CardContent className="py-5 space-y-4">
-                <h2 className="text-lg font-bold" style={{ color: NAVY }}>Duplicate Preview</h2>
+                <h2 className="text-lg font-bold" style={{ color: NAVY }}>Check for existing contacts</h2>
                 <p className="text-sm text-gray-500">
-                  We scanned your file for contacts that already exist in your campaign.
+                  We compared your file against the contacts already in your campaign. Duplicates are contacts that already exist — importing them again would create double records.
+                </p>
+                <p className="text-xs text-gray-400">
+                  Next, you will choose how to handle any matches — skip them, update their data, or import everything fresh.
                 </p>
 
                 {preparingReview ? (
@@ -1252,10 +1312,15 @@ export default function SmartImportWizard({ campaignId }: Props) {
             <Card>
               <CardContent className="py-5 space-y-5">
                 <div>
-                  <h2 className="text-lg font-bold" style={{ color: NAVY }}>Merge Strategy</h2>
+                  <h2 className="text-lg font-bold" style={{ color: NAVY }}>How should we handle existing contacts?</h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    How should we handle the {reviewSummary?.probableDuplicates ?? 0} probable duplicates?
+                    Your campaign may already have notes, support levels, and interaction history for some of these voters. The right strategy protects that work.
                   </p>
+                  {(reviewSummary?.probableDuplicates ?? 0) > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {reviewSummary!.probableDuplicates.toLocaleString()} probable duplicate{reviewSummary!.probableDuplicates !== 1 ? "s" : ""} detected.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -1368,8 +1433,9 @@ export default function SmartImportWizard({ campaignId }: Props) {
                   exit={{ opacity: 0, height: 0 }}
                 >
                   <Card>
-                    <CardContent className="py-4">
-                      <ProgressBar value={importProgress} label="Importing contacts..." />
+                    <CardContent className="py-4 space-y-2">
+                      <ProgressBar value={importProgress} label={`Processing your voter file — ${Math.ceil((analysis?.totalRows ?? 0) / 500) * 30} seconds for ${analysis?.totalRows.toLocaleString() ?? "..."} contacts`} />
+                      <p className="text-xs text-gray-400 text-center">Checking for duplicates · creating contact records · grouping households</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -1393,52 +1459,102 @@ export default function SmartImportWizard({ campaignId }: Props) {
                   <Check className="w-8 h-8" style={{ color: GREEN }} />
                 </motion.div>
                 <div>
-                  <h2 className="text-xl font-bold" style={{ color: NAVY }}>Import complete</h2>
-                  <p className="text-sm text-gray-500 mt-1">Your contacts are ready to use.</p>
+                  <h2 className="text-xl font-bold" style={{ color: NAVY }}>
+                    {importResult.imported > 0
+                      ? `${importResult.imported.toLocaleString()} contact${importResult.imported !== 1 ? "s" : ""} ready to canvass`
+                      : "Import complete"}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {importResult.imported > 0
+                      ? "Your voter list is loaded. Build your first walk list and start knocking doors."
+                      : "Your contacts are ready to use."}
+                  </p>
                 </div>
-                <div className="flex gap-4 justify-center">
-                  {[
-                    { label: "Imported", value: importResult.imported, color: GREEN },
-                    { label: "Updated", value: importResult.updated, color: NAVY },
-                    { label: "Skipped", value: importResult.skipped, color: "#9ca3af" },
-                  ].map(({ label, value, color }, i) => (
-                    <motion.div
-                      key={label}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
-                      className="text-center px-4"
-                    >
-                      <p className="text-3xl font-black" style={{ color }}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </motion.div>
-                  ))}
-                </div>
-                {/* Fix 10: detailed import summary */}
-                {(importResult.errors.length > 0 || (importResult.skipped > 0) || (importResult.errorCount ?? 0) > 0) && (
-                  <div className="text-left rounded-xl p-4 space-y-2 border border-amber-200 bg-amber-50">
+
+                {/* Detailed breakdown card — Fix 10 */}
+                <div className="text-left rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-gray-100" style={{ backgroundColor: `${NAVY}03` }}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">What happened</p>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {/* Imported */}
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 flex-shrink-0" style={{ color: GREEN }} />
+                        <span className="text-sm text-gray-700">Contacts imported</span>
+                      </div>
+                      <span className="text-sm font-bold" style={{ color: GREEN }}>{importResult.imported.toLocaleString()}</span>
+                    </div>
+                    {/* Updated */}
+                    {importResult.updated > 0 && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 flex-shrink-0" style={{ color: NAVY }} />
+                          <span className="text-sm text-gray-700">Existing contacts updated</span>
+                        </div>
+                        <span className="text-sm font-bold" style={{ color: NAVY }}>{importResult.updated.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {/* Skipped duplicates (derived) */}
+                    {(importResult.skipped - (importResult.missingName ?? 0)) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <ArrowLeft className="w-4 h-4 flex-shrink-0 text-gray-400" />
+                          <span className="text-sm text-gray-500">Skipped — already in campaign</span>
+                        </div>
+                        <span className="text-sm font-medium text-gray-400">{(importResult.skipped - (importResult.missingName ?? 0)).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {/* Missing name */}
+                    {(importResult.missingName ?? 0) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                          <span className="text-sm text-amber-700">Skipped — missing name</span>
+                        </div>
+                        <span className="text-sm font-medium text-amber-600">{importResult.missingName!.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {/* CASL issues */}
+                    {(importResult.caslIssues ?? 0) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                          <span className="text-sm text-amber-700">CASL consent date missing</span>
+                          <FieldHelp
+                            content="CASL (Canada's Anti-Spam Legislation) requires that you record the date someone gave consent to be contacted. These contacts were imported but are marked as not consented because no valid date was found in your file."
+                            tip="To fix this, add a 'Consent Date' column to your file with the date the voter agreed to be contacted, then re-import."
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-amber-600 ml-2">{importResult.caslIssues!.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {/* Processing errors */}
                     {(importResult.errorCount ?? importResult.errors.length) > 0 && (
-                      <p className="text-xs font-semibold text-amber-700">
-                        {importResult.errorCount ?? importResult.errors.length} row{(importResult.errorCount ?? importResult.errors.length) !== 1 ? "s" : ""} had processing errors:
-                      </p>
+                      <div className="flex items-start justify-between px-4 py-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <X className="w-4 h-4 flex-shrink-0 text-red-400" />
+                            <span className="text-sm text-red-600">Processing errors</span>
+                          </div>
+                          {importResult.errors.slice(0, 3).map((e, i) => (
+                            <p key={i} className="text-xs text-gray-500 mt-1 ml-6 font-mono truncate">{e}</p>
+                          ))}
+                          {importResult.errors.length > 3 && (
+                            <p className="text-xs text-gray-400 mt-0.5 ml-6">and {importResult.errors.length - 3} more</p>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-red-500 ml-2 flex-shrink-0">{(importResult.errorCount ?? importResult.errors.length).toLocaleString()}</span>
+                      </div>
                     )}
-                    {importResult.errors.slice(0, 5).map((e, i) => <p key={i} className="text-xs text-amber-600">{e}</p>)}
-                    {importResult.errors.length > 5 && <p className="text-xs text-amber-500">and {importResult.errors.length - 5} more...</p>}
-                    {importResult.skipped > 0 && (
-                      <p className="text-xs text-slate-600">
-                        {importResult.skipped} row{importResult.skipped !== 1 ? "s" : ""} skipped intentionally (duplicates, missing name, or strategy set to skip).
-                      </p>
-                    )}
-                    {importResult.caslIssues && importResult.caslIssues > 0 && (
-                      <p className="text-xs text-slate-600">
-                        {importResult.caslIssues} row{importResult.caslIssues !== 1 ? "s" : ""} had missing or invalid CASL consent dates — imported with consent set to false.
-                      </p>
-                    )}
+                    {/* Household grouping failure */}
                     {importResult.householdGroupingFailed && (
-                      <p className="text-xs text-amber-600">Household grouping encountered an error — contacts were imported but may not be grouped into households. You can re-trigger grouping from the Contacts page.</p>
+                      <div className="px-4 py-3 bg-amber-50">
+                        <p className="text-xs text-amber-700">Household grouping had an issue — contacts were imported but may not be grouped by address. You can re-trigger this from the Contacts page.</p>
+                      </div>
                     )}
                   </div>
-                )}
+                </div>
                 {/* Geocoding progress */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
                   <div className="flex items-center gap-2 mb-2">
@@ -1472,11 +1588,19 @@ export default function SmartImportWizard({ campaignId }: Props) {
                 </div>
 
                 <div className="flex gap-3 justify-center flex-wrap">
-                  <MButton variant="outline" onClick={() => { setStep("upload"); setAnalysis(null); setImportResult(null); setFile(null); setImportProgress(0); setGeocodeStatus(null); }}>
+                  <MButton variant="outline" onClick={() => {
+                    setStep("upload");
+                    setAnalysis(null);
+                    setImportResult(null);
+                    setFile(null);
+                    setImportProgress(0);
+                    setGeocodeStatus(null);
+                    adoniDoneFiredRef.current = false;
+                  }}>
                     Import another file
                   </MButton>
                   <MButton onClick={() => { window.location.href = "/contacts"; }}>
-                    View Contacts
+                    <Users className="w-4 h-4" /> View Contacts
                   </MButton>
                 </div>
               </CardContent>
