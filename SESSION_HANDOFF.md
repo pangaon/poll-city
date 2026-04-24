@@ -1,8 +1,8 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-24 (parallel agent build session)
-**Updated by:** Claude Sonnet 4.6 — 5 parallel agents + orchestration. All tasks shipped.
+**Last updated:** 2026-04-24 (Import/Export overhaul session)
+**Updated by:** Claude Sonnet 4.6 — single session, all three import tasks shipped.
 
 ---
 
@@ -11,7 +11,13 @@
 ### Build
 Pending Vercel green — local `tsc --noEmit` exits 0. Full build running. Push:safe pending.
 
-### What shipped today (2026-04-24 — parallel agent session)
+### What shipped today (2026-04-24 — Import/Export overhaul session)
+
+| Commit | What changed |
+|---|---|
+| `6a5c3a3` | Import/Export: Fix 10 + Stripe UX + Adoni integration — detailed error breakdown, caslIssueCount + missingNameCount tracked and surfaced, step headings/descriptions, Adoni tip in mapping step, post-import Adoni dispatch, Ask Adoni buttons on both hub and wizard |
+
+### Previous session (2026-04-24 — parallel agent session)
 
 | Commit | What changed |
 |---|---|
@@ -80,7 +86,7 @@ Daily 3am cron keeps this current.
 | Vendor Network (/vendors) | ✓ Live | |
 | Ontario Map (/atlas) | ✓ Live | 238 wards, 28 municipalities. Turf drawing now saves to DB. |
 | Atlas Turf Drawing | ✓ Code complete | Connected to DB. Awaiting George browser-verify. |
-| Voter File Import | ✓ Code complete | 9/10 fixes shipped. Awaiting George browser-verify. Fix 10 (detailed error UI) partial. |
+| Voter File Import | ✓ Code complete | All 10 fixes shipped. Awaiting George browser-verify. Detailed error breakdown now shows imported/updated/skipped/CASL/missing-name/geocoding separately. |
 | /ops/data-management | ✓ Code complete | Seeding console. Awaiting George browser-verify. |
 | Settings / Permissions | ✓ Code complete | Was uncommitted — now committed. Awaiting George browser-verify. |
 | Q&A Inbox | ✓ Code complete | |
@@ -101,9 +107,9 @@ Daily 3am cron keeps this current.
 
 ## WHAT STILL NEEDS GEORGE'S EYES
 
-These shipped today but George has not browser-verified them:
+These shipped but George has not browser-verified them:
 
-1. **Voter file import** — upload a real CSV, confirm contacts appear. Check the new /api/import/trigger fires immediately (no more spinner stall). Check progress bar moves.
+1. **Voter file import (UPDATED)** — upload a real CSV with a consentGiven column. After import, the done screen should show the detailed breakdown: imported / updated / skipped / CASL issues / missing name. Check the "Ask Adoni" button dispatches Adoni. Adoni should auto-open after import completes with a prefill message.
 2. **Atlas turf drawing** — draw a turf on the map, close the page, reopen, confirm it's still there.
 3. **/ops/data-management** — navigate via sidebar "Seed Data" link → confirm ward coverage table loads → try seeding one municipality → try provisioning a test client.
 4. **Settings/permissions** — navigate Settings → Permissions card → confirm role matrix loads, role-change dropdown works.
@@ -114,7 +120,6 @@ These shipped today but George has not browser-verified them:
 
 | Item | What's missing |
 |---|---|
-| Import Fix 10 | Detailed error breakdown UI (CASL issues count, geocoding failed count) — partial wiring only |
 | Atlas sub-page tabs | /atlas/map, /atlas/layers, /atlas/boundaries etc. removed from sidebar but tabs on /atlas not yet wired |
 | /eday sub-page tabs | /eday/capture, /eday/war-room, /eday/hq removed from sidebar but tabs on /eday not yet wired |
 | /reputation tabs | /reputation/command, /reputation/pages removed from sidebar but tabs not wired |
@@ -154,9 +159,9 @@ Before starting any task:
 4. Build it complete
 
 Next meaningful tasks (priority order):
-1. **Import Fix 10** — wire the detailed error breakdown UI (CASL count, geocoding failed count display)
-2. **Wire /atlas tabs** — map, layers, boundaries, results, calculator as tabs on the /atlas page (sidebar now points to /atlas only)
-3. **Wire /eday tabs** — capture, war-room, hq as tabs on /eday
+1. **Wire /atlas tabs** — map, layers, boundaries, results, calculator as tabs on the /atlas page (sidebar now points to /atlas only)
+2. **Wire /eday tabs** — capture, war-room, hq as tabs on /eday
+3. **Wire /reputation tabs** — command, pages tabs not wired
 4. **iOS TestFlight submission** — Expo app is built, needs eas.json + App Store Connect record
 
 ---

@@ -82,7 +82,7 @@ Everything below is built, pushed, and accessible in the app.
 
 | Task | Status | Notes |
 |---|---|---|
-| Import/Export Overhaul — Fix 10 (detailed error breakdown), Stripe-quality UX, Adoni integration (3 touch points) | CLAIMED 2026-04-24 | smart-import-wizard.tsx + background-processor.ts + trigger/route.ts + import-export-client.tsx |
+| Import/Export Overhaul — Fix 10 (detailed error breakdown), Stripe-quality UX, Adoni integration (3 touch points) | DONE — commit 6a5c3a3 | background-processor.ts: caslIssueCount + missingNameCount tracked in warnings JSON. trigger/route.ts: returns both counts. smart-import-wizard.tsx: step headings/descriptions, Adoni tip in mapping step, detailed breakdown card (imported/updated/skipped-duplicates/missing-name/CASL/errors), post-import Adoni dispatch. import-export-client.tsx: Ask Adoni button. Build GREEN. Awaiting George browser-verify. |
 
 ### ACTIVE BUILD (2026-04-22)
 
