@@ -26,7 +26,8 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  if (!session || session.user?.role !== "PRINT_VENDOR") {
+  const role = session?.user?.role;
+  if (!session || (role !== "PRINT_VENDOR" && role !== "VENDOR")) {
     router.push("/vendor/login");
     return null;
   }

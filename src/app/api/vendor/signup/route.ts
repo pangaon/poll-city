@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/db/prisma";
-import { PrintProductType } from "@prisma/client";
+import { PrintProductType, VendorCategory } from "@prisma/client";
 import { sanitizeUserText } from "@/lib/security/monitor";
 
 export async function POST(req: NextRequest) {
   let body: {
+    // Layer 1 — universal (all vendor types)
     name: string;
     contactName?: string;
     email: string;
     password: string;
     phone?: string;
     website?: string;
-    description?: string;
+    bio?: string;
+    categories: string[];
     provincesServed?: string[];
-    specialties?: string[];
+    yearsExperience?: number;
+    rateFrom?: number;
+    // Layer 2 — print_shop specific
+    printSpecialties?: string[];
     averageResponseHours?: number;
-    portfolio?: string[];
   };
 
   try {
@@ -41,7 +45,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Check for duplicate email (user or shop)
+  const categories = (body.categories ?? []).filter((c): c is VendorCategory =>
+    Object.values(VendorCategory).includes(c as VendorCategory)
+  );
+
+  if (categories.length === 0) {
+    return NextResponse.json(
+      { error: "Select at least one service category" },
+      { status: 400 }
+    );
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     return NextResponse.json(
@@ -52,40 +66,60 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const specialties = (body.specialties ?? []).filter((s): s is PrintProductType =>
-    Object.values(PrintProductType).includes(s as PrintProductType)
+  const isPrintShop = categories.includes("print_shop" as VendorCategory);
+  const printSpecialties = (body.printSpecialties ?? []).filter(
+    (s): s is PrintProductType =>
+      Object.values(PrintProductType).includes(s as PrintProductType)
   );
 
-  // Create User + PrintShop atomically
-  const user = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
       data: {
         email,
-        name: body.contactName ?? name,
+        name: body.contactName?.trim() || name,
         passwordHash,
-        role: "PRINT_VENDOR",
+        role: "VENDOR",
       },
     });
 
-    await tx.printShop.create({
+    const vendor = await tx.vendor.create({
       data: {
-        name,
-        contactName: body.contactName ?? null,
-        email,
-        phone: body.phone ?? null,
-        website: body.website ?? null,
-        description: sanitizeUserText(body.description),
-        provincesServed: body.provincesServed ?? [],
-        serviceAreas: body.provincesServed ?? [],
-        specialties,
-        averageResponseHours: body.averageResponseHours ?? null,
-        portfolio: body.portfolio ?? [],
         userId: newUser.id,
+        name: name.trim(),
+        contactName: body.contactName?.trim() || null,
+        email,
+        phone: body.phone?.trim() || null,
+        website: body.website?.trim() || null,
+        bio: body.bio ? sanitizeUserText(body.bio) : null,
+        categories,
+        provincesServed: body.provincesServed ?? [],
+        yearsExperience: body.yearsExperience ?? null,
+        rateFrom: body.rateFrom ?? null,
       },
     });
 
-    return newUser;
+    if (isPrintShop) {
+      await tx.printShop.create({
+        data: {
+          vendorId: vendor.id,
+          userId: newUser.id,
+          name: name.trim(),
+          contactName: body.contactName?.trim() || null,
+          email,
+          phone: body.phone?.trim() || null,
+          website: body.website?.trim() || null,
+          description: body.bio ? sanitizeUserText(body.bio) : null,
+          provincesServed: body.provincesServed ?? [],
+          serviceAreas: body.provincesServed ?? [],
+          specialties: printSpecialties,
+          averageResponseHours: body.averageResponseHours ?? null,
+          portfolio: [],
+        },
+      });
+    }
+
+    return { userId: newUser.id, email: newUser.email };
   });
 
-  return NextResponse.json({ data: { userId: user.id, email: user.email } }, { status: 201 });
+  return NextResponse.json({ data: result }, { status: 201 });
 }

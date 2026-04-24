@@ -11,11 +11,12 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const search = sp.get("search") ?? "";
-  const verified = sp.get("verified"); // "true" | "false" | null
+  const verified = sp.get("verified");
   const page = Math.max(1, Number(sp.get("page") ?? "1"));
   const pageSize = 25;
 
-  const where = {
+  // ── Query 1: new Vendor records (VENDOR role) ──────────────────────────
+  const vendorWhere = {
     ...(search
       ? {
           OR: [
@@ -29,32 +30,110 @@ export async function GET(req: NextRequest) {
     ...(verified === "false" ? { isVerified: false } : {}),
   };
 
-  const [shops, total] = await Promise.all([
-    prisma.printShop.findMany({
-      where,
+  const [vendors, vendorTotal] = await Promise.all([
+    prisma.vendor.findMany({
+      where: vendorWhere,
       orderBy: [{ createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
-        _count: { select: { bids: true } },
+        printShop: {
+          include: { _count: { select: { bids: true } } },
+        },
       },
     }),
-    prisma.printShop.count({ where }),
+    prisma.vendor.count({ where: vendorWhere }),
   ]);
 
-  // Attach won-bid counts
-  const shopIds = shops.map((s) => s.id);
-  const wonCounts = await prisma.printBid.groupBy({
-    by: ["shopId"],
-    where: { shopId: { in: shopIds }, isAccepted: true },
-    _count: { id: true },
-  });
+  // ── Query 2: legacy PrintShop records (PRINT_VENDOR role, no vendorId) ─
+  const shopWhere = {
+    vendorId: null,
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+            { contactName: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(verified === "true" ? { isVerified: true } : {}),
+    ...(verified === "false" ? { isVerified: false } : {}),
+  };
+
+  const [legacyShops, legacyTotal] = await Promise.all([
+    prisma.printShop.findMany({
+      where: shopWhere,
+      orderBy: [{ createdAt: "desc" }],
+      take: Math.max(0, pageSize - vendors.length),
+      skip: Math.max(0, (page - 1) * pageSize - vendorTotal),
+      include: { _count: { select: { bids: true } } },
+    }),
+    prisma.printShop.count({ where: shopWhere }),
+  ]);
+
+  const total = vendorTotal + legacyTotal;
+
+  // Attach won-bid counts for legacy shops
+  const shopIds = legacyShops.map((s) => s.id);
+  const wonCounts = shopIds.length
+    ? await prisma.printBid.groupBy({
+        by: ["shopId"],
+        where: { shopId: { in: shopIds }, isAccepted: true },
+        _count: { id: true },
+      })
+    : [];
   const wonMap = Object.fromEntries(wonCounts.map((r) => [r.shopId, r._count.id]));
 
-  const data = shops.map((s) => ({
-    ...s,
+  // Normalise legacy shops to the same shape as Vendor
+  const legacyNormalized = legacyShops.map((s) => ({
+    id: s.id,
+    name: s.name,
+    contactName: s.contactName,
+    email: s.email,
+    phone: s.phone,
+    website: s.website,
+    bio: s.description,
+    categories: ["print_shop"],
+    provincesServed: s.provincesServed,
+    isVerified: s.isVerified,
+    isActive: s.isActive,
+    isFeatured: false,
+    stripeOnboarded: s.stripeOnboarded,
+    rating: s.rating,
+    reviewCount: s.reviewCount,
+    avgResponseHours: s.averageResponseHours,
+    yearsExperience: null,
+    rateFrom: null,
+    createdAt: s.createdAt,
+    _count: s._count,
     jobsWon: wonMap[s.id] ?? 0,
+    printShop: s,
+    _legacy: true,
   }));
+
+  // Attach won-bid counts for Vendor-linked print shops
+  const vendorShopIds = vendors
+    .filter((v) => v.printShop)
+    .map((v) => v.printShop!.id);
+  const vendorWonCounts = vendorShopIds.length
+    ? await prisma.printBid.groupBy({
+        by: ["shopId"],
+        where: { shopId: { in: vendorShopIds }, isAccepted: true },
+        _count: { id: true },
+      })
+    : [];
+  const vendorWonMap = Object.fromEntries(vendorWonCounts.map((r) => [r.shopId, r._count.id]));
+
+  const vendorNormalized = vendors.map((v) => ({
+    ...v,
+    _count: v.printShop?._count ?? { bids: 0 },
+    avgResponseHours: v.avgResponseHours,
+    jobsWon: v.printShop ? (vendorWonMap[v.printShop.id] ?? 0) : 0,
+    _legacy: false,
+  }));
+
+  const data = [...vendorNormalized, ...legacyNormalized];
 
   return NextResponse.json({ data, total, page, pageSize });
 }

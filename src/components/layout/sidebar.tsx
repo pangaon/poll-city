@@ -272,7 +272,7 @@ export default function Sidebar() {
       platformItems.push({ href: "/ops/adoni", icon: Brain, label: "Adoni Training", isNew: true });
       platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
       platformItems.push({ href: "/ops/sources", icon: Library, label: "Source Library" });
-      platformItems.push({ href: "/ops/vendors", icon: Printer, label: "Print Vendors", isNew: true });
+      platformItems.push({ href: "/ops/vendors", icon: Users, label: "Vendor Network", isNew: true });
     }
 
     return [

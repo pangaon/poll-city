@@ -24,7 +24,34 @@ enum Role {
   VOLUNTEER
   VOLUNTEER_LEADER
   PUBLIC_USER
-  PRINT_VENDOR
+  VENDOR
+  PRINT_VENDOR // legacy — existing print-only accounts; use VENDOR for all new registrations
+}
+
+enum VendorCategory {
+  print_shop
+  sign_crew
+  video_production
+  photography
+  graphic_design
+  digital_advertising
+  phone_banking
+  canvassing_crew
+  campaign_manager
+  financial_agent
+  accountant
+  election_lawyer
+  polling_firm
+  opposition_research
+  event_planning
+  translation_services
+  speaking_coach
+  media_trainer
+  mail_house
+  merchandise
+  data_analytics
+  website_tech
+  other
 }
 
 enum SupportLevel {
@@ -779,7 +806,9 @@ model User {
   // CASL
   recordedConsentRecords ConsentRecord[] @relation("ConsentRecordedBy")
 
-  // Print vendor portal
+  // Vendor portal (Layer 1 — unified)
+  vendor    Vendor?
+  // Print vendor portal (Layer 2 — print-specific; legacy PRINT_VENDOR accounts only)
   printShop PrintShop?
 
   @@map("users")
@@ -3318,8 +3347,55 @@ enum PrintJobStatus {
   cancelled
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// VENDOR ECOSYSTEM — LAYER 1: UNIVERSAL FOUNDATION
+// Every vendor type uses this model. Category-specific data lives in Layer 2
+// extensions (e.g. PrintShop for print_shop category).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Vendor {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  name             String
+  contactName      String?
+  email            String
+  phone            String?
+  website          String?
+  bio              String?
+  categories       VendorCategory[]
+  provincesServed  String[]         @default([])
+  serviceAreas     String[]         @default([])
+  tags             String[]         @default([])
+  isVerified       Boolean          @default(false)
+  isActive         Boolean          @default(true)
+  isFeatured       Boolean          @default(false)
+  rating           Float?
+  reviewCount      Int              @default(0)
+  logoUrl          String?
+  portfolioUrls    String[]         @default([])
+  stripeAccountId  String?
+  stripeOnboarded  Boolean          @default(false)
+  avgResponseHours Int?
+  yearsExperience  Int?
+  rateFrom         Float?           // starting hourly/project rate (optional)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id])
+  printShop PrintShop? // Layer 2: print-specific profile
+
+  @@index([categories])
+  @@index([isVerified, isActive])
+  @@map("vendors")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VENDOR ECOSYSTEM — LAYER 2: PRINT SHOP (print_shop category extension)
+// ─────────────────────────────────────────────────────────────────────────────
+
 model PrintShop {
   id                   String             @id @default(cuid())
+  vendorId             String?            @unique // Layer 1 link
   name                 String
   contactName          String?
   email                String
@@ -3342,8 +3418,9 @@ model PrintShop {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
-  bids PrintBid[]
-  user User?         @relation(fields: [userId], references: [id])
+  bids   PrintBid[]
+  user   User?   @relation(fields: [userId], references: [id])
+  vendor Vendor? @relation(fields: [vendorId], references: [id])
 
   @@map("print_shops")
 }

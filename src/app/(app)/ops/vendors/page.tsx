@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth/auth-options";
 import { redirect } from "next/navigation";
 import VendorsOpsClient from "./vendors-ops-client";
 
-export const metadata = { title: "Print Vendors — Poll City Ops" };
+export const metadata = { title: "Vendor Network — Poll City Ops" };
 
 export default async function VendorsOpsPage() {
   const session = await getServerSession(authOptions);

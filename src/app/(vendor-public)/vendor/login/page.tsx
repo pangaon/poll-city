@@ -34,12 +34,11 @@ export default function VendorLoginPage() {
       const session = await getSession();
       const role = (session?.user as { role?: string })?.role;
 
-      if (role === "PRINT_VENDOR") {
+      if (role === "PRINT_VENDOR" || role === "VENDOR") {
         router.push("/vendor/dashboard");
         router.refresh();
       } else if (role) {
-        // They have a Poll City account but not a vendor account
-        setError("This account is not a print vendor account. Try signing in at poll.city.");
+        setError("This account is not a vendor account. Try signing in at poll.city.");
       } else {
         setError("Sign-in failed. Please try again.");
       }
@@ -58,14 +57,14 @@ export default function VendorLoginPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-white/10 rounded-2xl mb-4 border border-white/20">
             <Printer className="w-7 h-7 text-[#1D9E75]" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Poll City Print</h1>
-          <p className="text-white/60 mt-1 text-sm">Vendor Portal</p>
+          <h1 className="text-2xl font-bold text-white">Poll City Vendors</h1>
+          <p className="text-white/60 mt-1 text-sm">Campaign Services Network</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign in to your shop</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Sign in to your account</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Access your job board, bids, and production panel.
+            Access your vendor dashboard, job board, and profile.
           </p>
 
           <form onSubmit={onSubmit} className="space-y-4">
@@ -124,9 +123,9 @@ export default function VendorLoginPage() {
           </form>
 
           <p className="text-center text-xs text-gray-400 mt-6">
-            New to Poll City Print?{" "}
+            New to Poll City?{" "}
             <Link href="/vendor/signup" className="text-[#1D9E75] hover:underline font-medium">
-              Register your shop
+              Join the vendor network
             </Link>
           </p>
         </div>
