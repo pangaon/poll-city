@@ -64,6 +64,12 @@ interface ImportResult {
   updated: number;
   skipped: number;
   errors: string[];
+  // Fix 10: detailed summary from the import record
+  errorCount?: number;
+  caslIssues?: number;
+  geocodingFailed?: number;
+  householdGroupingFailed?: boolean;
+  warnings?: string[];
 }
 
 interface DupSample {
@@ -191,6 +197,8 @@ export default function SmartImportWizard({ campaignId }: Props) {
   const [geocodeStatus, setGeocodeStatus] = useState<{
     geocoded: number; pending: number; total: number; percentComplete: number; running: boolean;
   } | null>(null);
+  // Track the jobId for geocoding progress linking (Fix 9)
+  const [lastJobId, setLastJobId] = useState<string | null>(null);
 
   // Auto-trigger geocoding when import completes
   useEffect(() => {
@@ -198,10 +206,11 @@ export default function SmartImportWizard({ campaignId }: Props) {
     setGeocodeStatus({ geocoded: 0, pending: 0, total: 0, percentComplete: 0, running: true });
     void (async () => {
       try {
+        // Fix 9: pass importLogId so geocoding progress is tracked in the import record
         const res = await fetch("/api/geocode/batch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ campaignId }),
+          body: JSON.stringify({ campaignId, importLogId: lastJobId }),
         });
         if (res.ok) {
           const data = await res.json() as {
@@ -215,7 +224,7 @@ export default function SmartImportWizard({ campaignId }: Props) {
         setGeocodeStatus(null);
       }
     })();
-  }, [step, campaignId]);
+  }, [step, campaignId, lastJobId]);
 
   const STEPS: Step[] = ["upload", "map", "duplicates", "strategy", "done"];
   const STEP_LABELS = ["Upload", "Map Columns", "Preview", "Strategy", "Done"];
@@ -466,15 +475,24 @@ export default function SmartImportWizard({ campaignId }: Props) {
       form.append("mergeStrategy", mergeStrategy);
       form.append("transforms", JSON.stringify(transforms));
 
-      // Contacts → background queue so large voter files (5k–25k rows) never hit Vercel timeout
+      // Contacts → queue import then trigger processing immediately (Fix 1: no cron dependency)
       if (targetEntity === "contacts") {
         const queueRes = await fetch("/api/import/background", { method: "POST", body: form });
         const queueData = await queueRes.json();
         if (!queueRes.ok) { toast.error(queueData.error ?? "Failed to queue import"); return; }
 
         const jobId = queueData.jobId as string;
+        setLastJobId(jobId); // Fix 9: track for geocoding progress
 
-        // Poll real progress every 2 s until job finishes
+        // Fix 1: Immediately trigger processing via /api/import/trigger (not cron-gated)
+        // For large files (many chunks), also poll progress concurrently so the bar moves
+        const triggerPromise = fetch("/api/import/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId }),
+        });
+
+        // Poll progress every 3 seconds while trigger runs
         await new Promise<void>((resolve, reject) => {
           const poll = setInterval(async () => {
             try {
@@ -490,11 +508,32 @@ export default function SmartImportWizard({ campaignId }: Props) {
                   updated: pData.updatedCount ?? 0,
                   skipped: pData.skippedCount ?? 0,
                   errors: pData.errors ?? [],
+                  errorCount: pData.errorCount ?? 0,
                 });
                 resolve();
               }
             } catch (e) { clearInterval(poll); reject(e); }
-          }, 2000);
+          }, 3000);
+
+          // Also resolve when trigger completes (whichever comes first)
+          triggerPromise.then(async (triggerRes) => {
+            if (triggerRes.ok) {
+              const triggerData = await triggerRes.json() as {
+                imported?: number; updated?: number; skipped?: number;
+                errors?: number; errorMessages?: string[]; status?: string;
+              };
+              clearInterval(poll);
+              setImportProgress(100);
+              setImportResult({
+                imported: triggerData.imported ?? 0,
+                updated: triggerData.updated ?? 0,
+                skipped: triggerData.skipped ?? 0,
+                errors: triggerData.errorMessages ?? [],
+                errorCount: triggerData.errors ?? 0,
+              });
+              resolve();
+            }
+          }).catch(() => { /* poll will handle failure */ });
         });
 
         await new Promise(r => setTimeout(r, 600));
@@ -1375,11 +1414,29 @@ export default function SmartImportWizard({ campaignId }: Props) {
                     </motion.div>
                   ))}
                 </div>
-                {importResult.errors.length > 0 && (
-                  <div className="text-left bg-amber-50 rounded-xl p-4 space-y-1">
-                    <p className="text-xs font-semibold text-amber-700">{importResult.errors.length} rows had issues:</p>
+                {/* Fix 10: detailed import summary */}
+                {(importResult.errors.length > 0 || (importResult.skipped > 0) || (importResult.errorCount ?? 0) > 0) && (
+                  <div className="text-left rounded-xl p-4 space-y-2 border border-amber-200 bg-amber-50">
+                    {(importResult.errorCount ?? importResult.errors.length) > 0 && (
+                      <p className="text-xs font-semibold text-amber-700">
+                        {importResult.errorCount ?? importResult.errors.length} row{(importResult.errorCount ?? importResult.errors.length) !== 1 ? "s" : ""} had processing errors:
+                      </p>
+                    )}
                     {importResult.errors.slice(0, 5).map((e, i) => <p key={i} className="text-xs text-amber-600">{e}</p>)}
                     {importResult.errors.length > 5 && <p className="text-xs text-amber-500">and {importResult.errors.length - 5} more...</p>}
+                    {importResult.skipped > 0 && (
+                      <p className="text-xs text-slate-600">
+                        {importResult.skipped} row{importResult.skipped !== 1 ? "s" : ""} skipped intentionally (duplicates, missing name, or strategy set to skip).
+                      </p>
+                    )}
+                    {importResult.caslIssues && importResult.caslIssues > 0 && (
+                      <p className="text-xs text-slate-600">
+                        {importResult.caslIssues} row{importResult.caslIssues !== 1 ? "s" : ""} had missing or invalid CASL consent dates — imported with consent set to false.
+                      </p>
+                    )}
+                    {importResult.householdGroupingFailed && (
+                      <p className="text-xs text-amber-600">Household grouping encountered an error — contacts were imported but may not be grouped into households. You can re-trigger grouping from the Contacts page.</p>
+                    )}
                   </div>
                 )}
                 {/* Geocoding progress */}

@@ -1,6 +1,6 @@
 /**
  * Background import processor — processes imports in 500-row chunks with transactions.
- * Called by the process-imports cron every minute.
+ * Called by the process-imports cron every minute OR by /api/import/trigger directly.
  */
 
 import prisma from "@/lib/db/prisma";
@@ -16,11 +16,12 @@ export async function processNextChunk(importLogId: string): Promise<{
   processedInChunk: number;
   importedInChunk: number;
   updatedInChunk: number;
+  skippedInChunk: number;
   errorsInChunk: number;
 }> {
   const job = await prisma.importLog.findUnique({ where: { id: importLogId } });
   if (!job || !["queued", "processing"].includes(job.status)) {
-    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, errorsInChunk: 0 };
+    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, skippedInChunk: 0, errorsInChunk: 0 };
   }
 
   const rows = (job.parsedData as Array<Record<string, unknown>>) ?? [];
@@ -29,7 +30,7 @@ export async function processNextChunk(importLogId: string): Promise<{
       where: { id: importLogId },
       data: { status: "completed", completedAt: new Date(), rollbackDeadline: new Date(Date.now() + ROLLBACK_HOURS * 60 * 60 * 1000) },
     });
-    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, errorsInChunk: 0 };
+    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, skippedInChunk: 0, errorsInChunk: 0 };
   }
 
   // Calculate chunk bounds
@@ -44,7 +45,7 @@ export async function processNextChunk(importLogId: string): Promise<{
         rollbackDeadline: new Date(Date.now() + ROLLBACK_HOURS * 60 * 60 * 1000),
       },
     });
-    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, errorsInChunk: 0 };
+    return { done: true, processedInChunk: 0, importedInChunk: 0, updatedInChunk: 0, skippedInChunk: 0, errorsInChunk: 0 };
   }
 
   const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, rows.length);
@@ -74,7 +75,8 @@ export async function processNextChunk(importLogId: string): Promise<{
 
   let importedInChunk = 0;
   let updatedInChunk = 0;
-  let errorsInChunk = 0;
+  let skippedInChunk = 0;   // Fix 3/4: intentional skips (duplicates with skip strategy, missing name)
+  let errorsInChunk = 0;    // Fix 4: unexpected DB/processing errors only
   const newErrors: string[] = [];
   const createdIds: string[] = ((job.rollbackData as string[]) ?? []);
   const newlyCreatedIds: string[] = [];
@@ -84,13 +86,23 @@ export async function processNextChunk(importLogId: string): Promise<{
     await prisma.$transaction(async (tx) => {
       for (let i = 0; i < chunk.length; i++) {
         const row = chunk[i] as Record<string, string>;
+
+        // Fix 5: Skip rows with no name — never write "Unknown Unknown" to DB
+        const rawFirst = (row.firstName ?? "").trim();
+        const rawLast = (row.lastName ?? "").trim();
+        if (!rawFirst && !rawLast) {
+          skippedInChunk++;
+          newErrors.push(`Row ${chunkStart + i + 1}: skipped — missing both firstName and lastName`);
+          continue;
+        }
+
         const writeData = toContactWriteData(row);
         const duplicate = existingContacts.find((existing) => isLikelyDuplicate(row, existing));
 
         try {
           if (duplicate && mergeStrategy === "skip") {
-            // skip duplicates — count as skipped, no DB write
-            updatedInChunk++; // reuse counter but mark as "handled"
+            // Fix 3: Skip duplicates → skippedCount, not updatedCount
+            skippedInChunk++;
           } else if (duplicate && mergeStrategy !== "create_all") {
             // update or update_empty
             let updatePayload: Partial<typeof writeData>;
@@ -125,9 +137,10 @@ export async function processNextChunk(importLogId: string): Promise<{
             newlyCreatedIds.push(created.id);
             importedInChunk++;
 
-            // CASL: create ConsentRecord if consent was mapped from this row
+            // CASL: create ConsentRecord only if consent was given AND we have a valid date
+            // Fix 6: Never fabricate a consent timestamp — if date is missing/invalid, skip the record
             const consent = extractConsentFromRow(row);
-            if (consent?.consentGiven) {
+            if (consent?.consentGiven && consent.collectedAt !== null) {
               await tx.consentRecord.create({
                 data: {
                   contactId: created.id,
@@ -144,6 +157,7 @@ export async function processNextChunk(importLogId: string): Promise<{
             }
           }
         } catch (e) {
+          // Fix 4: only unexpected errors go into errorsInChunk
           errorsInChunk++;
           newErrors.push(`Row ${chunkStart + i + 1}: ${(e as Error).message}`);
         }
@@ -155,9 +169,14 @@ export async function processNextChunk(importLogId: string): Promise<{
     newErrors.push(`Chunk ${job.currentChunk + 1} failed: ${(e as Error).message}`);
   }
 
-  // Group newly created contacts into households — best-effort, never fails the import
+  // Fix 2: Group newly created contacts into households — best-effort, but log failures
   if (newlyCreatedIds.length > 0) {
-    await groupHouseholdsForContacts(job.campaignId, newlyCreatedIds, prisma).catch(() => {});
+    await groupHouseholdsForContacts(job.campaignId, newlyCreatedIds, prisma).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Unknown error during household grouping";
+      console.error(`[import:${importLogId}] Household grouping failed: ${msg}`);
+      // Store the error in newErrors so it surfaces in the result summary
+      newErrors.push(`Household grouping failed for chunk ${job.currentChunk + 1}: ${msg}`);
+    });
   }
 
   // Update progress
@@ -165,6 +184,7 @@ export async function processNextChunk(importLogId: string): Promise<{
   const allErrors = [...existingErrors, ...newErrors].slice(0, 500);
   const isDone = chunkEnd >= rows.length;
 
+  // Fix 4: skippedCount = intentional skips; errorCount = unexpected errors. Never mix.
   await prisma.importLog.update({
     where: { id: importLogId },
     data: {
@@ -172,13 +192,13 @@ export async function processNextChunk(importLogId: string): Promise<{
       processedRows: Math.min(chunkEnd, rows.length),
       importedCount: (job.importedCount ?? 0) + importedInChunk,
       updatedCount: (job.updatedCount ?? 0) + updatedInChunk,
-      skippedCount: (job.skippedCount ?? 0) + errorsInChunk,
-      errorCount: (job.errorCount ?? 0) + errorsInChunk,
+      skippedCount: (job.skippedCount ?? 0) + skippedInChunk,   // Fix 3/4: only intentional skips
+      errorCount: (job.errorCount ?? 0) + errorsInChunk,         // Fix 4: only unexpected errors
       errors: allErrors.length > 0 ? allErrors : undefined,
       rollbackData: createdIds,
       ...(isDone
         ? {
-            status: allErrors.length > 0 ? "completed_with_errors" : "completed",
+            status: (errorsInChunk > 0 || (job.errorCount ?? 0) > 0) ? "completed_with_errors" : "completed",
             completedAt: new Date(),
             rollbackDeadline: new Date(Date.now() + ROLLBACK_HOURS * 60 * 60 * 1000),
           }
@@ -186,7 +206,7 @@ export async function processNextChunk(importLogId: string): Promise<{
     },
   });
 
-  return { done: isDone, processedInChunk: chunk.length, importedInChunk, updatedInChunk, errorsInChunk };
+  return { done: isDone, processedInChunk: chunk.length, importedInChunk, updatedInChunk, skippedInChunk, errorsInChunk };
 }
 
 /** Rollback an import — delete all contacts created by this import */

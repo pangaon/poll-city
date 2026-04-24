@@ -51,14 +51,32 @@ export const DEFAULT_TRANSFORMS: TransformConfig = {
 
 /* ── Transform application ──────────────────────────────────────────── */
 
+// Fix 7: track transform rule failures for reporting
+export interface TransformWarning {
+  ruleType: "split" | "merge" | "findReplace";
+  ruleId: string;
+  rowIndex: number;
+  reason: string;
+}
+
 function applyRawTransforms(
   rawRow: Record<string, string>,
   mappedRow: Record<string, string>,
-  transforms: TransformConfig
+  transforms: TransformConfig,
+  rowIndex?: number,
+  warnings?: TransformWarning[]
 ): void {
   // Split rules: raw column → two mapped fields
   for (const rule of transforms.splitRules) {
-    if (!rule.sourceColumn || !rule.delimiter || !rule.firstPart) continue;
+    if (!rule.sourceColumn || !rule.delimiter || !rule.firstPart) {
+      // Fix 7: incomplete rule — log warning
+      if (warnings && rowIndex !== undefined) {
+        warnings.push({ ruleType: "split", ruleId: rule.id, rowIndex, reason: "Incomplete split rule: missing sourceColumn, delimiter, or firstPart" });
+      } else {
+        console.warn(`[import:transform] Incomplete split rule ${rule.id} — skipping`);
+      }
+      continue;
+    }
     const val = (rawRow[rule.sourceColumn] ?? "").trim();
     if (!val) continue;
     const delimIdx = val.indexOf(rule.delimiter);
@@ -71,7 +89,15 @@ function applyRawTransforms(
 
   // Merge rules: two raw columns → one mapped field
   for (const rule of transforms.mergeRules) {
-    if (!rule.sourceCol1 || !rule.sourceCol2 || !rule.targetField) continue;
+    if (!rule.sourceCol1 || !rule.sourceCol2 || !rule.targetField) {
+      // Fix 7: incomplete rule — log warning
+      if (warnings && rowIndex !== undefined) {
+        warnings.push({ ruleType: "merge", ruleId: rule.id, rowIndex, reason: "Incomplete merge rule: missing sourceCol1, sourceCol2, or targetField" });
+      } else {
+        console.warn(`[import:transform] Incomplete merge rule ${rule.id} — skipping`);
+      }
+      continue;
+    }
     const val1 = (rawRow[rule.sourceCol1] ?? "").trim();
     const val2 = (rawRow[rule.sourceCol2] ?? "").trim();
     const merged = [val1, val2].filter(Boolean).join(rule.separator ?? " ");
@@ -260,8 +286,11 @@ export function toContactWriteData(row: Record<string, string>) {
       .join(" ")
     || null;
 
-  const firstName = normalizeString(row.firstName) || "Unknown";
-  const lastName = normalizeString(row.lastName) || "Unknown";
+  // Fix 5: Never write "Unknown" to the DB. The background processor skips rows where
+  // both names are empty before calling this function. If only one name is present,
+  // use what we have and leave the other as empty string (DB allows it).
+  const firstName = normalizeString(row.firstName) || "";
+  const lastName = normalizeString(row.lastName) || "";
 
   return {
     firstName,
@@ -302,10 +331,14 @@ export function toContactWriteData(row: Record<string, string>) {
   };
 }
 
-/** Extract CASL consent data from a mapped row. Returns null if no consent signal. */
+/** Extract CASL consent data from a mapped row. Returns null if no consent signal.
+ *
+ * Fix 6: Invalid or missing consent dates return null — NEVER fabricate a timestamp.
+ * The caller must set caslConsent: false when collectedAt is null.
+ */
 export function extractConsentFromRow(row: Record<string, string>): {
   consentGiven: boolean;
-  collectedAt: Date;
+  collectedAt: Date | null;
 } | null {
   const raw = normalizeString(row.consentGiven ?? "").toLowerCase();
   const givenTruthy = ["y", "yes", "true", "1", "oui", "checked", "x"].includes(raw);
@@ -314,12 +347,20 @@ export function extractConsentFromRow(row: Record<string, string>): {
   if (!givenTruthy && !dateRaw) return null;
   if (!givenTruthy && !raw) return null; // consentDate without consentGiven = no signal
 
-  const collectedAt = dateRaw ? new Date(dateRaw) : new Date();
-  const validDate = !Number.isNaN(collectedAt.getTime());
+  // Fix 6: Only parse a date if one was actually provided and it's valid.
+  // Never fall back to new Date() — that would fabricate a consent timestamp.
+  let collectedAt: Date | null = null;
+  if (dateRaw) {
+    const parsed = new Date(dateRaw);
+    if (!Number.isNaN(parsed.getTime())) {
+      collectedAt = parsed;
+    }
+    // If dateRaw is present but invalid, collectedAt remains null — no fabrication
+  }
 
   return {
     consentGiven: givenTruthy,
-    collectedAt: validDate ? collectedAt : new Date(),
+    collectedAt, // may be null — caller must handle this
   };
 }
 
