@@ -43,6 +43,7 @@ import {
   AlertTriangle,
   Library,
   Store,
+  Database,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -255,6 +256,7 @@ export default function Sidebar() {
     if (isSuperAdmin) {
       // SUPER_ADMIN: single Ops entry — sub-pages (adoni, social, sources, vendors) are tabs on /ops
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
+      platformItems.push({ href: "/ops/data-management", icon: Database, label: "Seed Data", isNew: true });
     }
 
     return [
