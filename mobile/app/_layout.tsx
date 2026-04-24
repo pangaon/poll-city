@@ -1,34 +1,49 @@
-/**
- * Root layout — wraps the entire app with providers and handles
- * auth-gated navigation between (auth) and (app) groups.
- */
-
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
+import * as SecureStore from "expo-secure-store";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { startSyncService, stopSyncService } from "../lib/sync";
+
+// Keep native splash up until auth + terms check are both resolved
+SplashScreen.preventAutoHideAsync();
+
+export const TERMS_KEY = "poll_city_terms_v1";
 
 function RootNavigationGuard() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isLoading) return;
+    SecureStore.getItemAsync(TERMS_KEY).then((val) => {
+      setTermsAccepted(val === "true");
+    });
+  }, []);
+
+  // Hide native splash once both auth and terms check are resolved
+  useEffect(() => {
+    if (!isLoading && termsAccepted !== null) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading, termsAccepted]);
+
+  useEffect(() => {
+    if (isLoading || termsAccepted === null) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
-    if (!user && !inAuthGroup) {
-      // Not signed in — redirect to login
+    if (!termsAccepted) {
+      router.replace("/(auth)/terms");
+    } else if (!user && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
-      // Signed in — redirect to main app (tab-based interface)
       router.replace("/(tabs)/canvassing");
     }
-  }, [user, isLoading, segments, router]);
+  }, [user, isLoading, termsAccepted, segments, router]);
 
-  // Start sync service when authenticated
   useEffect(() => {
     if (user) {
       startSyncService();
@@ -37,13 +52,18 @@ function RootNavigationGuard() {
     }
   }, [user]);
 
+  // Return null while loading — native splash covers the gap
+  if (isLoading || termsAccepted === null) {
+    return null;
+  }
+
   return <Slot />;
 }
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <RootNavigationGuard />
     </AuthProvider>
   );
