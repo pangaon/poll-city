@@ -1,1144 +1,132 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-24 (session — Vendor Network directory + profile pages shipped)
-**Updated by:** Claude Sonnet 4.6 — Vendor discovery pages built. Build green. Pushed.
+**Last updated:** 2026-04-24 (master audit + reset session)
+**Updated by:** Claude Sonnet 4.6 — Full platform audit. All scripts run. GEORGE_TODO reconciled. File rebuilt.
 
 ---
 
-## ✅ THIS SESSION (2026-04-24 — Vendor Network discovery pages)
-
-### What shipped (commit f2c1e97 + 1750106)
-- **`/vendors`** — campaign-app Vendor Network directory: search, category/province/verified filters, paginated list, sidebar entry "Vendor Network" (isNew) in Platform section
-- **`/vendors/[id]`** — vendor public profile: hero card (logo/initials, verified badge, category tags, rating), stats row (years exp, response time, rate), bio, service areas, specialties, portfolio links, contact card (copy email, phone, mailto, website)
-- **`GET /api/vendors`** — searchable vendor directory endpoint (auth required, filters: q/category/province/verified)
-- **`GET /api/vendors/[id]`** — single vendor profile endpoint (auth required)
-- **Sidebar** — `Store` icon + "Vendor Network" entry added to PLATFORM_SECTION
-- **`scripts/add-owner-to-all-campaigns.ts`** — George's utility committed (was untracked)
-- Build: ✓ exit 0 both times. Both pages show as `ƒ Dynamic` in build output.
-
-### CRITICAL — still blocked on George's action
-**`npx prisma db push` (GEORGE_TODO item 78b) has NOT been run.**
-The `vendors` table does NOT exist in production Railway DB.
-- `/vendors` and `/vendors/[id]` will return 500 in production until this runs.
-- `/vendor/signup` email flow also 500s until this runs.
-- Google OAuth signup also fails until this runs.
-The pages are built correctly — they will work the moment item 78b is done.
-
-### George action required — CRITICAL
-1. Run `npx prisma db push` (GEORGE_TODO item 78b) — adds `vendors` table + `VENDOR` enum to Railway
-2. Test: go to `/vendor/signup`, create a test vendor account → confirm dashboard loads
-3. Go to `/vendors` in the campaign app → confirm directory loads (will be empty until vendors register)
-4. Test Google OAuth: `/vendor/login` → sign in with Google → confirm VENDOR dashboard
-
-### Next session opener (paste verbatim)
-> Vendor Network directory and profile pages are BUILT and pushed (commit f2c1e97) but NOT live yet — George still needs to run `npx prisma db push` (GEORGE_TODO item 78b) to create the `vendors` table in Railway. Once that runs: test full vendor signup flow, then next build task is `/vendor/profile` edit page so vendors can update their bio, service areas, portfolio, and rates after initial signup.
-
----
-
-## ✅ PREV SESSION (2026-04-23 — mobile-pcs PCS app code audit + Expo connectivity)
-
-### What changed (mobile-pcs/ only — no web changes)
-- `package.json` — fixed: `babel-preset-expo` corrected to `~54.0.10` (SDK-matched version), removed duplicate entry from dependencies
-- `src/lib/formatters.ts` — NEW: shared `timeAgo` + `getInitials` utilities
-- `src/components/CandidateCard.tsx` — uses shared `getInitials`, haptic feedback on follow
-- `src/components/PollCard.tsx` — haptic feedback on vote
-- `app/candidate/[id].tsx` — uses shared formatters, haptic feedback on follow
-- `app/notifications.tsx` — uses shared `timeAgo`
-- Deleted dead code: `Screen.tsx`, `Card.tsx`, `Button.tsx` (never imported by any screen)
-- TypeScript: zero errors
-
-### George action required
-Expo connectivity is unresolved — network/IP issue. Next session: troubleshoot why Expo Go can't reach the dev server (possibly router client isolation, or phone on different subnet). Try:
-```
-cd C:\Users\14168\Documents\Projects\poll-city\mobile-pcs
-npx expo start --lan --clear
-```
-Phone must be on same Wi-Fi as the PC (`192.168.2.x`).
-
-### Not yet done
-- `mobile-pcs/` changes not committed (George hasn't confirmed app works in Expo Go yet)
-- EAS project ID not set (`REPLACE_WITH_EAS_PROJECT_ID` still in app.json)
-- No assets: `assets/icon.png`, `assets/splash.png` not created yet
-- `eas init` not run — needed before TestFlight build
-
----
-
-## ✅ PREV SESSION (2026-04-23 — mobile Field Command port, NOT yet committed)
-
-### What changed
-- `mobile/app/(tabs)/canvassing/index.tsx` — complete rewrite. 1151 lines. Field Command + War Room v3 ported from SocialCommand Figma component.
-  - Field Ops tab: 5 missions (MissionCard, Accept button, priority/reward badges)
-  - War Room tab: CommandCenter with Stats / Team / Builder / Platform inner tabs
-  - ActiveMissionView: map header, next stop card with party chips, turf claim, team strip, cyan "Arrived" FAB
-  - All data self-contained (no API needed for prototype)
-  - "Arrived" → navigates to `/(app)/door/[id]` with contactJson mapped from stop household
-  - Dark theme: bg `#050A1F`, card `#0F1440`, accent `#00E5FF`/`#2979FF`
-- TS check: `npx tsc --noEmit` exits 0 (one missing style key patched)
-
-### George action required
-```
-cd c:/Users/14168/Documents/Projects/poll-city/mobile
-npx expo start --tunnel --clear
-```
-Scan QR in Expo Go → tap Canvassing tab → Field Command screen.
-
-### Not yet done
-- `npm run push:safe` on web (not needed — mobile only changes this session)
-- Mobile commit not pushed — run `git add mobile/ && git commit -m "feat(mobile): Field Command + War Room v3 canvassing tab"` after confirming it works on device
-- `walk-list.tsx` still has old API-fetching active mission view (the inline `ActiveMissionView` in `index.tsx` replaces it for prototype purposes)
-- `door/[id].tsx` not modified this session — existing 5-step wizard is wired and ready
-
----
-
-## ✅ PREV SESSION (2026-04-23 — George session, commit 91567ba, LIVE + CURRENT on Vercel)
-
-### What shipped
-- **Sidebar New badges** — All recently shipped features now show green "New" pill: AI Assist, Tasks, Field Ops, Scripts, Signs, Finance, Forms, Adoni Training (ops)
-- **Help-data bug fixed** — `HELP_ARTICLES` closing `];` was at line 467, orphaning all atlas/forms/scripts/weather/adoni articles. Fixed. All articles now reachable via search and category lookup.
-- **8 new user guide articles** — Tasks & Accountability (2 articles), Signs field ops, Finance Funding Sources, Finance Vouchers, Adoni Voice+Upload, Adoni Command Centre
-- **2 new help categories** — Tasks & Accountability, Finance & Funding
-- **Vercel red deploy fixed** — `77d311a` failed because of the orphaned help-data objects; `91567ba` fixed it. Current deployment is green.
-
-### Also in this session's git log (from overnight + morning sessions)
-- `79102ea` — Adoni daily cap (100/24h), comms 24h fatigue guard on email + SMS, print shop province/specialty filters + quote modal, weather widget on Field Ops (Open-Meteo, geolocation, 3-day forecast, canvassing readiness badge)
-- `7fe5cf1` — Atlas Phase 3 turf cutting (Quick Cut + Manual Mode), canvassing script builder with branch logic, forms analytics page
-
----
-
-## ✅ THIS SESSION (2026-04-23 afternoon, commit 79102ea, all live on origin/main)
-
-### What shipped
-
-**commit 79102ea — Adoni cap + fatigue guard + print shops + weather**
-- `src/lib/rate-limit-redis.ts` — `adoni_daily` limiter added (100/24h on top of existing 50/hr)
-- `src/app/api/adoni/chat/route.ts` — daily cap enforced; `max_tokens` cut 2000→1200 (~40% cheaper per call)
-- `src/app/api/communications/email/route.ts` — 24h fatigue guard: skips contacts with `lastContactedAt >= now-24h`; updates `lastContactedAt` for every sent recipient; returns `fatigueSuppressed` count
-- `src/app/api/communications/sms/route.ts` — same fatigue guard wired (SMS already updated `lastContactedAt`; now also checks before send)
-- `src/app/api/print/shops/route.ts` — `province` filter param added
-- `src/app/(app)/print/shops/shops-client.tsx` — province + specialty filter dropdowns; Quote Request modal (pre-filled mailto)
-- `src/components/weather/weather-widget.tsx` — new component: browser geolocation + Open-Meteo free API, current conditions, 3-day forecast, canvassing-readiness badge
-- `src/app/(app)/field-ops/field-ops-client.tsx` — WeatherWidget dynamically imported and rendered above pipeline grid on Dashboard tab
-- `src/app/(app)/help/help-data.ts` — 4 new user guide articles added (weather for canvassing, fatigue guard, finding a print shop, Adoni guide)
-- Build: green ✓ Pushed ✓
-
-### George actions required — BEFORE WEDNESDAY DEMO (run in order)
-```bash
-npx prisma db push                              # Tasks v2 + FounderWisdom schema — CRITICAL, Tasks 500 without this
-npx prisma db seed                              # Maleeha, Elizabeth, GTA officials, PCS posts
-npx tsx scripts/provision-whitby-clients.ts    # Creates Maleeha + Elizabeth as real clients with logins
-npx tsx scripts/seed-whitby-boundaries.ts      # Loads ward maps into each campaign
-npx tsx scripts/fix-demo-dates.ts              # Fixes stale 2024 task dates in demo campaigns
-```
-
-Atlas ward seed (browser, one-time):
-```
-https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
-```
-Wait 60–90 seconds for JSON response. Populates all Ontario municipalities in the Atlas.
-
-Wednesday login credentials (after provision script runs):
-- Maleeha Shahid: shahidm@whitby.ca / MaleehaWhitby2026!
-- Elizabeth Roy: elizabeth.roy@whitby.ca / ElizabethWhitby2026!
-- George is auto-added as Admin on both campaigns.
-
-### Next session opener
-All code is shipped and live. The platform is demo-ready once George runs the 5 terminal commands above. Next session: Adoni Training — populate with George's first wisdom entries so Adoni starts giving campaign-specific advice. Or tackle Figma Make sync if new screens have been published.
-
----
-
-## ✅ PRIOR SESSION (2026-04-23 morning, 5 commits, all live on origin/main)
-
-### What shipped
-
-**commit 7fe5cf1 — Atlas Phase 3 + Canvassing Scripts + Forms Analytics**
-- `atlas-map-client.tsx` — ⚡ Quick / ✏️ Manual turf mode tabs, street search + checkbox list, volunteer DB combobox, AnimatePresence confirm dialog before overwriting manual turfs
-- `/api/atlas/volunteers-for-map` — new auth-gated endpoint, returns volunteer names + phones scoped by campaignId
-- `canvassing/scripts/scripts-client.tsx` — full overhaul with branch logic UI
-- `/api/canvassing/scripts/[id]` — GET/PUT/DELETE route
-- `prisma/schema.prisma` — `branchLogic Json?` on CanvassingScript (needs `npx prisma db push`)
-- `/api/forms/[id]/analytics` — analytics aggregation route wired to existing results page
-- Forms results page — Recharts formatter type error fixed (pre-existing, found in build)
-- `scripts/fix-demo-dates.ts` — script to push stale 2024 demo task dates forward
-- GEORGE_TODO items 80 + 81 added
-
-**commits 723f7f9 + e33a1f6 — NEW sidebar badges**
-- Scripts entry added to Field section (`/field-ops/scripts`)
-- Forms marked `isNew: true`
-- All atlas, tasks, AI assist, field ops, signs, finance, compliance entries carry NEW badge
-
-**commit 99dada3 — WORK_QUEUE + GEORGE_TODO docs**
-
-### George actions required (blocking prod)
-1. `npx prisma db push` — covers branchLogic + all prior schema additions (Tasks v2, founder_wisdom, CASL, sources, etc.)
-2. `npx tsx scripts/fix-demo-dates.ts` — fixes demo task dates for Wednesday demo
-3. Ward boundary seed — GEORGE_TODO item 81 (URL + CRON_SECRET from Vercel env)
-
-### Next session opener
-All three requested tasks are shipped and hardened. No PENDING items blocking Wednesday demo. Pick any PENDING item from WORK_QUEUE or start Wednesday walkthrough prep.
-
----
-
-## ✅ ADONI OVERNIGHT BUILD (2026-04-23 overnight, 2 commits, all live)
-
-### What shipped — Adoni is now fully autonomous
-
-**Commit 1: feat(adoni): add volunteer tools, inline chips, file upload**
-- `create_volunteer` tool — adds single volunteer + VolunteerProfile, finds or creates Contact
-- `bulk_create_volunteers` tool — adds a list of volunteers in one call, no lecturing
-- `AdoniChip` component — navy/green pulse button wired to 5 pages: tasks, contacts, email, signs, volunteers
-- File upload in Adoni panel — paperclip button accepts CSV (auto-parses to volunteers) and text files
-- Build: green ✓ Pushed ✓
-
-**Commit 2: feat(adoni): voice input + ai-assist command centre**
-- Mic button on Adoni panel — Web Speech API (Chrome/Safari, zero API key), tap to start/stop dictation
-- `/ai-assist` transformed into Adoni Command Centre — uses `/api/adoni/chat` real streaming endpoint, shows Adoni face image, 5 category prompt banks, voice + file upload
-- Build: green ✓ Pushed ✓
-
-**The Adoni fix you saw:** Adoni was refusing to add volunteers because there was no `create_volunteer` tool — he literally couldn't do it. Now he can. Upload a CSV of 40 volunteers and they all get added in one shot.
-
-### George actions required
-- **`npx prisma db push`** still needed for `founder_wisdom` table + Tasks v2 schema (see item #78 in GEORGE_TODO.md)
-- No new schema changes in this overnight session
-
----
-
-## ✅ TASKS V2 — FULL REBUILD (this session, 2026-04-23)
-
-**Tasks is now a campaign accountability engine, not a to-do list.**
-
-### What shipped
-
-**Schema changes (requires `npx prisma db push` — item #78 in GEORGE_TODO.md):**
-- `TaskCategory` enum: ADMIN / FIELD / COMMS / FINANCE / VOLUNTEERS / OTHER
-- `TaskResolutionType` enum: 12 values (COMPLETED, VOICEMAIL_LEFT, MET_IN_PERSON, etc.)
-- 6 new Task fields: `category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`
-- Self-referential `TaskChain` relation: follow-up tasks link back to their parent
-
-**New API:**
-- `POST /api/tasks/[id]/resolve` — full resolution flow: updates task, logs contact interaction, generates Adoni follow-up suggestion via AI, creates follow-up task if requested, returns Adoni message
-
-**Modified files:**
-- `src/app/(app)/tasks/tasks-client.tsx` — complete rebuild (see features below)
-- `src/app/api/tasks/route.ts` — `category` + `dueBefore`/`dueAfter` filters, `supportLevel` + `parentTask` + `_count` in response
-- `src/app/api/tasks/[id]/route.ts` — supports new fields + **auto-creates next recurring task on completion**
-- `src/lib/validators/index.ts` — updated schemas, new `resolveTaskSchema`
-- `src/types/index.ts` — `TaskCategory` + `TaskResolutionType` exports + 4 new label/color/icon maps
-- `src/lib/operations/task-backbone.ts` — `category`, `parentTaskId`, `isRecurring`, `recurringInterval` support
-
-**New files:**
-- `src/app/api/tasks/[id]/resolve/route.ts` — resolve endpoint with Adoni AI loop
-
-### The 15 features (explain this to Maleeha/the Mayor)
-
-1. **Category system** — Admin / Field / Comms / Finance / Volunteers. Every task tagged. Filter by category tab.
-2. **My Tasks tab** — First view a team member sees: only their tasks, their count.
-3. **This Week tab** — Tasks due in the next 7 days, organized in one view.
-4. **Resolution picker** — When resolving a task, pick exactly what happened: Left Voicemail, Met In Person, Recruited, Not Reached, Blocked, etc. Category-aware (Field tasks show field resolutions, Volunteer tasks show volunteer resolutions).
-5. **Adoni follow-up loop** — After resolution, Adoni's panel slides in with a contextual suggestion based on what happened. If you left a voicemail, he suggests a follow-up call in 3 days. Real AI if API key set, deterministic fallback if not.
-6. **Auto-create follow-up task** — From the resolution panel, one checkbox creates a follow-up task linked to the parent. The chain is visible in the detail panel.
-7. **Kanban board view** — Toggle between List and Board. Board shows To Do / In Progress columns with click-to-move cards.
-8. **Campaign Playbook templates** — "Playbook" button imports pre-built task sets for 3 campaign phases: Early Campaign (8 tasks), Field Ops (7 tasks), GOTV (6 tasks). Every winning campaign runs these tasks.
-9. **Task Health Stats bar** — Animated counters at top: Active, Overdue, Urgent, In Progress. Disappears when no tasks.
-10. **Smart due date shortcuts** — In the create form: "Today", "Tomorrow", "+3 days", "This Friday", "+1 week", "+2 weeks" chips. Click = set. No date picker fumbling.
-11. **Urgency escalation badge** — Overdue tasks get a pulsing 🔥 flame + "Overdue" in red. Due within 24h get a pulsing clock "Due in Xh". The sidebar badge pulses.
-12. **Recurring tasks** — Mark any task as recurring (weekly / biweekly / monthly). On completion, the next instance is auto-created with the next due date.
-13. **Quick-add bar** — Always visible at top of task list. Type 3+ chars + Enter to instantly add a task. No modal. Press N from anywhere on the page to focus it.
-14. **Task chain indicator** — If a task was auto-created as a follow-up, the detail panel shows "↳ Follow-up from: [parent title]" with a link.
-15. **Contact support level chip** — If a task is linked to a contact, their support level emoji (💚 / 🟡 / 🔴) appears inline in the task row.
-
-**Bonus:**
-- **Bulk multi-select** — Checkbox on hover, floating action bar with Complete / Delete / Reassign.
-- **Collapsible priority groups** — Urgent / High / Medium / Low groups can be collapsed.
-- **Interaction auto-logging** — When resolving a contact-linked task with MET_IN_PERSON, VOICEMAIL_LEFT, EMAIL_SENT, or RECRUITED, a contact interaction is automatically logged.
-
-### George actions required
-- **Run `npx prisma db push`** — Tasks v2 schema (item #78 in GEORGE_TODO.md). **Until this runs, Tasks page will 500.**
-- That's it. The rest is code-complete and live on next deployment.
-
-### Risk
-- Zero data loss risk: all schema changes are purely additive.
-- Tasks created before this build will have `category = OTHER` (default) — they will appear in the "Other" category tab. George can recategorize them in the detail panel.
-
----
-
-## 🎨 PCS SOCIAL — CRASH FIX + CONTRAST OVERHAUL (previous session, 2026-04-23)
-
-**Hydration crash fixed. Text is now readable. GTA officials in seed.**
-
-### What shipped
-
-**Modified:**
-- `src/components/social/pcs-right-rail.tsx` — Fixed hydration crash: `useState(0)` init + `useEffect`-only `Date.now()` for countdown. All `text-white/40` → `text-slate-400/500/600`. Card backgrounds `bg-[#111827]`.
-- `src/components/social/pcs-left-sidebar.tsx` — All `text-white/50` → `text-slate-400`. Active nav `text-white`. Section headers `text-slate-600`. Trending box `bg-[#111827]`.
-- `src/components/social/pcs-header.tsx` — Fixed `bg-[#080D14]/80 bg-white/80` conflict → `bg-white/80 dark:bg-[#080D14]/80`. Fixed `flex hidden sm:flex` → `hidden sm:flex`. All icon text `text-white/40` → `text-slate-400/500`.
-- `prisma/seed.ts` — Added Olivia Chow (Mayor Toronto), Brad Bradford (Ward 19), Patrick Brown (Mayor Brampton), Carolyn Parrish (Mayor Mississauga). 9 `PoliticianPost.upsert` entries with real civic content.
-
-### Root causes fixed
-- **Runtime crash**: `useState(target.getTime() - Date.now())` computes different values server vs client → React error boundary. Fixed: `useState(0)` server-safe init.
-- **Low contrast**: `text-white/50` = rgba(255,255,255,0.5) on `#080D14` — nearly invisible. Named Tailwind slate colors are far more readable.
-
-### George actions required
-- **Run `npx prisma db push`** — `FounderWisdom` model added to schema (Adoni Trainer feature, see below). Also covers all prior pending schema items.
-- **Run `npx prisma db seed`** — Loads Olivia Chow, Brad Bradford, Patrick Brown, Carolyn Parrish + their posts. Also re-seeds Maleeha + Elizabeth posts. Idempotent (all upserts).
-
-### Risk
-The GTA officials won't appear in Find My Reps or the officials list until seed is run.
-
----
-
-## 🧠 ADONI TRAINER — LIVE AT /ops/adoni (this session, 2026-04-23)
-
-**George can now inject his 35-year campaign expertise directly into Adoni.**
-
-### What shipped
-- `src/app/(app)/ops/adoni/` — Adoni Trainer UI (SUPER_ADMIN only). CRUD for wisdom entries by category (canvassing, signs, GOTV, etc.). Otter transcript paste → AI extraction of wisdom entries.
-- `src/app/api/ops/adoni-wisdom/` — Full CRUD API + `/extract` endpoint (AI extraction from Otter transcripts).
-- `prisma/schema.prisma` — `FounderWisdom` model added (`founder_wisdom` table). **Requires `npx prisma db push`.**
-- `src/lib/adoni/knowledge-base.ts` — `GEORGE_PLAYBOOK` added (canvassing, sign placement, GOTV strategy from George's experience).
-- `src/app/api/adoni/chat/route.ts` — Loads active `FounderWisdom` entries from DB and injects into Adoni's system prompt before every chat.
-- `src/components/layout/sidebar.tsx` — "Adoni Training" link added under Ops section for SUPER_ADMIN.
-
-### How to reach it
-Ops → Adoni Training (Brain icon) — SUPER_ADMIN only.
-
----
-
-## 🏛️ OFFICIAL SITE REDESIGN — LIVE (previous session, 2026-04-23)
-
-**Maleeha-ready. Production-quality official profile page deployed.**
-
-### What shipped
-
-**Modified:**
-- `src/app/officials/[id]/page.tsx` — Complete redesign. Sticky nav, full-bleed navy hero with blurred photo backdrop, photo card (140×168px), tagline, committee chips, social icons. Stats strip: Public Approval %, Days to Election, Years of Service, Level of Government. Two-column body: bio, priorities, service record, election history, constituent Q&A, gallery (main) + approval rating widget, countdown, committee roles with context descriptions, contact, Follow on PCS, share (sidebar). Full-width navy newsletter section. Amber claim CTA. Dark footer.
-
-**New files:**
-- `src/app/officials/[id]/official-newsletter.tsx` — Client component for newsletter subscribe. Email + name, POST to subscribe API, success state with checkmark, CASL compliance note.
-- `src/app/api/officials/[id]/subscribe/route.ts` — Public subscribe endpoint. Rate-limited (5/hour per IP via `rateLimit(req, "form")`). Zod validation. Upserts `NewsletterSubscriber` with `source: "official_site"`. Re-activates unsubscribed contacts.
-
-### Key design details
-- All extended data (OfficialPriority, OfficialAccomplishment, OfficialGalleryPhoto, ApprovalRating, ElectionResult) loaded via `Promise.allSettled` — graceful fallback if tables don't exist in Railway yet
-- Approval rating computed from raw `positiveCount / totalSignals` — **not** `approvalPct` (that field doesn't exist on the Prisma model)
-- Committee roles with human-readable context descriptions keyed to exact committee name
-- Election history sourced from Ontario Open Data via existing `ElectionResult` table
-- Hero uses `<img>` tag direct to Squarespace CDN URL — CSP `img-src https:` allows it, no Next Image config needed
-
-### How to see it
-Navigate to: `www.poll.city/officials/off-whitby-maleeha`
-
-### George actions required (CRITICAL — nothing shows without these)
-1. `npx prisma db push` — Apply schema fields `tagline`, `linkedIn`, `profileMode` on `Official` model to Railway (if not already there)
-2. `npx prisma db seed` — Load Maleeha's extended data: 8 committee roles, tagline, 78% approval rating, priorities, accomplishments
-3. After seed: Refresh `www.poll.city/officials/off-whitby-maleeha` — all sections will populate
-
-### Risk: Data won't show until seeded
-Approval rating sidebar, priorities, service record, election history, gallery all gracefully show nothing if the DB doesn't have the seed data yet. The page itself renders cleanly with just the core `Official` record.
-
----
-
-## 🏙️ POLL CITY SOCIAL — DESKTOP REBUILD (previous session, 2026-04-23)
-
-**Blank page fixed. Full 3-column Facebook-style desktop shell live.**
-
-### Root cause of blank page
-`src/app/social/layout.tsx` had `<html><body>` nested under the root layout's `<html><body>`. Browser silently discards nested html content. Fixed: layout now a standard nested layout with a `<div id="pcs-root" class="dark">`.
-
-### What shipped
-
-**New files:**
-- `src/app/social/layout.tsx` — 3-column shell: sticky PCSHeader + left nav sidebar + right rail + mobile SocialNav. Dark by default. Theme persisted in localStorage as `pcs-theme`.
-- `src/components/social/pcs-header.tsx` — Fixed-position glassmorphic header: brand logo, desktop search bar, notification bell with live unread count, auth dropdown (avatar, sign out, profile links), theme toggle.
-- `src/components/social/pcs-left-sidebar.tsx` — Left nav: Discover section (Feed/Polls/Representatives/Elections 2026/Groups), You section (Profile/Notifications), trending tags, sign-in CTA or user card.
-- `src/components/social/pcs-right-rail.tsx` — Right rail: Ontario election countdown (Oct 26 2026 live seconds), Find My Reps postal lookup (→ `/api/officials?postalCode=`), trending polls, Claim Your Profile CTA.
-
-**Modified:**
-- `src/app/social/social-feed-client.tsx` — feed's sticky tab bar moved to `top-[57px]` (accounts for fixed header), duplicate ThemeToggle removed (PCSHeader handles it now).
-- `src/app/(app)/communications/social/social-manager-client.tsx` — new **PCS Feed** tab (4th tab): compose + publish PoliticianPost directly to the civic feed, list of existing campaign PCS posts.
-- `src/app/api/social/posts/route.ts` — GET now returns `isPublished` in select.
-- `prisma/seed.ts` — added 5 recent 2026-dated posts (3 for Maleeha, 2 for Elizabeth) so feed looks alive on demo.
-
-### Navigation paths
-
-**View the rebuilt PCS:** poll.city/social → full desktop 3-column shell
-**Left sidebar:** Feed / Polls / Representatives / Elections 2026 / Groups / Profile / Notifications
-**Right rail:** Live election countdown + Find My Reps postal lookup + Trending polls + Claim CTA
-**Post to PCS from campaign app:** Communications → Social → PCS Feed tab → New PCS Post
-
-### George actions required
-- `npm run seed` (or `npx tsx prisma/seed.ts`) to load the 5 new 2026-dated posts into the DB so the feed shows real recent content
-- No schema changes — all existing tables
-
----
-
-## 🗳️ ELECTION OVERLAY — LIVE, NO SEED REQUIRED
-
-**What shipped:** Ontario Open Data election results (2014/2018/2022) overlaid on the map.
-- Toggle: "📊 Election History" button in Whitby/any municipality map header
-- API: `GET /api/atlas/election-results?municipality=Whitby+T` — reads CSV files directly from `data/ontario-elections/` using `fs.readFileSync`, **no database, no seed script required**
-- George had previously been told to run a seed script — that step is eliminated. The CSVs are in the repo and deploy with the app automatically.
-
-## 🗺️ PICKERING — ADDED TO ONTARIO MAP (this session)
-
-**What shipped:**
-- `src/app/api/atlas/pickering-wards/route.ts` — fetches Pickering ward polygons from MapServer layer 5. Uses `TEXT_` field for ward names (Pickering-specific). Blue accent (`#3B82F6`). Falls back to Represent `pickering-wards`.
-- `src/app/api/atlas/pickering-addresses/route.ts` — three-tier fallback: (1) Pickering MapServer layer 0 (42,610 points), (2) Durham Region MapServer filtered to Pickering (253,329 total, has postal codes), (3) OSM Overpass. Hard bounds `{ south: 43.76, west: -79.25, north: 44.02, east: -78.98 }`.
-- `src/config/ward-asset-registry.ts` — Pickering entry added (Durham Region section, between Ajax and Clarington).
-- `src/lib/atlas/ward-ingestor.ts` — added `TEXT_` field to `extractWardName` so DB seeding works for Pickering.
-- `src/components/atlas/atlas-all-map-client.tsx` — `Pickering: "#3B82F6"` added to `MUNI_ACCENT`, subtitle and attribution updated.
-
-**George action:** Re-run the ward seed endpoint to pick up Pickering:
-```
-https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
-```
-No `npx prisma db push` needed for Pickering — no schema changes.
-
----
-
-## 🗺️ WARD INFRASTRUCTURE — PARTIALLY SEEDED, RE-SEED REQUIRED
-
-**Status as of last seed run (this session):**
-- **10 municipalities seeded (58 wards):** Toronto (25), Markham (8), Oshawa (5), Vaughan (5), Whitby (4), Milton (4), Brampton (4), Clarington (1), Hamilton (1), Oakville (1)
-- **20 municipalities failed** — all due to Represent API rate limiting (not bad URLs)
-- **Fix shipped:** `ward-ingestor.ts` now serializes all Represent calls with 3s gaps. ArcGIS/CKAN run in parallel. Fix is in `origin/main` (commit `e682625`).
-
-**George must re-run the seed endpoint to get the remaining 20 municipalities:**
-```
-https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
-```
-Wait 3–4 minutes — Represent calls are now serial, so it takes longer but will complete. Expected result: all 28 municipalities seeded. Hamilton should show 15 wards, Oakville 7, Ottawa 24.
-
----
-
-## 🚨 WHAT SHIPPED THIS SESSION — 2026-04-22 🚨
-
-Build GREEN. Pushed to origin/main. All code verified compiles cleanly.
-
-### Sign Field Ops — Complete
-- **`src/components/signs/sign-action-modal.tsx`** — mobile bottom sheet, GPS capture, action grid (install/remove/damage/missing/repair/audit), status-aware available actions, notes textarea
-- **`src/components/signs/sign-event-timeline.tsx`** — vertical timeline fetching `GET /api/signs/[signId]/events`, photos, GPS, actor name
-- **`src/app/api/signs/[signId]/events/route.ts`** — GET (list events) + POST (create event + update sign status in transaction)
-- **`src/app/(app)/field-ops/signs/signs-field-client.tsx`** — wired: action button → `SignActionModal` → optimistic status update; history button → `SignEventTimeline` drawer
-- Navigation: Sidebar → Field Ops → Signs → click any sign → "Log Action" / "History" buttons
-
-### Finance — Complete
-- **`src/app/(app)/finance/funding-sources/`** — Funding Sources tab: list, add, ledger drawer, credit/debit transactions
-- **`src/app/(app)/finance/vouchers/`** — Vouchers tab: summary strip, status filter, card list, create/redeem/detail drawer
-- **APIs:** `/api/finance/funding-sources/`, `/api/finance/funding-sources/[id]/`, `/api/finance/funding-sources/[id]/ledger`, `/api/finance/vouchers/`, `/api/finance/vouchers/[id]/`, `/api/finance/vouchers/[id]/redeem`
-- Navigation: Sidebar → Finance → Funding Sources tab / Vouchers tab
-
-### QR & Scan-to-Donate — Complete
-- **`src/app/q/[token]/`** — public QR landing page (resolves token → context → redirects or shows donation page)
-- **`src/app/api/qr/[qrId]/resolve/route.ts`** — resolves QR context rules to determine destination
-- **`src/app/api/fundraising/scan-donate/route.ts`** — public endpoint: QR → campaign branding + donation page config + DonationSource attribution
-- Navigation: Any printed QR code → `poll.city/q/[token]` → donation page with attribution
-
-### Election Results — Refactored
-- **`src/app/api/atlas/election-results/route.ts`** — now reads from `data/ontario-elections/*.csv` directly (no DB seed required). CSVs deploy with the app.
-
----
-
-## 🚨 SCHEMA — `npx prisma db push` STILL REQUIRED 🚨
-
-New models in Railway pending push (see GEORGE_TODO item 3):
-- SignEvent, SignBatch, QrContextRule, FundingSource, FundingSourceTransaction, Voucher, VoucherRedemption
-- **Source Intelligence Hub:** PlatformSource, SourceEndpoint, SourceHealthCheck, CampaignSourceActivation, SourceItem, SourceItemEntity, SourcePack, SourcePackItem, CampaignPackActivation, SourceAuditLog
-- Plus all earlier models in item 3
-
-**Run:** `npx prisma db push` in your terminal. Takes 30 seconds.
-
----
-
-## 🚨 NEXT SESSION TASK — PORT NEW FIGMA PAGES 🚨
-
-**George has built ~50 new pages in Figma Make.** They have NOT arrived in the repo yet.
-
-**What to do when they land:**
-1. `git pull origin main` — Figma Make pushes to `figma_design_pollcity_iosapp/pages/`
-2. Check what's new: `git diff HEAD~1 --name-only -- figma_design_pollcity_iosapp/`
-3. For each new page: read Figma source → adapt imports → wire real API → add route in `src/app/(app)/design-preview/`
-4. Adaption rules: `motion/react` → `framer-motion` | `../../utils/cn` → `@/lib/utils`
-
-**George needs to: Publish/Sync from Figma Make** to push new pages to GitHub. Once they appear, the next agent picks them up and ports them all.
-
-**What is already ported and live:**
-- `/design-preview/social/command` — full Field Command wizard (DONE ✓)
-- `/design-preview/app/canvassing` — Live Turf with real MapLibre (DONE ✓)
-- All other 25 preview screens as stubs or partial ports
-
----
-
-## 🚨 NEW ACTIVE TRACK — MOBILE PREVIEW LAB (added 2026-04-20) 🚨
-
-**READ THIS BEFORE DOING ANY MOBILE WORK.**
-
-George is building the Poll City iOS app for campaign staff. There are two separate tracks:
-
-**Track 1 — Design Preview Lab** (`/design-preview`, web, SUPER_ADMIN only)
-- Phone frame in the browser showing Figma-ported screens
-- Sidebar → Platform → "Mobile Preview" → opens full-screen, no app shell
-- 27 screens exist as stubs. They need to be replaced with the full Figma designs + live data.
-- Figma source files live in `figma_design_pollcity_iosapp/pages/` in the repo root
-- Preview components live in `src/components/figma-preview/screens/`
-- Individual screen routes: `src/app/(app)/design-preview/social/[screen]/page.tsx` etc.
-- Porting process: Read Figma source → adapt imports (motion/react→framer-motion, react-router→next/link) → wire real API data → verify in browser
-
-**Track 2 — Expo iOS App** (`mobile/` directory)
-- Real native app. Shell exists. Full design rebuild needed to match Figma.
-- Not started. Comes after Track 1 proves each screen.
-
-**RULE: NEVER touch live web app pages when working on mobile preview. Completely separate.**
-**RULE: No new Prisma schema for preview work — read existing models only.**
-**Full context in memory:** `project_mobile_preview.md`
-
----
-
-## ⚠️ ALL-SESSIONS BROADCAST — READ BEFORE ANYTHING ELSE ⚠️
-
-**INFRASTRUCTURE:**
-- App runs on **VERCEL**. Railway is the **database only**.
-- ALL env vars → Vercel → Project Settings → Environment Variables
-- Railway Variables tab → PostgreSQL service only. NEVER add app env vars there.
-
-**BUILD:**
-- Use `npm run push:safe` exclusively. Never `git push` directly.
-- `push:safe` wipes `.next` before building (Windows ENOENT fix).
-- `tsc --noEmit` passing ≠ build passing. Always run the full build.
-
-**DATABASE:**
-- Schema changes → `npx prisma db push` (Railway).
-- NEVER `prisma migrate dev` — it will prompt to wipe prod.
-
-**UX DIRECTIVE:**
-- Every flow must meet Stripe-quality guided UX. No dead ends, no jargon.
-- Ask: "Would a first-time candidate understand this without help?"
-
----
-
-## 🚨 NEXT SESSION — HARDENED WARD INFRASTRUCTURE BUILD 🚨
-
-### What to build (3-layer architecture, fully specified)
-
-**Architecture:**
-```
-REQUEST PATH
-  Layer 1: Vercel Edge Cache (Cache-Control: public, max-age=3600, stale-while-revalidate=86400)
-    ↓ cache miss
-  Layer 2: DB (WardBoundary Prisma table — sub-10ms, zero external calls)
-    ↓ DB empty or failure
-  Layer 3: Live fetch (Represent OpenNorth — WGS84 guaranteed from Vercel)
-
-BACKGROUND
-  Vercel Cron: daily 3am → universal ingestor → updates DB → edge cache invalidates
-```
-
-**Why:** Ward boundaries are stable data. They must NEVER be fetched live at request time when 10,000+ users are on the map. One ArcGIS outage on election night = blank map = done.
-
-**Primary data source is the ArcGIS Hub (`municipalities-ontarioregion.hub.arcgis.com`) — not Represent OpenNorth.**
-The hub is where George found all Ontario municipal data in one place. It is the canonical source.
-The hub is a DISCOVERY layer — it catalogs underlying ArcGIS REST Feature Services.
-The actual data comes from those underlying services, queried directly with `outSR=4326` to guarantee WGS84 output.
-Represent OpenNorth is last-resort fallback only — not primary. It was used for Brampton because the hub's GeoJSON download returned EPSG:3857 (missing `outSR=4326`). That was a query bug, not a reason to abandon the hub.
-
-**Source priority order for every municipality:**
-1. ArcGIS REST service URL from hub item metadata → `[serviceUrl]/[layer]/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&resultRecordCount=500`
-2. Hub direct GeoJSON download → verify coordinates are WGS84 (lng ~-76 to -95, lat ~42 to 57) before trusting
-3. Represent OpenNorth → only if both above fail or return bad geometry
-
-### Prisma schema to add (after existing models at end of file)
-
-```prisma
-model WardBoundary {
-  id           String   @id @default(cuid())
-  municipality String   // "Whitby" | "Toronto" | "Markham" | "Brampton"
-  wardName     String   // "Ward 1", "Ward Centre"
-  wardNumber   Int?     // numeric sort key, null for non-numeric names
-  wardIndex    Int      // global index across all municipalities (used as MapLibre promoteId)
-  geojsonFeature Json   // the full GeoJSON Feature object (type + geometry + properties)
-  sourceUrl    String   // which URL this was fetched from (audit trail)
-  fetchedAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([municipality, wardName])
-  @@index([municipality])
-  @@map("ward_boundaries")
-}
-```
-
-George action required: `npx prisma db push` after schema change committed.
-
-### Scope: ALL Ontario municipalities, not just the current 4
-
-**George's directive:** Add every municipality with ward data available at `https://municipalities-ontarioregion.hub.arcgis.com/pages/ontario-open-data` to the Ontario Map.
-
-**What the next session must do first (before building infrastructure):**
-
-**Step 0A — Full hub crawl with pagination (do not stop at page 1):**
-The hub API paginates. You MUST exhaust all pages:
-```
-GET https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=1
-GET https://municipalities-ontarioregion.hub.arcgis.com/api/v3/search?q=ward&page[size]=100&page[number]=2
-... continue until response returns 0 results or no next page
-```
-Also crawl with alternate terms to catch different naming conventions:
-- `q=ward+boundary`
-- `q=electoral+division`
-- `q=ward+ontario`
-Filter to Ontario Canada only (ignore US results). Collect every unique dataset.
-
-**Step 0B — Full Represent crawl:**
-```
-GET https://represent.opennorth.ca/boundary-sets/?format=json&limit=500
-```
-Filter for slugs ending in `-wards` or containing `ontario`. Collect all slugs and their metadata.
-
-**Step 0C — Build and COMMIT the asset registry:**
-Create `src/config/ward-asset-registry.ts` — the canonical, committed source of truth for all Ontario ward assets. This file is the repository. Format:
-```typescript
-export interface WardAssetSource {
-  type: 'arcgis' | 'represent' | 'ckan' | 'geojson-direct';
-  url: string;
-  layer?: number;
-  filter?: string;       // e.g. "Municipality='Brampton'"
-  outSR?: number;        // if source is projected (not WGS84), set to 4326
-  verified: boolean;     // true only if URL was confirmed to return valid WGS84 geometry
-  verifiedAt?: string;   // ISO date when verification was done
-  notes?: string;        // e.g. "returns EPSG:3857 — use outSR=4326"
-}
-
-export interface WardAssetEntry {
-  municipality: string;    // display name: "City of Hamilton"
-  slug: string;            // url-safe: "hamilton"
-  region: string;          // "GTA" | "Greater Golden Horseshoe" | "Eastern Ontario" | etc.
-  population?: number;     // approximate, for sorting/display
-  wardCount?: number;      // how many wards (fill in after fetch)
-  accentColor: string;     // hex color for map rendering
-  addressesApi: string;    // "/api/atlas/[slug]-addresses" (stub if not built yet)
-  wardSources: WardAssetSource[];     // ordered: primary first
-  addressSources?: WardAssetSource[]; // for address points
-  lastFetched?: string;    // ISO date of last successful DB upsert
-}
-
-export const WARD_ASSET_REGISTRY: WardAssetEntry[] = [
-  // ... one entry per municipality
-];
-```
-
-**Step 0D — Verification log:**
-For every municipality in the registry, record:
-- `verified: true/false` on each source
-- If a source returned EPSG:3857 instead of WGS84, note it and add `outSR: 4326`
-- If a source had null geometries, mark `verified: false` and try fallback
-- If all sources failed for a municipality, still include the entry with `verified: false` — it goes in the registry, just doesn't get ingested until fixed
-
-The registry is committed to git. It is the audit trail. Every municipality George has ever asked to support is in this file forever, with its verification status.
-
-**Already verified sources (do not re-research these):**
-
-| Municipality | Primary source | Fallback |
-|---|---|---|
-| Whitby | `https://opendata.arcgis.com/datasets/223810efc31c40b3aff99dd74f809a97_0.geojson` | Represent `whitby-wards` |
-| Toronto | CKAN `https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=city-wards` → extract GeoJSON URL | Represent `toronto-wards-2018` |
-| Markham | ArcGIS item `e18e684f2f004f0e98d707cad60234be`, layer 0 via arcgis.com | `https://opendata.arcgis.com/datasets/e18e684f2f004f0e98d707cad60234be_0.geojson` |
-| Brampton | Represent `brampton-wards` (WGS84 guaranteed) | Peel Region `https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Peel_Ward_Boundary/FeatureServer/0` |
-| Milton | `https://api.milton.ca/arcgis/rest/services/Datasets/Wards/MapServer/0` | Represent if slug exists |
-| Barrie (addresses) | `https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressvW/MapServer/0` | — |
-| Brampton addresses | `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14` (WKID 2150 → must use `outSR=4326`) | — |
-
-**Represent slugs to check** (query `represent.opennorth.ca/boundary-sets/` for full list of Ontario -wards sets): ajax-pickering-wards, barrie-wards, belleville-wards, brampton-wards, brantford-wards, burlington-wards, cambridge-wards, clarington-wards, guelph-wards, hamilton-wards, kingston-wards, kitchener-wards, london-wards, markham-wards, mississauga-wards, niagara-falls-wards, oakville-wards, oshawa-wards, ottawa-wards, peterborough-wards, richmond-hill-wards, sarnia-wards, sudbury-wards, thunder-bay-wards, toronto-wards-2018, vaughan-wards, waterloo-wards, whitby-wards, windsor-wards
-
-**Each municipality added to `WARD_SOURCES` needs:**
-- `municipality` string (display name)
-- `addressesApi` path (even if stub — `/api/atlas/[slug]-addresses`)
-- `accentColor` (extend `MUNI_ACCENT` in `atlas-all-map-client.tsx`)
-- Verified primary + fallback URL
-
-### Build sequence (ordered, do not skip steps)
-
-**Step 1 — Schema**
-Add `WardBoundary` model to `prisma/schema.prisma`. Commit. Add checkbox to `GEORGE_TODO.md` for `npx prisma db push`.
-
-**Step 2 — Universal ingestor lib**
-Create `src/lib/atlas/ward-ingestor.ts`:
-- `WARD_SOURCES` config array: municipality → primary URL (ArcGIS/CKAN/Represent) → fallback URL
-- `fetchWardFeatures(municipality)` → tries primary → fallback → throws if both fail
-- `normalizeWardFeature(feature, municipality, globalIndex)` → adds wardName, wardNumber, wardIndex, municipality, addressesApi, wardFill, wardStroke
-- `upsertWardBoundaries(municipality, features)` → prisma.wardBoundary.upsert per feature, updates fetchedAt + geojsonFeature if changed
-- All fetch calls: `outSR=4326`, `AbortSignal.timeout(15000)`, no `next: { revalidate }` (cron handles refresh)
-
-**Step 3 — Seed endpoint (one-time population)**
-Create `src/app/api/atlas/seed-wards/route.ts`:
-- `GET /api/atlas/seed-wards?secret=CRON_SECRET` — protected by `CRON_SECRET` env var
-- Runs all 4 municipalities through the ingestor, upserts to DB
-- Returns `{ seeded: { municipality, count }[], failed: string[] }`
-- George hits this once after `npx prisma db push`
-
-**Step 4 — Updated all-wards route**
-Rewrite `src/app/api/atlas/all-wards/route.ts`:
-- Read from `prisma.wardBoundary.findMany({ orderBy: [{ municipality: 'asc' }, { wardNumber: 'asc' }, { wardName: 'asc' }] })`
-- If result is empty: fall back to live fetch via ingestor (lazy seed)
-- Build FeatureCollection from DB rows (geojsonFeature is stored as the Feature, just add municipality + addressesApi + wardFill + wardStroke)
-- ETag: hash of `max(updatedAt)` across all rows — enables `304 Not Modified` for mobile apps
-- `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`
-- Response includes `X-Ward-Count` header and `X-Last-Refreshed` timestamp
-
-**Step 5 — Cron refresh endpoint**
-Create `src/app/api/cron/refresh-wards/route.ts`:
-- `GET /api/cron/refresh-wards` — checks `Authorization: Bearer ${process.env.CRON_SECRET}`
-- Runs all municipalities through ingestor, upserts changed features
-- Returns audit log: `{ updated: [], unchanged: [], failed: [] }`
-- Add to `vercel.json` crons: `{ "path": "/api/cron/refresh-wards", "schedule": "0 3 * * *" }` (3am daily)
-- NEVER touches DB on election days — add date check: if today is a Monday in October skip (George refines this)
-
-**Step 6 — Fix Brampton addresses route**
-Update `src/app/api/atlas/brampton-addresses/route.ts`:
-- Change service URL to `https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14`
-- Remove geohub.brampton.ca meta fetch (it returns HTML from server environments)
-- Query directly: `[url]/query?geometry=...&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson&outSR=4326&resultRecordCount=2000`
-
-**Step 7 — Build + push**
-`npm run push:safe` — must exit 0. Then George runs `npx prisma db push` then hits `/api/atlas/seed-wards?secret=[CRON_SECRET]`.
-
-### What does NOT change
-- `atlas-all-map-client.tsx` — untouched. Map client reads from `/api/atlas/all-wards` same as before.
-- All other municipality routes (`whitby-addresses`, `toronto-addresses`, `markham-addresses`) — untouched.
-- Sidebar, navigation — untouched.
-- No schema changes other than `WardBoundary`.
-
-### George's actions after push
-1. `npx prisma db push` — adds `ward_boundaries` table
-2. Add `CRON_SECRET` to Vercel env vars if not already there (check `.env.local`)
-3. Hit `https://app.poll.city/api/atlas/seed-wards?secret=[CRON_SECRET]` — wait for JSON response confirming 4 municipalities seeded
-4. Hard refresh `/atlas/map` — verify all 4 municipalities render
-
----
-
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Ward Infrastructure Hardening Pass)
-
-### Hardening pass — 4 bugs fixed (2026-04-22)
-
-**Files changed:**
-- `src/lib/atlas/ward-ingestor.ts` — fixed `wardIndex` collision bug (was `j * 20` spacing in batches; Toronto's 25 wards would overlap municipality[1]'s index space); now uses `registryPosition × 200` stable offsets. Added `ingestVerifiedMunicipalities()` for safe lazy seeding.
-- `src/app/api/atlas/all-wards/route.ts` — added `maxDuration = 60`; lazy seed now calls `ingestVerifiedMunicipalities()` (fast ~5 sources) instead of all 28 (would timeout at Vercel default 10s).
-- `src/app/api/atlas/seed-wards/route.ts` — `maxDuration` 60 → 300 (28 municipalities with retries can approach 60s under network pressure).
-- `src/app/api/cron/refresh-wards/route.ts` — fixed response: `unchanged` was always empty (wrong filter logic); now returns `upserted` (Prisma ran) vs `failed` (all sources returned 0 features).
-
-**Risk removed:** On election night, any GET to `/api/atlas/all-wards` with an empty DB would have triggered a full 28-municipality ingest inline, almost certainly hitting Vercel's 10s timeout and returning a 502 to every map client simultaneously. Fixed.
-
-**Still to do (George actions — unchanged):**
-- `npx prisma db push` — creates `ward_boundaries` table
-- Hit `/api/atlas/seed-wards?secret=[CRON_SECRET]` — full 28-municipality seed (now has 300s budget)
-
----
-
-### Ontario Map (`/atlas/map`) — LIVE infrastructure, DB cache pending George's activation
-
-**What is built and in origin/main (commits baef811 + dc0b180 + this session):**
-- `src/config/ward-asset-registry.ts` — 28-municipality Ontario registry (permanent audit trail)
-- `src/lib/atlas/ward-ingestor.ts` — universal ingestor supporting arcgis-rest, arcgis-geojson, represent, ckan sources. WGS84 validation. Retry-on-failure with fallbacks.
-- `src/app/api/atlas/all-wards/route.ts` — DB-first (sub-10ms), ETag/304 support, `Cache-Control: public, max-age=3600, stale-while-revalidate=86400`. Falls back to live ingest if DB empty.
-- `src/app/api/atlas/seed-wards/route.ts` — `GET /api/atlas/seed-wards?secret=CRON_SECRET` — one-time population endpoint
-- `src/app/api/cron/refresh-wards/route.ts` — daily 3am cron already in `vercel.json`
-- `prisma/schema.prisma` — `WardBoundary` model (`ward_boundaries` table)
-- `src/app/api/atlas/brampton-addresses/route.ts` — using correct maps1.brampton.ca service
-
-**Build status:** GREEN — commit `dc0b180` fixed wrong prisma import path + Prisma.InputJsonValue cast.
-
-**⚠️ GEORGE MUST DO BEFORE THE MAP WORKS IN PROD:**
-1. `npx prisma db push` — creates `ward_boundaries` table (see GEORGE_TODO item 3)
-2. Hit `https://app.poll.city/api/atlas/seed-wards?secret=[CRON_SECRET]` — wait for JSON confirming wards seeded (see GEORGE_TODO item 3f)
-3. Hard refresh `/atlas/map` — all 28 municipalities will render
-
-**Current map state (before George's activation):**
-- `/atlas/map` renders the existing 4 municipalities (Whitby/Toronto/Markham/Brampton) using the OLD `all-wards` route logic that falls back to live Represent when DB is empty — this works but hits Represent on every request
-- After George seeds the DB, all 28 municipalities serve from DB at sub-10ms, zero live calls
-
-**Brampton render fix (from commit 4efd761 — earlier session):**
-- Root cause was `geohub.brampton.ca` returning HTML (not JSON) from Vercel + direct GeoJSON download returning EPSG:3857
-- Fix: Represent OpenNorth `brampton-wards` as primary source (WGS84 guaranteed)
-- Now in registry as verified primary with Peel Region ArcGIS as secondary fallback
-
-**George's architectural note (do NOT act without direction):**
-George's original plan was to strip the old per-municipality atlas pages and layer back piece by piece. The Ontario Map was added to sidebar in a prior session. George noted this was not the sequence he intended. Before doing ANY further atlas work, ask George: strip first or layer-in-place?
-
-**Navigation path:** Sidebar → Polling Atlas → Ontario Map → `/atlas/map`
-
-**No schema changes. No new dependencies.**
-
-### AtlasMapClient Phase 4 — True Unified Pan Map — DONE (commit 7c9637b)
-
-**What shipped (prior session):**
-- `GET /api/atlas/all-wards` — fetches Whitby (ArcGIS), Toronto (CKAN), Markham (ArcGIS) wards concurrently, merges into one FeatureCollection. Adds `municipality` + `addressesApi` properties to every ward feature. Global `wardIndex` for hover state. Falls back gracefully if any one city fails.
-- `src/components/atlas/atlas-all-map-client.tsx` — standalone map component. Per-ward address loading via `feature.properties.addressesApi`. Campaign DB overlay still works.
-- `src/app/(app)/atlas/map/page.tsx` + `map-wrapper.tsx` — client wrapper pattern. Page title: "Ontario Map — Poll City".
-- `src/components/layout/sidebar.tsx` — "Ontario Map" added as first entry in Polling Atlas section.
-
----
-
-### Print Vendor Portal — DONE (commit f393872, P0 cleared)
-
-**What shipped:**
-- `PRINT_VENDOR` role added to `Role` enum in Prisma schema + `userId String? @unique` on `PrintShop` — links a vendor user account to their shop record. **George must run `npx prisma db push`** (already in GEORGE_TODO.md item 3).
-- `/vendor/signup` — public registration page. Vendors create email+password account + shop in one form. `POST /api/vendor/signup` creates User (PRINT_VENDOR) + PrintShop atomically.
-- `/vendor/dashboard` — stats (open jobs, bids submitted, jobs won, win rate) + recent bid history.
-- `/vendor/jobs` — live job board showing `posted` and `bidding` status jobs. Shows vendor's own bid on each job if submitted.
-- `/vendor/jobs/[id]` — job detail. Bid submission form (price + turnaround + notes) when job is open. Production status update panel (in_production → shipped → delivered, tracking number, carrier, estimated delivery) when vendor's bid is accepted.
-- `/vendor/bids` — full bid history with status badges (Won / Pending / Lost / In Production / Shipped / Delivered).
-- 5 API routes: `GET /api/vendor/me`, `GET /api/vendor/jobs`, `GET /api/vendor/bids`, `POST+PATCH /api/vendor/jobs/[id]/bid`, `PATCH /api/vendor/jobs/[id]/production`.
-- Middleware: PRINT_VENDOR users are routed to `/vendor/dashboard` on login and restricted to `/vendor/*` + `/api/vendor/*` paths only.
-- **Navigation path:** Vendor receives signup link → `/vendor/signup` → creates account → auto-login → `/vendor/dashboard` → sidebar: Available Jobs | My Bids.
-
-**What's still needed (George's actions):**
-1. `npx prisma db push` — adds `PRINT_VENDOR` role and `userId` column to `print_shops` table.
-2. To add the first vendor: share `/vendor/signup` URL with a print shop, or create them manually via `prisma studio`.
-3. Stripe Connect onboarding for vendors still flows through `/api/print/shops/onboard` (George awards bid → campaign pays → Stripe releases to vendor).
-
----
-
-## CURRENT PLATFORM STATE (as of 2026-04-22 — AtlasMapClient Phase 2 complete)
-
-### ⚠️ GEORGE'S DEFINITION OF "UNIFIED" — IMPORTANT ⚠️
-
-George's vision for "unified" is a **single map you pan across** to see Whitby, Toronto, Markham etc. simultaneously — not three separate pages sharing one component. The current three-page structure (`/whitby`, `/toronto`, `/markham`) is a stepping stone, not the destination. Phase 4 (below) is the real unified map at `/atlas/map`.
-
----
-
-### AtlasMapClient Phase 2 — Campaign DB Overlay — DONE (commit 1c67f8c)
-
-**What shipped:**
-- `GET /api/atlas/contacts-overlay?wardName=...` — auth-gated contact intelligence overlay (supportLevel, skipHouse, visitCount). 401 → silent, base map only.
-- `enrichAddresses()` — normalises civic+street key to OSM properties, attaches support/visit/DNK to GeoJSON points.
-- `addrPointLayer` — MapLibre expression colors: green=strong support → red=strong opposition, grey=DNK, gold stroke=visited.
-- Ward ops panel: Campaign Data section (totalContacts, doorsWithData, doorsVisited, supporters).
-- Address detail popup: support level badge, door knock count, DNK warning.
-- Support level legend at bottom when campaign data loaded.
-- **No schema changes** — uses existing Contact, Interaction (door_knock), Contact.skipHouse.
-
-### AtlasMapClient Phase 1 — Unification — DONE (commit e88ed2e)
-
-Three city pages (`/whitby`, `/toronto`, `/markham`) each use `AtlasMapClient` with a `MunicipalityConfig` prop. All map logic lives once in `src/components/atlas/atlas-map-client.tsx`.
-
----
-
-### NEXT: Phase 3 — Turf Cutting Overhaul (PENDING in WORK_QUEUE.md)
-
-**The problem George identified:**
-- Ward search only in sidebar — no street search
-- Turf cutting = set a number → auto-slice by longitude — no manual street control
-- Canvasser = free-text name field — no volunteer DB connection
-- No way to say "I want Dundas St and King St in Turf 1, Mary St in Turf 2"
-
-**Full user journey (field director planning a canvass day):**
-1. Selects ward from map/sidebar
-2. **Searches streets** — types "Dundas" → sidebar shows matching streets with door count and building breakdown
-3. Clicks a street → map flies to it, highlights those dots
-4. **Manually assigns streets to turfs** — clicks street → "Add to Turf" button → assigns to Turf 1, 2, or "New Turf"
-5. **Assigns a volunteer** — dropdown from VolunteerProfile records in DB (not free-text), falls back to free-text if no volunteers
-6. **Auto-cut** remains for quick use — but now triggers a warning if any streets were manually assigned
-7. Turf panel shows which streets are in each turf, who's assigned, door count, time estimate
-8. "Generate Walk Lists" button is the end action
-
-**What to build (all in `src/components/atlas/atlas-map-client.tsx`):**
-
-**A. Street search in turf panel:**
-- Text input at top of street list in turf cutting panel
-- Filters `streets` array in real time by name
-- Map highlights matched streets (feature state or separate source)
-- Clicking a street row flies map to its centroid
-
-**B. Manual street-to-turf assignment:**
-- Each street row gets a checkbox or an "Assign" button
-- "Selected streets" bucket at top shows checked streets + door count total
-- "Create Turf from Selected" button → assigns those streets to a new TurfData entry with a chosen color
-- Streets already in a turf show a colored dot indicating which turf they belong to
-- Drag-between-turfs is out of scope — click-reassign is enough
-
-**C. Volunteer assignment:**
-- On component mount (when a ward is selected), fetch `GET /api/volunteers?limit=100` to get VolunteerProfile list for the campaign
-- Turf canvasser field → Combobox: shows volunteer names, filters as you type, falls back to manual entry
-- Selected volunteer shows their name + phone number in the turf card
-
-**D. Two-mode turf builder:**
-- "Quick Mode" tab: set canvasser count → Auto-cut (current behavior, unchanged)
-- "Manual Mode" tab: street list with checkboxes + assign flow (new)
-- Both modes produce identical `TurfData[]` — same downstream for walk lists
-
-**Edge cases to handle:**
-- Street spans multiple wards → already filtered by ward bbox, no cross-ward contamination
-- Volunteer already assigned → show amber warning on second turf card, don't block
-- No volunteers in DB → fall back to free-text silently (no error message)
-- No streets loaded → disabled state on both modes
-- Auto-cut after manual assignment → confirm dialog "This will clear manual assignments. Continue?"
-- Street has 0 doors after commercial filter → hide from list, don't add to any turf
-
-**No new Prisma schema.** Uses existing:
-- `VolunteerProfile` — `GET /api/volunteers` already exists at `src/app/api/volunteers/route.ts`
-- `TurfData` type stays in `atlas-map-client.tsx` (local state only, not persisted)
-
----
-
-### NEXT: Phase 4 — True Unified Pan Map (PENDING — separate task after Phase 3)
-
-**George's actual vision:** One map at `/atlas/map` (or `/map`) starting at GTA zoom level. Pan left → Whitby. Pan right → Toronto. Pan further → Markham. All ward boundaries loaded simultaneously. Address dots load on demand as you click a ward.
-
-**How to build:**
-- New API route `GET /api/atlas/all-wards` — merges Whitby + Toronto + Markham ward FeatureCollections into one, adds `municipality` property to each feature
-- New page `src/app/atlas/map/page.tsx` + `atlas-all-map-client.tsx`
-- Uses same `AtlasMapClient` or a thin variant — `wardsApi` points to `/api/atlas/all-wards`
-- Initial view: `{ longitude: -79.2, latitude: 43.75, zoom: 9 }` — shows all three cities
-- Address loading on ward click works identically (calls the per-city `addressesApi` stored in each ward feature's properties)
-- Sidebar shows all wards grouped by municipality with a collapse toggle per city
-- Add "Ontario Map" entry to the Atlas section of the sidebar
-
-### AtlasMapClient Unification — DONE (commit e88ed2e)
-
-**Architecture:**
-```
-MunicipalityConfig {
-  displayName, displayLocation, loadingText, dataAttribution, footerText,
-  addressSourceKey, addressSourceLabel, initialView,
-  wardsApi, addressesApi, schoolWardsApi?,
-  features: { commercialFilter?, canvassingModes?, timeEnforcement?, wardSearch? }
-}
-```
-- Single unified component at `src/components/atlas/atlas-map-client.tsx`
-- City wrappers (25 lines each): `whitby-map-client.tsx`, `toronto-map-client.tsx`, `markham-map-client.tsx`
-- Preload-all pattern: all ward bboxes fetched concurrently → dim blue dots everywhere; selected ward renders bright green on top
-
----
-
-## CURRENT PLATFORM STATE (as of 2026-04-22 — Whitby Phase 1 + Task Autocomplete + Session Close)
+## CURRENT PLATFORM STATE
 
 ### Build
-- **GREEN** — latest commit `7ca8495` on origin/main, working tree clean
-- Schema models not yet in Railway: `AddressPreList`, `EnrichmentRun`, `EnrichmentResult`, `MunicipalityAddressCache`, `DisseminationArea`, `MpacAddress`, `ConsentRecord`, `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`
-- George MUST run `npx prisma db push` then `npx prisma db seed` to activate Whitby profiles
+GREEN — all commits on origin/main. Working tree clean.
 
-### ⚠️ BUILD-UNIFYING AGENT — READ THIS FIRST
+### What ran today (2026-04-24)
+- `npx prisma db seed` ✓ — full ecosystem seeded (14,500 contacts, 6,069 households, officials, finance, polls, signs)
+- `npx tsx scripts/provision-whitby-clients.ts` ✓ — Maleeha + Elizabeth created as paid clients
+- `npx tsx scripts/seed-whitby-boundaries.ts` ✓ — ward boundaries loaded into both campaigns
+- `middleware.ts` — `/api/atlas/seed-wards` added to PUBLIC_PATHS (was being blocked by auth middleware)
+- `GEORGE_TODO.md` — all completed items marked done (items 3, 3b, 3c, 3d, 3f, 48, 74, 78, 79, 90, 91, 92)
+- Mobile files committed — `mobile/app/(auth)/login.tsx`, `mobile/app/_layout.tsx`, `mobile/app/(auth)/terms.tsx`
 
-**What shipped this session (Whitby Phase 1 + tasks autocomplete):**
-- `whitby-addresses` API: fixed 0-doors bug — bbox ArcGIS spatial query replaces full 35k-point download (commits from prior context)
-- `whitby-dnk` API: new authenticated DNK endpoint (`/api/atlas/whitby-dnk`) using `skipHouse` field
-- Whitby map: commercial filter toggle, 9am–9pm Ontario time enforcement, GOTV/Persuasion tab, ward search filter
-- `markham-map-client.tsx`: stub created (parallel session needed it)
-- **Tasks module**: `TeamMemberAutocomplete` — searchable dropdown replaces plain `<select>` in both task detail panel and create modal. Commit `0f43000`.
-
-**Stash situation — important:**
-- `stash@{0}: comms-client-segment-work` is sitting on the stack. It contains in-progress comms work: `CreateSegmentModal` (segment builder) + `CreateRuleModal` refactor for `AutoTriggersPanel`. Also adds `ChevronDown` to lucide imports and `segmentsLoading` state.
-- **Do NOT pop this stash blindly.** It conflicted with HEAD previously and was resolved by keeping HEAD. Review with `git stash show -p stash@{0}` before applying.
-- Manually re-apply the non-conflicting parts to `communications-client.tsx`, verify `CreateRuleModal` is fully implemented, then build and push.
-
-**Toronto ATLAS map — fully shipped (no action needed):**
-- Commits `df4631a` → `aa8758b` → `da2c463` → `9780c2f` are all on origin/main
-- Files: `src/app/toronto/page.tsx`, `src/app/toronto/toronto-map-client.tsx`, `src/app/api/atlas/toronto-wards/route.ts`, `src/app/api/atlas/toronto-addresses/route.ts`, `src/app/api/atlas/toronto-school-wards/route.ts`
-- Features: 25 wards (CKAN 4326 GeoJSON), address points (ArcGIS bbox), school board overlays (TDSB/TCDSB/Viamonde/CSDC via SHP), ward search filter
-- `next.config.js` has `unzipper` and `shapefile` in `serverComponentsExternalPackages`
-
-**No schema changes this session. No GEORGE_TODO items added.**
-
-### Session 6 — What shipped this session (Whitby PCS Profiles)
-
-**Maleeha Shahid + Elizabeth Roy — production PCS profiles built and seeded:**
-
-**Schema (db push required):**
-- 3 new models: `OfficialPriority`, `OfficialAccomplishment`, `OfficialGalleryPhoto`
-- `tagline`, `committeeRoles` (JSON), `profileMode` added to `Official`
-- `op_ed` added to `PoliticianPostType` enum
-- `externalUrl` added to `PoliticianPost` (op-ed external links)
-
-**API:** `GET /api/social/politicians/[id]` now returns `priorities[]`, `accomplishments[]`, `galleryPhotos[]`, `linkedIn`, `tagline`, `profileMode`
-
-**Profile component** — new sections: Key Priorities, Service Record, Photo Gallery; LinkedIn icon; tagline in hero; op-ed external links
-
-**Seed data (activate with `npx prisma db seed` after db push):**
-- Maleeha Shahid (`off-whitby-maleeha`): 5 priorities, 6 accomplishments, 3 posts, 3 Q&As, approval 78%
-- Elizabeth Roy (`off-whitby-elizabeth`): 6 priorities, 8 accomplishments, 5 posts (2 op-eds), 8 "Because You Asked" Q&As, approval 82%
-
-**Live profile URLs after activation:**
-- `/social/politicians/off-whitby-maleeha`
-- `/social/politicians/off-whitby-elizabeth`
-
-### Session 5 — What shipped this session
-
-**Municipality autocomplete** (Atlas Command → Address Pre-List):
-- 400ms debounced input → `GET /api/address-prelist/autocomplete?q=...` → Nominatim proxy → animated dropdown
-- Dropdown closes on outside click, click-to-fill sets municipality
-- Previously dead — now fully live
-
-**OSM fetch bug fixed** (the "Unknown error" toast):
-- `POST /api/address-prelist/generate` now wrapped in try/catch → returns proper JSON error messages
-- Previously any Overpass/Nominatim timeout caused HTML 500 → client JSON parse failure → "Unknown error"
-
-**Live News Scanner** (Reputation → Alerts):
-- New `GET /api/reputation/scan-news` → `lib/reputation/news-scanner.ts`
-- Fetches real Canadian news from Google News RSS (`news.google.com/rss/search`)
-- Classifies sentiment (negative/positive/neutral/mixed) and severity (critical/high/medium/low)
-- Deduplicates by URL against existing alerts
-- UI: "Simulate Ingest" → "Scan Live News" with search term modal + result summary
-- Works without any API key (Google News RSS is public)
-
-### Session 4 — What shipped overnight (autonomous)
-
-**Atlas Command — Data Import Pipeline** (`/atlas/import`):
-- Full page matching Figma design: 5 source cards (Riding Boundaries, Election Results, Census Demographics, Address Pre-List, Enrich & Merge)
-- Address Pre-List source wired to live `/api/address-prelist/generate` (OSM works now, no API key)
-- Municipality input pre-filled with "Town of Whitby"
-- Results table preview + CSV export after fetch
-- Import History table with seeded demo entries (matches Figma)
-- File drop zone for GeoJSON/CSV sources with required fields display
-
-**Polling Atlas Sidebar** — 5-item section added:
-- ✅ `/atlas/import` — Atlas Command (live, data import pipeline)
-- ✅ `/atlas/boundaries` — Boundary Manager (stub, "coming soon" with description)
-- ✅ `/atlas/results` — Historical Results (stub)
-- ✅ `/atlas/calculator` — Swing Calculator (stub)
-- ✅ `/atlas/demographics` — Demographics (stub)
-- All stubs link back to Atlas Command, none 404
-
-**Canadian terminology sweep**:
-- GOTV war room map, GOTV client, media demo: "precinct" → "poll division" everywhere
-
-**Platform audit (overnight)**:
-- 85%+ of platform is working end-to-end
-- All 40+ sidebar routes resolve (no more 404s)
-- All core flows (Contacts, Field Ops, GOTV, Communications, Fundraising, Dashboard) are wired to real APIs
-- Dashboard has the best empty states — all other flows have adequate fallbacks
-- `/officials` and `/social` sidebar links resolve correctly to public-facing root pages
-
-### Founder Experience — LIVE
-- Super Admin (George) logs in → lands on `/ops`
-- `/ops` Clients tab → "Enter Campaign View" → enters any client campaign
-- Navy FounderBanner shows: "Viewing: [Campaign Name] · Exit to Ops"
-
-### Address Pre-List Generator — LIVE
-- `POST /api/address-prelist/generate` — 3 source paths (OSM live now; MPAC/StatsCan after import)
-- DB cache prevents re-hitting OSM for same municipality within 30 days
-- OSM source: type "Town of Whitby" → fetches up to 2,000 real addresses from Overpass API
-
-### ⚠️ WEDNESDAY DEMO PREP — Maleeha + Mayor of Whitby (2026-04-22)
-
-**Before the demo George MUST do:**
-1. Run `npx prisma db push` (new schema models aren't in Railway yet)
-2. Verify login works at app.poll.city
-3. Enter the Demo Campaign (or create a "Whitby Ward 4" campaign for authenticity)
-
-**Safe to demo (works right now):**
-- Dashboard, Briefing, Contacts, Volunteers, Field Ops, GOTV, Election Day
-- Atlas Command → Atlas Command → type "Town of Whitby" → Fetch from OpenStreetMap
-- Communications, Finance, Fundraising (UI shows, sends require env vars)
-- Any sidebar item → none 404 anymore
-
-**Avoid during demo:**
-- Actually sending email/SMS (needs RESEND_API_KEY / Twilio)
-- Completing Stripe payment flow (needs STRIPE_SECRET_KEY)
-- Clicking MPAC or StatsCan sources in Atlas Command (need import scripts run first)
+### George's one remaining action from today
+Hit this URL in browser while logged in as SUPER_ADMIN to seed Ontario ward boundaries into DB:
+```
+https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
+```
+Wait for JSON response. Then hard refresh `/atlas/map` — all 28 municipalities will render.
 
 ---
 
-## WHAT IS ACTUALLY LIVE (code confirmed, build green)
+## LIVE CLIENT CREDENTIALS
 
-Everything below exists in origin/main and the build passes. Whether it works end-to-end in production depends on whether env vars and DB migrations have been applied.
+**Maleeha Shahid**
+- Login: app.poll.city → shahidm@whitby.ca / MaleehaWhitby2026!
+- Public profile: poll.city/candidates/maleeha-shahid
+- PCS profile: poll.city/social/politicians/off-whitby-maleeha
 
-| Module | What's live in code | Production caveat |
+**Elizabeth Roy**
+- Login: app.poll.city → elizabeth.roy@whitby.ca / ElizabethWhitby2026!
+- Public profile: poll.city/candidates/elizabeth-roy-whitby
+- PCS profile: poll.city/social/politicians/off-whitby-elizabeth
+
+---
+
+## WHAT IS ACTUALLY LIVE IN PRODUCTION
+
+| Module | Status | Notes |
 |---|---|---|
-| Dashboard | KPI cards, health score, 8 data fields | None |
-| Daily Briefing | Adoni morning summary, priorities | Needs ANTHROPIC_API_KEY in Vercel |
-| Contacts / CRM | Full CRUD, filters, soft delete, households | None |
-| Volunteers | Profiles, shifts, groups, expenses | None |
-| Field Ops | Full command center, routes, GPS, turf draw | MapLibre (no API key needed — OpenFreeMap) |
-| GOTV | Shared metrics, ride coordination | None |
-| Election Day | 4-tab command center, election night HQ | None |
-| Quick Capture | Mobile capture, war room, review/export | Needs `npx prisma db push` (QR models — done per GEORGE_TODO item 2) |
-| Communications | Email blast, SMS, social, automation, inbox | Email needs RESEND_API_KEY in Vercel. CASL filter crashes without DB push. |
-| CASL Compliance | /compliance, consent tab on contacts | ⚠️ Crashes until `npx prisma db push` |
-| Analytics | Approval ratings, sentiment, signals | Historical tab crashes until `npx prisma db push` (intelligenceEnabled col) |
-| Candidate Intel | Lead ingestion, scoring, outreach | None |
-| Reputation | Alert engine, rule engine, command center | None |
-| Fundraising | Donation CRM, Stripe Connect, receipts | Needs STRIPE_SECRET_KEY + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in Vercel |
-| Finance | 9-tab suite: budget, expenses, approvals, audit | None |
-| Print | Templates, packs, design engine, jobs | None |
-| Forms | Builder, results | None |
-| Polls | All vote types, live results SSE | None |
-| Social | Home feed, politician profiles, groups, Q&A, notifications | None |
-| Officials directory | Rebuilt: dark/light, level tabs, postal code, proper follow API, infinite scroll (commits 6e90b25 + c2201c2) | NOT browser-verified. Follower counts now correctly returned from directory API. |
-| Ops | Clients, readiness, intelligence controls, social officials panel | SUPER_ADMIN only |
-| Settings | Profile, campaign, brand, security, billing | None |
-| Maps | MapLibre GL JS — ward boundary, turf draw, choropleth, signs, canvasser | OpenFreeMap tiles (no key). Geocoding: needs GOOGLE_MAPS_API_KEY for voter files |
+| Auth (email/password) | ✓ Live | |
+| Auth (Google) | ✓ Live | GOOGLE_CLIENT_ID + SECRET in Vercel |
+| Auth (Facebook) | ✓ Live | FACEBOOK_CLIENT_ID + SECRET in Vercel |
+| Dashboard | ✓ Live | |
+| Contacts / CRM | ✓ Live | Full CRUD, soft delete, households |
+| Volunteers | ✓ Live | Profiles, shifts, groups, expenses |
+| Tasks V2 | ✓ Code complete | 15 features. DB schema synced. Not browser-verified by George. |
+| Field Ops | ✓ Live | Maps work (OpenFreeMap, no key needed) |
+| GOTV | ✓ Live | |
+| Election Day | ✓ Live | |
+| Signs | ✓ Live | Field ops sign logging |
+| Communications | ✓ Live | Email/SMS need Resend/Twilio keys to actually send |
+| CASL Compliance | ✓ Code complete | DB schema synced. Not browser-verified. |
+| Analytics | ✓ Code complete | intelligenceEnabled col synced. Not browser-verified. |
+| Finance (9 tabs) | ✓ Live | |
+| Fundraising | ✓ Code complete | Needs STRIPE keys to process payments |
+| Forms | ✓ Live | Builder + results |
+| Polls | ✓ Live | All vote types |
+| Print | ✓ Live | |
+| Adoni chat | ✓ Live | ANTHROPIC_API_KEY confirmed in Vercel |
+| Adoni Training (/ops/adoni) | ✓ Code complete | founder_wisdom table synced. Not browser-verified. |
+| Poll City Social | ✓ Live | 3-column shell, feed, profiles |
+| Officials directory | ✓ Code complete | Not browser-verified. |
+| Vendor Network (/vendors) | ✓ Live | vendors table confirmed in prod (78b) |
+| Ontario Map (/atlas/map) | ⚠️ Partial | 4 cities live via fallback. Full 28-city DB cache pending ward seed URL above. |
+| Q&A Inbox | ✓ Code complete | Not browser-verified end-to-end. |
+| Ops (/ops) | ✓ Live | SUPER_ADMIN only |
+| Mobile (Expo) | ✓ Built | Not published to App Store. Local dev only. |
 
 ---
 
-## HONEST STATUS: WHAT HAS NOT BEEN VERIFIED IN BROWSER
+## WHAT IS NOT WORKING IN PROD (env vars missing)
 
-George flagged on 2026-04-20 that things claimed as "fixed" are still broken. These categories have NOT been confirmed in production browser testing:
-
-1. **Marketing site** — scroll/nav/layout issues George saw but specific issues not captured
-2. **CASL Compliance page** — crashes without `npx prisma db push`. Verified in code only.
-3. **Email blast CASL filter** — same dependency.
-4. **Analytics Historical tab** — crashes without `npx prisma db push`. Verified in code only.
-5. **Q&A Inbox / PCS Social Hub** — code ships but NOT confirmed George can use it end-to-end
-6. **Google sign-in** — broken until env vars added to Vercel
-7. **Adoni** — silent without ANTHROPIC_API_KEY in Vercel
-8. **Email sending** — all email routes broken without RESEND_API_KEY in Vercel
-
-**Rule going forward: NOTHING is marked DONE in WORK_QUEUE until George has confirmed it works in a browser, or the risk of failure is env-var-only (i.e. code is correct, just needs infra).**
+| Feature | Blocker |
+|---|---|
+| Email sending | `RESEND_API_KEY` not in Vercel |
+| SMS sending | Twilio keys not in Vercel |
+| Stripe payments | `STRIPE_SECRET_KEY` not in Vercel |
+| Geocoding at scale | `GOOGLE_MAPS_API_KEY` ✓ in Vercel (confirmed) — Nominatim fallback active |
 
 ---
 
-## GEORGE'S OPEN MANUAL ACTIONS
+## GEORGE'S OPEN ACTIONS (from GEORGE_TODO.md)
 
-In priority order — these block real customers:
+Critical blocking:
+- [ ] Hit ward seed URL above (item 3f)
+- [ ] Set up Resend — items 10–16 (email is silent without it)
+- [ ] Set up Stripe — items 2, 3, 4–9 (fundraising is broken without it)
+- [ ] Set up Twilio — items 17–21 (SMS is silent without it)
 
-### 🔴 CRITICAL (platform broken without these)
-1. **`npx prisma db push`** — run this right now. Fixes CASL, intelligenceEnabled, scraper models. One command.
-2. **RESEND_API_KEY** → Vercel env vars. Without it, all email sending silently fails.
-3. **ANTHROPIC_API_KEY** → Vercel env vars. Without it, Adoni is silent.
-4. **NEXTAUTH_SECRET** → Vercel env vars. If not set, auth is broken.
-
-### 🟠 HIGH (features broken in prod)
-5. **GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET** → Vercel env vars. Google sign-in broken without these. Get values from the `client_secret_...json` file open in your IDE.
-6. **STRIPE_SECRET_KEY + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY** → Vercel env vars. Fundraising / Stripe Connect onboarding broken without these.
-7. **DATABASE_ENCRYPTION_KEY** → Vercel env vars. Encrypted field reads/writes broken without it.
-
-### 🟡 MEDIUM
-8. **GOOGLE_MAPS_API_KEY** → Vercel env vars. **Now critical for field command map.** Key is in `.env.local` — add it to Vercel so `/api/field/geocode` works in production. Without it the map shows approximate street centroids (still functional, just not exact).
-9. **Twilio** → SMS blast and two-way SMS broken without TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER.
-10. **Railway automated backups** — enable before first real customer.
-
-### ℹ️ Low / When ready
-11. Upstash Redis (rate limiting — gracefully degrades without it)
-12. VAPID keys (push notifications)
-13. Cloudflare Turnstile (spam protection)
+Lower priority:
+- [ ] Upstash Redis — items 31–34 (rate limiting falls back to in-memory)
+- [ ] Facebook redirect URI confirm — item 90 (Facebook login may not work without it)
+- [ ] Twitter/X OAuth — items 93–94 (Twitter login not yet active)
+- [ ] iOS TestFlight — items 60–63 (when ready)
 
 ---
 
-## NEXT SESSION OPENER — AtlasMapClient Unification
+## NEXT SESSION OPENER
 
-**Situation:** Three separate map clients exist and are now all shipped:
-- `src/app/whitby/whitby-map-client.tsx` — most complete (Phase 1 done: bbox addresses, commercial filter, time enforcement, GOTV mode, DNK endpoint, ward search)
-- `src/app/toronto/toronto-map-client.tsx` — 25 wards, school board overlays, ArcGIS bbox addresses, ward search
-- `src/app/markham/markham-map-client.tsx` — stub only (needs implementation)
+Platform is reset and clean. Build is green. All scripts have run. Clients are provisioned.
 
-**The goal:** Unify into one shared `AtlasMapClient` component (likely `src/components/atlas/atlas-map-client.tsx`) that accepts a municipality config prop. Each city page (`/whitby`, `/toronto`, `/markham`) passes its own config and nothing else.
+Before starting any task:
+1. `git pull origin main`
+2. Check `WORK_QUEUE.md` for the next PENDING task
+3. Claim it: `PENDING` → `CLAIMED [date]`, commit + push
+4. Build it complete with full connection chain
+5. `npm run push:safe` before marking done
 
-**MANDATORY: Read SESSION_HANDOFF.md fully before touching any map files.** The Toronto agent specifically flagged this — the handoff contains the stash situation and exact commit state you need to know before building.
-
-**Step 1:** `git pull origin main`
-**Step 2:** Read this file in full, then read `src/app/whitby/whitby-map-client.tsx` and `src/app/toronto/toronto-map-client.tsx` side by side
-**Step 3:** Design the `MunicipalityConfig` prop interface — wards API URL, addresses API URL, DNK API URL, hard bounds, display name, initial centre/zoom
-**Step 4:** Extract shared logic into `AtlasMapClient` from whitby (the reference implementation)
-**Step 5:** Wire Whitby, Toronto, Markham city pages to pass their configs
-**Step 6:** Build and push
-
-**Phase 2 (next session after unification):** Connect campaign DB — support levels on doors, visit history, household counts, DNK suppression from DB contacts. The `whitby-dnk` API is already live and can serve as the pattern.
+The next meaningful build tasks (all PENDING in WORK_QUEUE):
+- Vendor profile edit page (`/vendor/profile` — vendors can update bio/rates/portfolio after signup)
+- Ontario Map — after ward seed runs, verify all 28 municipalities render and fix any that failed
+- Officials directory — browser-verify the rebuilt directory end-to-end
+- Tasks V2 — browser-verify the 15 features work end-to-end
 
 ---
 
-## COORDINATION RULES (non-negotiable — read CLAUDE.md violations section for full detail)
+## COORDINATION RULES
 
 - `npm run push:safe` is the ONLY push command. Never `git push`.
-- **DONE = browser-verified by George.** Build green = minimum to push, not minimum to call done.
+- DONE = browser-verified by George. Build green = minimum to push.
 - Every new feature needs a sidebar entry before claiming DONE.
-- Every new API route needs `apiAuth()` + `campaignId` scoping.
-- Every schema change → add `[ ]` checkbox to GEORGE_TODO.md CRITICAL section immediately.
-- Claim tasks in WORK_QUEUE before starting. `CLAIMED` in origin/main = locked, do not touch.
-- Update CURRENT PLATFORM STATE section in place. Do NOT append another LAST SESSION block.
+- Every schema change → add checkbox to GEORGE_TODO.md immediately.
+- Update this file IN PLACE. Never append another block on top.
