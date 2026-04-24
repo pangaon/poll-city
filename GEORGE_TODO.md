@@ -23,7 +23,7 @@ npx prisma db push
 
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
 - [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync"
-- [ ] **3. ⚠️ Run `npx prisma db push` AGAIN — NEW schema additions since item 2**
+- [x] **3. ✅ DONE 2026-04-24 — `npx prisma db push` — full schema sync (via item 78b)**
 
   Since the last `db push`, new schema additions have been committed. These features CRASH in production until you run this:
 
@@ -93,7 +93,7 @@ npx prisma db push
   3. Expected output: "Your database is now in sync with your Prisma schema"
   4. Test: go to /compliance — it should load (not 500)
 
-- [ ] **3b. ⚠️ Run `npx prisma db seed` to load Whitby profiles** (after db push)
+- [x] **3b. ✅ DONE 2026-04-24 — `npx prisma db seed` — Whitby profiles loaded**
 
   The seed data for Maleeha Shahid, Elizabeth Roy, and the new GTA officials is in prisma/seed.ts. Run it after db push to load profiles, priorities, accomplishments, Q&A, approval ratings, and posts:
 
@@ -109,7 +109,7 @@ npx prisma db push
   - `/social/politicians/off-brampton-mayor` — Patrick Brown (Mayor of Brampton)
   - `/social/politicians/off-mississauga-mayor` — Carolyn Parrish (Mayor of Mississauga)
 
-- [ ] **3c. ⚠️ RUN THIS — Creates Maleeha + Elizabeth as real paid clients** (after db push + db seed)
+- [x] **3c. ✅ DONE 2026-04-24 — Creates Maleeha + Elizabeth as real paid clients**
 
   This is the most important step. It creates their User accounts, Subscriptions, Campaigns, and Memberships.
   Their public campaign websites go live the moment this runs.
@@ -135,7 +135,7 @@ npx prisma db push
   **If it errors "Official not found":** item 3b (db seed) didn't run yet. Run it first.
   **The script is safe to re-run** — it uses upsert throughout, won't create duplicates.
 
-- [ ] **3d. ⚠️ RUN THIS — Seeds real ward boundaries into Maleeha + Elizabeth campaigns** (after 3c)
+- [x] **3d. ✅ DONE 2026-04-24 — Seeds real ward boundaries into Maleeha + Elizabeth campaigns**
 
   This auto-fetches the official Whitby ward boundaries from OpenNorth Represent API and
   stores them directly in each campaign. **No manual file download or upload needed.**
@@ -180,7 +180,7 @@ npx prisma db push
 
   **After adding:** Redeploy (Vercel will auto-deploy on next push, or hit Redeploy in dashboard).
 
-- [ ] **3f. ⚠️ Seed Ontario ward boundaries into DB** (run ONCE after item 3 `npx prisma db push`)
+- [x] **3f. ✅ DONE 2026-04-24 — Seed Ontario ward boundaries into DB**
 
   The `ward_boundaries` table is now in the schema but empty. You need to hit this endpoint once to populate it with all 28 Ontario municipalities. Do this AFTER `npx prisma db push` completes.
 
@@ -508,12 +508,7 @@ These activate your personal debug toolbar when you're logged in as yourself.
 ## 🔵 GOOGLE OAUTH — Social login + future calendar sync
 
 - [x] **47. Create OAuth credentials** at console.cloud.google.com ✓ Done 2026-04-20
-- [ ] **48. Add to Vercel** (do this now — Google sign-in won't work until you do):
-  1. vercel.com → Poll City project → Settings → Environment Variables
-  2. Add `GOOGLE_CLIENT_ID` = client_id from the downloaded JSON file
-  3. Add `GOOGLE_CLIENT_SECRET` = client_secret from the downloaded JSON file
-  4. Apply to Production + Preview + Development → Save
-  5. Redeploy: Settings → Deployments → Redeploy latest
+- [x] **48. ✅ DONE — Google OAuth in Vercel** — GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET confirmed in Vercel env vars (screenshot verified 2026-04-24)
 
 ---
 
@@ -522,24 +517,15 @@ These activate your personal debug toolbar when you're logged in as yourself.
 Code is live in `auth-options.ts`. Activate by adding two env vars to Vercel.
 Meta App ID: **259940671246811** (you created this already)
 
-- [ ] **90. Confirm redirect URI is set in Meta App**
+- [x] **90. ✅ DONE — Facebook redirect URI confirmed** (FACEBOOK_CLIENT_ID + FACEBOOK_CLIENT_SECRET confirmed in Vercel 2026-04-24)
   1. Go to [developers.facebook.com](https://developers.facebook.com) → your app (259940671246811)
   2. Left sidebar → **Facebook Login** → **Settings**
   3. Under **Valid OAuth Redirect URIs**, confirm this is listed:
      `https://app.poll.city/api/auth/callback/facebook`
   4. If not, add it and click **Save Changes**
 
-- [ ] **91. Get App Secret from Meta**
-  1. Same Meta app → left sidebar → **App settings** → **Basic**
-  2. Click **Show** next to **App Secret** → copy the value
-
-- [ ] **92. Add to Vercel**
-  1. vercel.com → Poll City project → Settings → Environment Variables
-  2. Add `FACEBOOK_CLIENT_ID` = `259940671246811`
-  3. Add `FACEBOOK_CLIENT_SECRET` = the App Secret from step 91
-  4. Apply to Production + Preview + Development → Save
-  5. Redeploy: Settings → Deployments → Redeploy latest
-  6. Test: log in at app.poll.city → "Continue with Facebook" should appear
+- [x] **91. ✅ DONE — Facebook App Secret obtained**
+- [x] **92. ✅ DONE — FACEBOOK_CLIENT_ID + FACEBOOK_CLIENT_SECRET in Vercel** (confirmed in screenshot 2026-04-24)
 
 ---
 
@@ -986,11 +972,11 @@ Candidates insert into `raw_muni_candidates`. Verify via `npm run db:studio` or:
 - `GET /api/scraper/municipalities` — list scraped municipalities
 - `GET /api/scraper/candidates?municipality=toronto` — list candidates
 
-- [ ] **74. Run `npx prisma db push`** — add scraper tables + CASL consent tables (`consent_records` + enums `ConsentType`, `ConsentChannel`, `ConsentSource`) to Railway. Until this runs, the compliance page will crash and email blasts will not filter by consent.
+- [x] **74. ✅ DONE 2026-04-24 — `npx prisma db push`** — covered by item 3 / 78b full schema sync (`consent_records` + enums `ConsentType`, `ConsentChannel`, `ConsentSource`) to Railway. Until this runs, the compliance page will crash and email blasts will not filter by consent.
 - [ ] **75. Run `npm run scrape:install-browsers`** — install Playwright Chromium
 - [ ] **76. Run `npm run scrape:toronto:dry`** — verify scraper reaches Toronto Open Data
 - [ ] **77. Run `npm run scrape:toronto`** — first full live scrape into DB
-- [ ] **78. Run `npx prisma db push`** — Tasks v2 schema: adds `TaskCategory` enum, `TaskResolutionType` enum, and 6 new fields on the `tasks` table (`category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`). Zero risk — purely additive. Until this runs, the Tasks page will 500 on load. Run from the repo root: `npx prisma db push`
+- [x] **78. ✅ DONE 2026-04-24 — `npx prisma db push`** — Tasks v2 schema — covered by item 78b full schema sync: adds `TaskCategory` enum, `TaskResolutionType` enum, and 6 new fields on the `tasks` table (`category`, `resolutionType`, `resolutionNote`, `parentTaskId`, `isRecurring`, `recurringInterval`). Zero risk — purely additive. Until this runs, the Tasks page will 500 on load. Run from the repo root: `npx prisma db push`
 
 - [x] **78b. ✅ DONE 2026-04-24 — `npx prisma db push` for Vendor Ecosystem Layer 1 — COMPLETE**
 
@@ -1010,7 +996,7 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
   5. Restrict the key: under "API restrictions", select "Geocoding API" only
   6. Copy the key (starts with `AIza...`)
 
-- [ ] **79. Add `GOOGLE_MAPS_API_KEY` to Vercel**
+- [x] **79. ✅ DONE — `GOOGLE_MAPS_API_KEY` in Vercel** (confirmed in screenshot 2026-04-24)
   1. Go to vercel.com → your Poll City project → **Settings → Environment Variables**
   2. Add: `GOOGLE_MAPS_API_KEY` = your key from step 78
   3. Apply to: **Production + Preview + Development**

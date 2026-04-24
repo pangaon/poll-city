@@ -21,7 +21,7 @@ function RootNavigationGuard() {
     SecureStore.getItemAsync(TERMS_KEY).then((val) => {
       setTermsAccepted(val === "true");
     });
-  }, []);
+  }, [segments]);
 
   // Hide native splash once both auth and terms check are resolved
   useEffect(() => {

@@ -1,17 +1,11 @@
-/**
- * Login screen — email + password authentication.
- *
- * Poll City navy branding (#0A2342), 56px touch targets.
- * Hits POST /api/auth/mobile/token on the Poll City backend.
- * Stores JWT in expo-secure-store via the auth context.
- */
-
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -24,10 +18,10 @@ import { ApiError } from "../../lib/api";
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
 const ERROR_RED = "#E24B4A";
+const WHITE = "#ffffff";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +30,7 @@ export default function LoginScreen() {
   async function handleLogin() {
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !password) {
-      setError("Please enter your email and password.");
+      setError("Enter your email and password to continue.");
       return;
     }
 
@@ -48,12 +42,12 @@ export default function LoginScreen() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
-          setError("Invalid email or password.");
+          setError("Incorrect email or password. Try again.");
         } else {
           setError("Something went wrong. Please try again.");
         }
       } else {
-        setError("Unable to reach the server. Check your connection.");
+        setError("Can't reach the server. Check your connection.");
       }
     } finally {
       setLoading(false);
@@ -63,80 +57,94 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Logo / branding */}
-        <View style={styles.brandSection}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>PC</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Branding */}
+          <View style={styles.brand}>
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              source={require("../../assets/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.appName}>Poll City</Text>
+            <Text style={styles.tagline}>Campaign field operations</Text>
           </View>
-          <Text style={styles.appName}>Poll City</Text>
-          <Text style={styles.tagline}>Canvasser</Text>
-        </View>
 
-        {/* Form */}
-        <View style={styles.formSection}>
-          {error && (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+          {/* Sign-in card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sign in to your account</Text>
 
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@campaign.ca"
-            placeholderTextColor="#94a3b8"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="email"
-            value={email}
-            onChangeText={setEmail}
-            editable={!loading}
-            accessibilityLabel="Email address"
-          />
-
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor="#94a3b8"
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete="password"
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-            onSubmitEditing={handleLogin}
-            returnKeyType="go"
-            accessibilityLabel="Password"
-          />
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.loginButton,
-              pressed && styles.loginButtonPressed,
-              loading && styles.loginButtonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={loading}
-            accessibilityRole="button"
-            accessibilityLabel="Sign in"
-          >
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
+            {error && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             )}
-          </Pressable>
-        </View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>
-          Contact your campaign manager if you need an account.
-        </Text>
+            <View style={styles.field}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@campaign.ca"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                value={email}
+                onChangeText={setEmail}
+                editable={!loading}
+                accessibilityLabel="Email address"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password"
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+                onSubmitEditing={handleLogin}
+                returnKeyType="go"
+                accessibilityLabel="Password"
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+                loading && styles.buttonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
+            >
+              {loading ? (
+                <ActivityIndicator color={WHITE} />
+              ) : (
+                <Text style={styles.buttonText}>Sign In</Text>
+              )}
+            </Pressable>
+          </View>
+
+          <Text style={styles.footer}>
+            Need access? Contact your campaign manager.
+          </Text>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -145,97 +153,111 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#ffffff",
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: "center",
-  },
-  brandSection: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     backgroundColor: NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
   },
-  logoText: {
-    color: "#ffffff",
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: 1,
+  flex: {
+    flex: 1,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 32,
+    justifyContent: "center",
+  },
+  brand: {
+    alignItems: "center",
+    marginBottom: 44,
+  },
+  logo: {
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    marginBottom: 16,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: "800",
-    color: NAVY,
+    color: WHITE,
+    letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 16,
-    color: "#64748b",
+    fontSize: 15,
+    color: "rgba(255,255,255,0.55)",
     marginTop: 4,
+    letterSpacing: 0.2,
   },
-  formSection: {
-    gap: 4,
+  card: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: WHITE,
+    marginBottom: 20,
+  },
+  errorBanner: {
+    backgroundColor: "rgba(226,75,74,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(226,75,74,0.35)",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#fca5a5",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  field: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
-    marginTop: 12,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 6,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   input: {
     height: 52,
     borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 10,
+    borderColor: "rgba(255,255,255,0.15)",
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#0f172a",
-    backgroundColor: "#f8fafc",
+    color: WHITE,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
-  loginButton: {
+  button: {
     height: 56,
-    backgroundColor: NAVY,
-    borderRadius: 12,
+    backgroundColor: GREEN,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
+    marginTop: 8,
   },
-  loginButtonPressed: {
+  buttonPressed: {
     opacity: 0.85,
   },
-  loginButtonDisabled: {
+  buttonDisabled: {
     opacity: 0.6,
   },
-  loginButtonText: {
-    color: "#ffffff",
-    fontSize: 18,
+  buttonText: {
+    color: WHITE,
+    fontSize: 17,
     fontWeight: "700",
-  },
-  errorBanner: {
-    backgroundColor: "#fef2f2",
-    borderWidth: 1,
-    borderColor: "#fecaca",
-    borderRadius: 8,
-    padding: 12,
-  },
-  errorText: {
-    color: ERROR_RED,
-    fontSize: 14,
-    textAlign: "center",
+    letterSpacing: 0.2,
   },
   footer: {
     textAlign: "center",
-    color: "#94a3b8",
+    color: "rgba(255,255,255,0.3)",
     fontSize: 13,
-    marginTop: 32,
+    marginTop: 28,
   },
 });
