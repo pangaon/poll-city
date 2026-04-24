@@ -31,10 +31,7 @@ import type {
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL: string =
-  Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL ??
-  process.env.EXPO_PUBLIC_API_URL ??
-  "https://app.poll.city";
+const BASE_URL = "https://app.poll.city";
 
 const TOKEN_KEY = "poll_city_tokens";
 
