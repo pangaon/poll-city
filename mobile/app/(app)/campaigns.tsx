@@ -104,7 +104,7 @@ export default function CampaignSelectScreen() {
       AsyncStorage.setItem("@poll_city_active_campaign", campaign.id).catch(
         () => {},
       );
-      router.replace("/(app)/walk-list");
+      router.replace("/(tabs)/canvassing");
     },
     [router],
   );

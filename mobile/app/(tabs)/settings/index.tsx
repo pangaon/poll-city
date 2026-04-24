@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../lib/auth';
 import { apiFetch } from '../../../lib/api';
 import { getPendingCount } from '../../../lib/store';
@@ -91,19 +92,18 @@ export default function SettingsScreen() {
   const [syncing, setSyncing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  // Fetch current campaign info
+  // Fetch current campaign info from AsyncStorage key (source of truth)
   useEffect(() => {
-    if (!user?.activeCampaignId) return;
-
     setLoadingCampaign(true);
-    apiFetch<{ data: Campaign[] }>('/api/campaigns')
-      .then((res) => {
-        const active = res.data.find((c) => c.id === user.activeCampaignId);
-        setCampaign(active ?? null);
+    AsyncStorage.getItem('@poll_city_active_campaign')
+      .then(id => {
+        if (!id) { setLoadingCampaign(false); return; }
+        return apiFetch<{ data: Campaign[] }>('/api/campaigns')
+          .then(res => setCampaign(res.data.find(c => c.id === id) ?? null));
       })
       .catch(() => {})
       .finally(() => setLoadingCampaign(false));
-  }, [user?.activeCampaignId]);
+  }, []);
 
   // Pending interaction count
   useEffect(() => {
@@ -191,6 +191,17 @@ export default function SettingsScreen() {
             />
           ) : null}
         </View>
+
+        <Pressable
+          style={({ pressed }) => [styles.switchCampaignBtn, pressed && { opacity: 0.75 }]}
+          onPress={() => {
+            AsyncStorage.removeItem('@poll_city_active_campaign')
+              .then(() => router.replace('/(app)/campaigns'))
+              .catch(() => {});
+          }}
+        >
+          <Text style={styles.switchCampaignText}>Switch Campaign</Text>
+        </Pressable>
 
         {/* Sync section */}
         <Text style={styles.sectionTitle}>Sync</Text>
@@ -394,6 +405,23 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+  },
+
+  // Switch campaign
+  switchCampaignBtn: {
+    minHeight: 48,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  switchCampaignText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: NAVY,
   },
 
   // Sign out

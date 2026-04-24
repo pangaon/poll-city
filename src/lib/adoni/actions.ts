@@ -625,6 +625,73 @@ export const ADONI_TOOLS = [
       required: ["volunteers"],
     },
   },
+  {
+    name: "get_sign_summary",
+    description: "Get a summary of all campaign signs: total count, breakdown by status (requested, scheduled, installed, removed, damaged, missing), and how many are unassigned. Use this to check sign program health.",
+    input_schema: { type: "object" as const, properties: {}, required: [] as string[] },
+  },
+  {
+    name: "log_sign_event",
+    description: "Log a field action on a sign — install, remove, damage, missing, repair, or audit. Finds the sign by address or contact name and updates its status accordingly.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        signQuery: { type: "string" as const, description: "Address or contact name to identify the sign" },
+        action: { type: "string" as const, description: "install | remove | damage | missing | repair | audit" },
+        notes: { type: "string" as const, description: "Optional notes about the action" },
+      },
+      required: ["signQuery", "action"],
+    },
+  },
+  {
+    name: "add_tag",
+    description: "Add a tag to a contact by name. Creates the tag if it does not exist yet for this campaign.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, phone, or address to identify the contact" },
+        tagName: { type: "string" as const, description: "The tag label to apply, e.g. 'donor', 'yard-sign', 'strong-support'" },
+      },
+      required: ["contactQuery", "tagName"],
+    },
+  },
+  {
+    name: "remove_tag",
+    description: "Remove a tag from a contact.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, phone, or address to identify the contact" },
+        tagName: { type: "string" as const, description: "The tag label to remove" },
+      },
+      required: ["contactQuery", "tagName"],
+    },
+  },
+  {
+    name: "resolve_task",
+    description: "Resolve a task with a specific resolution type and optional note. Valid types: COMPLETED, VOICEMAIL_LEFT, MET_IN_PERSON, EMAIL_SENT, NOT_REACHED, RECRUITED, DECLINED, FOLLOW_UP_NEEDED, BLOCKED, DELEGATED, WONT_DO.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        taskQuery: { type: "string" as const, description: "Part of the task title to find it" },
+        resolutionType: { type: "string" as const, description: "COMPLETED | VOICEMAIL_LEFT | MET_IN_PERSON | EMAIL_SENT | NOT_REACHED | RECRUITED | DECLINED | FOLLOW_UP_NEEDED | BLOCKED | DELEGATED | WONT_DO" },
+        resolutionNote: { type: "string" as const, description: "Optional note explaining the resolution" },
+      },
+      required: ["taskQuery", "resolutionType"],
+    },
+  },
+  {
+    name: "get_contact_history",
+    description: "Get the full interaction history for a contact — all door knocks, phone calls, emails, and notes recorded against them.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contactQuery: { type: "string" as const, description: "Name, phone, or address to identify the contact" },
+        limit: { type: "number" as const, description: "Max interactions to return (default 10, max 20)" },
+      },
+      required: ["contactQuery"],
+    },
+  },
 ];
 
 // ─── Permission-gated tools (enterprise RBAC) ──────────────────────────────
@@ -673,6 +740,12 @@ const TOOL_REQUIRED_PERMISSION: Record<string, Permission> = {
   mark_voted: "gotv:write",
   create_volunteer: "volunteers:write",
   bulk_create_volunteers: "volunteers:write",
+  get_sign_summary: "signs:read",
+  log_sign_event: "signs:write",
+  add_tag: "contacts:write",
+  remove_tag: "contacts:write",
+  resolve_task: "tasks:write",
+  get_contact_history: "contacts:read",
 };
 
 function toolAllowed(ctx: ActionContext, toolName: string): boolean {
@@ -804,6 +877,18 @@ export async function executeAction(
         return await createVolunteer(input, ctx);
       case "bulk_create_volunteers":
         return await bulkCreateVolunteers(input, ctx);
+      case "get_sign_summary":
+        return await getSignSummary(ctx);
+      case "log_sign_event":
+        return await logSignEvent(input, ctx);
+      case "add_tag":
+        return await addTag(input, ctx);
+      case "remove_tag":
+        return await removeTag(input, ctx);
+      case "resolve_task":
+        return await resolveTask(input, ctx);
+      case "get_contact_history":
+        return await getContactHistory(input, ctx);
       default:
         return { success: false, message: `Unknown action: ${toolName}` };
     }
@@ -2733,5 +2818,339 @@ async function bulkCreateVolunteers(input: Record<string, unknown>, ctx: ActionC
     success: true,
     message: `Added ${created} volunteer${created !== 1 ? "s" : ""}${skipped > 0 ? ` (${skipped} skipped — already in system or missing names)` : ""}. ${preview}${more}.`,
     data: { created, skipped, names },
+  };
+}
+
+// ─── Sign tools ─────────────────────────────────────────────────────────────
+
+async function getSignSummary(ctx: ActionContext): Promise<ActionResult> {
+  const cid = ctx.campaignId;
+  const [total, byStatus, unassigned] = await Promise.all([
+    prisma.sign.count({ where: { campaignId: cid, deletedAt: null } }),
+    prisma.sign.groupBy({
+      by: ["status"],
+      where: { campaignId: cid, deletedAt: null },
+      _count: true,
+    }),
+    prisma.sign.count({ where: { campaignId: cid, deletedAt: null, assignedUserId: null } }),
+  ]);
+
+  if (total === 0) {
+    return { success: true, message: "No signs in the campaign yet. Navigate to /signs to add sign requests." };
+  }
+
+  const statusMap = Object.fromEntries(byStatus.map((s) => [s.status, s._count]));
+  const parts: string[] = [];
+  const statusLabels: Record<string, string> = {
+    requested: "requested",
+    scheduled: "scheduled for install",
+    installed: "installed",
+    removed: "removed",
+    declined: "declined",
+    damaged: "damaged",
+    missing: "missing",
+    needs_repair: "needs repair",
+  };
+  for (const [status, label] of Object.entries(statusLabels)) {
+    const count = statusMap[status] ?? 0;
+    if (count > 0) parts.push(`${count} ${label}`);
+  }
+
+  return {
+    success: true,
+    message: `Sign program: ${total} total signs — ${parts.join(", ")}. ${unassigned > 0 ? `${unassigned} unassigned (no team member linked). ` : ""}Navigate to /signs for the full map view.`,
+    data: { total, byStatus: statusMap, unassigned },
+  };
+}
+
+const SIGN_ACTION_TO_STATUS: Record<string, string> = {
+  install: "installed",
+  remove: "removed",
+  damage: "damaged",
+  missing: "missing",
+  repair: "installed",
+  audit: "", // keep current status on audit
+};
+
+async function logSignEvent(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.signQuery);
+  const action = String(input.action).toLowerCase().replace(/[^a-z_]/g, "");
+  const notes = input.notes ? String(input.notes) : null;
+
+  const validActions = ["install", "remove", "damage", "missing", "repair", "audit"];
+  if (!validActions.includes(action)) {
+    return { success: false, message: `Invalid action "${action}". Use one of: ${validActions.join(", ")}.` };
+  }
+
+  const sign = await prisma.sign.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      deletedAt: null,
+      OR: [
+        { address1: { contains: query, mode: "insensitive" } },
+        { contact: { OR: [
+          { firstName: { contains: query, mode: "insensitive" } },
+          { lastName: { contains: query, mode: "insensitive" } },
+        ] } },
+      ],
+    } as never,
+    select: { id: true, address1: true, status: true, contact: { select: { firstName: true, lastName: true } } },
+  });
+
+  if (!sign) {
+    return { success: false, message: `No sign found matching "${query}". Try the street address or the contact's name.` };
+  }
+
+  const newStatus = SIGN_ACTION_TO_STATUS[action];
+  const updates: Record<string, unknown> = {};
+  if (newStatus) updates.status = newStatus;
+  if (action === "install") updates.installedAt = new Date();
+  if (action === "remove") updates.removedAt = new Date();
+
+  if (Object.keys(updates).length > 0) {
+    await prisma.sign.update({ where: { id: sign.id }, data: updates as never });
+  }
+
+  await prisma.signEvent.create({
+    data: {
+      signId: sign.id,
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: action as never,
+      notes: notes ?? undefined,
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: `sign_${action}_via_adoni`,
+      entityType: "sign",
+      entityId: sign.id,
+      details: { address: sign.address1, previousStatus: sign.status, newStatus: newStatus || sign.status },
+    },
+  }).catch(() => {});
+
+  const contactName = sign.contact ? ` (${sign.contact.firstName} ${sign.contact.lastName})` : "";
+  return {
+    success: true,
+    message: `Sign event logged: ${action} at ${sign.address1}${contactName}.${newStatus ? ` Status updated to: ${newStatus}.` : ""}${notes ? ` Notes: ${notes}` : ""}`,
+    data: { signId: sign.id, action, newStatus: newStatus || sign.status },
+  };
+}
+
+// ─── Tag tools ───────────────────────────────────────────────────────────────
+
+async function addTag(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const tagName = String(input.tagName).toLowerCase().trim();
+
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      deletedAt: null,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  if (!contact) return { success: false, message: `No contact found matching "${query}".` };
+
+  const tag = await prisma.tag.upsert({
+    where: { name_campaignId: { name: tagName, campaignId: ctx.campaignId } },
+    create: { name: tagName, campaignId: ctx.campaignId },
+    update: {},
+    select: { id: true },
+  });
+
+  await prisma.contactTag.upsert({
+    where: { contactId_tagId: { contactId: contact.id, tagId: tag.id } },
+    create: { contactId: contact.id, tagId: tag.id },
+    update: {},
+  });
+
+  return {
+    success: true,
+    message: `Tag "${tagName}" added to ${contact.firstName} ${contact.lastName}.`,
+    data: { contactId: contact.id, tagId: tag.id, tagName },
+  };
+}
+
+async function removeTag(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const tagName = String(input.tagName).toLowerCase().trim();
+
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      deletedAt: null,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  if (!contact) return { success: false, message: `No contact found matching "${query}".` };
+
+  const tag = await prisma.tag.findUnique({
+    where: { name_campaignId: { name: tagName, campaignId: ctx.campaignId } },
+    select: { id: true },
+  });
+
+  if (!tag) return { success: false, message: `Tag "${tagName}" does not exist in this campaign.` };
+
+  const deleted = await prisma.contactTag.deleteMany({
+    where: { contactId: contact.id, tagId: tag.id },
+  });
+
+  if (deleted.count === 0) {
+    return { success: false, message: `${contact.firstName} ${contact.lastName} does not have the tag "${tagName}".` };
+  }
+
+  return {
+    success: true,
+    message: `Tag "${tagName}" removed from ${contact.firstName} ${contact.lastName}.`,
+    data: { contactId: contact.id, tagId: tag.id },
+  };
+}
+
+// ─── Task resolution ─────────────────────────────────────────────────────────
+
+async function resolveTask(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.taskQuery);
+  const resolutionType = String(input.resolutionType).toUpperCase();
+  const resolutionNote = input.resolutionNote ? String(input.resolutionNote) : null;
+
+  const validTypes = ["COMPLETED", "VOICEMAIL_LEFT", "MET_IN_PERSON", "EMAIL_SENT", "NOT_REACHED", "WRONG_NUMBER", "RECRUITED", "DECLINED", "FOLLOW_UP_NEEDED", "BLOCKED", "DELEGATED", "WONT_DO"];
+  if (!validTypes.includes(resolutionType)) {
+    return { success: false, message: `Invalid resolution type "${resolutionType}". Use one of: ${validTypes.join(", ")}.` };
+  }
+
+  const task = await prisma.task.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      title: { contains: query, mode: "insensitive" },
+      status: { not: "completed" as never },
+    } as never,
+    select: { id: true, title: true, contactId: true },
+  });
+
+  if (!task) return { success: false, message: `No open task found matching "${query}".` };
+
+  const finalStatus = resolutionType === "FOLLOW_UP_NEEDED" ? "in_progress" : "completed";
+
+  await prisma.task.update({
+    where: { id: task.id },
+    data: {
+      status: finalStatus as never,
+      completedAt: finalStatus === "completed" ? new Date() : null,
+      resolutionType: resolutionType as never,
+      resolutionNote: resolutionNote ?? undefined,
+    } as never,
+  });
+
+  // Auto-log interaction if task is linked to a contact
+  if (task.contactId && resolutionType !== "FOLLOW_UP_NEEDED") {
+    const interactionTypeMap: Record<string, string> = {
+      MET_IN_PERSON: "in_person",
+      VOICEMAIL_LEFT: "phone_call",
+      EMAIL_SENT: "email",
+      NOT_REACHED: "phone_call",
+      WRONG_NUMBER: "phone_call",
+    };
+    const interactionType = interactionTypeMap[resolutionType] ?? "note";
+
+    await prisma.interaction.create({
+      data: {
+        contactId: task.contactId,
+        userId: ctx.userId,
+        type: interactionType as never,
+        notes: resolutionNote ?? `Task resolved via Adoni: ${resolutionType}`,
+        source: "internal_phone" as never,
+      } as never,
+    }).catch(() => {});
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      campaignId: ctx.campaignId,
+      userId: ctx.userId,
+      action: "task_resolved_via_adoni",
+      entityType: "task",
+      entityId: task.id,
+      details: { title: task.title, resolutionType, resolutionNote: resolutionNote ?? "" },
+    },
+  }).catch(() => {});
+
+  return {
+    success: true,
+    message: `Task resolved: "${task.title}" — ${resolutionType.replace(/_/g, " ").toLowerCase()}${resolutionNote ? `. Note: ${resolutionNote}` : ""}.`,
+    data: { taskId: task.id, resolutionType, finalStatus },
+  };
+}
+
+// ─── Contact history ─────────────────────────────────────────────────────────
+
+async function getContactHistory(input: Record<string, unknown>, ctx: ActionContext): Promise<ActionResult> {
+  const query = String(input.contactQuery);
+  const limit = Math.min(Number(input.limit ?? 10), 20);
+
+  const contact = await prisma.contact.findFirst({
+    where: {
+      campaignId: ctx.campaignId,
+      deletedAt: null,
+      OR: [
+        { firstName: { contains: query, mode: "insensitive" } },
+        { lastName: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+        { address1: { contains: query, mode: "insensitive" } },
+      ],
+    } as never,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      supportLevel: true,
+      lastContactedAt: true,
+      interactions: {
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: { type: true, notes: true, supportLevel: true, createdAt: true, user: { select: { name: true } } },
+      },
+    },
+  });
+
+  if (!contact) return { success: false, message: `No contact found matching "${query}".` };
+
+  if (contact.interactions.length === 0) {
+    return {
+      success: true,
+      message: `${contact.firstName} ${contact.lastName} — no interactions recorded yet. Current support level: ${contact.supportLevel ?? "unknown"}.`,
+      data: { contactId: contact.id, interactionCount: 0 },
+    };
+  }
+
+  const lines = contact.interactions.map((i) => {
+    const date = new Date(i.createdAt).toLocaleDateString("en-CA");
+    const by = i.user?.name ? ` by ${i.user.name}` : "";
+    const support = i.supportLevel ? ` → ${i.supportLevel}` : "";
+    const notes = i.notes ? `: ${i.notes.slice(0, 80)}${i.notes.length > 80 ? "…" : ""}` : "";
+    return `${date} [${i.type}]${by}${support}${notes}`;
+  });
+
+  return {
+    success: true,
+    message: `${contact.firstName} ${contact.lastName} — ${contact.interactions.length} interaction(s) (current support: ${contact.supportLevel ?? "unknown"}):\n${lines.join("\n")}`,
+    data: { contactId: contact.id, interactionCount: contact.interactions.length, interactions: contact.interactions },
   };
 }

@@ -1,12 +1,67 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-23 (session close — George wrapping up)
-**Updated by:** Claude Sonnet 4.6 — New badges, help-data array fix, 8 new guide articles. Current live: HFL9yf9MC (91567ba). All green.
+**Last updated:** 2026-04-23 (session close — mobile-pcs PCS app code audit + Expo connectivity)
+**Updated by:** Claude Sonnet 4.6 — Poll City Social Expo app audited and fixed. Nothing is live. App has never loaded in Expo Go. Blocked on network connectivity between dev machine and phone.
 
 ---
 
-## ✅ THIS SESSION (2026-04-23 — George session, commit 91567ba, LIVE + CURRENT on Vercel)
+## ✅ THIS SESSION (2026-04-23 — mobile-pcs PCS app audit)
+
+### What changed (mobile-pcs/ only — no web changes)
+- `package.json` — fixed: `babel-preset-expo` corrected to `~54.0.10` (SDK-matched version), removed duplicate entry from dependencies
+- `src/lib/formatters.ts` — NEW: shared `timeAgo` + `getInitials` utilities
+- `src/components/CandidateCard.tsx` — uses shared `getInitials`, haptic feedback on follow
+- `src/components/PollCard.tsx` — haptic feedback on vote
+- `app/candidate/[id].tsx` — uses shared formatters, haptic feedback on follow
+- `app/notifications.tsx` — uses shared `timeAgo`
+- Deleted dead code: `Screen.tsx`, `Card.tsx`, `Button.tsx` (never imported by any screen)
+- TypeScript: zero errors
+
+### George action required
+Expo connectivity is unresolved — network/IP issue. Next session: troubleshoot why Expo Go can't reach the dev server (possibly router client isolation, or phone on different subnet). Try:
+```
+cd C:\Users\14168\Documents\Projects\poll-city\mobile-pcs
+npx expo start --lan --clear
+```
+Phone must be on same Wi-Fi as the PC (`192.168.2.x`).
+
+### Not yet done
+- `mobile-pcs/` changes not committed (George hasn't confirmed app works in Expo Go yet)
+- EAS project ID not set (`REPLACE_WITH_EAS_PROJECT_ID` still in app.json)
+- No assets: `assets/icon.png`, `assets/splash.png` not created yet
+- `eas init` not run — needed before TestFlight build
+
+---
+
+## ✅ PREV SESSION (2026-04-23 — mobile Field Command port, NOT yet committed)
+
+### What changed
+- `mobile/app/(tabs)/canvassing/index.tsx` — complete rewrite. 1151 lines. Field Command + War Room v3 ported from SocialCommand Figma component.
+  - Field Ops tab: 5 missions (MissionCard, Accept button, priority/reward badges)
+  - War Room tab: CommandCenter with Stats / Team / Builder / Platform inner tabs
+  - ActiveMissionView: map header, next stop card with party chips, turf claim, team strip, cyan "Arrived" FAB
+  - All data self-contained (no API needed for prototype)
+  - "Arrived" → navigates to `/(app)/door/[id]` with contactJson mapped from stop household
+  - Dark theme: bg `#050A1F`, card `#0F1440`, accent `#00E5FF`/`#2979FF`
+- TS check: `npx tsc --noEmit` exits 0 (one missing style key patched)
+
+### George action required
+```
+cd c:/Users/14168/Documents/Projects/poll-city/mobile
+npx expo start --tunnel --clear
+```
+Scan QR in Expo Go → tap Canvassing tab → Field Command screen.
+
+### Not yet done
+- `npm run push:safe` on web (not needed — mobile only changes this session)
+- Mobile commit not pushed — run `git add mobile/ && git commit -m "feat(mobile): Field Command + War Room v3 canvassing tab"` after confirming it works on device
+- `walk-list.tsx` still has old API-fetching active mission view (the inline `ActiveMissionView` in `index.tsx` replaces it for prototype purposes)
+- `door/[id].tsx` not modified this session — existing 5-step wizard is wired and ready
+
+---
+
+## ✅ PREV SESSION (2026-04-23 — George session, commit 91567ba, LIVE + CURRENT on Vercel)
 
 ### What shipped
 - **Sidebar New badges** — All recently shipped features now show green "New" pill: AI Assist, Tasks, Field Ops, Scripts, Signs, Finance, Forms, Adoni Training (ops)
