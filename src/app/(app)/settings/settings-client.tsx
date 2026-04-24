@@ -75,6 +75,13 @@ const SETTINGS_SECTIONS = [
     icon: Lock,
     color: "bg-slate-50 text-slate-600",
   },
+  {
+    href: "/settings/billing",
+    label: "Billing",
+    description: "Subscription plan, payment method, and invoices",
+    icon: CreditCard,
+    color: "bg-sky-50 text-sky-600",
+  },
 ];
 
 export default function SettingsClient({ campaign, user, userRole, integrations }: Props) {

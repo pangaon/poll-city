@@ -39,7 +39,6 @@ import {
   Bot,
   Phone,
   Star,
-  Receipt,
   AlertTriangle,
   Library,
   Store,
@@ -170,7 +169,6 @@ const PLATFORM_SECTION: NavSection = {
     { href: "/vendors",       icon: Store,       label: "Vendor Network",  isNew: true },
     { href: "/print",         icon: Printer,     label: "Print"                        },
     { href: "/import-export", icon: ArrowUpDown, label: "Import / Export"              },
-    { href: "/billing",       icon: Receipt,     label: "Billing"                      },
     { href: "/settings",      icon: Settings,    label: "Settings"                     },
   ],
 };
