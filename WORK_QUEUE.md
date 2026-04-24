@@ -78,6 +78,12 @@ Everything below is built, pushed, and accessible in the app.
 
 ## REMAINING WORK
 
+### ACTIVE BUILD (2026-04-24)
+
+| Task | Status | Notes |
+|---|---|---|
+| Import/Export Overhaul — Fix 10 (detailed error breakdown), Stripe-quality UX, Adoni integration (3 touch points) | CLAIMED 2026-04-24 | smart-import-wizard.tsx + background-processor.ts + trigger/route.ts + import-export-client.tsx |
+
 ### ACTIVE BUILD (2026-04-22)
 
 | Task | Status | Notes |
