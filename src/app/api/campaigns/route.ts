@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { mobileApiAuth } from "@/lib/auth/helpers";
 import { createCampaignSchema } from "@/lib/validators";
 import { slugify } from "@/lib/utils";
 import { Role } from "@prisma/client";
 
 /** GET /api/campaigns — list campaigns for current user */
 export async function GET(req: NextRequest) {
-  const { session, error } = await apiAuth(req);
+  const { session, error } = await mobileApiAuth(req);
   if (error) return error;
 
   const isSuperAdmin = session!.user.role === "SUPER_ADMIN";
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/campaigns — create campaign (admin only) */
 export async function POST(req: NextRequest) {
-  const { session, error } = await apiAuth(req); // Any authenticated user can create a campaign — they become ADMIN
+  const { session, error } = await mobileApiAuth(req); // Any authenticated user can create a campaign — they become ADMIN
   if (error) return error;
 
   let body: unknown;
