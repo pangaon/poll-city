@@ -1,31 +1,38 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-24 (session close — Vendor Ecosystem Layer 1 + Google OAuth fully live)
-**Updated by:** Claude Sonnet 4.6 — Unified vendor system shipped. 23 categories. Email + Google signup. DB live. Google OAuth published.
+**Last updated:** 2026-04-24 (session — Vendor Network directory + profile pages shipped)
+**Updated by:** Claude Sonnet 4.6 — Vendor discovery pages built. Build green. Pushed.
 
 ---
 
-## ✅ THIS SESSION (2026-04-24 — Vendor Ecosystem Layer 1 complete)
+## ✅ THIS SESSION (2026-04-24 — Vendor Network discovery pages)
 
-### What shipped
-- **`vendors` table** — created in production via `npx prisma db push` ✓
-- **Google OAuth** — `GOOGLE_CLIENT_ID` added to Vercel, published to production in Google Cloud Console ✓
-- **`/vendor/signup`** — multi-step wizard, 23 categories, email + Google OAuth flows ✓
-- **`/vendor/login`** — Google sign-in button added, accepts VENDOR + PRINT_VENDOR ✓
-- **`/vendor/dashboard`** — accepts VENDOR role; shows categories, profile-live card, non-print "coming soon" card, print stats for print vendors ✓
-- **`/api/vendor/signup`** — creates Vendor (Layer 1) + optional PrintShop (Layer 2) in one transaction ✓
-- **`/api/vendor/google-signup`** — NEW endpoint: upgrades VOLUNTEER → VENDOR after Google OAuth ✓
-- **`/api/ops/vendors`** — queries both Vendor table and legacy PrintShops, normalises to one shape ✓
-- **`/ops/vendors` UI** — 23-category color-coded badges, legacy flag for old print shops ✓
-- **Select All** on print specialties step ✓
-- **Email-exists error** routed back to account step correctly ✓
+### What shipped (commit f2c1e97 + 1750106)
+- **`/vendors`** — campaign-app Vendor Network directory: search, category/province/verified filters, paginated list, sidebar entry "Vendor Network" (isNew) in Platform section
+- **`/vendors/[id]`** — vendor public profile: hero card (logo/initials, verified badge, category tags, rating), stats row (years exp, response time, rate), bio, service areas, specialties, portfolio links, contact card (copy email, phone, mailto, website)
+- **`GET /api/vendors`** — searchable vendor directory endpoint (auth required, filters: q/category/province/verified)
+- **`GET /api/vendors/[id]`** — single vendor profile endpoint (auth required)
+- **Sidebar** — `Store` icon + "Vendor Network" entry added to PLATFORM_SECTION
+- **`scripts/add-owner-to-all-campaigns.ts`** — George's utility committed (was untracked)
+- Build: ✓ exit 0 both times. Both pages show as `ƒ Dynamic` in build output.
 
-### George action required
-None. Everything is live.
+### CRITICAL — still blocked on George's action
+**`npx prisma db push` (GEORGE_TODO item 78b) has NOT been run.**
+The `vendors` table does NOT exist in production Railway DB.
+- `/vendors` and `/vendors/[id]` will return 500 in production until this runs.
+- `/vendor/signup` email flow also 500s until this runs.
+- Google OAuth signup also fails until this runs.
+The pages are built correctly — they will work the moment item 78b is done.
+
+### George action required — CRITICAL
+1. Run `npx prisma db push` (GEORGE_TODO item 78b) — adds `vendors` table + `VENDOR` enum to Railway
+2. Test: go to `/vendor/signup`, create a test vendor account → confirm dashboard loads
+3. Go to `/vendors` in the campaign app → confirm directory loads (will be empty until vendors register)
+4. Test Google OAuth: `/vendor/login` → sign in with Google → confirm VENDOR dashboard
 
 ### Next session opener (paste verbatim)
-> Vendor Ecosystem Layer 1 is fully live as of 2026-04-24. `vendors` table in production, Google OAuth published, email + Google signup flows working, dashboard accepts VENDOR role. Next: build the vendor public profile page at `/vendors/[id]` so campaigns can discover and contact vendors from the campaign app. Also: `/vendor/profile` edit page so vendors can update their info after signup. Check WORK_QUEUE.md for current task status before starting.
+> Vendor Network directory and profile pages are BUILT and pushed (commit f2c1e97) but NOT live yet — George still needs to run `npx prisma db push` (GEORGE_TODO item 78b) to create the `vendors` table in Railway. Once that runs: test full vendor signup flow, then next build task is `/vendor/profile` edit page so vendors can update their bio, service areas, portfolio, and rates after initial signup.
 
 ---
 
