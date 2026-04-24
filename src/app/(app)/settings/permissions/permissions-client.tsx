@@ -334,7 +334,7 @@ export default function PermissionsClient({
               <div>
                 <h2 className="font-semibold text-gray-900">Adoni AI access by role</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Adoni's capabilities are scoped to what each role needs. Canvassers get
+                  Adoni&apos;s capabilities are scoped to what each role needs. Canvassers get
                   door-script help; Finance Officers get compliance guidance.
                 </p>
               </div>

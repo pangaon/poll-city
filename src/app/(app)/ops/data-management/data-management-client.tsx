@@ -513,7 +513,7 @@ function WardSeedingCard({ onRefresh }: { onRefresh: () => void }) {
             Municipality name
           </label>
           <p className="text-xs text-gray-400 mb-2">
-            Must match the name in the Ward Asset Registry exactly (e.g. "Whitby", "Toronto", "Brampton").
+            Must match the name in the Ward Asset Registry exactly (e.g. &quot;Whitby&quot;, &quot;Toronto&quot;, &quot;Brampton&quot;).
             Autocomplete shows municipalities already in the database.
           </p>
           <div className="relative">
@@ -755,7 +755,7 @@ function ClientProvisioningCard() {
             <p className="text-red-500 text-xs mt-1">{fieldErrors.candidateName}</p>
           )}
           <p className="text-xs text-gray-400 mt-1">
-            Full legal name as it will appear on the platform. Used for the campaign's candidateName field.
+            Full legal name as it will appear on the platform. Used for the campaign&apos;s candidateName field.
           </p>
         </div>
 
@@ -778,7 +778,7 @@ function ClientProvisioningCard() {
             <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
           )}
           <p className="text-xs text-gray-400 mt-1">
-            The campaign manager's login email. An invite link will be sent here (if RESEND_API_KEY is set), or shown below for manual sharing.
+            The campaign manager&apos;s login email. An invite link will be sent here (if RESEND_API_KEY is set), or shown below for manual sharing.
           </p>
         </div>
 
