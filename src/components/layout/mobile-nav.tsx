@@ -133,9 +133,9 @@ const MORE_GROUPS = [
     title: "Operator Centre",
     superAdminOnly: true,
     items: [
-      { href: "/ops",           label: "Platform Overview" },
-      { href: "/ops/campaigns", label: "All Campaigns" },
-      { href: "/ops/social",    label: "Social Officials" },
+      { href: "/ops",              label: "Platform Overview" },
+      { href: "/ops/campaigns",    label: "All Campaigns" },
+      { href: "/ops/social",       label: "Social Officials" },
     ],
   },
 ] as const;

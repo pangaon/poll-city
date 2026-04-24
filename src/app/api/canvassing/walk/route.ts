@@ -25,15 +25,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Verify campaign membership
-  const membership = await prisma.membership.findUnique({
-    where: {
-      userId_campaignId: { userId: session!.user.id, campaignId },
-    },
-    select: { id: true, role: true },
-  });
+  const isSuperAdmin = session!.user.role === "SUPER_ADMIN";
 
-  if (!membership) {
+  // Verify campaign membership (SUPER_ADMIN bypasses — they can inspect any campaign)
+  const membership = isSuperAdmin
+    ? null
+    : await prisma.membership.findUnique({
+        where: {
+          userId_campaignId: { userId: session!.user.id, campaignId },
+        },
+        select: { id: true, role: true },
+      });
+
+  if (!isSuperAdmin && !membership) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -48,14 +52,16 @@ export async function GET(req: NextRequest) {
   }
 
   // Non-managers can only access their own turf
-  const isManager = ["ADMIN", "SUPER_ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER"].includes(
-    membership.role,
-  );
+  const isManager =
+    isSuperAdmin ||
+    ["ADMIN", "CAMPAIGN_MANAGER", "VOLUNTEER_LEADER"].includes(
+      membership?.role ?? "",
+    );
 
   if (!isManager) {
     const isAssigned =
       turf.assignedUserId === session!.user.id ||
-      turf.assignedVolunteerId === membership.id;
+      turf.assignedVolunteerId === membership!.id;
 
     if (!isAssigned) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

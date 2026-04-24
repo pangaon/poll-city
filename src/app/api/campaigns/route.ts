@@ -10,6 +10,16 @@ export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);
   if (error) return error;
 
+  const isSuperAdmin = session!.user.role === "SUPER_ADMIN";
+
+  if (isSuperAdmin) {
+    const campaigns = await prisma.campaign.findMany({
+      include: { _count: { select: { contacts: { where: { deletedAt: null } }, tasks: { where: { deletedAt: null } } } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ data: campaigns.map((c) => ({ ...c, userRole: Role.ADMIN })) });
+  }
+
   const memberships = await prisma.membership.findMany({
     where: { userId: session!.user.id },
     include: {

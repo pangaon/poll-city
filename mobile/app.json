@@ -76,7 +76,7 @@
       "router": {
         "origin": "https://app.poll.city"
       },
-      "EXPO_PUBLIC_API_URL": "https://poll-city-74azv5fvw-pangaons-projects.vercel.app",
+      "EXPO_PUBLIC_API_URL": "https://app.poll.city",
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
       }
