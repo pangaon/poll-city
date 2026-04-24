@@ -59,6 +59,7 @@ const PUBLIC_PATHS = [
   "/api/ops/demos",
   "/api/tv",
   "/api/cron",
+  "/api/atlas/seed-wards",
   "/api/autonomous",
   "/api/stripe/webhook",
   "/api/voice/webhook",
