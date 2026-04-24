@@ -9,6 +9,27 @@ Read it at session start. Every session. No exceptions.
 George Hatzis. 35 years Canadian politics. Founder of Poll City. SUPER_ADMIN on the platform.
 He does not tolerate mistakes, wasted time, or wasted money. Build like it matters.
 
+## THE FOUR CODEBASES — KNOW ALL OF THEM BEFORE TOUCHING ANYTHING
+
+There are FOUR deployable products in this repo. Never assume there is only one.
+
+| Directory | What it is | Stack | Status |
+|---|---|---|---|
+| `src/` | Poll City web app — campaign OS + social + marketing | Next.js 14, Vercel | Live at app.poll.city |
+| `mobile/` | Poll City Campaign mobile app — canvassers, field, eday | Expo (React Native) | Built, NOT on App Store |
+| `mobile-pcs/` | Poll City Social mobile app — public voters, discovery | Expo (React Native) | Built, NOT on App Store |
+| `desktop/` | Poll City desktop app — Mac (.dmg) + Windows (.exe) | Electron | Built, NOT distributed |
+
+Also present (NOT apps):
+- `figma_design_pollcity_iosapp/` — Figma iOS design reference files
+- `ops/` — George's AI bots and automation scripts
+- `apps/`, `packages/` — future monorepo stubs, no active code
+
+**Both mobile apps need Apple credentials in their `eas.json` before any iOS build.**
+- `mobile/eas.json` — placeholder values: YOUR_APPLE_ID, YOUR_APP_STORE_CONNECT_APP_ID, YOUR_TEAM_ID
+- `mobile-pcs/eas.json` — placeholder values: REPLACE_WITH_APPLE_ID, etc.
+- Bundle IDs: `com.pollcity.app` (campaign) · `ca.pollcity.social` (social)
+
 ## INFRASTRUCTURE (burned 1 hour getting this wrong on 2026-04-18)
 - **App runs on VERCEL** — vercel.com → pangaon's projects → poll-city
 - **Railway is the DATABASE ONLY** — PostgreSQL, nothing else

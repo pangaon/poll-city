@@ -365,9 +365,14 @@ For every route that exists: can George find it from the sidebar in 3 clicks? If
 
 ## ARCHITECTURE RULES
 
-1. **Single monolith.** One Next.js app. One Vercel project. One Railway PostgreSQL.
+1. **Single monolith + three companion apps.** One Next.js app (src/). One Vercel project. One Railway PostgreSQL.
    Do not propose microservices, separate repos, or new databases.
-   Exception: mobile app lives in `mobile/` inside this repo.
+   There are FOUR codebases in this repo — read PLATFORM_TRUTH.md before assuming you know them all:
+   - `src/` — Next.js web app (the monolith)
+   - `mobile/` — Poll City Campaign mobile app (Expo React Native)
+   - `mobile-pcs/` — Poll City Social mobile app (Expo React Native)
+   - `desktop/` — Electron desktop app (Mac + Windows)
+   When touching mobile code, be explicit about WHICH app. Never say "the mobile app."
 
 2. **Multi-tenant always.** Every DB query that touches campaign data must be
    scoped by `campaignId`. No exceptions. Leaking one campaign's data to another
