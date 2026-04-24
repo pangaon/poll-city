@@ -50,9 +50,9 @@ export async function GET(req: NextRequest) {
     const stuckImports = await prisma.importLog.findMany({
       where: {
         status: { in: ["queued", "processing"] },
-        updatedAt: { lt: stuckCutoff },
+        createdAt: { lt: stuckCutoff },
       },
-      select: { id: true, filename: true, campaignId: true, updatedAt: true },
+      select: { id: true, filename: true, campaignId: true, createdAt: true },
     });
 
     if (stuckImports.length > 0) {
