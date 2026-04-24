@@ -23,15 +23,12 @@ import {
   CreditCard,
   FileText,
   BarChart2,
-  Mic2,
   Landmark,
   Printer,
   ArrowUpDown,
   Settings,
   Crown,
-  Shield,
   ScrollText,
-  QrCode,
   Network,
   Vote,
   Globe,
@@ -39,25 +36,12 @@ import {
   Brain,
   Search,
   Bell,
-  Radio,
-  MonitorPlay,
   Bot,
   Phone,
   Star,
   Receipt,
-  Tv,
-  MessageSquare,
-  MapPinned,
-  FolderSearch,
-  Compass,
-  GitMerge,
-  Calculator,
-  BookOpen,
   AlertTriangle,
-  Gauge,
-  FileSearch,
   Library,
-  Layers,
   Store,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
@@ -92,35 +76,34 @@ const PEOPLE_SECTION: NavSection = {
   ],
 };
 
+// FIELD: trimmed from 12 → 7
+// Removed: /field-ops/scripts (tab on /field-ops), /eday/capture (tab on /eday),
+//          /eday/capture/war-room (tab on /eday), /eday/hq (tab on /eday), /qr (tab on /field-ops)
 const FIELD_SECTION: NavSection = {
   id: "field",
   label: "Field",
   items: [
-    { href: "/field-ops",              icon: ClipboardList, label: "Field Ops",          isNew: true },
-    { href: "/field-ops/scripts",      icon: ScrollText,    label: "Scripts",            isNew: true },
-    { href: "/gotv",                   icon: Target,        label: "GOTV"              },
-    { href: "/eday",                   icon: Vote,          label: "Election Day"      },
-    { href: "/eday/capture",           icon: Radio,         label: "Quick Capture",    isNew: true },
-    { href: "/eday/capture/war-room",  icon: MonitorPlay,   label: "War Room",         isNew: true },
-    { href: "/eday/hq",                icon: Tv,            label: "Election Night",   isNew: true },
-    { href: "/call-list",              icon: Phone,         label: "Call List"         },
-    { href: "/signs",                  icon: PenSquare,     label: "Signs",             isNew: true },
-    { href: "/events",                 icon: CalendarDays,  label: "Events"            },
-    { href: "/qr",                     icon: QrCode,        label: "QR Capture",       isNew: true },
-    { href: "/fuel",                   icon: Truck,         label: "Logistics",        isNew: true },
+    { href: "/field-ops", icon: ClipboardList, label: "Field Ops",   isNew: true },
+    { href: "/gotv",      icon: Target,        label: "GOTV"                     },
+    { href: "/eday",      icon: Vote,          label: "Election Day"             },
+    { href: "/call-list", icon: Phone,         label: "Call List"                },
+    { href: "/signs",     icon: PenSquare,     label: "Signs",       isNew: true },
+    { href: "/events",    icon: CalendarDays,  label: "Events"                   },
+    { href: "/fuel",      icon: Truck,         label: "Logistics",   isNew: true },
   ],
 };
 
+// OUTREACH: trimmed from 6 → 5
+// Removed: /communications/qa (tab on /communications)
 const OUTREACH_SECTION: NavSection = {
   id: "outreach",
   label: "Outreach",
   items: [
-    { href: "/communications",    icon: Mail,          label: "Communications"   },
-    { href: "/communications/qa", icon: MessageSquare, label: "PCS Social Hub",   isNew: true },
-    { href: "/calendar",          icon: Calendar,      label: "Calendar"         },
-    { href: "/polls",             icon: BarChart3,     label: "Polls"            },
-    { href: "/forms",             icon: FileText,      label: "Forms",            isNew: true },
-    { href: "/notifications",     icon: Bell,          label: "Voter Outreach"   },
+    { href: "/communications", icon: Mail,      label: "Communications"           },
+    { href: "/calendar",       icon: Calendar,  label: "Calendar"                 },
+    { href: "/polls",          icon: BarChart3, label: "Polls"                    },
+    { href: "/forms",          icon: FileText,  label: "Forms",        isNew: true },
+    { href: "/notifications",  icon: Bell,      label: "Voter Outreach"           },
   ],
 };
 
@@ -128,8 +111,8 @@ const MONEY_SECTION: NavSection = {
   id: "money",
   label: "Money",
   items: [
-    { href: "/fundraising", icon: DollarSign, label: "Fundraising"                },
-    { href: "/finance",     icon: CreditCard, label: "Finance",     isNew: true },
+    { href: "/fundraising", icon: DollarSign, label: "Fundraising"            },
+    { href: "/finance",     icon: CreditCard, label: "Finance",   isNew: true },
   ],
 };
 
@@ -142,26 +125,40 @@ const INTELLIGENCE_SECTION: NavSection = {
   ],
 };
 
+// COMPLIANCE: trimmed from 5 → 3
+// Removed individual /reputation/* sub-items — they are tabs on /reputation
+// Keep top-level Reputation entry pointing to /reputation/alerts as the default
 const COMPLIANCE_SECTION: NavSection = {
   id: "compliance",
   label: "Compliance",
   items: [
-    { href: "/compliance",             icon: ScrollText,    label: "CASL Compliance",  isNew: true },
-    { href: "/reputation/alerts",      icon: AlertTriangle, label: "Rep: Alerts",      isNew: true },
-    { href: "/reputation/command",     icon: Gauge,         label: "Rep: Command",     isNew: true },
-    { href: "/reputation/sources",     icon: Library,       label: "Source Library",   isNew: true },
-    { href: "/reputation/pages",       icon: FileSearch,    label: "Rep: Monitored",   isNew: true },
+    { href: "/compliance",        icon: ScrollText,    label: "CASL Compliance",  isNew: true },
+    { href: "/reputation/alerts", icon: AlertTriangle, label: "Reputation",       isNew: true },
+    { href: "/reputation/sources", icon: Library,      label: "Source Library",   isNew: true },
   ],
 };
 
+// CANDIDATE: trimmed from 4 → 3
+// Removed: /calendar/candidate (accessible as tab on /calendar),
+//          /social duplicate (voters see PCS; not a primary CM workflow)
 const CANDIDATE_SECTION: NavSection = {
   id: "candidate",
   label: "Candidate",
   items: [
-    { href: "/my-website",         icon: Globe,    label: "My Website",        isNew: true },
-    { href: "/calendar/candidate", icon: Mic2,    label: "Candidate Schedule" },
-    { href: "/officials",          icon: Landmark, label: "Officials"          },
-    { href: "/social",             icon: Globe,    label: "Poll City Social"   },
+    { href: "/my-website", icon: Globe,    label: "My Website",        isNew: true },
+    { href: "/officials",  icon: Landmark, label: "Officials"                      },
+    { href: "/social",     icon: Globe,    label: "Poll City Social"               },
+  ],
+};
+
+// POLLING_ATLAS: collapsed from 7 → 1 top-level entry
+// Sub-pages (map, layers, import/command, boundaries, results, calculator, demographics)
+// become tabs on /atlas. A single sidebar entry keeps the section navigable.
+const POLLING_ATLAS_SECTION: NavSection = {
+  id: "polling_atlas",
+  label: "Polling Atlas",
+  items: [
+    { href: "/atlas", icon: Map, label: "Atlas", isNew: true },
   ],
 };
 
@@ -169,25 +166,11 @@ const PLATFORM_SECTION: NavSection = {
   id: "platform",
   label: "Platform",
   items: [
-    { href: "/vendors",       icon: Store,      label: "Vendor Network",  isNew: true },
-    { href: "/print",         icon: Printer,    label: "Print"           },
-    { href: "/import-export", icon: ArrowUpDown, label: "Import / Export" },
-    { href: "/billing",       icon: Receipt,    label: "Billing"         },
-    { href: "/settings",      icon: Settings,   label: "Settings"        },
-  ],
-};
-
-const POLLING_ATLAS_SECTION: NavSection = {
-  id: "polling_atlas",
-  label: "Polling Atlas",
-  items: [
-    { href: "/atlas/map",          icon: Map,           label: "Ontario Map",       isNew: true },
-    { href: "/atlas/layers",       icon: Layers,        label: "Map Layers",        isNew: true },
-    { href: "/atlas/import",       icon: Compass,       label: "Atlas Command",     isNew: true },
-    { href: "/atlas/boundaries",   icon: MapPinned,     label: "Boundary Manager",  isNew: true },
-    { href: "/atlas/results",      icon: BarChart2,     label: "Historical Results", isNew: true },
-    { href: "/atlas/calculator",   icon: Calculator,    label: "Swing Calculator",  isNew: true },
-    { href: "/atlas/demographics", icon: BookOpen,      label: "Demographics",      isNew: true },
+    { href: "/vendors",       icon: Store,       label: "Vendor Network",  isNew: true },
+    { href: "/print",         icon: Printer,     label: "Print"                        },
+    { href: "/import-export", icon: ArrowUpDown, label: "Import / Export"              },
+    { href: "/billing",       icon: Receipt,     label: "Billing"                      },
+    { href: "/settings",      icon: Settings,    label: "Settings"                     },
   ],
 };
 
@@ -270,11 +253,8 @@ export default function Sidebar() {
 
     const platformItems = [...PLATFORM_SECTION.items];
     if (isSuperAdmin) {
+      // SUPER_ADMIN: single Ops entry — sub-pages (adoni, social, sources, vendors) are tabs on /ops
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
-      platformItems.push({ href: "/ops/adoni", icon: Brain, label: "Adoni Training", isNew: true });
-      platformItems.push({ href: "/ops/social", icon: Globe, label: "Social Officials" });
-      platformItems.push({ href: "/ops/sources", icon: Library, label: "Source Library" });
-      platformItems.push({ href: "/ops/vendors", icon: Users, label: "Vendor Network", isNew: true });
     }
 
     return [
