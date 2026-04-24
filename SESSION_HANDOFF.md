@@ -19,12 +19,15 @@ GREEN — all commits on origin/main. Working tree clean.
 - `GEORGE_TODO.md` — all completed items marked done (items 3, 3b, 3c, 3d, 3f, 48, 74, 78, 79, 90, 91, 92)
 - Mobile files committed — `mobile/app/(auth)/login.tsx`, `mobile/app/_layout.tsx`, `mobile/app/(auth)/terms.tsx`
 
-### George's one remaining action from today
-Hit this URL in browser while logged in as SUPER_ADMIN to seed Ontario ward boundaries into DB:
-```
-https://app.poll.city/api/atlas/seed-wards?secret=Mb9Z9oPhj47qg%2BFFNU3u1b03A%2FwtBEyfYvkh2X3G6Fo%3D
-```
-Wait for JSON response. Then hard refresh `/atlas/map` — all 28 municipalities will render.
+### Ontario Map — SEEDED ✓ (2026-04-24)
+238 wards across 28 municipalities live in DB. Hard refresh `/atlas/map` to confirm render.
+
+3 municipalities failed (Represent returned no data — need ArcGIS source eventually):
+- Niagara Falls, Sudbury, Sarnia
+
+25 succeeded: Toronto (25), Ottawa (24), Hamilton (15), London (14), Kingston (12), Kitchener (10), Windsor (10), Barrie (10), Brampton (10), Cambridge (8), Markham (8), Thunder Bay (7), Oakville (7), Waterloo (7), Guelph (6), Burlington (6), Richmond Hill (6), Oshawa (5), Pickering (5), Vaughan (5), Peterborough (5), Clarington (4), Milton (4), Whitby (4), Brantford (5), Ajax (3), Belleville (2)
+
+Daily 3am cron will keep this current automatically.
 
 ---
 
