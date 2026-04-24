@@ -150,14 +150,26 @@ export async function apiFetch<T>(
     }
   }
 
-  const res = await fetch(url.toString(), {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const fullUrl = url.toString();
+  console.log(`[API] ${method} ${fullUrl} auth=${!!headers.Authorization}`);
+
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (networkErr) {
+    console.error(`[API] NETWORK FAIL ${fullUrl}`, networkErr);
+    throw networkErr;
+  }
+
+  console.log(`[API] ${res.status} ${fullUrl}`);
 
   if (!res.ok) {
     const errorBody = await res.json().catch(() => res.statusText);
+    console.error(`[API] ERROR ${res.status}`, errorBody);
     throw new ApiError(res.status, errorBody);
   }
 
@@ -166,7 +178,13 @@ export async function apiFetch<T>(
     return undefined as T;
   }
 
-  return (await res.json()) as T;
+  const text = await res.text();
+  console.log(`[API] body(${text.length}):`, text.slice(0, 200));
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Non-JSON response: ${text.slice(0, 100)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
