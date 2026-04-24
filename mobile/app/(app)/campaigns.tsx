@@ -76,17 +76,15 @@ export default function CampaignSelectScreen() {
 
       try {
         const result = await fetchCampaigns();
-        console.log('[Campaigns] data:', JSON.stringify(result.data?.length), result.data?.[0]?.name);
         setCampaigns(result.data);
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
-      } catch (err: unknown) {
-        const status = (err as { status?: number })?.status;
+      } catch {
         const cached = await AsyncStorage.getItem(CACHE_KEY);
         if (cached) {
           setCampaigns(JSON.parse(cached) as Campaign[]);
           setError("Offline mode — showing cached campaigns");
         } else {
-          setError(`Error ${status ?? "network"} — ${JSON.stringify(err)}`);
+          setError("Could not load campaigns. Check your connection.");
         }
       } finally {
         setLoading(false);
