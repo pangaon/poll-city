@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import {
   Printer, Users, Video, Camera, Pen, Globe, Phone, MapPin,
   Briefcase, DollarSign, Scale, BarChart2, Search, CalendarDays,
   Languages, Mic, Radio, Mail, ShoppingBag, Database, Code,
-  Package, ChevronRight, ChevronLeft, CheckCircle, Zap, Star
+  Package, ChevronRight, ChevronLeft, CheckCircle, Zap, Star,
 } from "lucide-react";
 
 // ─── Category registry ─────────────────────────────────────────────────────
@@ -39,24 +39,25 @@ const CATEGORIES = [
   { id: "other",               label: "Other Services",       icon: Package,      desc: "Any other campaign support service" },
 ];
 
-// Print-specific product types (matches PrintProductType enum)
 const PRINT_SPECIALTIES = [
-  { id: "lawn_sign",        label: "Lawn Signs" },
-  { id: "door_hanger",      label: "Door Hangers" },
-  { id: "flyer",            label: "Flyers" },
-  { id: "palm_card",        label: "Palm Cards" },
-  { id: "mailer_postcard",  label: "Mailer Postcards" },
-  { id: "banner",           label: "Banners" },
-  { id: "button_pin",       label: "Buttons / Pins" },
-  { id: "window_sign",      label: "Window Signs" },
-  { id: "bumper_sticker",   label: "Bumper Stickers" },
-  { id: "t_shirt",          label: "T-Shirts" },
-  { id: "yard_stake",       label: "Yard Stakes" },
-  { id: "lanyard",          label: "Lanyards" },
-  { id: "tote_bag",         label: "Tote Bags" },
-  { id: "table_cover",      label: "Table Covers" },
-  { id: "hat",              label: "Hats" },
+  { id: "lawn_sign",       label: "Lawn Signs" },
+  { id: "door_hanger",     label: "Door Hangers" },
+  { id: "flyer",           label: "Flyers" },
+  { id: "palm_card",       label: "Palm Cards" },
+  { id: "mailer_postcard", label: "Mailer Postcards" },
+  { id: "banner",          label: "Banners" },
+  { id: "button_pin",      label: "Buttons / Pins" },
+  { id: "window_sign",     label: "Window Signs" },
+  { id: "bumper_sticker",  label: "Bumper Stickers" },
+  { id: "t_shirt",         label: "T-Shirts" },
+  { id: "yard_stake",      label: "Yard Stakes" },
+  { id: "lanyard",         label: "Lanyards" },
+  { id: "tote_bag",        label: "Tote Bags" },
+  { id: "table_cover",     label: "Table Covers" },
+  { id: "hat",             label: "Hats" },
 ];
+
+const ALL_PRINT_IDS = PRINT_SPECIALTIES.map((s) => s.id);
 
 const PROVINCES = [
   ["ON", "Ontario"], ["BC", "British Columbia"], ["AB", "Alberta"],
@@ -69,18 +70,20 @@ type Step = "categories" | "account" | "business" | "print-details" | "done";
 
 export default function VendorSignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status: sessionStatus } = useSession();
+  const fromGoogle = searchParams.get("gauth") === "1";
+
   const [step, setStep] = useState<Step>("categories");
   const [saving, setSaving] = useState(false);
+  const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
-    // Step 1
     categories: [] as string[],
-    // Step 2
     email: "",
     password: "",
     confirmPassword: "",
-    // Step 3
     name: "",
     contactName: "",
     phone: "",
@@ -89,15 +92,32 @@ export default function VendorSignupPage() {
     provincesServed: [] as string[],
     yearsExperience: "",
     rateFrom: "",
-    // Step 4 (print only)
     printSpecialties: [] as string[],
     averageResponseHours: "24",
   });
 
+  // When arriving from Google OAuth — skip the account step, pre-fill email
+  useEffect(() => {
+    if (fromGoogle && sessionStatus === "authenticated" && session?.user) {
+      const role = (session.user as { role?: string }).role;
+      if (role === "VOLUNTEER") {
+        setForm((p) => ({ ...p, email: session.user?.email ?? "" }));
+      } else if (role === "VENDOR" || role === "PRINT_VENDOR") {
+        router.replace("/vendor/dashboard");
+      }
+    }
+  }, [fromGoogle, sessionStatus, session, router]);
+
   const isPrintShop = form.categories.includes("print_shop");
-  const steps: Step[] = isPrintShop
-    ? ["categories", "account", "business", "print-details"]
-    : ["categories", "account", "business"];
+  const isGoogleFlow = fromGoogle && sessionStatus === "authenticated" && (session?.user as { role?: string })?.role === "VOLUNTEER";
+
+  const steps: Step[] = isGoogleFlow
+    ? isPrintShop
+      ? ["categories", "business", "print-details"]
+      : ["categories", "business"]
+    : isPrintShop
+      ? ["categories", "account", "business", "print-details"]
+      : ["categories", "account", "business"];
 
   const stepIndex = steps.indexOf(step);
   const totalSteps = steps.length;
@@ -113,6 +133,11 @@ export default function VendorSignupPage() {
         ? (p[field] as string[]).filter((v) => v !== value)
         : [...(p[field] as string[]), value],
     }));
+  }
+
+  function selectAllPrint() {
+    const allSelected = ALL_PRINT_IDS.every((id) => form.printSpecialties.includes(id));
+    setForm((p) => ({ ...p, printSpecialties: allSelected ? [] : [...ALL_PRINT_IDS] }));
   }
 
   function validateStep(): string {
@@ -143,7 +168,7 @@ export default function VendorSignupPage() {
     if (idx < steps.length - 1) {
       setStep(steps[idx + 1]);
     } else {
-      submit();
+      isGoogleFlow ? submitGoogle() : submit();
     }
   }
 
@@ -151,6 +176,42 @@ export default function VendorSignupPage() {
     setError("");
     const idx = steps.indexOf(step);
     if (idx > 0) setStep(steps[idx - 1]);
+  }
+
+  async function submitGoogle() {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/vendor/google-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categories: form.categories,
+          name: form.name,
+          contactName: form.contactName || undefined,
+          phone: form.phone || undefined,
+          website: form.website || undefined,
+          bio: form.bio || undefined,
+          provincesServed: form.provincesServed,
+          yearsExperience: form.yearsExperience ? parseInt(form.yearsExperience) : undefined,
+          rateFrom: form.rateFrom ? parseFloat(form.rateFrom) : undefined,
+          printSpecialties: isPrintShop ? form.printSpecialties : undefined,
+          averageResponseHours: isPrintShop ? parseInt(form.averageResponseHours) : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to complete signup.");
+        setSaving(false);
+        return;
+      }
+      // Force session refresh then redirect
+      await signIn("credentials", { redirect: false });
+      router.push("/vendor/dashboard");
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setSaving(false);
+    }
   }
 
   async function submit() {
@@ -179,7 +240,13 @@ export default function VendorSignupPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Registration failed.");
+        // Route email-exists error back to the account step where the email was entered
+        if (data.error?.toLowerCase().includes("email") && data.error?.toLowerCase().includes("exists")) {
+          setStep("account");
+          setError(data.error);
+        } else {
+          setError(data.error ?? "Registration failed.");
+        }
         setSaving(false);
         return;
       }
@@ -202,6 +269,11 @@ export default function VendorSignupPage() {
     }
   }
 
+  async function continueWithGoogle() {
+    setGoogleSigningIn(true);
+    await signIn("google", { callbackUrl: "/vendor/signup?gauth=1" });
+  }
+
   // ── Done state ──────────────────────────────────────────────────────────
   if (step === "done") {
     return (
@@ -212,7 +284,7 @@ export default function VendorSignupPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">You&apos;re in the network</h2>
           <p className="text-gray-500 text-sm mb-6">
-            Your vendor profile is live. Sign in to see available campaign jobs and manage your profile.
+            Your vendor profile is live. Sign in to manage your profile and see campaign opportunities.
           </p>
           <Link
             href="/vendor/login"
@@ -268,13 +340,14 @@ export default function VendorSignupPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-6 pb-16">
+
         {/* ── STEP 1: CATEGORY SELECTION ─────────────────────────────────── */}
         {step === "categories" && (
           <div>
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-white mb-2">What do you offer?</h1>
               <p className="text-white/60 text-sm max-w-lg mx-auto">
-                Canadian campaigns use Poll City to find every service they need. Select all that apply — your profile will be shown to campaigns searching for these services.
+                Canadian campaigns use Poll City to find every service they need. Select all that apply.
               </p>
             </div>
 
@@ -327,12 +400,34 @@ export default function VendorSignupPage() {
           </div>
         )}
 
-        {/* ── STEP 2: ACCOUNT ────────────────────────────────────────────── */}
+        {/* ── STEP 2: ACCOUNT (email/password signup only) ───────────────── */}
         {step === "account" && (
           <div>
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-white mb-2">Create your account</h1>
               <p className="text-white/60 text-sm">Your login credentials for the vendor portal.</p>
+            </div>
+
+            {/* Google sign-in option */}
+            <button
+              type="button"
+              onClick={continueWithGoogle}
+              disabled={googleSigningIn}
+              className="w-full bg-white text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-3 mb-4 disabled:opacity-60 shadow"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              {googleSigningIn ? "Redirecting to Google…" : "Continue with Google"}
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-white/20" />
+              <span className="text-white/40 text-xs">or with email</span>
+              <div className="flex-1 h-px bg-white/20" />
             </div>
 
             <div className="bg-white rounded-2xl p-6 space-y-4 mb-6">
@@ -384,12 +479,18 @@ export default function VendorSignupPage() {
           </div>
         )}
 
-        {/* ── STEP 3: BUSINESS INFO ───────────────────────────────────────── */}
+        {/* ── STEP 3: BUSINESS INFO ──────────────────────────────────────── */}
         {step === "business" && (
           <div>
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-white mb-2">Tell campaigns about you</h1>
-              <p className="text-white/60 text-sm">This is your public vendor profile — campaigns browse this to find and hire you.</p>
+              <p className="text-white/60 text-sm">Your public vendor profile — campaigns browse this to find and hire you.</p>
+              {isGoogleFlow && (
+                <div className="inline-flex items-center gap-2 bg-[#1D9E75]/20 border border-[#1D9E75]/30 rounded-full px-3 py-1 mt-3">
+                  <CheckCircle className="w-3.5 h-3.5 text-[#1D9E75]" />
+                  <span className="text-xs text-[#1D9E75] font-medium">Signed in with Google — {form.email}</span>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl p-6 space-y-4 mb-6">
@@ -474,8 +575,6 @@ export default function VendorSignupPage() {
                   />
                 </div>
               </div>
-
-              {/* Provinces */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Provinces You Serve <span className="text-red-500">*</span>
@@ -517,9 +616,18 @@ export default function VendorSignupPage() {
 
             <div className="bg-white rounded-2xl p-6 space-y-6 mb-6">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                  Products you produce <span className="text-red-500">*</span>
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    Products you produce <span className="text-red-500">*</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={selectAllPrint}
+                    className="text-xs font-medium text-[#1D9E75] hover:underline"
+                  >
+                    {ALL_PRINT_IDS.every((id) => form.printSpecialties.includes(id)) ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PRINT_SPECIALTIES.map(({ id, label }) => {
                     const active = form.printSpecialties.includes(id);
