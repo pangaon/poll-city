@@ -105,18 +105,32 @@ If it fails: fix it. Never bypass the check.
 **Every session. No exceptions. Takes 60 seconds.**
 
 1. `git pull origin main` — sync with what other sessions have already shipped
-2. **Read `PLATFORM_TRUTH.md` FIRST** — 20 lines, 30 seconds. Contains the facts that cause the most mistakes. Do not skip this.
-3. Read `SESSION_HANDOFF.md` — the battlefield briefing. What shipped last, what's next, what George needs to do, known risks.
-4. Read `WORK_QUEUE.md` — the task registry. It tells you what is done, what is claimed, and what is pending.
-4. Before starting any task: check it is `PENDING` in WORK_QUEUE.md. If it says `CLAIMED` or `DONE`, do not touch it.
-5. Claim your task: edit WORK_QUEUE.md, change `PENDING` → `CLAIMED [today's date]`, commit + push immediately.
-6. Only then begin building.
+2. **Run `ls` on the repo root.** Every top-level directory. Read the names. If you see one you don't recognise, open it. Documents cannot be trusted to list everything. The filesystem is truth.
+3. **Read `PLATFORM_TRUTH.md` FIRST** — contains the full codebase inventory and the facts that cause the most mistakes.
+4. Read `SESSION_HANDOFF.md` — the battlefield briefing. What shipped last, what's next, what George needs to do, known risks.
+5. Read `WORK_QUEUE.md` — the task registry. It tells you what is done, what is claimed, and what is pending.
+6. Before starting any task: check it is `PENDING` in WORK_QUEUE.md. If it says `CLAIMED` or `DONE`, do not touch it.
+7. Claim your task: edit WORK_QUEUE.md, change `PENDING` → `CLAIMED [today's date]`, commit + push immediately.
+8. Only then begin building.
 
 **At session end — mandatory:**
 1. Update `SESSION_HANDOFF.md`: last session block, current platform state, next session opener.
 2. Commit and push the update.
 
 **Why:** George runs multiple sessions. This is an army of one — all sessions share one battlefield. Without coordination, two sessions build the same thing, or one session overwrites another's work. The claim commit is the lock. SESSION_HANDOFF.md is the briefing.
+
+## PRODUCT REASONING — DO THIS BEFORE ANY FEATURE WORK
+
+Documents describe what was built. They cannot describe what they don't mention.
+Before touching any product area, reason from what the product IS — not just from what you were told exists.
+
+**The products and their surfaces:**
+- **Poll City Social (PCS)** — civic social network for voters. Has a web app (`src/`) AND a dedicated mobile app (`mobile-pcs/`). When someone says "PCS" or "Social," both surfaces exist.
+- **Poll City Campaign OS** — full campaign management platform. Has the web app (`src/`) AND a campaign mobile app (`mobile/`) for canvassers and field workers.
+- **Poll City Desktop** — enterprise wrapper. Lives in `desktop/`. Mac (.dmg) + Windows (.exe).
+- **George's ops tools** — AI bots, automation scripts. Lives in `ops/`.
+
+**The reasoning rule:** When you encounter a product name, a feature request, or a module — ask yourself: "What surfaces should this product have that I haven't verified?" Then go look. Do not wait to be told about a directory. Do not assume documents list everything. A senior engineer asks "where else does this live?" before assuming the answer.
 
 ---
 
