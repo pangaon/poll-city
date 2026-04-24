@@ -2,6 +2,9 @@
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
+# Separate mobile project — not part of this repo
+mobile-pcs/
+
 # Figma Make export files (large binaries, not source)
 figma_design_pollcity_iosapp/*.mb
 figma_design_pollcity_iosapp/SocialCommand.tsx
