@@ -224,6 +224,15 @@ They use: CRM, canvassing, GOTV, communications, finance, events, analytics.
 They do NOT see `/ops`, the intelligence engine internals, or Poll City Social internals.
 Their connection to Poll City Social: their candidate has a public profile on PCS that voters follow.
 
+**The five personas inside this user group — know them before building any UI:**
+1. **First-time candidate** (28–45, terrified, 20 minutes between meetings) — needs obvious, forgiving, encouraging, fast
+2. **Experienced campaign manager** (5–15 campaigns, will leave if slower than their spreadsheet) — needs power, speed, control, data
+3. **Canvasser** (volunteer, 6:30pm, phone in one hand, door hanger in the other, possibly raining) — needs one-handed, works offline, instant results
+4. **Field director** (managing 20 volunteers across 8 turfs) — needs real-time overview, reassign on the fly
+5. **The candidate** (calling at midnight: "are we going to win?") — needs one number: The Gap
+
+Ask before every UI decision: "Which persona is this screen for? Does it match what they need?"
+
 ### 3. VOTERS / PUBLIC (Poll City Social — /social)
 These are the public. They live at `/social`.
 They use: Representative profiles, candidate profiles, polls, groups, notifications, feed.
@@ -408,6 +417,7 @@ For every route that exists: can George find it from the sidebar in 3 clicks? If
 
 8. Rate limiting: public endpoints use `rateLimit(req, "api")`. Form submissions
    use `rateLimit(req, "form")`. Do not skip rate limiting on any public route.
+   Thresholds: auth = 10 req/min · form = 5 req/hr · read/api = 100 req/min.
 
 ---
 
@@ -834,6 +844,34 @@ Report risks first. End clean. Start the next session fresh.
 
 ---
 
+---
+
+## MODULE SPEC REFERENCE DOCS
+
+These files exist in `docs/specs/` — read them when building the relevant module.
+They are NOT mandatory reads, but they contain the authoritative rules for each area.
+
+| File | When to read |
+|---|---|
+| `docs/specs/FUNDRAISING_PERMISSIONS.md` | Building any /fundraising or /api/fundraising route |
+| `docs/specs/COMPLIANCE_RULES.md` | Building CASL, donation limits, Ontario election finance compliance |
+| `docs/specs/FIELD_OPS_ROUTING.md` | Building Field Ops route planning, turf, packaging, walk lists |
+| `docs/specs/MATCHING_AND_MERGE_RULES.md` | Building CRM deduplication, import merging, identity resolution |
+| `docs/specs/COMMS_ARCHITECTURE.md` | Building any communications channel or automation |
+| `docs/specs/COMMS_UI_FLOWS.md` | Building Communications UI tabs or flows |
+| `docs/specs/EDGE_CASES.md` | Building Communications features — comprehensive edge case list |
+| `docs/specs/FIGMA.md` | Full platform design context — routes, design system, module specs |
+| `docs/specs/COMPONENTS.md` | Before building new UI — check if the component already exists |
+| `docs/specs/SYSTEM_MAP.md` | Module inventory — what exists, what is schema-only, what is future |
+| `docs/specs/ROUTES.md` | Full route map as of April 2026 |
+| `docs/specs/SECURITY_BLUEPRINT.md` | Deep OWASP mapping, PIPEDA controls, security roadmap |
+| `docs/specs/INTEGRATION_GAPS.md` | Systems that exist but are not properly connected |
+| `docs/specs/MOBILE_BUILD_PLAN.md` | Mobile app architecture and build sequence |
+| `docs/specs/CLIENT_ONBOARDING.md` | Client provisioning steps and onboarding template |
+
+---
+
 *These standing orders were written by Claude Sonnet 4.6 on 2026-04-08 at George's direction.
 Updated 2026-04-09 with anti-hallucination rules, trigger vocabulary, and full operating system.
+Updated 2026-04-24 with 5 campaign personas, rate limit thresholds, docs/specs reference table.
 They apply to every AI agent — past, present, and future — that works on this codebase.*
