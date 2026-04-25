@@ -181,10 +181,10 @@ export async function POST(req: NextRequest) {
         if (l.sentAt >= weekStart) c.week++;
         counts.set(l.contactId, c);
       }
-      for (const [id, c] of counts) {
+      Array.from(counts).forEach(([id, c]) => {
         if (campaign.commsMaxPerWeek != null && c.week >= campaign.commsMaxPerWeek) frequencySuppressedIds.add(id);
         if (campaign.commsMaxPerMonth != null && c.month >= campaign.commsMaxPerMonth) frequencySuppressedIds.add(id);
-      }
+      });
     } catch {
       // ContactCommsLog may not exist until npx prisma db push — frequency check skipped
     }
