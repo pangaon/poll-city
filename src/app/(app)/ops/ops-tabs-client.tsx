@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutDashboard, Brain, Globe, Database, Store } from "lucide-react";
+import { LayoutDashboard, Brain, Globe, Database, Store, Users2 } from "lucide-react";
 import OpsClient from "./ops-client";
 import AdoniTrainerClient from "./adoni/adoni-trainer-client";
 import SocialOpsClient from "./social/social-ops-client";
 import SourceLibraryClient from "./sources/source-library-client";
 import VendorsOpsClient from "./vendors/vendors-ops-client";
+import CandidatesOpsClient from "./candidates/candidates-ops-client";
 
 const tabs = [
-  { id: "dashboard", label: "Dashboard",      icon: LayoutDashboard },
-  { id: "adoni",     label: "Adoni Training", icon: Brain            },
-  { id: "social",    label: "Social",         icon: Globe            },
-  { id: "sources",   label: "Source Library", icon: Database         },
-  { id: "vendors",   label: "Vendor Network", icon: Store            },
+  { id: "dashboard",  label: "Dashboard",      icon: LayoutDashboard },
+  { id: "candidates", label: "Candidates",     icon: Users2           },
+  { id: "adoni",      label: "Adoni Training", icon: Brain            },
+  { id: "social",     label: "Social",         icon: Globe            },
+  { id: "sources",    label: "Source Library", icon: Database         },
+  { id: "vendors",    label: "Vendor Network", icon: Store            },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -47,11 +49,12 @@ export default function OpsTabsClient() {
       </div>
 
       <div className="flex-1">
-        {activeTab === "dashboard" && <OpsClient />}
-        {activeTab === "adoni"     && <AdoniTrainerClient />}
-        {activeTab === "social"    && <SocialOpsClient />}
-        {activeTab === "sources"   && <SourceLibraryClient />}
-        {activeTab === "vendors"   && <VendorsOpsClient />}
+        {activeTab === "dashboard"  && <OpsClient />}
+        {activeTab === "candidates" && <CandidatesOpsClient />}
+        {activeTab === "adoni"      && <AdoniTrainerClient />}
+        {activeTab === "social"     && <SocialOpsClient />}
+        {activeTab === "sources"    && <SourceLibraryClient />}
+        {activeTab === "vendors"    && <VendorsOpsClient />}
       </div>
     </div>
   );
