@@ -10,20 +10,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  // Find the demo campaign (first campaign in DB, or the one with slug "ward-12-campaign")
-  const campaign = await prisma.campaign.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { id: true, candidateName: true },
-  });
-
-  if (!campaign) {
-    console.error("❌ No campaign found. Run the main seed first.");
-    process.exit(1);
-  }
-  console.log(`📍 Using campaign: ${campaign.candidateName} (${campaign.id})`);
-
-  // Get up to 10 contacts from this campaign
+async function seedForCampaign(campaign) {
   const contacts = await prisma.contact.findMany({
     where: { campaignId: campaign.id, deletedAt: null },
     orderBy: { createdAt: "asc" },
@@ -31,77 +18,86 @@ async function main() {
     select: { id: true, firstName: true, lastName: true, address1: true },
   });
 
-  if (contacts.length < 4) {
-    console.error(`❌ Only ${contacts.length} contacts found. Need at least 4.`);
-    process.exit(1);
+  if (contacts.length < 2) {
+    console.log(`  ⚠ Skipping ${campaign.candidateName} — only ${contacts.length} contacts`);
+    return;
   }
-  console.log(`👥 Found ${contacts.length} contacts`);
 
-  // Upsert Turf 1
-  const turf1 = await prisma.turf.upsert({
-    where: { id: "turf-demo-maple" },
-    update: { totalDoors: Math.min(5, contacts.length), totalStops: Math.min(5, contacts.length) },
-    create: {
-      id: "turf-demo-maple",
+  // Find first ADMIN membership to assign turfs to a real user
+  const adminMembership = await prisma.membership.findFirst({
+    where: { campaignId: campaign.id, role: { in: ["ADMIN", "CAMPAIGN_MANAGER"] } },
+    select: { id: true, userId: true },
+  });
+
+  const half = Math.min(5, contacts.length);
+  const remaining = Math.min(5, contacts.length - half);
+
+  // Delete any existing demo turfs for this campaign and recreate
+  await prisma.turf.deleteMany({
+    where: { campaignId: campaign.id, name: { in: ["Maple / Oak Block", "Birch / College North"] } },
+  });
+
+  const turf1 = await prisma.turf.create({
+    data: {
       campaignId: campaign.id,
       name: "Maple / Oak Block",
       ward: "Ward 12",
       streets: ["Maple Avenue", "Oak Street"],
       status: "assigned",
-      totalDoors: Math.min(5, contacts.length),
-      totalStops: Math.min(5, contacts.length),
+      assignedUserId: adminMembership?.userId ?? null,
+      assignedVolunteerId: adminMembership?.id ?? null,
+      totalDoors: half,
+      totalStops: half,
       estimatedMinutes: 45,
       notes: "Dense residential. Good conversion area.",
     },
   });
-  console.log(`✅ Turf 1: ${turf1.name}`);
 
-  // Upsert Turf 2
-  const half = Math.min(5, contacts.length);
-  const remaining = contacts.length - half;
-  const turf2 = await prisma.turf.upsert({
-    where: { id: "turf-demo-birch" },
-    update: { totalDoors: remaining, totalStops: remaining },
-    create: {
-      id: "turf-demo-birch",
+  const turf2 = await prisma.turf.create({
+    data: {
       campaignId: campaign.id,
       name: "Birch / College North",
       ward: "Ward 12",
       streets: ["Birch Crescent", "College Way"],
       status: "assigned",
+      assignedUserId: adminMembership?.userId ?? null,
+      assignedVolunteerId: adminMembership?.id ?? null,
       totalDoors: remaining,
       totalStops: remaining,
       estimatedMinutes: 35,
       notes: "Mix of homeowners and renters.",
     },
   });
-  console.log(`✅ Turf 2: ${turf2.name}`);
 
-  // Wipe old TurfStops for these turfs so we start clean
-  await prisma.turfStop.deleteMany({ where: { turfId: { in: [turf1.id, turf2.id] } } });
-
-  // Create TurfStops for turf1 (first half of contacts)
   const batch1 = contacts.slice(0, half);
   for (let i = 0; i < batch1.length; i++) {
-    await prisma.turfStop.create({
-      data: { turfId: turf1.id, contactId: batch1[i].id, order: i + 1 },
-    });
-    console.log(`  → Stop ${i + 1}: ${batch1[i].firstName} ${batch1[i].lastName} @ ${batch1[i].address1}`);
+    await prisma.turfStop.create({ data: { turfId: turf1.id, contactId: batch1[i].id, order: i + 1 } });
   }
-
-  // Create TurfStops for turf2 (second half)
-  const batch2 = contacts.slice(half);
+  const batch2 = contacts.slice(half, half + remaining);
   for (let i = 0; i < batch2.length; i++) {
-    await prisma.turfStop.create({
-      data: { turfId: turf2.id, contactId: batch2[i].id, order: i + 1 },
-    });
-    console.log(`  → Stop ${i + 1}: ${batch2[i].firstName} ${batch2[i].lastName} @ ${batch2[i].address1}`);
+    await prisma.turfStop.create({ data: { turfId: turf2.id, contactId: batch2[i].id, order: i + 1 } });
   }
 
-  console.log(`\n✅ Done. 2 turfs, ${contacts.length} stops total.`);
-  console.log(`   Turf 1 "${turf1.name}": ${batch1.length} stops`);
-  console.log(`   Turf 2 "${turf2.name}": ${batch2.length} stops`);
-  console.log(`\n   Refresh the mobile canvassing tab — missions should appear.`);
+  console.log(`  ✅ ${campaign.candidateName}: turf1=${half} stops, turf2=${remaining} stops`);
+}
+
+async function main() {
+  const campaigns = await prisma.campaign.findMany({
+    select: { id: true, candidateName: true, _count: { select: { contacts: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  console.log(`Found ${campaigns.length} campaigns. Seeding demo turfs for all with contacts...\n`);
+
+  for (const c of campaigns) {
+    if (c._count.contacts === 0) {
+      console.log(`  ⚠ Skipping ${c.candidateName} — 0 contacts`);
+      continue;
+    }
+    await seedForCampaign(c);
+  }
+
+  console.log("\n✅ Done. Refresh the mobile canvassing tab.");
 }
 
 main()

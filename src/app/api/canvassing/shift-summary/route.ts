@@ -15,7 +15,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth } from "@/lib/auth/helpers";
+import { mobileApiAuth as apiAuth } from "@/lib/auth/helpers";
 
 export async function GET(req: NextRequest) {
   const { session, error } = await apiAuth(req);

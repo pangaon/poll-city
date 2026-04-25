@@ -14,7 +14,7 @@
  * Rate: standard API limit (not a public endpoint)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { mobileApiAuth as apiAuth } from "@/lib/auth/helpers";
 import { sanitizePrompt } from "@/lib/ai/sanitize-prompt";
 import prisma from "@/lib/db/prisma";
 import { z } from "zod";

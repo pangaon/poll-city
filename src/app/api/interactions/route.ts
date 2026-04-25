@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { apiAuth, mobileApiAuth } from "@/lib/auth/helpers";
+import { mobileApiAuth } from "@/lib/auth/helpers";
 import { rateLimit } from "@/lib/rate-limit";
 import { createInteractionSchema } from "@/lib/validators";
 import { sanitizeUserText } from "@/lib/security/monitor";
@@ -13,7 +13,7 @@ import { scoreContact } from "@/lib/campaign/confidence-score";
  * Cursor-paginated interactions history for a campaign.
  */
 export async function GET(req: NextRequest) {
-  const { session, error } = await apiAuth(req);
+  const { session, error } = await mobileApiAuth(req);
   if (error) return error;
 
   const sp = req.nextUrl.searchParams;

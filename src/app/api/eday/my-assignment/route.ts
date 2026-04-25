@@ -6,7 +6,7 @@
  * polling station info so the scrutineer doesn't need to enter it manually.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { apiAuth } from "@/lib/auth/helpers";
+import { mobileApiAuth as apiAuth } from "@/lib/auth/helpers";
 import prisma from "@/lib/db/prisma";
 
 export async function GET(req: NextRequest) {
