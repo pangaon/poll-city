@@ -18,7 +18,7 @@ export default ({ config }) => ({
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
-    backgroundColor: "#0A2342",
+    backgroundColor: "#FFFFFF",
   },
   ios: {
     ...config.ios,
@@ -43,7 +43,7 @@ export default ({ config }) => ({
     ...config.android,
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#0A2342",
+      backgroundColor: "#FFFFFF",
     },
     package: "ca.pollcity.canvasser",
     versionCode: 1,
