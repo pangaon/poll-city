@@ -411,3 +411,75 @@ export interface LoginResponse {
   user: User;
   tokens: AuthTokens;
 }
+
+// ---------------------------------------------------------------------------
+// Canvasser App V1 — Mission / Stop / Adoni / Sync
+// ---------------------------------------------------------------------------
+
+export interface CanvasserMission {
+  id: string;
+  name: string;
+  type: "canvass";
+  status: string;
+  totalDoors: number;
+  doorsKnocked: number;
+  completionPercent: number;
+  ward: string | null;
+  streets: string[];
+  estimatedMinutes: number | null;
+  notes: string | null;
+  assignedToMe: boolean;
+}
+
+export interface CanvasserMissionDetail extends CanvasserMission {
+  totalStops: number;
+  visitedStops: number;
+  pendingStops: number;
+}
+
+export interface CanvasserStopContact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  supportLevel: SupportLevel;
+  notes: string | null;
+  doNotContact: boolean;
+  signRequested: boolean;
+  volunteerInterest: boolean;
+}
+
+export interface CanvasserCurrentStop {
+  stopId: string;
+  order: number;
+  contact: CanvasserStopContact;
+}
+
+export type AdoniActionType =
+  | "set_support_level"
+  | "request_sign"
+  | "flag_volunteer"
+  | "flag_follow_up"
+  | "add_note"
+  | "mark_do_not_contact"
+  | "skip_stop";
+
+export interface AdoniParsedAction {
+  type: AdoniActionType;
+  confidence: "high" | "medium" | "low";
+  params: Record<string, unknown>;
+  displayText: string;
+}
+
+export interface CanvasserSyncStatus {
+  date: string;
+  doorsKnocked: number;
+  supportersFound: number;
+  signRequests: number;
+  volunteerLeads: number;
+  conversionRate: number;
+}

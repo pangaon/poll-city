@@ -25,7 +25,9 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../lib/auth';
-import { fetchTurfs, fetchWalkList, type TurfSummary, type WalkStop } from '../../../lib/api';
+import { fetchMissions, fetchWalkList, type TurfSummary, type WalkStop } from '../../../lib/api';
+import type { CanvasserMission } from '../../../lib/types';
+// TurfSummary still used by turfToMission union type signature
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -66,7 +68,9 @@ interface Mission {
 
 interface Person { id: string; name: string; party: string; }
 interface Stop {
-  id: string; address: string; unit?: string;
+  id: string;       // contactId
+  stopId: string;   // TurfStop.id
+  address: string; unit?: string;
   household: Person[]; notes?: string; hasOpponentSign?: boolean; status: string;
   phone?: string | null; supportLevel?: string;
 }
@@ -124,23 +128,26 @@ function partyColor(party: string): string {
   return PARTY_COLOR[party] ?? C.textMuted;
 }
 
-function turfToMission(turf: TurfSummary): Mission {
+function turfToMission(turf: TurfSummary | CanvasserMission): Mission {
+  const doors = 'contactCount' in turf ? turf.contactCount : turf.totalDoors;
+  const streets = turf.streets ?? [];
   return {
     id: turf.id,
     name: turf.name,
     type: 'canvass',
-    doors: turf.contactCount,
-    routing: turf.streets.length > 0 ? turf.streets.slice(0, 2).join(' / ') : 'Optimised Route',
-    priority: turf.contactCount >= 40 ? 'High' : 'Normal',
+    doors,
+    routing: streets.length > 0 ? streets.slice(0, 2).join(' / ') : 'Optimised Route',
+    priority: doors >= 40 ? 'High' : 'Normal',
     reward: '1× pts',
-    start: turf.completedCount,
-    end: turf.contactCount,
+    start: 'completedCount' in turf ? turf.completedCount : turf.doorsKnocked,
+    end: doors,
   };
 }
 
 function walkStopToStop(ws: WalkStop): Stop {
   return {
     id: ws.contact.id,
+    stopId: ws.id,
     address: ws.contact.address1 ?? 'Unknown Address',
     unit: ws.contact.address2 ?? undefined,
     household: [{
@@ -716,7 +723,7 @@ export default function CanvassingScreen() {
   const { user } = useAuth();
 
   const [campaignId, setCampaignId] = useState<string | null>(null);
-  const [turfs, setTurfs] = useState<TurfSummary[]>([]);
+  const [turfs, setTurfs] = useState<CanvasserMission[]>([]);
   const [isLoadingTurfs, setIsLoadingTurfs] = useState(false);
   const [turfsError, setTurfsError] = useState<string | null>(null);
   const [isLoadingWalkList, setIsLoadingWalkList] = useState(false);
@@ -739,7 +746,7 @@ export default function CanvassingScreen() {
       setCampaignId(id);
       setIsLoadingTurfs(true);
       setTurfsError(null);
-      fetchTurfs(id)
+      fetchMissions(id)
         .then(res => setTurfs(res.data))
         .catch(() => setTurfsError('Could not load your turfs. Check your connection.'))
         .finally(() => setIsLoadingTurfs(false));
@@ -777,6 +784,8 @@ export default function CanvassingScreen() {
       pathname: '/(app)/door/[id]',
       params: {
         id: stop.id,
+        stopId: stop.stopId,
+        campaignId: campaignId ?? '',
         contactJson: JSON.stringify({
           id: stop.id,
           firstName: nameParts[0] ?? 'Resident',
@@ -790,7 +799,7 @@ export default function CanvassingScreen() {
         stopNotes: stop.notes ?? '',
       },
     });
-  }, [router]);
+  }, [router, campaignId]);
 
   const arrivedStopId = useRef<string | null>(null);
 

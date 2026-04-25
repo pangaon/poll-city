@@ -13,6 +13,11 @@ import type {
   AssignmentStatus,
   AuthTokens,
   Campaign,
+  CanvasserMission,
+  CanvasserMissionDetail,
+  CanvasserCurrentStop,
+  CanvasserSyncStatus,
+  AdoniParsedAction,
   Contact,
   CreateInteractionPayload,
   FieldAssignment,
@@ -460,5 +465,198 @@ export async function updateAssignmentStop(
   return apiFetch(`/api/field-assignments/${assignmentId}/stops/${stopId}`, {
     method: "PATCH",
     body: payload,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Canvasser App V1 — Mission + Stop + Voter + Adoni + Sync
+// ---------------------------------------------------------------------------
+
+/** List missions (turfs) assigned to the current canvasser. */
+export async function fetchMissions(
+  campaignId: string,
+): Promise<{ data: CanvasserMission[] }> {
+  return apiFetch<{ data: CanvasserMission[] }>("/api/canvasser/missions", {
+    params: { campaignId },
+  });
+}
+
+/** Get full detail for a single mission. */
+export async function fetchMission(
+  missionId: string,
+  campaignId: string,
+): Promise<{ data: CanvasserMissionDetail }> {
+  return apiFetch<{ data: CanvasserMissionDetail }>(
+    `/api/canvasser/missions/${missionId}`,
+    { params: { campaignId } },
+  );
+}
+
+/** Get the next unvisited stop for a mission. Returns null when mission is complete. */
+export async function fetchCurrentStop(
+  missionId: string,
+  campaignId: string,
+): Promise<{ data: CanvasserCurrentStop | null; missionComplete: boolean }> {
+  return apiFetch<{ data: CanvasserCurrentStop | null; missionComplete: boolean }>(
+    `/api/canvasser/missions/${missionId}/current-stop`,
+    { params: { campaignId } },
+  );
+}
+
+export interface CompleteStopPayload {
+  campaignId: string;
+  supportLevel?: string;
+  notes?: string;
+  issues?: string[];
+  signRequested?: boolean;
+  volunteerInterest?: boolean;
+  followUpNeeded?: boolean;
+}
+
+/** Mark a stop as complete, optionally recording the voter outcome. */
+export async function completeStop(
+  stopId: string,
+  payload: CompleteStopPayload,
+): Promise<{ data: { stopId: string; visitedAt: string } }> {
+  return apiFetch(`/api/canvasser/stops/${stopId}/complete`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/** Skip a stop without recording an outcome. */
+export async function skipStop(
+  stopId: string,
+  campaignId: string,
+  reason?: string,
+): Promise<{ data: { stopId: string; skippedAt: string } }> {
+  return apiFetch(`/api/canvasser/stops/${stopId}/skip`, {
+    method: "POST",
+    body: { campaignId, reason },
+  });
+}
+
+/** Append a note to a stop. */
+export async function addStopNote(
+  stopId: string,
+  campaignId: string,
+  note: string,
+): Promise<{ data: { id: string; notes: string | null } }> {
+  return apiFetch(`/api/canvasser/stops/${stopId}/note`, {
+    method: "POST",
+    body: { campaignId, note },
+  });
+}
+
+/** Record a voter outcome (support level). */
+export async function recordVoterOutcome(
+  personId: string,
+  campaignId: string,
+  supportLevel: string,
+  notes?: string,
+): Promise<{ data: { personId: string; supportLevel: string; recordedAt: string } }> {
+  return apiFetch(`/api/canvasser/voters/${personId}/outcome`, {
+    method: "POST",
+    body: { campaignId, supportLevel, notes },
+  });
+}
+
+export interface SignRequestPayload {
+  campaignId: string;
+  contactId: string;
+  signType?: string;
+  quantity?: number;
+  notes?: string;
+}
+
+/** Submit a sign request for a contact. */
+export async function submitSignRequest(
+  payload: SignRequestPayload,
+): Promise<{ data: { id: string; contactId: string } }> {
+  return apiFetch("/api/canvasser/sign-requests", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/** Flag a contact as a volunteer lead. */
+export async function submitVolunteerLead(
+  campaignId: string,
+  contactId: string,
+  notes?: string,
+): Promise<{ data: { contactId: string; volunteerInterest: boolean } }> {
+  return apiFetch("/api/canvasser/volunteer-leads", {
+    method: "POST",
+    body: { campaignId, contactId, notes },
+  });
+}
+
+/** Submit a voice transcript to Adoni for storage. */
+export async function submitAdoniTranscript(
+  campaignId: string,
+  text: string,
+  contactId?: string,
+  stopId?: string,
+): Promise<{ data: { transcriptId: string; text: string; createdAt: string } }> {
+  return apiFetch("/api/canvasser/adoni/transcripts", {
+    method: "POST",
+    body: { campaignId, text, contactId, stopId },
+  });
+}
+
+/** Parse a voice transcript into structured actions. */
+export async function parseAdoniTranscript(
+  campaignId: string,
+  text: string,
+  contactId?: string,
+): Promise<{ data: { actions: AdoniParsedAction[]; parsedText: string } }> {
+  return apiFetch("/api/canvasser/adoni/parse", {
+    method: "POST",
+    body: { campaignId, text, contactId },
+  });
+}
+
+export interface ConfirmedAdoniAction {
+  type: string;
+  params: Record<string, unknown>;
+}
+
+/** Execute confirmed Adoni actions. */
+export async function executeAdoniActions(
+  campaignId: string,
+  actions: ConfirmedAdoniAction[],
+  contactId?: string,
+  stopId?: string,
+): Promise<{ data: { results: Array<{ type: string; success: boolean; error?: string }>; allSuccess: boolean } }> {
+  return apiFetch("/api/canvasser/adoni/execute", {
+    method: "POST",
+    body: { campaignId, actions, contactId, stopId },
+  });
+}
+
+export interface OfflineMutation {
+  id: string;
+  endpoint: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  payload: string;
+}
+
+/** Batch-upload offline mutations to the server for processing. */
+export async function syncOfflineMutations(
+  campaignId: string,
+  mutations: OfflineMutation[],
+): Promise<{ data: { results: Array<{ id: string; status: number; ok: boolean }> } }> {
+  return apiFetch("/api/canvasser/sync", {
+    method: "POST",
+    body: { campaignId, mutations },
+  });
+}
+
+/** Get the canvasser's day stats from the server. */
+export async function fetchSyncStatus(
+  campaignId: string,
+): Promise<{ data: CanvasserSyncStatus }> {
+  return apiFetch<{ data: CanvasserSyncStatus }>("/api/canvasser/sync/status", {
+    params: { campaignId },
   });
 }

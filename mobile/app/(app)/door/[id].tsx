@@ -26,6 +26,12 @@ import {
   TriangleAlert, UserX, X,
 } from "lucide-react-native";
 import { enqueue } from "../../../lib/sync";
+import {
+  completeStop,
+  skipStop,
+  submitSignRequest,
+  submitVolunteerLead,
+} from "../../../lib/api";
 import type { Contact, CreateInteractionPayload, SupportLevel } from "../../../lib/types";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -674,7 +680,12 @@ const li = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function DoorWizardScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; contactJson?: string }>();
+  const params = useLocalSearchParams<{
+    id: string;
+    contactJson?: string;
+    stopId?: string;
+    campaignId?: string;
+  }>();
 
   const contact = React.useMemo<PersonEntry>(() => {
     if (params.contactJson) {
@@ -758,11 +769,15 @@ export default function DoorWizardScreen() {
       if (notes.trim()) parts.push(notes.trim());
       if (personState.notes.trim()) parts.push(personState.notes.trim());
 
+      const notesText = parts.join(" · ") || undefined;
+      const cid = params.campaignId;
+
+      // Enqueue to legacy interactions endpoint (offline-safe)
       const payload: CreateInteractionPayload = {
         contactId:         params.id,
         type:              "door_knock",
         supportLevel:      outcome?.level ?? "unknown",
-        notes:             parts.join(" · ") || undefined,
+        notes:             notesText,
         signRequested:     wantsSign && signLogged,
         volunteerInterest: wantsVolunteer,
         followUpNeeded:    followUp,
@@ -770,9 +785,36 @@ export default function DoorWizardScreen() {
         source:            "canvass",
       };
       enqueue("/api/interactions", "POST", payload).catch(() => {});
+
+      // Call new canvasser endpoints directly when campaignId + stopId are available
+      if (cid && params.stopId) {
+        completeStop(params.stopId, {
+          campaignId: cid,
+          supportLevel: outcome?.level,
+          notes: notesText,
+          issues: infoTopics,
+          signRequested: wantsSign && signLogged,
+          volunteerInterest: wantsVolunteer,
+          followUpNeeded: followUp,
+        }).catch(() => {});
+      }
+
+      if (cid && wantsSign && signLogged) {
+        submitSignRequest({
+          campaignId: cid,
+          contactId: params.id,
+          signType: signSummary?.type ?? undefined,
+          quantity: signSummary?.qty ?? 1,
+        }).catch(() => {});
+      }
+
+      if (cid && wantsVolunteer) {
+        submitVolunteerLead(cid, params.id).catch(() => {});
+      }
+
       router.back();
     }
-  }, [submitted, countdown, params.id, outcome, npOpt, doorStatus, notes, infoTopics, selectedLit, personState.notes, wantsSign, signLogged, wantsVolunteer, followUp, router]);
+  }, [submitted, countdown, params.id, params.stopId, params.campaignId, outcome, npOpt, doorStatus, notes, infoTopics, selectedLit, personState.notes, wantsSign, signLogged, signSummary, wantsVolunteer, followUp, router]);
 
   const handleUndo = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
