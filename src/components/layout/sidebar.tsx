@@ -138,16 +138,16 @@ const COMPLIANCE_SECTION: NavSection = {
   ],
 };
 
-// CANDIDATE: trimmed from 4 → 3
+// CANDIDATE: trimmed from 4 → 2
 // Removed: /calendar/candidate (accessible as tab on /calendar),
 //          /social duplicate (voters see PCS; not a primary CM workflow)
+//          /officials (moved to SUPER_ADMIN ops — clients don't manage elected reps)
 const CANDIDATE_SECTION: NavSection = {
   id: "candidate",
   label: "Candidate",
   items: [
-    { href: "/my-website", icon: Globe,    label: "My Website",        isNew: true },
-    { href: "/officials",  icon: Landmark, label: "Officials"                      },
-    { href: "/social",     icon: Globe,    label: "Poll City Social"               },
+    { href: "/my-website", icon: Globe, label: "My Website", isNew: true },
+    { href: "/social",     icon: Globe, label: "Poll City Social"        },
   ],
 };
 
@@ -255,6 +255,7 @@ export default function Sidebar() {
       // SUPER_ADMIN: single Ops entry — sub-pages (adoni, social, sources, vendors) are tabs on /ops
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
       platformItems.push({ href: "/ops/data-management", icon: Database, label: "Seed Data", isNew: true });
+      platformItems.push({ href: "/ops/officials", icon: Landmark, label: "Officials" });
     }
 
     return [
