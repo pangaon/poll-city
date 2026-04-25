@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     loadBrandKit(campaignId),
     prisma.campaign.findUnique({
       where: { id: campaignId },
-      select: { fromEmailName: true, replyToEmail: true },
+      select: { fromEmailName: true, replyToEmail: true, commsCooldownHours: true, commsMaxPerWeek: true, commsMaxPerMonth: true },
     }),
   ]);
   const where = {
@@ -151,16 +151,46 @@ export async function POST(req: NextRequest) {
     : allRecipients;
   const noConsentCount = consentTableExists ? allRecipients.length - consentFiltered.length : 0;
 
-  // Fatigue guard: skip contacts contacted by any channel in the last 24h.
-  const fatigueCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Fatigue guard: skip contacts contacted by any channel within the campaign cooldown window.
+  const cooldownMs = (campaign?.commsCooldownHours ?? 24) * 60 * 60 * 1000;
+  const fatigueCutoff = new Date(Date.now() - cooldownMs);
   const consentFilteredIds = consentFiltered.map((r) => r.id);
   const recentlyContacted = await prisma.contact.findMany({
     where: { id: { in: consentFilteredIds }, lastContactedAt: { gte: fatigueCutoff } },
     select: { id: true },
   });
   const recentIds = new Set(recentlyContacted.map((r) => r.id));
-  const recipients = consentFiltered.filter((r) => !recentIds.has(r.id));
-  const fatigueSuppressed = consentFiltered.length - recipients.length;
+  const cooldownFiltered = consentFiltered.filter((r) => !recentIds.has(r.id));
+  const fatigueSuppressed = consentFiltered.length - cooldownFiltered.length;
+
+  // Per-period frequency check — enforces commsMaxPerWeek / commsMaxPerMonth if set.
+  // Uses ContactCommsLog; skipped gracefully if table doesn't exist yet (before npx prisma db push).
+  const frequencySuppressedIds = new Set<string>();
+  if (campaign?.commsMaxPerWeek != null || campaign?.commsMaxPerMonth != null) {
+    try {
+      const monthStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const logs = await prisma.contactCommsLog.findMany({
+        where: { contactId: { in: cooldownFiltered.map((r) => r.id) }, campaignId, sentAt: { gte: monthStart } },
+        select: { contactId: true, sentAt: true },
+      });
+      const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const counts = new Map<string, { week: number; month: number }>();
+      for (const l of logs) {
+        const c = counts.get(l.contactId) ?? { week: 0, month: 0 };
+        c.month++;
+        if (l.sentAt >= weekStart) c.week++;
+        counts.set(l.contactId, c);
+      }
+      for (const [id, c] of counts) {
+        if (campaign.commsMaxPerWeek != null && c.week >= campaign.commsMaxPerWeek) frequencySuppressedIds.add(id);
+        if (campaign.commsMaxPerMonth != null && c.month >= campaign.commsMaxPerMonth) frequencySuppressedIds.add(id);
+      }
+    } catch {
+      // ContactCommsLog may not exist until npx prisma db push — frequency check skipped
+    }
+  }
+  const recipients = cooldownFiltered.filter((r) => !frequencySuppressedIds.has(r.id));
+  const frequencySuppressed = cooldownFiltered.length - recipients.length;
 
   if (recipients.length === 0 && consentTableExists) {
     return NextResponse.json(
@@ -243,9 +273,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (sentContactIds.length > 0) {
+    const sentAt = new Date();
     await prisma.contact.updateMany({
       where: { id: { in: sentContactIds } },
-      data: { lastContactedAt: new Date() },
+      data: { lastContactedAt: sentAt },
+    }).catch(() => {});
+    await prisma.contactCommsLog.createMany({
+      data: sentContactIds.map((id) => ({ contactId: id, campaignId, channel: "email", sentAt })),
     }).catch(() => {});
   }
 
@@ -264,5 +298,5 @@ export async function POST(req: NextRequest) {
     details: { subject, audienceSize: recipients.length, sent, failed },
   });
 
-  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, noConsentCount, fatigueSuppressed });
+  return NextResponse.json({ sent, failed, audienceSize: allRecipients.length, noConsentCount, fatigueSuppressed, frequencySuppressed });
 }

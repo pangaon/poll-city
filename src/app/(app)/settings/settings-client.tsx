@@ -6,7 +6,7 @@ import {
 } from "@/components/ui";
 import {
   SlidersHorizontal, Palette, Users, Globe, Shield, Lock, ChevronRight,
-  CreditCard, Mail, MessageSquare, Sparkles, Database, Bell, CheckCircle2, XCircle, AlertTriangle,
+  CreditCard, Mail, MessageSquare, Sparkles, Database, Bell, CheckCircle2, XCircle, AlertTriangle, BellOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -81,6 +81,13 @@ const SETTINGS_SECTIONS = [
     description: "Subscription plan, payment method, and invoices",
     icon: CreditCard,
     color: "bg-sky-50 text-sky-600",
+  },
+  {
+    href: "/settings/comms-limits",
+    label: "Comms Limits",
+    description: "Cooldown window, weekly and monthly message frequency caps",
+    icon: BellOff,
+    color: "bg-orange-50 text-orange-600",
   },
 ];
 
