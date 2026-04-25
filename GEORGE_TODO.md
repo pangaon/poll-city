@@ -716,6 +716,74 @@ The mobile app is built and the dark-theme redesign is done. To submit:
 
 ---
 
+## 🔴 MOBILE APPS — Submit to App Store + Play Store (2026-04-25)
+
+Both apps are config-complete with real EAS project IDs, ASC App IDs, and 2026 3D logos.
+Run these commands to build and submit.
+
+### Poll City Canvasser (`mobile/`)
+- Bundle ID: `ca.pollcity.canvasser` · ASC App ID: `6763791144`
+
+- [ ] **70. Build canvasser app for iOS:**
+  ```
+  cd mobile
+  eas build --platform ios --profile production
+  ```
+  Wait for the EAS build to finish (15–20 min). You'll get an email when done.
+
+- [ ] **71. Submit canvasser app to App Store:**
+  ```
+  cd mobile
+  eas submit --platform ios --profile production
+  ```
+
+- [ ] **72. Build canvasser app for Android (Play Store):**
+  ```
+  cd mobile
+  eas build --platform android --profile production
+  ```
+
+- [ ] **73. Submit canvasser app to Google Play:**
+  ```
+  cd mobile
+  eas submit --platform android --profile production
+  ```
+  Note: Google Play requires you to have created the app listing manually in the Play Console first.
+
+### Poll City Social (`mobile-pcs/`)
+- Bundle ID: `ca.pollcity.social` · ASC App ID: `6763775089`
+
+- [ ] **74. Create `.env` file in mobile-pcs before building:**
+  ```
+  echo "EXPO_PUBLIC_API_URL=https://social.poll.city" > mobile-pcs/.env
+  ```
+
+- [ ] **75. Build Poll City Social for iOS:**
+  ```
+  cd mobile-pcs
+  eas build --platform ios --profile production
+  ```
+
+- [ ] **76. Submit Poll City Social to App Store:**
+  ```
+  cd mobile-pcs
+  eas submit --platform ios --profile production
+  ```
+
+- [ ] **77. Build Poll City Social for Android:**
+  ```
+  cd mobile-pcs
+  eas build --platform android --profile production
+  ```
+
+- [ ] **78. Submit Poll City Social to Google Play:**
+  ```
+  cd mobile-pcs
+  eas submit --platform android --profile production
+  ```
+
+---
+
 ## 🟠 VOTER FILE — Activate map-based turf drawing
 
 Map-based turf drawing is built but needs real geocoded contacts to work.
