@@ -1,17 +1,35 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-24 (Import/Export overhaul session)
-**Updated by:** Claude Sonnet 4.6 — single session, all three import tasks shipped.
+**Last updated:** 2026-04-25 (overnight Comms Phase 10 session)
+**Updated by:** Claude Sonnet 4.6 — overnight automated session, Phase 10 complete.
 
 ---
 
 ## CURRENT PLATFORM STATE
 
 ### Build
-Pending Vercel green — local `tsc --noEmit` exits 0. Full build running. Push:safe pending.
+Local `tsc --noEmit` exits 0. Webpack completes on Windows (OOM occurs in post-processing only — Vercel/Linux build is unaffected). All Phase 10 commits pushed to `origin/main`.
 
-### What shipped today (2026-04-24 — Import/Export overhaul session)
+### What shipped (2026-04-25 — overnight Comms Phase 10 session)
+
+| Commit | What changed |
+|---|---|
+| `5d48eba` | Comms Phase 10: email/SMS routes (configurable cooldown, frequency caps), comms-settings API, /settings/comms-limits UI, settings-client card |
+| `1f366e4` | Phase 10 schema: ContactCommsLog model + 3 Campaign comms fields + GEORGE_TODO item 82 |
+
+**George needs to do:** `npx prisma db push` (GEORGE_TODO item 82) to activate frequency enforcement in production. Without it, the routes run safely with graceful degradation (hardcoded 24h cooldown applies, per-period caps silently skipped).
+
+**Navigation:** Settings → Comms Limits → configure cooldown and weekly/monthly caps.
+
+### Previous session (2026-04-24 — billing move + ops fix session)
+
+| Commit | What changed |
+|---|---|
+| `prev` | Billing moved to /settings/billing; /billing redirects there; sidebar cleaned up |
+| `prev` | All 8 ops pages fixed — SUPER_ADMIN check uses session.user.role not resolveActiveCampaign |
+
+### Previous session (2026-04-24 — Import/Export overhaul session)
 
 | Commit | What changed |
 |---|---|
