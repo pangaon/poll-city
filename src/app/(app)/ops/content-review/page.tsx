@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
-import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import ContentReviewClient from "./content-review-client";
 
 export const metadata = { title: "Content Review — Poll City" };
 
 export default async function ContentReviewPage() {
-  const { role } = await resolveActiveCampaign();
-  if (role !== "SUPER_ADMIN") redirect("/dashboard");
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "SUPER_ADMIN") redirect("/dashboard");
 
   const [pendingCount, items] = await Promise.all([
     prisma.autonomousContent.count({ where: { status: "pending" } }),

@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
-import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/db/prisma";
 import CampaignsOpsClient from "./campaigns-ops-client";
 
 export const metadata = { title: "All Campaigns — Poll City" };
 
 export default async function CampaignsOpsPage() {
-  const { role } = await resolveActiveCampaign();
-  if (role !== "SUPER_ADMIN") redirect("/dashboard");
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "SUPER_ADMIN") redirect("/dashboard");
 
   const campaigns = await prisma.campaign.findMany({
     include: {

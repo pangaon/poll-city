@@ -8,7 +8,7 @@ import {
   LayoutDashboard, FolderKanban, Route, MapPinned, PersonStanding,
   Footprints, SignpostBig, Users, Package, Bell, Smartphone, Activity,
   ChevronRight, CheckCircle2, Clock, PlayCircle, AlertTriangle,
-  Target, TrendingUp, Map,
+  Target, TrendingUp, Map, ScrollText,
 } from "lucide-react";
 import { Spinner } from "@/components/ui";
 import type { ShiftRow } from "@/app/(app)/field/runs/runs-client";
@@ -23,6 +23,7 @@ import type { ActiveShiftRow } from "@/app/(app)/field/mobile/mobile-client";
 import type { Program } from "@/app/(app)/field/programs/programs-client";
 import type { FieldProgramType } from "@prisma/client";
 import { cn } from "@/lib/utils";
+import ScriptsClient from "@/app/(app)/canvassing/scripts/scripts-client";
 
 // ── Enterprise panel lazy imports ─────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ const WeatherWidget = dynamic(
 type Tab =
   | "dashboard" | "programs" | "routes" | "turf" | "runs"
   | "lit-drops" | "signs" | "teams" | "materials" | "follow-ups"
-  | "mobile" | "audit";
+  | "mobile" | "audit" | "scripts";
 
 interface RouteProgram { id: string; name: string; programType: FieldProgramType }
 interface RouteTurf    { id: string; name: string; ward: string | null }
@@ -148,6 +149,7 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: string }[]
   { key: "follow-ups", label: "Follow-Ups", icon: <Bell className="h-4 w-4" /> },
   { key: "mobile",     label: "Mobile",     icon: <Smartphone className="h-4 w-4" /> },
   { key: "audit",      label: "Audit",      icon: <Activity className="h-4 w-4" /> },
+  { key: "scripts",    label: "Scripts",    icon: <ScrollText className="h-4 w-4" /> },
 ];
 
 // ── Dashboard pipeline card ───────────────────────────────────────────────────
@@ -567,6 +569,10 @@ export default function FieldOpsClient({
                 campaignName={campaignName}
                 logs={logs}
               />
+            )}
+
+            {activeTab === "scripts" && (
+              <ScriptsClient campaignId={campaignId} />
             )}
           </motion.div>
         </AnimatePresence>

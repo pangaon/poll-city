@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
 import { resolveActiveCampaign } from "@/lib/auth/campaign-resolver";
-import CalendarClient from "./calendar-client";
+import CalendarTabsClient from "./calendar-tabs-client";
 
-export const metadata = { title: "Campaign Calendar" };
+export const metadata: Metadata = { title: "Campaign Calendar — Poll City" };
 
 export default async function CalendarPage() {
   const { campaignId } = await resolveActiveCampaign();
-  return <CalendarClient campaignId={campaignId} />;
+  return <CalendarTabsClient campaignId={campaignId} />;
 }
