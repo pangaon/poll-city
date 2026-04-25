@@ -2,7 +2,7 @@ import {
   PrismaClient, Role, SupportLevel, ElectionType, InteractionType,
   TaskStatus, TaskPriority, GovernmentLevel, PollType, PollVisibility,
   SignStatus, SupportSignalType, DonationStatus, EventStatus, EventVisibility,
-  AssignmentType, AssignmentStatus, StopStatus, EventRsvpStatus, Prisma,
+  AssignmentType, AssignmentStatus, StopStatus, EventRsvpStatus, Prisma, TurfStatus,
   FinanceBudgetStatus, FinanceBudgetLineCategory, FinanceVendorType,
   FinanceExpenseStatus, FinancePaymentStatus, FinancePaymentMethod,
   FinanceSourceType, FinancePurchaseRequestStatus, FinancePurchaseOrderStatus,
@@ -994,6 +994,57 @@ async function main() {
     skipDuplicates: true,
   });
   console.log(`✅ ${contacts.length} contacts, 2 households, tags`);
+
+  // ── Demo Turfs + TurfStops (for mobile canvasser demo) ─────────────────────
+  const turf1 = await prisma.turf.upsert({
+    where: { id: "turf-demo-maple" },
+    update: {},
+    create: {
+      id: "turf-demo-maple",
+      campaignId: campaign.id,
+      name: "Maple / Oak Block",
+      ward: "Ward 12",
+      streets: ["Maple Avenue", "Oak Street"],
+      status: TurfStatus.assigned,
+      totalDoors: 5,
+      totalStops: 5,
+      estimatedMinutes: 45,
+      notes: "Dense residential. Good conversion area.",
+    },
+  });
+  const turf2 = await prisma.turf.upsert({
+    where: { id: "turf-demo-birch" },
+    update: {},
+    create: {
+      id: "turf-demo-birch",
+      campaignId: campaign.id,
+      name: "Birch / College North",
+      ward: "Ward 12",
+      streets: ["Birch Crescent", "College Way"],
+      status: TurfStatus.assigned,
+      totalDoors: 4,
+      totalStops: 4,
+      estimatedMinutes: 35,
+      notes: "Mix of homeowners and renters.",
+    },
+  });
+  // TurfStops for turf1 — contacts[0..4]
+  for (let i = 0; i < 5; i++) {
+    await prisma.turfStop.upsert({
+      where: { turfId_contactId: { turfId: turf1.id, contactId: contacts[i].id } },
+      update: {},
+      create: { turfId: turf1.id, contactId: contacts[i].id, order: i + 1 },
+    });
+  }
+  // TurfStops for turf2 — contacts[5..8]
+  for (let i = 0; i < 4; i++) {
+    await prisma.turfStop.upsert({
+      where: { turfId_contactId: { turfId: turf2.id, contactId: contacts[5 + i].id } },
+      update: {},
+      create: { turfId: turf2.id, contactId: contacts[5 + i].id, order: i + 1 },
+    });
+  }
+  console.log("✅ 2 demo turfs + 9 TurfStops seeded");
 
   // ── Interactions ───────────────────────────────────────────────────────────
   await prisma.interaction.createMany({
