@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useActiveCampaignId } from "@/lib/hooks/useActiveCampaignId";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -68,11 +69,6 @@ type Volunteer = {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
-
-function getCampaignIdFromCookie() {
-  if (typeof document === "undefined") return "";
-  return document.cookie.match(/activeCampaignId=([^;]+)/)?.[1] ?? "";
-}
 
 async function safeJson<T>(url: string): Promise<T | null> {
   try {
@@ -221,7 +217,7 @@ function ActivityIcon({ type }: { type: ActivityItem["type"] }) {
 /* ------------------------------------------------------------------ */
 
 export default function CommandCenterClient() {
-  const [campaignId, setCampaignId] = useState("");
+  const { campaignId, status: sessionStatus } = useActiveCampaignId();
   const [summary, setSummary] = useState<SummaryResponse>(MOCK_SUMMARY);
   const [priority, setPriority] = useState<PriorityContact[]>(MOCK_PRIORITY);
   const [briefing, setBriefing] = useState<BriefingResponse | null>(null);
@@ -281,10 +277,9 @@ export default function CommandCenterClient() {
   }, []);
 
   useEffect(() => {
-    const id = getCampaignIdFromCookie();
-    setCampaignId(id);
-    load(id).finally(() => setLoading(false));
-  }, [load]);
+    if (sessionStatus !== "ready") return;
+    load(campaignId).finally(() => setLoading(false));
+  }, [campaignId, sessionStatus, load]);
 
   // Auto-refresh every 30s
   useEffect(() => {

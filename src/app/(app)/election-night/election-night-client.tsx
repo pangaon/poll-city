@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useActiveCampaignId } from "@/lib/hooks/useActiveCampaignId";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
@@ -71,11 +72,6 @@ type PollResult = {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
-
-function getCampaignIdFromCookie() {
-  if (typeof document === "undefined") return "";
-  return document.cookie.match(/activeCampaignId=([^;]+)/)?.[1] ?? "";
-}
 
 async function safeFetch<T>(url: string): Promise<T | null> {
   try {
@@ -238,7 +234,7 @@ function ComparisonBar({
 /* ------------------------------------------------------------------ */
 
 export default function ElectionNightClient() {
-  const [campaignId, setCampaignId] = useState("");
+  const { campaignId, status: sessionStatus } = useActiveCampaignId();
   const [live, setLive] = useState<LiveData>(MOCK_LIVE);
   const [polls, setPolls] = useState<PollData>(MOCK_POLLS);
   const [loading, setLoading] = useState(true);
@@ -300,10 +296,9 @@ export default function ElectionNightClient() {
   }, []);
 
   useEffect(() => {
-    const id = getCampaignIdFromCookie();
-    setCampaignId(id);
-    load(id).finally(() => setLoading(false));
-  }, [load]);
+    if (sessionStatus !== "ready") return;
+    load(campaignId).finally(() => setLoading(false));
+  }, [campaignId, sessionStatus, load]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
