@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Poll City Canvasser",
+    "name": "Poll City",
     "slug": "poll-city-canvasser",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0A2342"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ca.pollcity.canvasser",
@@ -20,14 +22,22 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Poll City uses your location to show your position on the canvassing map and track your route through the turf.",
         "NSCameraUsageDescription": "Poll City uses your camera to photograph lawn signs and scan voted lists.",
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
       },
-      "associatedDomains": ["applinks:www.poll.city", "applinks:app.poll.city"],
+      "associatedDomains": [
+        "applinks:www.poll.city",
+        "applinks:app.poll.city"
+      ],
       "entitlements": {
-        "com.apple.developer.applesignin": ["Default"]
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
       }
     },
     "android": {
@@ -48,10 +58,21 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "www.poll.city", "pathPrefix": "/canvass" },
-            { "scheme": "https", "host": "app.poll.city", "pathPrefix": "/canvass" }
+            {
+              "scheme": "https",
+              "host": "www.poll.city",
+              "pathPrefix": "/canvass"
+            },
+            {
+              "scheme": "https",
+              "host": "app.poll.city",
+              "pathPrefix": "/canvass"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -68,8 +89,14 @@
       [
         "expo-build-properties",
         {
-          "ios": { "deploymentTarget": "16.0" },
-          "android": { "minSdkVersion": 24, "targetSdkVersion": 34, "compileSdkVersion": 34 }
+          "ios": {
+            "deploymentTarget": "16.0"
+          },
+          "android": {
+            "minSdkVersion": 24,
+            "targetSdkVersion": 34,
+            "compileSdkVersion": 34
+          }
         }
       ]
     ],
@@ -82,12 +109,13 @@
       },
       "EXPO_PUBLIC_API_URL": "https://app.poll.city",
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "c7b82bca-5d63-444f-95f1-c48bbcd30f8f"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/YOUR_EAS_PROJECT_ID"
+      "url": "https://u.expo.dev/c7b82bca-5d63-444f-95f1-c48bbcd30f8f"
     },
+    "owner": "pollcity",
     "runtimeVersion": {
       "policy": "appVersion"
     }

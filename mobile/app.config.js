@@ -8,7 +8,7 @@
 
 export default ({ config }) => ({
   ...config,
-  name: "Poll City Canvasser",
+  name: "Poll City",
   slug: "poll-city-canvasser",
   version: "1.0.0",
   orientation: "portrait",
