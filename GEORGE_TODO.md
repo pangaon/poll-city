@@ -1051,6 +1051,37 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
 
   Safe to run. Adds tables/columns only, no data changes.
 
+- [ ] **83. Run `npx prisma db push` — Mobile Apple Sign-In: adds `appleUserId` field to users**
+
+  Apple Sign-In backend was added in this session. The `/api/auth/mobile/social` endpoint links
+  returning Apple users by the stable Apple user ID. Without this migration, Apple sign-in works
+  once (by email) but subsequent sign-ins without email will fail with "APPLE_NO_EMAIL".
+
+  ```bash
+  npx prisma db push
+  ```
+
+  **What this adds:**
+  - `users.apple_user_id` — nullable unique string, stores Apple's stable user identifier
+
+  Safe to run. Adds one nullable column, no data changes.
+
+- [ ] **84. Enable "Sign In with Apple" capability in Apple Developer portal**
+
+  Before the TestFlight build will work with Apple sign-in:
+  1. Go to [developer.apple.com](https://developer.apple.com) → Certificates, IDs & Profiles → Identifiers
+  2. Select `ca.pollcity.canvasser`
+  3. Enable "Sign In with Apple" capability
+  4. Click Save
+
+  This must be done before any EAS build that uses `expo-apple-authentication`.
+
+- [ ] **85. Verify Apple Sign-In bundle ID matches eas.json**
+
+  The Apple Sign-In entitlement in `mobile/app.json` uses bundle ID `ca.pollcity.canvasser`.
+  Make sure eas.json `appleTeamId` matches the team that owns that bundle ID in App Store Connect.
+  Run: `eas build --platform ios --profile development` to test on device.
+
 ---
 
 *This file is maintained by AI sessions. Last updated: 2026-04-25*

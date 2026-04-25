@@ -186,6 +186,24 @@ export async function logout(): Promise<void> {
   await clearTokens();
 }
 
+export interface SocialLoginPayload {
+  provider: "apple" | "google";
+  idToken: string;
+  appleUserId?: string;
+  name?: string | null;
+  email?: string | null;
+}
+
+export async function loginWithSocial(payload: SocialLoginPayload): Promise<LoginResponse> {
+  const response = await apiFetch<LoginResponse>("/api/auth/mobile/social", {
+    method: "POST",
+    body: payload,
+    skipAuth: true,
+  });
+  await setTokens(response.tokens);
+  return response;
+}
+
 // ---------------------------------------------------------------------------
 // Campaigns
 // ---------------------------------------------------------------------------

@@ -648,6 +648,8 @@ model User {
   webauthnCredentials  Json      @default("[]")
   // Security preferences
   preferredMfaMethod   String?
+  // Social sign-in linking
+  appleUserId          String?   @unique
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

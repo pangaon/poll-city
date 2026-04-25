@@ -1,8 +1,10 @@
 /**
  * Auth context — provides login state and user info throughout the app.
  *
- * Uses expo-secure-store for token persistence and exposes a simple
- * { user, isLoading, signIn, signOut } interface to screens.
+ * Uses expo-secure-store for token persistence and exposes:
+ *   signIn(email, password)          — email/password login
+ *   signInWithResponse(LoginResponse) — used after social login (Apple/Google)
+ *   signOut()
  */
 
 import React, {
@@ -14,7 +16,7 @@ import React, {
   useState,
 } from "react";
 import { login as apiLogin, logout as apiLogout, getAccessToken } from "./api";
-import type { User } from "./types";
+import type { LoginResponse, User } from "./types";
 import * as SecureStore from "expo-secure-store";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +27,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithResponse: (response: LoginResponse) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,6 +35,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
   signIn: async () => {},
+  signInWithResponse: async () => {},
   signOut: async () => {},
 });
 
@@ -74,6 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user);
   }, []);
 
+  // Used by social sign-in (Apple/Google) — the API call already happened,
+  // tokens are already stored by loginWithSocial(); just persist the user object.
+  const signInWithResponse = useCallback(async (response: LoginResponse) => {
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.user));
+    setUser(response.user);
+  }, []);
+
   const signOut = useCallback(async () => {
     await apiLogout();
     await SecureStore.deleteItemAsync(USER_KEY);
@@ -81,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, signIn, signOut }),
-    [user, isLoading, signIn, signOut],
+    () => ({ user, isLoading, signIn, signInWithResponse, signOut }),
+    [user, isLoading, signIn, signInWithResponse, signOut],
   );
 
   return (

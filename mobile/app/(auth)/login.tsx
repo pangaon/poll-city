@@ -12,16 +12,16 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "../../lib/auth";
-import { ApiError } from "../../lib/api";
+import { ApiError, loginWithSocial } from "../../lib/api";
 
 const NAVY = "#0A2342";
 const GREEN = "#1D9E75";
-const ERROR_RED = "#E24B4A";
 const WHITE = "#ffffff";
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithResponse } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,6 +48,54 @@ export default function LoginScreen() {
         }
       } else {
         setError("Can't reach the server. Check your connection.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAppleSignIn() {
+    setError(null);
+    setLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error("No identity token from Apple");
+      }
+
+      // Extract name from Apple's fullName object (only present on first sign-in)
+      const name =
+        credential.fullName?.givenName && credential.fullName?.familyName
+          ? `${credential.fullName.givenName} ${credential.fullName.familyName}`.trim()
+          : credential.fullName?.givenName ?? null;
+
+      const response = await loginWithSocial({
+        provider: "apple",
+        idToken: credential.identityToken,
+        appleUserId: credential.user,
+        email: credential.email,
+        name,
+      });
+
+      signInWithResponse(response);
+    } catch (err) {
+      if (err instanceof Error && err.message === "ERR_REQUEST_CANCELED") {
+        // User cancelled — no error shown
+      } else if (err instanceof ApiError) {
+        const body = err.body as { error?: string; code?: string } | null;
+        if (body?.code === "APPLE_NO_EMAIL") {
+          setError("Please sign in with Apple again and allow email access.");
+        } else {
+          setError(body?.error ?? "Apple sign-in failed. Please try again.");
+        }
+      } else {
+        setError("Apple sign-in failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -139,6 +187,25 @@ export default function LoginScreen() {
                 <Text style={styles.buttonText}>Sign In</Text>
               )}
             </Pressable>
+
+            {/* Apple Sign-In — iOS only, App Store requirement */}
+            {Platform.OS === "ios" && (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={14}
+                  style={styles.appleButton}
+                  onPress={handleAppleSignIn}
+                />
+              </>
+            )}
           </View>
 
           <Text style={styles.footer}>
@@ -253,6 +320,26 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  dividerText: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  appleButton: {
+    height: 56,
+    width: "100%",
   },
   footer: {
     textAlign: "center",
