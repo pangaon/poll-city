@@ -83,8 +83,13 @@ Not sometimes. Always. Every claim below is unverified until you check it yourse
 ## What to write on approval
 
 Write `.push-guard/approved.json` with this exact structure:
+
+CRITICAL: timestamp MUST be JavaScript milliseconds (Date.now()), NOT Unix seconds.
+Example: 1745543000000 (13 digits). If you write seconds (10 digits), the token expires instantly.
+Use: `node -e "process.stdout.write(String(Date.now()))"` to get the correct value.
+
 {
-  "timestamp": <Date.now()>,
+  "timestamp": 1745543000000,
   "verdict": "APPROVED",
   "diffHash": "<copy verbatim from manifest.diffHash — DO NOT compute your own>",
   "findings": [
@@ -105,7 +110,7 @@ is treated as a forged token and the push is blocked. There are no exceptions.
 
 Write `.push-guard/rejected.json` with:
 {
-  "timestamp": <Date.now()>,
+  "timestamp": 1745543000000,
   "verdict": "BLOCKED",
   "blockReason": "One sentence: what specifically failed",
   "findings": [...],
