@@ -43,6 +43,7 @@ import {
   Library,
   Store,
   Database,
+  Users2,
 } from "lucide-react";
 import CampaignSwitcher from "@/components/layout/campaign-switcher";
 import CommandPalette, { type NavEntry } from "@/components/layout/command-palette";
@@ -256,6 +257,7 @@ export default function Sidebar() {
       platformItems.push({ href: "/ops", icon: Crown, label: "Ops" });
       platformItems.push({ href: "/ops/data-management", icon: Database, label: "Seed Data", isNew: true });
       platformItems.push({ href: "/ops/officials", icon: Landmark, label: "Officials" });
+      platformItems.push({ href: "/ops/candidates", icon: Users2, label: "Candidates" });
     }
 
     return [

@@ -8,6 +8,15 @@ const PatchSchema = z.object({
   isActive: z.boolean().optional(),
   isClaimed: z.boolean().optional(),
   subscriptionStatus: z.enum(["free", "pro", "verified"]).optional(),
+  name: z.string().min(1).max(200).optional(),
+  title: z.string().min(1).max(100).optional(),
+  level: z.enum(["federal", "provincial", "municipal"]).optional(),
+  district: z.string().min(1).max(200).optional(),
+  province: z.string().max(50).nullable().optional(),
+  partyName: z.string().max(100).nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().max(30).nullable().optional(),
+  website: z.string().url().nullable().optional(),
 });
 
 export async function PATCH(
@@ -33,7 +42,11 @@ export async function PATCH(
   const updated = await prisma.official.update({
     where: { id: params.id },
     data: parsed.data,
-    select: { id: true, isActive: true, isClaimed: true, subscriptionStatus: true },
+    select: {
+      id: true, isActive: true, isClaimed: true, subscriptionStatus: true,
+      name: true, title: true, level: true, district: true, province: true,
+      partyName: true, email: true, phone: true, website: true,
+    },
   });
 
   return NextResponse.json({ data: updated });
