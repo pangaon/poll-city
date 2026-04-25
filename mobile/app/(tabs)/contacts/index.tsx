@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -250,6 +251,9 @@ export default function ContactsScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           clearButtonMode="while-editing"
+          returnKeyType="search"
+          blurOnSubmit={true}
+          onSubmitEditing={() => Keyboard.dismiss()}
           accessibilityLabel="Search contacts"
         />
         {query.length > 0 ? (
@@ -281,10 +285,11 @@ export default function ContactsScreen() {
         data={contacts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <ContactRow contact={item} onPress={setSelectedContact} />
+          <ContactRow contact={item} onPress={(c) => { Keyboard.dismiss(); setSelectedContact(c); }} />
         )}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListFooterComponent={
           contacts.length === 20 ? (
             <Text style={styles.footerNote}>Showing top 20 results — refine your search to find more.</Text>

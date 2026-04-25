@@ -111,6 +111,7 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           {/* Branding */}
@@ -148,6 +149,7 @@ export default function LoginScreen() {
                 value={email}
                 onChangeText={setEmail}
                 editable={!loading}
+                returnKeyType="next"
                 accessibilityLabel="Email address"
               />
             </View>

@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Keyboard,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -340,6 +341,9 @@ function PersonCard({
           value={state.notes}
           onChangeText={v => onChange({ ...state, notes: v })}
           multiline
+          blurOnSubmit={true}
+          returnKeyType="done"
+          onSubmitEditing={() => Keyboard.dismiss()}
         />
       </View>
 
@@ -486,6 +490,9 @@ function SignPicker({ onConfirm, onCancel }: {
         placeholderTextColor={C.muted}
         value={note}
         onChangeText={setNote}
+        returnKeyType="done"
+        blurOnSubmit={true}
+        onSubmitEditing={() => Keyboard.dismiss()}
       />
 
       <Pressable
@@ -850,7 +857,7 @@ export default function DoorWizardScreen() {
       {/* Step dots */}
       <StepDots steps={stepFlow} current={step} />
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
 
         {/* ══ DOOR ══════════════════════════════════════════════════════ */}
         {step === "door" && (

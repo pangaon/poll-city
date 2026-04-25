@@ -145,7 +145,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {/* User profile card */}
         <View style={styles.profileCard}>
           <InitialsCircle name={user.name ?? user.email} />
