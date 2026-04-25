@@ -1,28 +1,33 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-25 (overnight second-pass agent)
-**Updated by:** Claude Sonnet 4.6 — second overnight agent, no build tasks available.
-
-## OVERNIGHT LOG
-
-- **~3am agent:** No PENDING build tasks available. All PENDING queue items are blocked on George's external actions: Migration baseline (npx prisma db push), Volunteer reimbursement (Stripe keys), Comms Phase 8 (Facebook/X/LinkedIn OAuth), Calendar Phase 6 (Google/Outlook OAuth), Figma UI matching (George to supply spec files). Platform is stable at HEAD. No action taken.
-
----
+**Last updated:** 2026-04-25 (morning session — Apple Sign-In)
+**Updated by:** Claude Sonnet 4.6
 
 ## CURRENT PLATFORM STATE
 
 ### Build
-Local `tsc --noEmit` exits 0. Webpack completes on Windows (OOM occurs in post-processing only — Vercel/Linux build is unaffected). All Phase 10 commits pushed to `origin/main`.
+`npm run build` exits 0. TypeScript clean (web + mobile). All commits on `origin/main`.
 
-### What shipped (2026-04-25 — overnight Comms Phase 10 session)
+### What shipped (2026-04-25 — Apple Sign-In session)
+
+| Commit | What changed |
+|---|---|
+| `53dfdeb` | Apple Sign-In: `/api/auth/mobile/social` backend (JWKS verification, user find/create by appleUserId + email), `expo-apple-authentication` installed, iOS login button, auth context `signInWithResponse()`, `appleUserId` schema field, GEORGE_TODO items 83–85 |
+
+**George needs to do before TestFlight:**
+- `npx prisma db push` — GEORGE_TODO item 83 — adds `appleUserId` column (without it, returning Apple users get APPLE_NO_EMAIL error)
+- Enable "Sign In with Apple" in Apple Developer → Identifiers → `ca.pollcity.canvasser` — item 84
+- `npx prisma db push` — GEORGE_TODO item 82 — Comms Phase 10 (ContactCommsLog), still outstanding
+
+**Navigation (Apple Sign-In):** Opens automatically on iOS login screen when running on device. Uses `expo-apple-authentication` — works only in EAS dev builds or TestFlight, not Expo Go.
+
+### Previous session (2026-04-25 — overnight Comms Phase 10 session)
 
 | Commit | What changed |
 |---|---|
 | `5d48eba` | Comms Phase 10: email/SMS routes (configurable cooldown, frequency caps), comms-settings API, /settings/comms-limits UI, settings-client card |
 | `1f366e4` | Phase 10 schema: ContactCommsLog model + 3 Campaign comms fields + GEORGE_TODO item 82 |
-
-**George needs to do:** `npx prisma db push` (GEORGE_TODO item 82) to activate frequency enforcement in production. Without it, the routes run safely with graceful degradation (hardcoded 24h cooldown applies, per-period caps silently skipped).
 
 **Navigation:** Settings → Comms Limits → configure cooldown and weekly/monthly caps.
 
