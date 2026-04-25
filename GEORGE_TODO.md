@@ -1033,8 +1033,26 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
 
   The daily 3am cron will keep it current after this first seed.
 
+- [ ] **82. Run `npx prisma db push` — Comms Phase 10 schema (ContactCommsLog + Campaign comms fields)**
+
+  Comms Phase 10 added a new table and 3 new fields. Until you run this, the comms limits feature at
+  `/settings/comms-limits` will silently skip frequency enforcement (graceful degradation — existing
+  blast sending continues to work, just without per-period caps).
+
+  ```bash
+  npx prisma db push
+  ```
+
+  **What this adds:**
+  - `contact_comms_logs` table — per-contact, per-channel send log for frequency enforcement
+  - `campaigns.comms_cooldown_hours` — configurable cooldown window (default 24h, was hardcoded)
+  - `campaigns.comms_max_per_week` — optional weekly message cap per contact
+  - `campaigns.comms_max_per_month` — optional monthly message cap per contact
+
+  Safe to run. Adds tables/columns only, no data changes.
+
 ---
 
-*This file is maintained by AI sessions. Last updated: 2026-04-23*
+*This file is maintained by AI sessions. Last updated: 2026-04-25*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

@@ -924,6 +924,10 @@ model Campaign {
   stripeConnectedAccountId String? // Stripe Express account ID (acct_xxx)
   stripeOnboarded          Boolean      @default(false) // true once Stripe onboarding complete
   intelligenceEnabled      Boolean      @default(false) // George-controlled: unlocks enriched data tier
+  // Communications frequency limits — campaign-configurable, enforced by email + SMS routes
+  commsCooldownHours       Int          @default(24)   // min hours between any-channel messages to the same contact
+  commsMaxPerWeek          Int?                         // max messages per contact per 7-day rolling window (null = unlimited)
+  commsMaxPerMonth         Int?                         // max messages per contact per 30-day rolling window (null = unlimited)
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
@@ -1113,6 +1117,7 @@ model Campaign {
   vouchers                 Voucher[]
   voucherRedemptions       VoucherRedemption[]
   pollingStations          PollingStation[]
+  contactCommsLogs         ContactCommsLog[]
 
   @@unique([customDomain])
   @@index([slug])
@@ -1473,6 +1478,7 @@ model Contact {
 
   // CASL
   consentRecords ConsentRecord[]
+  contactCommsLogs ContactCommsLog[]
 
   @@index([campaignId])
   @@index([lastName, firstName])
@@ -10023,4 +10029,22 @@ model FounderWisdom {
 
   @@index([category, isActive])
   @@map("founder_wisdom")
+}
+
+/// Per-contact, per-channel send log for frequency-limit enforcement.
+/// Populated by the email + SMS blast routes after each successful send.
+/// Table may not exist until `npx prisma db push` — routes check gracefully.
+model ContactCommsLog {
+  id         String   @id @default(cuid())
+  contactId  String
+  campaignId String
+  channel    String   // "email" | "sms" | "voice"
+  sentAt     DateTime @default(now())
+
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, sentAt])
+  @@index([campaignId, contactId, sentAt])
+  @@map("contact_comms_logs")
 }
