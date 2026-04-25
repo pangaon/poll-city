@@ -1199,6 +1199,11 @@ export default function AtlasAllMapClient() {
                 </div>
               )}
 
+            </div>
+
+            {/* Begin Canvassing — pinned outside scroll so it's always visible */}
+            <div style={{ padding: "10px 16px 16px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              {addrError && <div style={{ marginBottom: 6, color: "#E24B4A", fontSize: 11 }}>{addrError}</div>}
               <button
                 disabled={!canBeginCanvassing}
                 onClick={() => setShowTurfPanel(true)}
@@ -1214,8 +1219,6 @@ export default function AtlasAllMapClient() {
                   : addrCount > 0 ? "🗺️ Begin Canvassing"
                   : "Select a ward to load doors"}
               </button>
-
-              {addrError && <div style={{ marginTop: 8, color: "#E24B4A", fontSize: 11 }}>{addrError}</div>}
             </div>
           </motion.div>
         )}
@@ -1254,24 +1257,26 @@ export default function AtlasAllMapClient() {
               />
             </div>
 
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
-              <div style={{ ...labelStyle, marginBottom: 10 }}>How many canvassers?</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => setCanvasserCount(c => Math.max(1, c - 1))}
-                  style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>−</button>
-                <div style={{ flex: 1, textAlign: "center" }}>
-                  <span style={{ color: "#fff", fontSize: 28, fontWeight: 800 }}>{canvasserCount}</span>
-                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 1 }}>
+                  style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 16, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>−</button>
+                <div style={{ textAlign: "center", flexShrink: 0 }}>
+                  <div>
+                    <span style={{ color: "#fff", fontSize: 20, fontWeight: 800 }}>{canvasserCount}</span>
+                    <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 5 }}>canvassers</span>
+                  </div>
+                  <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 10 }}>
                     ~{uniqueDoors > 0 ? Math.round(uniqueDoors / canvasserCount).toLocaleString() : 0} doors each
                   </div>
                 </div>
                 <button onClick={() => setCanvasserCount(c => Math.min(20, c + 1))}
-                  style={{ width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
+                  style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 16, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>+</button>
+                <button onClick={handleCutTurfs} disabled={turfSaving}
+                  style={{ flex: 1, padding: "9px 10px", borderRadius: 9, border: "none", background: muniAccent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: turfSaving ? "wait" : "pointer", letterSpacing: "0.03em", opacity: turfSaving ? 0.7 : 1 }}>
+                  {turfSaving ? "Saving…" : `✂️ Cut ${canvasserCount}`}
+                </button>
               </div>
-              <button onClick={handleCutTurfs} disabled={turfSaving}
-                style={{ width: "100%", marginTop: 12, padding: "11px", borderRadius: 10, border: "none", background: muniAccent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: turfSaving ? "wait" : "pointer", letterSpacing: "0.03em", opacity: turfSaving ? 0.7 : 1 }}>
-                {turfSaving ? "Saving…" : `✂️ Cut ${canvasserCount} Turfs`}
-              </button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
@@ -1333,37 +1338,19 @@ export default function AtlasAllMapClient() {
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          {volunteers.length > 0 ? (
-                            <select
-                              value={turf.volunteerProfileId ?? ""}
-                              onChange={e => {
-                                const vol = volunteers.find(v => v.id === e.target.value) ?? null;
-                                assignVolunteer(turf.index, vol);
-                              }}
-                              style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: turf.canvasserName ? "#fff" : "rgba(255,255,255,0.4)", fontSize: 12, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
-                            >
-                              <option value="">— Assign volunteer —</option>
-                              {volunteers.map(v => (
-                                <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ""}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
-                              onChange={e => updateCanvasserName(turf.index, e.target.value)}
-                              onBlur={e => {
-                                const target = turfsRef.current.find(t => t.index === turf.index);
-                                if (target?.id) {
-                                  fetch(`/api/atlas/turfs/${target.id}`, {
-                                    method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ canvasserName: e.target.value || null }),
-                                  }).catch(() => {});
-                                }
-                              }}
-                              style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
-                            />
-                          )}
+                          <select
+                            value={turf.volunteerProfileId ?? ""}
+                            onChange={e => {
+                              const vol = volunteers.find(v => v.id === e.target.value) ?? null;
+                              assignVolunteer(turf.index, vol);
+                            }}
+                            style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: turf.canvasserName ? "#fff" : "rgba(255,255,255,0.35)", fontSize: 12, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
+                          >
+                            <option value="">{volunteers.length === 0 ? "— Add team members first —" : "— Assign canvasser —"}</option>
+                            {volunteers.map(v => (
+                              <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ""}</option>
+                            ))}
+                          </select>
                           <button
                             onClick={() => handleDeleteTurf(turf)}
                             title="Remove turf"
