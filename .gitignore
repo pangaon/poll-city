@@ -2,9 +2,10 @@
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
-# Push guard tokens — transient approval files, never committed
+# Push guard tokens and history — transient/local, never committed
 .push-guard/approved.json
 .push-guard/rejected.json
+.push-guard/history/
 
 # Separate mobile project — not part of this repo
 mobile-pcs/

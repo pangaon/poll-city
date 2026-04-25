@@ -86,6 +86,7 @@ Write `.push-guard/approved.json` with this exact structure:
 {
   "timestamp": <Date.now()>,
   "verdict": "APPROVED",
+  "diffHash": "<copy verbatim from manifest.diffHash — DO NOT compute your own>",
   "findings": [
     { "severity": "INFO|WARN|BLOCK", "message": "..." }
   ],
@@ -94,6 +95,11 @@ Write `.push-guard/approved.json` with this exact structure:
   ],
   "report": "One paragraph summary for George: what you found, what matched, what didn't, any risks."
 }
+
+CRITICAL: `diffHash` must be the SHA-256 hash from the manifest. push-safe.mjs recomputes
+the hash of the current diff at push time and compares. If they don't match — meaning
+someone committed after your approval — the push is hard-blocked. Missing diffHash
+is treated as a forged token and the push is blocked. There are no exceptions.
 
 ## What to write on rejection
 

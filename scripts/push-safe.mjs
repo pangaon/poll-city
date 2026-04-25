@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -120,9 +121,33 @@ if (!process.env.SKIP_PUSH_GUARD) {
     );
   }
 
+  // ── DIFF HASH VERIFICATION ────────────────────────────────────────────────
+  // The guard hashed the diff it actually reviewed. We recompute it now.
+  // If they differ, someone committed after the guard ran — the approval is stale.
+  if (!guard.diffHash) {
+    fail(
+      "Push guard token is missing diffHash — token may have been manually forged.\n" +
+      "Re-run the push guard with: npm run push:manifest"
+    );
+  }
+  const currentDiff = run("git diff origin/main..HEAD");
+  const currentHash = crypto.createHash("sha256").update(currentDiff).digest("hex");
+  if (currentHash !== guard.diffHash) {
+    fs.rmSync(guardFile, { force: true });
+    fail(
+      "Push guard token is stale — the diff changed after the guard approved it.\n" +
+      "New commits were added after approval. Re-run: npm run push:manifest"
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const guardBranch  = run("git rev-parse --abbrev-ref HEAD");
+  const guardHead    = run("git rev-parse --short HEAD");
+
   console.log("\n══ PUSH GUARD REPORT ═══════════════════════════════════════════");
   console.log(`Guard verdict : APPROVED`);
   console.log(`Verified at   : ${new Date(guard.timestamp).toISOString()}`);
+  console.log(`Diff hash     : ${guard.diffHash.slice(0, 12)}… ✓ matches current diff`);
   if (guard.findings?.length > 0) {
     console.log("\nFindings:");
     for (const f of guard.findings) {
@@ -136,7 +161,26 @@ if (!process.env.SKIP_PUSH_GUARD) {
       console.log(`  ACTUAL:  ${lie.actual}`);
     }
   }
+  if (guard.report) {
+    console.log(`\nSummary: ${guard.report}`);
+  }
   console.log("═══════════════════════════════════════════════════════════════\n");
+
+  // ── PERSISTENT HISTORY LOG ────────────────────────────────────────────────
+  // Every guard report is saved locally for audit. Gitignored — machine-local.
+  try {
+    const historyDir = ".push-guard/history";
+    fs.mkdirSync(historyDir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 16);
+    const entry = { pushedAt: new Date().toISOString(), branch: guardBranch, headHash: guardHead, ...guard };
+    fs.writeFileSync(`${historyDir}/${ts}-${guardHead}.json`, JSON.stringify(entry, null, 2));
+    const line = `${new Date().toISOString()} | ${guard.verdict} | ${guardBranch}@${guardHead} | ` +
+      `findings:${guard.findings?.length ?? 0} | lies:${guard.liesDetected?.length ?? 0} | ${guard.diffHash.slice(0, 12)}\n`;
+    fs.appendFileSync(`${historyDir}/history.log`, line);
+  } catch {
+    // Non-fatal — history log failure must never block the push
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Consume the token — single use.
   fs.rmSync(guardFile, { force: true });

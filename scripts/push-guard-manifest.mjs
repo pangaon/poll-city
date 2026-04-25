@@ -13,6 +13,7 @@
  */
 
 import { execSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 
 function run(cmd) {
@@ -30,6 +31,12 @@ const logLines    = run(`git log --oneline -${Math.max(Number(commitCount) || 1,
 const diffStat    = run(`git diff origin/main..HEAD --stat`);
 const changedFiles = run(`git diff origin/main..HEAD --name-only`).split("\n").filter(Boolean);
 
+// SHA-256 of the full diff — push-safe.mjs recomputes this at push time.
+// If they differ: someone committed after approval → push is blocked.
+// The guard MUST include this hash verbatim in approved.json as "diffHash".
+const rawDiff  = run("git diff origin/main..HEAD");
+const diffHash = crypto.createHash("sha256").update(rawDiff).digest("hex");
+
 const manifest = {
   generatedAt: new Date().toISOString(),
   branch,
@@ -38,13 +45,15 @@ const manifest = {
   recentCommits: logLines,
   diffStat,
   changedFiles,
+  diffHash,
   guardTokenPath: ".push-guard/approved.json",
   instructions: [
     "This manifest is what the WORKING AGENT claims was changed.",
     "The push guard MUST independently verify every file in changedFiles.",
     "The push guard MUST run: git diff origin/main..HEAD to read the actual diff.",
     "The push guard MUST NOT trust any summary provided by the working agent.",
-    "The push guard MUST write .push-guard/approved.json to unblock the push.",
+    "The guard MUST include 'diffHash' verbatim from this manifest in approved.json.",
+    "push-safe.mjs will recompute the hash at push time — mismatch = blocked push.",
     "If anything fails verification, write .push-guard/rejected.json instead.",
   ],
 };
