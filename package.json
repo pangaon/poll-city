@@ -14,6 +14,7 @@
     "verify:regression": "npm run docs:check:master && npm run security:gates && npm run test:contracts && npm run test && npm run build",
     "push:safe": "node scripts/push-safe.mjs",
     "push:safe:check": "node scripts/push-safe.mjs --no-push",
+    "push:manifest": "node scripts/push-guard-manifest.mjs",
     "security:gates": "node scripts/security-gates.mjs",
     "docs:check:master": "node scripts/master-doc-consistency.mjs",
     "test:contracts": "node scripts/contract-tests.mjs",

@@ -75,6 +75,73 @@ try {
   fail("Not inside a git repository.");
 }
 
+// ── PUSH GUARD GATE ──────────────────────────────────────────────────────────
+// Every push must be approved by the push guard agent before it reaches origin.
+// The guard writes .push-guard/approved.json after independent verification.
+// Approval expires after 30 minutes. The token is consumed (deleted) on push.
+//
+// To get approval:
+//   1. Run:  npm run push:manifest
+//   2. Spawn the push guard agent (see docs/PUSH_GUARD_PROTOCOL.md)
+//   3. Guard writes .push-guard/approved.json
+//   4. Re-run:  npm run push:safe
+//
+// BYPASS: set SKIP_PUSH_GUARD=1 only for the automated CI/CD pipeline.
+// George must never set this manually. If you are an AI agent: do not bypass.
+// ─────────────────────────────────────────────────────────────────────────────
+if (!process.env.SKIP_PUSH_GUARD) {
+  const guardFile = ".push-guard/approved.json";
+  if (!fs.existsSync(guardFile)) {
+    fail(
+      "Push guard approval required before pushing.\n\n" +
+      "  1. Run: npm run push:manifest\n" +
+      "  2. Spawn the push guard agent (see docs/PUSH_GUARD_PROTOCOL.md)\n" +
+      "  3. Guard agent writes .push-guard/approved.json\n" +
+      "  4. Re-run: npm run push:safe\n"
+    );
+  }
+
+  let guard;
+  try {
+    guard = JSON.parse(fs.readFileSync(guardFile, "utf8"));
+  } catch {
+    fail("Push guard token is corrupt. Re-run the push guard.");
+  }
+
+  const ageMinutes = (Date.now() - guard.timestamp) / 60000;
+  if (ageMinutes > 30) {
+    fs.rmSync(guardFile, { force: true });
+    fail("Push guard approval expired (>30 min). Re-run the push guard.");
+  }
+
+  if (guard.verdict !== "APPROVED") {
+    fail(
+      `Push guard BLOCKED this push.\n\nReason: ${guard.blockReason ?? "See .push-guard/rejected.json"}`
+    );
+  }
+
+  console.log("\n══ PUSH GUARD REPORT ═══════════════════════════════════════════");
+  console.log(`Guard verdict : APPROVED`);
+  console.log(`Verified at   : ${new Date(guard.timestamp).toISOString()}`);
+  if (guard.findings?.length > 0) {
+    console.log("\nFindings:");
+    for (const f of guard.findings) {
+      console.log(`  [${f.severity}] ${f.message}`);
+    }
+  }
+  if (guard.liesDetected?.length > 0) {
+    console.log("\n⚠  DISCREPANCIES (agent claimed vs reality):");
+    for (const lie of guard.liesDetected) {
+      console.log(`  CLAIMED: ${lie.claimed}`);
+      console.log(`  ACTUAL:  ${lie.actual}`);
+    }
+  }
+  console.log("═══════════════════════════════════════════════════════════════\n");
+
+  // Consume the token — single use.
+  fs.rmSync(guardFile, { force: true });
+}
+
 const status = run("git status --porcelain");
 if (status) {
   fail("Working tree is not clean. Commit or stash changes before running safe push.");

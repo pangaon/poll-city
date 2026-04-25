@@ -6,6 +6,49 @@ George built this with 35 years in Canadian politics. Respect the craft.
 
 ---
 
+## ⛔ THE PUSH GUARD PROTOCOL — HARDCODED. NO EXCEPTIONS. EVER.
+
+**Introduced 2026-04-24. Standing rule for every session, every agent, every push. Read docs/PUSH_GUARD_PROTOCOL.md for the full spec.**
+
+### The rule in one sentence
+**You cannot run `npm run push:safe` until the push guard agent has written `.push-guard/approved.json`.**
+
+The push-safe script will fail with an error if the token is missing.
+
+### The protocol (every push, no exceptions)
+
+1. Finish work. Stage and commit.
+2. Run `npm run push:manifest` — generates the verification manifest.
+3. Spawn a push guard agent via the Agent tool using the prompt in `docs/PUSH_GUARD_PROTOCOL.md`.
+   Pass: (a) your work brief — what you claim you built, (b) the manifest output.
+4. The guard agent independently verifies everything. It assumes you are lying.
+5. If approved: guard writes `.push-guard/approved.json`. Run `npm run push:safe`.
+6. If blocked: guard writes `.push-guard/rejected.json`. Fix the issues. Start over.
+
+### The guard's job
+
+The push guard agent is an independent verifier. Its assumptions:
+- Every claim the working agent makes is false until the guard checks it personally.
+- The build "passing" is not proven until the guard verifies it.
+- "Auth is in place" is not proven until the guard reads the route file.
+- "GEORGE_TODO.md is updated" is not proven until the guard reads the file.
+
+The guard runs its own git diff, reads the actual changed files, checks auth, checks for missing sidebar entries, checks CONNECTIONS.md. It does not read the working agent's summary and nod along.
+
+### What George sees
+
+After every push, the guard's report is printed to the console:
+- Every discrepancy between what was claimed and what was actually in the code
+- Every risk introduced (auth gaps, missing migrations, broken chains)
+- The verdict: APPROVED (with caveats) or BLOCKED (with specifics)
+
+### Who is exempt
+
+Nobody. Not George's session. Not a "quick fix." Not a one-liner.
+If you are pushing code, the guard runs first.
+
+---
+
 ## SESSION EXIT RULE — NON-NEGOTIABLE
 
 No session is complete until ALL of these are done:
@@ -312,16 +355,18 @@ Ask: "Where in this chain does this feature connect?"
 
 ## THE MOST IMPORTANT RULE
 
-**Use `npm run push:safe` — NEVER run `git push` directly.**
-
-`npm run push:safe` is the ONLY authorized push command in this repo.
-It verifies a clean working tree, runs `npm run build`, then pushes.
-A raw `git push` bypasses the build check and is how 5 red deployments happened on April 17.
+**The push sequence is: manifest → guard → push:safe. Nothing else.**
 
 ```
-npm run push:safe          ← the ONLY way to push
-npm run push:safe:check    ← dry run: builds but does not push (use for verification)
+npm run push:manifest      ← step 1: generate the verification manifest
+[spawn push guard agent]   ← step 2: guard independently verifies, writes token
+npm run push:safe          ← step 3: token is checked, push proceeds
+npm run push:safe:check    ← dry run: builds but does not push (no guard token needed)
 ```
+
+`npm run push:safe` now requires the push guard token (`.push-guard/approved.json`).
+It will fail with an error if the token is missing or expired.
+A raw `git push` is NEVER authorized — same rule as always.
 
 `npx tsc --noEmit` is not enough. Next.js enforces routing rules that TypeScript
 does not check. A passing `tsc` with a failing build is a lie. We do not lie here.
