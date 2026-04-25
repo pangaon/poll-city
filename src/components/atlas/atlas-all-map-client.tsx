@@ -518,6 +518,8 @@ export default function AtlasAllMapClient() {
   const [wardSearch, setWardSearch] = useState("");
   const [collapsedMunis, setCollapsedMunis] = useState<Set<string>>(new Set());
   const [streetSearch, setStreetSearch] = useState("");
+  const [homeMuni, setHomeMuni] = useState<string | null>(null);
+  const muniInitialized = useRef(false);
 
   // Campaign overlays
   const [contactsOverlay, setContactsOverlay] = useState<{ contacts: Record<string, ContactOverlayEntry>; stats: ContactOverlayStats } | null>(null);
@@ -541,6 +543,20 @@ export default function AtlasAllMapClient() {
     fetch("/api/atlas/volunteers-for-map")
       .then(r => r.ok ? (r.json() as Promise<{ data: VolunteerOption[] }>) : null)
       .then(d => { if (d?.data) setVolunteers(d.data); })
+      .catch(() => {});
+  }, []);
+
+  // Fetch campaign meta to determine the home municipality for this campaign
+  useEffect(() => {
+    fetch("/api/atlas/campaign-meta")
+      .then(r => r.ok ? (r.json() as Promise<{ data: { jurisdiction: string | null } | null }>) : null)
+      .then(d => {
+        if (!d?.data?.jurisdiction) return;
+        const j = d.data.jurisdiction;
+        const known = Object.keys(MUNI_ACCENT);
+        const match = known.find(m => j.toLowerCase().includes(m.toLowerCase()));
+        if (match) setHomeMuni(match);
+      })
       .catch(() => {});
   }, []);
 
@@ -692,7 +708,7 @@ export default function AtlasAllMapClient() {
     if (pollingOverlay && pollingOverlay.features.length > 0) setShowPolling(true);
   }, [pollingOverlay]);
 
-  // Grouped sidebar
+  // Grouped sidebar — homeMuni sorts first, others alphabetically
   const municipalityGroups = useMemo(() => {
     if (!wards) return [];
     const groups = new Map<string, Feature[]>();
@@ -714,8 +730,14 @@ export default function AtlasAllMapClient() {
       return { name, features: sorted };
     })
       .filter(g => g.features.length > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [wards, wardSearch]);
+      .sort((a, b) => {
+        if (homeMuni) {
+          if (a.name === homeMuni) return -1;
+          if (b.name === homeMuni) return 1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  }, [wards, wardSearch, homeMuni]);
 
   const toggleMuni = useCallback((name: string) => {
     setCollapsedMunis(prev => {
@@ -724,6 +746,16 @@ export default function AtlasAllMapClient() {
       return next;
     });
   }, []);
+
+  // Auto-collapse non-home municipalities once we know both the groups and home
+  useEffect(() => {
+    if (muniInitialized.current) return;
+    if (!municipalityGroups.length) return;
+    const target = homeMuni ?? municipalityGroups[0]?.name;
+    if (!target) return;
+    muniInitialized.current = true;
+    setCollapsedMunis(new Set(municipalityGroups.map(g => g.name).filter(n => n !== target)));
+  }, [municipalityGroups, homeMuni]);
 
   // Hover
   const handleMouseMove = useCallback((e: MapFeatureEvent) => {
@@ -921,6 +953,11 @@ export default function AtlasAllMapClient() {
     return q ? streets.filter(st => st.name.toLowerCase().includes(q)) : streets;
   }, [streets, streetSearch]);
 
+  const filteredTurfs = useMemo(() => {
+    const q = streetSearch.toLowerCase().trim();
+    return q ? turfs.filter(t => t.streets.some(s => s.name.toLowerCase().includes(q))) : turfs;
+  }, [turfs, streetSearch]);
+
   // Interactive layer ids
   const interactiveLayers = [
     "ward-fill",
@@ -935,7 +972,7 @@ export default function AtlasAllMapClient() {
   ];
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#050e1c" }}>
+    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#050e1c" }}>
 
       {/* ── MAP ──────────────────────────────────────────────────────── */}
       <MapGL
@@ -950,7 +987,7 @@ export default function AtlasAllMapClient() {
         onMouseLeave={handleMouseLeave}
         onClick={handleClick as (e: MapMouseEvent) => void}
       >
-        <NavigationControl position="top-right" />
+        <NavigationControl position="bottom-left" />
         <ScaleControl position="bottom-right" />
         <AttributionControl position="bottom-left" customAttribution="© OpenFreeMap © OpenStreetMap contributors" compact />
 
@@ -1093,7 +1130,7 @@ export default function AtlasAllMapClient() {
             key={`ops-${getProp(selectedProps, "wardIndex")}`}
             initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            style={{ ...G, position: "absolute", bottom: 24, right: 16, zIndex: 10, width: 320, maxHeight: "calc(100vh - 120px)", overflow: "hidden", display: "flex", flexDirection: "column" }}
+            style={{ ...G, position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 10, width: 360, overflow: "hidden", display: "flex", flexDirection: "column", borderRadius: "0 0 0 0", borderRight: "none", borderTop: "none", borderBottom: "none" }}
           >
             <div style={{ height: 4, background: muniAccent, flexShrink: 0 }} />
             <div style={{ padding: "16px 18px", overflowY: "auto", flex: 1 }}>
@@ -1231,7 +1268,7 @@ export default function AtlasAllMapClient() {
             key="turf-panel"
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            style={{ ...G, position: "absolute", top: 80, right: 16, bottom: 24, zIndex: 10, width: 340, display: "flex", flexDirection: "column", overflow: "hidden" }}
+            style={{ ...G, position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 10, width: 360, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "0 0 0 0", borderRight: "none", borderTop: "none", borderBottom: "none" }}
           >
             <div style={{ height: 4, background: muniAccent, flexShrink: 0 }} />
 
@@ -1251,7 +1288,7 @@ export default function AtlasAllMapClient() {
                 <ViewModePill viewMode={viewMode} setViewMode={setViewMode} accent={muniAccent} modes={availableModes} />
               </div>
               <input
-                type="text" placeholder="Search streets…" value={streetSearch}
+                type="text" placeholder={turfs.length > 0 ? "Filter turfs by street…" : "Search streets…"} value={streetSearch}
                 onChange={e => setStreetSearch(e.target.value)}
                 style={{ width: "100%", marginTop: 8, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "5px 9px", color: "#fff", fontSize: 11, outline: "none", boxSizing: "border-box" }}
               />
@@ -1317,7 +1354,12 @@ export default function AtlasAllMapClient() {
                       No turfs drawn yet — use the ✂️ button above to cut your first canvassing area.
                     </div>
                   )}
-                  {turfs.map((turf) => (
+                  {filteredTurfs.length === 0 && turfs.length > 0 && streetSearch && (
+                    <div style={{ padding: "14px 18px", color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center" }}>
+                      No turfs contain &ldquo;{streetSearch}&rdquo;
+                    </div>
+                  )}
+                  {filteredTurfs.map((turf) => (
                     <div key={turf.index} style={{ margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 12, overflow: "hidden", border: `1px solid ${turf.color}30` }}>
                       <div style={{ height: 3, background: turf.color }} />
                       <div style={{ padding: "10px 12px" }}>
@@ -1395,7 +1437,7 @@ export default function AtlasAllMapClient() {
             key="addr"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ ...GL, position: "absolute", bottom: addrCount > 0 ? 380 : 24, right: 16, zIndex: 11, width: 260, padding: "14px 16px" }}
+            style={{ ...GL, position: "absolute", bottom: 24, right: selectedWard ? 376 : 16, zIndex: 11, width: 260, padding: "14px 16px" }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: muniAccent, borderRadius: "12px 12px 0 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -1443,7 +1485,7 @@ export default function AtlasAllMapClient() {
             key="sign-detail"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ ...GL, position: "absolute", bottom: 24, right: 16, zIndex: 11, width: 260, padding: "14px 16px" }}
+            style={{ ...GL, position: "absolute", bottom: 24, right: selectedWard ? 376 : 16, zIndex: 11, width: 260, padding: "14px 16px" }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: SIGN_STATUS_COLOR[String(selectedSign.status ?? "")] ?? "#EF9F27", borderRadius: "12px 12px 0 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -1490,7 +1532,7 @@ export default function AtlasAllMapClient() {
             key="polling-detail"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ ...GL, position: "absolute", bottom: 24, right: 16, zIndex: 11, width: 260, padding: "14px 16px" }}
+            style={{ ...GL, position: "absolute", bottom: 24, right: selectedWard ? 376 : 16, zIndex: 11, width: 260, padding: "14px 16px" }}
           >
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "#EF9F27", borderRadius: "12px 12px 0 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>

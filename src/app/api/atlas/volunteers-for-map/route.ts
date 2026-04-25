@@ -39,7 +39,6 @@ export async function GET(req: NextRequest) {
   const memberships = await prisma.membership.findMany({
     where: {
       campaignId,
-      user: { role: { not: "SUPER_ADMIN" } },
     },
     select: {
       userId: true,
