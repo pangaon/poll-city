@@ -9,7 +9,7 @@ Every major user action. Every downstream effect. Honest status.
 - ✗ NOT CONNECTED — should exist, does not
 - — NOT BUILT — feature not yet built
 
-*Last updated: 2026-04-11 (session 5) by Claude Sonnet 4.6 — client provisioning, self-service signup, invite flow, unified ops client manager*
+*Last updated: 2026-04-25 by Claude Sonnet 4.6 — canvasser backend write chains added*
 *Read CLAUDE.md → THE BUILD CYCLE before touching anything in this file.*
 
 ---
@@ -116,6 +116,59 @@ Every major user action. Every downstream effect. Honest status.
 | CampaignTour starts after wizard | ✓ CONNECTED | wizard dismisses, tour gate fires independently |
 | Volunteers skip wizard | ✓ CONNECTED | membership role check in GET /api/campaigns/setup |
 | Demo mode skips wizard | ✓ CONNECTED | ?demo=true bypasses gate |
+
+---
+
+## CANVASSER MOBILE — FIELD WRITE CHAINS (wired 2026-04-25)
+
+### Canvasser completes a door (TurfStop.complete)
+| Effect | Status | Notes |
+|--------|--------|-------|
+| TurfStop.visited = true, visitedAt = now() | ✓ CONNECTED | atomic $transaction |
+| TurfStop.notes set | ✓ CONNECTED | |
+| Contact.supportLevel updated | ✓ CONNECTED | atomic with TurfStop update |
+| Contact.signRequested updated if true | ✓ CONNECTED | |
+| Contact.volunteerInterest updated if true | ✓ CONNECTED | |
+| Contact.followUpNeeded updated if true | ✓ CONNECTED | |
+| Contact.doNotContact updated if true | ✓ CONNECTED | |
+| Contact.lastContactedAt = now() | ✓ CONNECTED | |
+| Interaction created (type: door_knock, source: canvass) | ✓ CONNECTED | no campaignId field — filtered via contact.campaignId relation |
+| Turf.doorsKnocked incremented | ✓ CONNECTED | atomic with above |
+| Turf.supportersFound incremented (if support level is positive) | ✓ CONNECTED | |
+| campaignId ownership verified before mutation | ✓ CONNECTED | stop.turf.campaignId === campaignId |
+
+### Canvasser submits sign request
+| Effect | Status | Notes |
+|--------|--------|-------|
+| SignRequest created (campaignId, address, name, email) | ✓ CONNECTED | atomic $transaction |
+| Contact.signRequested = true | ✓ CONNECTED | atomic with SignRequest create |
+| campaignId scoped — contact must belong to campaign | ✓ CONNECTED | |
+
+### Canvasser flags volunteer lead
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Contact.volunteerInterest = true | ✓ CONNECTED | |
+| Interaction created (type: note, notes: "Flagged…") | ✓ CONNECTED | optional — only if notes provided |
+
+### Adoni voice → execute action chain
+| Effect | Status | Notes |
+|--------|--------|-------|
+| set_support_level → Contact.supportLevel + lastContactedAt | ✓ CONNECTED | |
+| request_sign → SignRequest + Contact.signRequested (transaction) | ✓ CONNECTED | |
+| flag_volunteer → Contact.volunteerInterest | ✓ CONNECTED | |
+| flag_follow_up → Contact.followUpNeeded | ✓ CONNECTED | |
+| mark_do_not_contact → Contact.doNotContact | ✓ CONNECTED | |
+| skip_stop → TurfStop.visited + notes "[SKIPPED via Adoni]" | ✓ CONNECTED | |
+| add_note → Interaction (type: note, source: canvass) | ✓ CONNECTED | |
+| Partial failure → 207 returned; individual results per action | ✓ CONNECTED | |
+
+### Offline sync batch
+| Effect | Status | Notes |
+|--------|--------|-------|
+| Each mutation forwarded internally via fetch (auth preserved) | ✓ CONNECTED | Bearer token + Cookie forwarded |
+| Endpoint allowlist enforced | ✓ CONNECTED | only /api/canvasser/*, /api/interactions allowed |
+| Per-mutation status returned | ✓ CONNECTED | { id, status, ok } per entry |
+| Sub-routes enforce membership independently | ✓ CONNECTED | defense-in-depth |
 
 ---
 

@@ -39,3 +39,7 @@ Rules:
 ---
 
 <!-- Add your instructions below this line -->
+
+## [DONE 08:50] 2026-04-25 — Canvasser backend + mobile demo wiring
+
+Built 14 new `/api/canvasser/*` routes (missions, stops, voters, sign-requests, volunteer-leads, adoni parse/execute/transcripts, sync upload + status). No Prisma schema changes — used existing models. Mobile app wired: `mobile/lib/api.ts` + types, canvassing tab now calls `fetchMissions`, door wizard calls `completeStop` + `submitSignRequest` + `submitVolunteerLead`. Adoni parse uses rule-based NLP (no Claude API). Push guard approved. Build green. Nothing manual needed from George.

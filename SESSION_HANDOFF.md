@@ -1,7 +1,7 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-25 (morning session — Apple Sign-In)
+**Last updated:** 2026-04-25 (canvasser backend + mobile wiring session)
 **Updated by:** Claude Sonnet 4.6
 
 ## CURRENT PLATFORM STATE
@@ -9,7 +9,39 @@
 ### Build
 `npm run build` exits 0. TypeScript clean (web + mobile). All commits on `origin/main`.
 
-### What shipped (2026-04-25 — Apple Sign-In session)
+### What shipped (2026-04-25 — Canvasser backend + mobile wiring)
+
+| Commit | What changed |
+|---|---|
+| `6c75930` | Full canvasser backend (14 new `/api/canvasser/*` routes) + mobile wiring. No schema changes. |
+
+**What is live:**
+- `GET /api/canvasser/missions` — load turfs as missions list (mobile canvassing tab)
+- `GET /api/canvasser/missions/[missionId]` — mission detail with stop counts
+- `GET /api/canvasser/missions/[missionId]/current-stop` — next unvisited door
+- `POST /api/canvasser/stops/[stopId]/complete` — mark door done (support level, notes, issues, flags)
+- `POST /api/canvasser/stops/[stopId]/skip` — skip door with reason
+- `POST /api/canvasser/stops/[stopId]/note` — append note
+- `POST /api/canvasser/voters/[personId]/outcome` — update contact support level
+- `POST /api/canvasser/sign-requests` — create sign request + flag Contact.signRequested
+- `POST /api/canvasser/volunteer-leads` — flag Contact.volunteerInterest
+- `POST /api/canvasser/adoni/transcripts` — store voice transcript
+- `POST /api/canvasser/adoni/parse` — rule-based NLP → structured actions (no Claude API)
+- `POST /api/canvasser/adoni/execute` — execute confirmed Adoni actions (7 action types)
+- `POST /api/canvasser/sync` — batch offline mutations → forwarded internally with auth
+- `GET /api/canvasser/sync/status` — day stats: doors knocked, supporters, signs, volunteers
+
+**Mobile wired:**
+- `mobile/lib/types.ts` — 7 new canvasser types
+- `mobile/lib/api.ts` — 14 new typed API functions
+- `mobile/app/(tabs)/canvassing/index.tsx` — now calls `fetchMissions` (was `fetchTurfs`), passes `stopId` through nav params
+- `mobile/app/(app)/door/[id].tsx` — calls `completeStop` + `submitSignRequest` + `submitVolunteerLead` on submit
+
+**George needs to do:** Nothing for this commit. No schema changes, no new env vars.
+
+**Navigation (mobile):** Expo Go → Canvassing tab → select mission → door wizard → submit = live data.
+
+### Previous session (2026-04-25 — Apple Sign-In)
 
 | Commit | What changed |
 |---|---|
