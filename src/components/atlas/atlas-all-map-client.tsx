@@ -63,14 +63,17 @@ type StreetData = {
 type TurfData = {
   index: number; color: string; streets: StreetData[]; doors: number;
   units: number; houses: number; buildings: number; buildingUnits: number;
-  estHours: number; canvasserName: string;
+  estHours: number; canvasserName: string; volunteerProfileId?: string;
   /** DB id — present once the turf has been persisted via /api/atlas/turfs */
   id?: string;
 };
 
+type VolunteerOption = { id: string; name: string; phone?: string };
+
 type SavedTurfRow = {
   id: string; name: string; ward: string | null; streets: string[];
-  totalDoors: number; estimatedMinutes: number | null; status: string; createdAt: string;
+  totalDoors: number; estimatedMinutes: number | null; status: string;
+  canvasserName?: string | null; createdAt: string;
 };
 
 type MapFeatureEvent = MapMouseEvent & {
@@ -507,6 +510,10 @@ export default function AtlasAllMapClient() {
   const [allAddresses, setAllAddresses] = useState<FeatureCollection | null>(null);
   const [turfSaving, setTurfSaving] = useState(false);
 
+  // Volunteer dropdown
+  const [volunteers, setVolunteers] = useState<VolunteerOption[]>([]);
+  const turfsRef = useRef<TurfData[]>([]);
+
   // Sidebar
   const [wardSearch, setWardSearch] = useState("");
   const [collapsedMunis, setCollapsedMunis] = useState<Set<string>>(new Set());
@@ -525,6 +532,17 @@ export default function AtlasAllMapClient() {
   // ── selected feature detail
   const [selectedSign, setSelectedSign] = useState<Record<string, unknown> | null>(null);
   const [selectedPolling, setSelectedPolling] = useState<Record<string, unknown> | null>(null);
+
+  // Keep turfsRef current for async callbacks
+  useEffect(() => { turfsRef.current = turfs; }, [turfs]);
+
+  // Fetch volunteers for canvasser dropdown
+  useEffect(() => {
+    fetch("/api/atlas/volunteers-for-map")
+      .then(r => r.ok ? (r.json() as Promise<{ data: VolunteerOption[] }>) : null)
+      .then(d => { if (d?.data) setVolunteers(d.data); })
+      .catch(() => {});
+  }, []);
 
   // Fetch all wards
   useEffect(() => {
@@ -653,7 +671,7 @@ export default function AtlasAllMapClient() {
               buildings,
               buildingUnits,
               estHours,
-              canvasserName: "",
+              canvasserName: row.canvasserName ?? "",
             };
           });
 
@@ -817,7 +835,20 @@ export default function AtlasAllMapClient() {
   }, [displayAddresses, streets, canvasserCount, selectedWard]);
 
   const updateCanvasserName = useCallback((index: number, name: string) => {
-    setTurfs(prev => prev.map(t => t.index === index ? { ...t, canvasserName: name } : t));
+    setTurfs(prev => prev.map(t => t.index === index ? { ...t, canvasserName: name, volunteerProfileId: undefined } : t));
+  }, []);
+
+  const assignVolunteer = useCallback((turfIndex: number, vol: VolunteerOption | null) => {
+    const name = vol ? vol.name : "";
+    setTurfs(prev => prev.map(t => t.index === turfIndex ? { ...t, canvasserName: name, volunteerProfileId: vol?.id } : t));
+    const target = turfsRef.current.find(t => t.index === turfIndex);
+    if (target?.id) {
+      fetch(`/api/atlas/turfs/${target.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ canvasserName: name || null }),
+      }).catch(() => {});
+    }
   }, []);
 
   const handleDeleteTurf = useCallback((turf: TurfData) => {
@@ -1302,11 +1333,37 @@ export default function AtlasAllMapClient() {
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>📄 {Math.ceil(turf.units * 1.1)}</span>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <input
-                            type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
-                            onChange={e => updateCanvasserName(turf.index, e.target.value)}
-                            style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
-                          />
+                          {volunteers.length > 0 ? (
+                            <select
+                              value={turf.volunteerProfileId ?? ""}
+                              onChange={e => {
+                                const vol = volunteers.find(v => v.id === e.target.value) ?? null;
+                                assignVolunteer(turf.index, vol);
+                              }}
+                              style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: turf.canvasserName ? "#fff" : "rgba(255,255,255,0.4)", fontSize: 12, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
+                            >
+                              <option value="">— Assign volunteer —</option>
+                              {volunteers.map(v => (
+                                <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ""}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text" placeholder="Assign canvasser name…" value={turf.canvasserName}
+                              onChange={e => updateCanvasserName(turf.index, e.target.value)}
+                              onBlur={e => {
+                                const target = turfsRef.current.find(t => t.index === turf.index);
+                                if (target?.id) {
+                                  fetch(`/api/atlas/turfs/${target.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ canvasserName: e.target.value || null }),
+                                  }).catch(() => {});
+                                }
+                              }}
+                              style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "#fff", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                            />
+                          )}
                           <button
                             onClick={() => handleDeleteTurf(turf)}
                             title="Remove turf"
@@ -1331,13 +1388,10 @@ export default function AtlasAllMapClient() {
                   ))}
                   <div style={{ padding: "10px 10px 4px" }}>
                     <button
-                      onClick={() => {
-                        if (mapRef.current) mapRef.current.getMap().triggerRepaint();
-                        window.print();
-                      }}
+                      onClick={() => window.print()}
                       style={{ width: "100%", padding: "11px", borderRadius: 10, background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)", color: "#1D9E75", fontSize: 13, fontWeight: 700, cursor: "pointer" } as React.CSSProperties}
                     >
-                      📋 Print Walk Lists
+                      🖨️ Print Walk Lists
                     </button>
                   </div>
                 </div>
@@ -1580,12 +1634,76 @@ export default function AtlasAllMapClient() {
         )}
       </AnimatePresence>
 
+      {/* ── PRINT-ONLY WALK LIST ─────────────────────────────────────── */}
+      {turfs.length > 0 && showTurfPanel && (
+        <div data-print-only style={{ display: "none" }}>
+          <div style={{ fontFamily: "Georgia, serif", padding: "20px 24px", color: "#000", maxWidth: 800 }}>
+            <div style={{ borderBottom: "3px solid #0A2342", paddingBottom: 12, marginBottom: 20 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#0A2342" }}>
+                Walk List — {selectedProps ? getProp(selectedProps, "wardName") : ""}
+              </div>
+              <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                {new Date().toLocaleDateString("en-CA", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                {' · '}{turfs.length} turf{turfs.length !== 1 ? "s" : ""}
+                {' · '}{turfs.reduce((s, t) => s + t.doors, 0).toLocaleString()} doors total
+              </div>
+            </div>
+            {turfs.map((turf, ti) => (
+              <div key={turf.index} style={{ marginBottom: 28, pageBreakInside: "avoid" } as React.CSSProperties}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid #ccc", paddingBottom: 6, marginBottom: 10 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#0A2342" }}>Turf {ti + 1}</div>
+                  <div style={{ fontSize: 12, color: "#555" }}>{turf.doors} doors · ~{turf.estHours}h</div>
+                </div>
+                <div style={{ fontSize: 13, marginBottom: 10 }}>
+                  <strong>Canvasser:</strong>{" "}
+                  {turf.canvasserName
+                    ? <span style={{ color: "#1D7A5C" }}>{turf.canvasserName}</span>
+                    : <span style={{ color: "#999" }}>Unassigned</span>}
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f4f4f4" }}>
+                      <th style={{ textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #ddd", color: "#333" }}>Street</th>
+                      <th style={{ textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #ddd", color: "#333" }}>Doors</th>
+                      <th style={{ textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #ddd", color: "#333" }}>Type</th>
+                      <th style={{ textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #ddd", color: "#333" }}>Est.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {turf.streets.map((st, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                        <td style={{ padding: "5px 8px" }}>{st.name}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{st.doors}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right", color: "#666" }}>
+                          {st.buildings > 0 ? `🏢 ${st.buildings} bldg` : `🏠 ${st.houses}`}
+                        </td>
+                        <td style={{ padding: "5px 8px", textAlign: "right", color: "#666" }}>{Math.round(st.estMinutes)}min</td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: "#f9f9f9", fontWeight: 700 }}>
+                      <td style={{ padding: "5px 8px" }}>Total</td>
+                      <td style={{ padding: "5px 8px", textAlign: "right" }}>{turf.doors}</td>
+                      <td style={{ padding: "5px 8px" }} />
+                      <td style={{ padding: "5px 8px", textAlign: "right" }}>{Math.round(turf.estHours * 60)}min</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+            <div style={{ marginTop: 24, fontSize: 10, color: "#999", borderTop: "1px solid #ddd", paddingTop: 8 }}>
+              Generated by Poll City · poll.city
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── PRINT CSS ────────────────────────────────────────────────── */}
       <style>{`
         @media print {
           [data-print-hide] { display: none !important; }
-          body { margin: 0; padding: 0; background: #050e1c; }
-          canvas { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }
+          [data-print-only] { display: block !important; }
+          canvas { display: none !important; }
+          body { margin: 0; padding: 0; background: #fff; color: #000; }
         }
       `}</style>
     </div>

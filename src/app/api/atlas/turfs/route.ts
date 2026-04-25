@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       totalDoors: true,
       estimatedMinutes: true,
       notes: true,
+      canvasserName: true,
       createdAt: true,
     },
   });
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     totalDoors?: number;
     estimatedMinutes?: number;
     notes?: string;
+    canvasserName?: string;
   };
 
   try {
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
       totalDoors: body.totalDoors ?? 0,
       estimatedMinutes: body.estimatedMinutes ?? null,
       notes: body.notes ?? null,
+      canvasserName: body.canvasserName ?? null,
     } as Prisma.TurfUncheckedCreateInput,
     select: {
       id: true,
@@ -77,6 +80,7 @@ export async function POST(req: NextRequest) {
       totalDoors: true,
       estimatedMinutes: true,
       notes: true,
+      canvasserName: true,
       createdAt: true,
     },
   });
