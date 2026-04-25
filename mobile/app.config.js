@@ -62,11 +62,11 @@ export default ({ config }) => ({
       process.env.EXPO_PUBLIC_API_URL ??
       "https://poll-city-74azv5fvw-pangaons-projects.vercel.app",
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? config.extra?.eas?.projectId ?? "YOUR_EAS_PROJECT_ID",
+      projectId: "c7b82bca-5d63-444f-95f1-c48bbcd30f8f",
     },
   },
   updates: {
-    url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID ?? "YOUR_EAS_PROJECT_ID"}`,
+    url: "https://u.expo.dev/c7b82bca-5d63-444f-95f1-c48bbcd30f8f",
   },
   runtimeVersion: {
     policy: "appVersion",
