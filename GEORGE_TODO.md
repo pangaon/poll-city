@@ -24,6 +24,14 @@ npx prisma db push
 - [x] **1. Run `npx prisma db push` against Railway** ✓ Done 2026-04-11 — "database already in sync"
 - [x] **2. Run QR Capture migration on Railway** ✓ Done 2026-04-18 — "database already in sync"
 - [x] **3. ✅ DONE 2026-04-24 — `npx prisma db push` — full schema sync (via item 78b)**
+- [ ] **3c-new. Run `npx prisma db push` — added `canvasserName` to Turf (2026-04-25)**
+
+  Atlas canvasser assignment will 500 until this is run.
+
+  ```bash
+  npx prisma db push
+  ```
+
 
   Since the last `db push`, new schema additions have been committed. These features CRASH in production until you run this:
 
