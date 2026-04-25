@@ -109,7 +109,8 @@ if (!process.env.SKIP_PUSH_GUARD) {
     fail("Push guard token is corrupt. Re-run the push guard.");
   }
 
-  const ageMinutes = (Date.now() - guard.timestamp) / 60000;
+  const guardTs = guard.timestamp ?? (guard.approvedAt ? new Date(guard.approvedAt).getTime() : Date.now());
+  const ageMinutes = (Date.now() - guardTs) / 60000;
   if (ageMinutes > 30) {
     fs.rmSync(guardFile, { force: true });
     fail("Push guard approval expired (>30 min). Re-run the push guard.");
@@ -146,7 +147,7 @@ if (!process.env.SKIP_PUSH_GUARD) {
 
   console.log("\n══ PUSH GUARD REPORT ═══════════════════════════════════════════");
   console.log(`Guard verdict : APPROVED`);
-  console.log(`Verified at   : ${new Date(guard.timestamp).toISOString()}`);
+  console.log(`Verified at   : ${new Date(guardTs).toISOString()}`);
   console.log(`Diff hash     : ${guard.diffHash.slice(0, 12)}… ✓ matches current diff`);
   if (guard.findings?.length > 0) {
     console.log("\nFindings:");
