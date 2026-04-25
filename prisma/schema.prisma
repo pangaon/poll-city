@@ -10050,3 +10050,316 @@ model ContactCommsLog {
   @@index([campaignId, contactId, sentAt])
   @@map("contact_comms_logs")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVASSER APP V1 — BACKEND FOUNDATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum MissionType {
+  FULL_CANVASS
+  LIT_DROP
+  GOTV
+  SIGN_BLITZ
+  VOLUNTEER_RECRUITMENT
+  ISSUE_ID
+  CANDIDATE_VISIT
+  RECANVASS
+  SUPPORTER_CONFIRMATION
+}
+
+enum MissionStatus {
+  DRAFT
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum DoorOutcome {
+  ANSWERED
+  NOT_HOME
+  REFUSED
+  INACCESSIBLE
+  NO_SUCH_ADDRESS
+  ALREADY_CANVASSED
+  UNSAFE
+  NEEDS_FOLLOW_UP
+}
+
+enum VoterOutcome {
+  STRONG_SUPPORT
+  LEAN_SUPPORT
+  UNDECIDED
+  LEAN_OPPOSE
+  OPPOSE
+  REFUSED
+  NOT_HOME
+  MOVED
+  DECEASED
+  WRONG_ADDRESS
+  INELIGIBLE
+}
+
+enum SignRequestStatusV2 {
+  REQUESTED
+  APPROVED
+  ASSIGNED
+  INSTALLED
+  REMOVED
+  CANCELLED
+}
+
+enum OfflineSyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  FAILED
+  CONFLICT
+}
+
+enum AdoniActionStatus {
+  PREVIEWED
+  CONFIRMED
+  EXECUTED
+  CANCELLED
+  FAILED
+}
+
+model CandidatePing {
+  id            String   @id @default(cuid())
+  campaignId    String
+  stopId        String?
+  contactId     String?
+  requestedById String
+  candidateId   String?
+  priority      String   @default("normal")
+  safeNote      String?
+  context       Json?
+  status        String   @default("sent")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  stop     AssignmentStop? @relation(fields: [stopId], references: [id])
+  contact  Contact?        @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId, status])
+  @@index([campaignId, createdAt])
+  @@map("candidate_pings")
+}
+
+model PCSInvite {
+  id          String   @id @default(cuid())
+  campaignId  String
+  contactId   String?
+  householdId String?
+  stopId      String?
+  channel     String
+  status      String   @default("sent")
+  inviteLink  String?
+  sentById    String
+  sentAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact?        @relation(fields: [contactId], references: [id])
+  stop     AssignmentStop? @relation(fields: [stopId], references: [id])
+  sender   User            @relation(fields: [sentById], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, sentAt])
+  @@map("pcs_invites")
+}
+
+model SafetyFlag {
+  id          String   @id @default(cuid())
+  campaignId  String
+  contactId   String?
+  householdId String?
+  stopId      String?
+  severity    String   @default("medium")
+  reason      String
+  notes       String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact   Contact?        @relation(fields: [contactId], references: [id])
+  stop      AssignmentStop? @relation(fields: [stopId], references: [id])
+  createdBy User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@map("safety_flags")
+}
+
+model LitPiece {
+  id          String   @id @default(cuid())
+  campaignId  String
+  name        String
+  code        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, name])
+  @@index([campaignId, isActive])
+  @@map("lit_pieces")
+}
+
+model LitDropLog {
+  id          String   @id @default(cuid())
+  campaignId  String
+  missionId   String?
+  stopId      String?
+  contactId   String?
+  litPieceId  String?
+  scope       String   @default("door")
+  notes       String?
+  latitude    Float?
+  longitude   Float?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign  Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mission   FieldAssignment? @relation(fields: [missionId], references: [id])
+  stop      AssignmentStop?  @relation(fields: [stopId], references: [id])
+  contact   Contact?         @relation(fields: [contactId], references: [id])
+  createdBy User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@map("lit_drop_logs")
+}
+
+model VolunteerLead {
+  id                String   @id @default(cuid())
+  campaignId        String
+  contactId         String?
+  sourceStopId      String?
+  name              String
+  phone             String?
+  email             String?
+  address           String?
+  availability      String?
+  hasCar            Boolean  @default(false)
+  preferredRoles    String[] @default([])
+  skills            String[] @default([])
+  consentToContact  Boolean  @default(false)
+  notes             String?
+  source            String   @default("canvass_app")
+  capturedByUserId  String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact?        @relation(fields: [contactId], references: [id])
+  sourceStop AssignmentStop? @relation(fields: [sourceStopId], references: [id])
+  capturedBy User            @relation(fields: [capturedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@map("volunteer_leads")
+}
+
+model AdoniTranscript {
+  id          String   @id @default(cuid())
+  campaignId  String
+  userId      String
+  missionId   String?
+  stopId      String?
+  personId    String?
+  mode        String   @default("text")
+  transcript  String
+  confidence  Float?
+  parsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission  FieldAssignment? @relation(fields: [missionId], references: [id])
+  stop     AssignmentStop?  @relation(fields: [stopId], references: [id])
+  person   Contact?         @relation(fields: [personId], references: [id])
+  actions  AdoniParsedAction[]
+  logs     AdoniExecutionLog[]
+
+  @@index([campaignId, createdAt])
+  @@index([campaignId, userId, createdAt])
+  @@map("adoni_transcripts")
+}
+
+model AdoniParsedAction {
+  id                 String            @id @default(cuid())
+  transcriptId       String
+  campaignId         String
+  actionType         String
+  label              String
+  entityType         String?
+  entityId           String?
+  payload            Json?
+  riskLevel          String            @default("medium")
+  requiresConfirmation Boolean         @default(true)
+  missingFields      String[]          @default([])
+  status             AdoniActionStatus @default(PREVIEWED)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  transcript AdoniTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@index([campaignId, status])
+  @@map("adoni_parsed_actions")
+}
+
+model AdoniExecutionLog {
+  id            String            @id @default(cuid())
+  campaignId    String
+  transcriptId  String
+  actionId      String?
+  executedById  String
+  status        AdoniActionStatus
+  result        Json?
+  error         String?
+  createdAt     DateTime          @default(now())
+
+  campaign   Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  transcript AdoniTranscript  @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  action     AdoniParsedAction? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+  executedBy User             @relation(fields: [executedById], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([transcriptId])
+  @@map("adoni_execution_logs")
+}
+
+model OfflineSyncEvent {
+  id            String            @id @default(cuid())
+  campaignId    String
+  userId        String
+  deviceId      String
+  clientEventId String
+  entityType    String
+  actionType    String
+  payload       Json
+  localVersion  Int?
+  status        OfflineSyncStatus @default(PENDING)
+  error         String?
+  conflict      Json?
+  processedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, clientEventId])
+  @@index([campaignId, deviceId, createdAt])
+  @@index([campaignId, status])
+  @@map("offline_sync_events")
+}

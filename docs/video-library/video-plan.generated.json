@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-04-25T09:03:10.367Z",
+  "summary": {
+    "requiredCount": 14,
+    "presentCount": 0,
+    "missingCount": 14,
+    "completionPercent": 0
+  },
+  "missing": [
+    {
+      "id": "canvasser-getting-started",
+      "title": "Canvasser: Getting Started",
+      "category": "Getting Started",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-start-assignment",
+      "title": "Canvasser: Start Assignment",
+      "category": "Canvassing Core Flow",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-door-result-fast",
+      "title": "Canvasser: Log Door Result (Fast Path)",
+      "category": "Canvassing Core Flow",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-sign-request",
+      "title": "Canvasser: Request a Sign",
+      "category": "Canvassing Core Flow",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-volunteer-lead",
+      "title": "Canvasser: Capture Volunteer Lead",
+      "category": "Canvassing Core Flow",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-offline-mode",
+      "title": "Canvasser: Offline Mode + Sync Recovery",
+      "category": "Offline + Sync",
+      "status": "MISSING"
+    },
+    {
+      "id": "canvasser-map-list-toggle",
+      "title": "Canvasser: Switch Map/List Without Losing Context",
+      "category": "Canvassing Core Flow",
+      "status": "MISSING"
+    },
+    {
+      "id": "adoni-basic",
+      "title": "Adoni: Basic Door Note",
+      "category": "Adoni Usage + Fallback",
+      "status": "MISSING"
+    },
+    {
+      "id": "adoni-structured-actions",
+      "title": "Adoni: Structured Actions + Confirm Save",
+      "category": "Adoni Usage + Fallback",
+      "status": "MISSING"
+    },
+    {
+      "id": "adoni-fallback-manual-fast-mode",
+      "title": "Adoni Fallback: Manual Fast Mode",
+      "category": "Adoni Usage + Fallback",
+      "status": "MISSING"
+    },
+    {
+      "id": "manager-live-progress",
+      "title": "Field Manager: Live Progress View",
+      "category": "Manager Operations",
+      "status": "MISSING"
+    },
+    {
+      "id": "manager-resolve-sync-conflict",
+      "title": "Field Manager: Resolve Sync Conflict",
+      "category": "Manager Operations",
+      "status": "MISSING"
+    },
+    {
+      "id": "troubleshoot-login-sync",
+      "title": "Troubleshooting: Login + Sync Issues",
+      "category": "Troubleshooting",
+      "status": "MISSING"
+    },
+    {
+      "id": "troubleshoot-assignment-missing",
+      "title": "Troubleshooting: Missing Assignment",
+      "category": "Troubleshooting",
+      "status": "MISSING"
+    }
+  ],
+  "present": [],
+  "nextActions": [
+    "Produce all videos in missing[] using the template workflow in docs/VIDEO_AUTOMATION_PLAN.md",
+    "After publishing, update docs/video-library/videos.catalog.json with id/url/durationSec/updatedAt",
+    "Re-run npm run video:plan until missingCount is 0"
+  ]
+}

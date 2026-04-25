@@ -30,6 +30,10 @@ interface LimiterConfig {
   window: Window;
 }
 
+interface LocalRateLimitRecord {
+  timestamps: number[];
+}
+
 const LIMITERS: Record<LimiterName, LimiterConfig> = {
   login: { limit: 5, window: "15 m" },
   forgotPassword: { limit: 3, window: "1 h" },
@@ -48,6 +52,54 @@ const redisConfigured = Boolean(url && token);
 const redis = redisConfigured ? new Redis({ url: url!, token: token! }) : null;
 
 const cache = new Map<LimiterName, Ratelimit>();
+const localStore = new Map<string, LocalRateLimitRecord>();
+
+function windowToMs(window: Window): number {
+  const [amountRaw, unit] = window.split(" ");
+  const amount = Number(amountRaw);
+  if (!Number.isFinite(amount) || amount <= 0) return 60_000;
+
+  switch (unit) {
+    case "s":
+      return amount * 1_000;
+    case "m":
+      return amount * 60_000;
+    case "h":
+      return amount * 3_600_000;
+    case "d":
+      return amount * 86_400_000;
+    default:
+      return 60_000;
+  }
+}
+
+function localLimit(name: LimiterName, identifier: string): RateLimitOutcome {
+  const { limit, window } = LIMITERS[name];
+  const windowMs = windowToMs(window);
+  const now = Date.now();
+  const key = `${name}:${identifier}`;
+  const record = localStore.get(key) ?? { timestamps: [] };
+  record.timestamps = record.timestamps.filter((timestamp) => now - timestamp < windowMs);
+
+  if (record.timestamps.length >= limit) {
+    const oldest = record.timestamps[0] ?? now;
+    return {
+      success: false,
+      remaining: 0,
+      reset: oldest + windowMs,
+      limit,
+    };
+  }
+
+  record.timestamps.push(now);
+  localStore.set(key, record);
+  return {
+    success: true,
+    remaining: Math.max(0, limit - record.timestamps.length),
+    reset: now + windowMs,
+    limit,
+  };
+}
 
 function getLimiter(name: LimiterName): Ratelimit | null {
   if (!redis) return null;
@@ -90,11 +142,11 @@ export async function checkLimit(
       if (!(globalThis as { __rl_warned__?: boolean }).__rl_warned__) {
         (globalThis as { __rl_warned__?: boolean }).__rl_warned__ = true;
         console.warn(
-          "[rate-limit-redis] Upstash not configured in production — falling through to in-memory limiter (single-instance only).",
+          "[rate-limit-redis] Upstash not configured in production — using in-memory limiter fallback (single-instance only).",
         );
       }
     }
-    return { success: true, remaining: LIMITERS[name].limit, reset: 0, limit: LIMITERS[name].limit };
+    return localLimit(name, identifier);
   }
   const { success, remaining, reset } = await limiter.limit(identifier);
   return { success, remaining, reset, limit: LIMITERS[name].limit };
