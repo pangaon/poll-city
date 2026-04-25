@@ -31,6 +31,7 @@ export default function SocialLayout({
     <div
       id="pcs-root"
       className="dark min-h-screen bg-[#F0F4F8] dark:bg-[#080D14] text-gray-900 dark:text-white transition-colors duration-200"
+      suppressHydrationWarning
     >
       {/* Runs before React hydration — removes dark if user chose light */}
       <script
