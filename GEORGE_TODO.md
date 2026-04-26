@@ -1207,6 +1207,70 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
 
   After running, open Atlas → Map → enable "ON Ridings" or "Polling Divs" toggle to verify.
 
+- [ ] **89. Run `npx prisma db push` — adds 4 new Atlas tables** (OntarioMunicipalBoundaryLayer, AddressPointLayer, BCRidingLayer, BCMunicipalBoundaryLayer)
+
+  Run from the repo root after pulling the latest commit:
+  ```bash
+  npx prisma db push
+  ```
+
+  **What it adds:**
+  - `ontario_municipal_boundary_layers` — 444 ON lower/single-tier municipalities
+  - `address_point_layers` — per-ward address point storage (525K+ points, chunked by ward)
+  - `bc_riding_layers` — BC provincial electoral districts
+  - `bc_municipal_boundary_layers` — BC municipal boundaries
+
+  Until this runs, any attempt to load the new Atlas layers will 500 in production.
+
+- [ ] **90. Import Ontario municipal boundaries** (after item 89)
+
+  You already have the shapefile in your Downloads folder. Run:
+  ```bash
+  npx tsx scripts/import-ontario-municipal-boundaries.ts \
+    --lower "C:/Users/14168/Downloads/MUNICIPAL_BOUNDARY_LOWER_AND_SINGLE_TIER/MUNICIPAL_BOUNDARY_LOWER_AND_SINGLE_TIER.shp"
+  ```
+
+  **Expected output:** "✓ Saved lower_and_single: 444 municipalities"
+
+  After running, open Atlas → toggle "ON Municipal" to verify boundaries appear.
+
+- [ ] **91. Import Toronto address points** (after item 89)
+
+  You already have the GeoJSON in your Downloads folder. Run:
+  ```bash
+  npx tsx scripts/import-address-points.ts \
+    "C:/Users/14168/Downloads/ADDRESS_POINT_TORONTO.geojson" \
+    --municipality Toronto
+  ```
+
+  **Expected output:** "✓ Saved 25 wards, 525,404 total address points for Toronto"
+
+  After running, open Atlas → toggle "Address Points" to verify orange dots appear at zoom 13+.
+
+- [ ] **92. Download BC shapefiles and import** (after item 89)
+
+  BC Data Catalogue uses JavaScript-gated downloads — browser required:
+
+  **Step A — BC Electoral Districts:**
+  1. Go to: elections.bc.ca → Electoral Districts → Download shapefiles
+  2. Download the current electoral district shapefile ZIP
+  3. Extract it
+
+  **Step B — BC Municipal Boundaries:**
+  1. Go to: catalogue.data.gov.bc.ca → search "Municipal Boundaries"
+  2. Download the SHP format
+  3. Extract it
+
+  **Step C — Import both:**
+  ```bash
+  npx tsx scripts/import-bc-boundaries.ts \
+    --ridings "/path/to/bc-ridings.shp" \
+    --municipal "/path/to/bc-municipal.shp"
+  ```
+
+  The script auto-detects BC Albers projection and reprojects to WGS84.
+  After running, open Atlas → toggle "BC Ridings" and "BC Municipal" to verify.
+
 ---
 
 *This file is maintained by AI sessions. Last updated: 2026-04-25*

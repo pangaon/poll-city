@@ -379,6 +379,62 @@ const ridingsClickFillLayer: Omit<FillLayerSpecification, "source"> = {
   paint: { "fill-color": "#3B82F6", "fill-opacity": 0 },
 };
 
+// Ontario municipal boundaries (OMAFRA lower/single-tier)
+const onMuniFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "on-muni-fill", type: "fill",
+  paint: { "fill-color": "#EF9F27", "fill-opacity": 0.06 },
+};
+const onMuniLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "on-muni-line", type: "line",
+  paint: { "line-color": "#EF9F27", "line-width": 1.5, "line-opacity": 0.75 },
+};
+
+// BC ridings (Elections BC)
+const bcRidingsFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "bc-ridings-fill", type: "fill",
+  paint: { "fill-color": "#10B981", "fill-opacity": 0.07 },
+};
+const bcRidingsLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "bc-ridings-line", type: "line",
+  paint: { "line-color": "#10B981", "line-width": 1.8, "line-opacity": 0.75 },
+};
+
+// BC municipal boundaries
+const bcMuniFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "bc-muni-fill", type: "fill",
+  paint: { "fill-color": "#0EA5E9", "fill-opacity": 0.06 },
+};
+const bcMuniLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "bc-muni-line", type: "line",
+  paint: { "line-color": "#0EA5E9", "line-width": 1.5, "line-opacity": 0.7 },
+};
+
+// Address points layer (civic addresses — clustered)
+const addrPtClusterLayer: Omit<CircleLayerSpecification, "source"> = {
+  id: "addr-pt-cluster", type: "circle", filter: ["has", "point_count"],
+  paint: {
+    "circle-color": ["step", ["get", "point_count"], "#F97316", 50, "#EF9F27", 200, "#E24B4A"],
+    "circle-radius": ["step", ["get", "point_count"], 14, 50, 20, 200, 26],
+    "circle-opacity": 0.85,
+  },
+};
+const addrPtClusterCountLayer: Omit<SymbolLayerSpecification, "source"> = {
+  id: "addr-pt-cluster-count", type: "symbol", filter: ["has", "point_count"],
+  layout: { "text-field": "{point_count_abbreviated}", "text-size": 11, "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"] },
+  paint: { "text-color": "#fff" },
+};
+const addrPtPointLayer: Omit<CircleLayerSpecification, "source"> = {
+  id: "addr-pt-point", type: "circle", filter: ["!", ["has", "point_count"]],
+  paint: {
+    "circle-color": "#F97316",
+    "circle-radius": 3,
+    "circle-stroke-width": 1,
+    "circle-stroke-color": "rgba(255,255,255,0.6)",
+    "circle-opacity": 0.8,
+  },
+  minzoom: 13,
+};
+
 // ─── glass ───────────────────────────────────────────────────────────────────
 
 const G: React.CSSProperties = {
@@ -530,6 +586,24 @@ export default function AtlasAllMapClient() {
   const [pdLoading, setPdLoading] = useState(false);
   const [selectedRidingEdId, setSelectedRidingEdId] = useState<number | null>(null);
   const [selectedRidingName, setSelectedRidingName] = useState<string | null>(null);
+
+  // Ontario municipal boundaries (OMAFRA)
+  const [showOnMuni, setShowOnMuni] = useState(false);
+  const [onMuniData, setOnMuniData] = useState<FeatureCollection | null>(null);
+  const [onMuniLoading, setOnMuniLoading] = useState(false);
+
+  // BC electoral + municipal layers
+  const [showBCRidings, setShowBCRidings] = useState(false);
+  const [bcRidingsData, setBcRidingsData] = useState<FeatureCollection | null>(null);
+  const [bcRidingsLoading, setBcRidingsLoading] = useState(false);
+  const [showBCMuni, setShowBCMuni] = useState(false);
+  const [bcMuniData, setBcMuniData] = useState<FeatureCollection | null>(null);
+  const [bcMuniLoading, setBcMuniLoading] = useState(false);
+
+  // Address points layer (civic addresses, per ward)
+  const [showAddrPts, setShowAddrPts] = useState(false);
+  const [addrPtsData, setAddrPtsData] = useState<FeatureCollection | null>(null);
+  const [addrPtsLoading, setAddrPtsLoading] = useState(false);
 
   // Ward state
   const [wards, setWards] = useState<FeatureCollection | null>(null);
@@ -772,6 +846,71 @@ export default function AtlasAllMapClient() {
       .catch(() => {})
       .finally(() => setPdLoading(false));
   }, [showPDs, selectedRidingEdId]);
+
+  // Ontario municipal boundaries — lazy load on first toggle
+  useEffect(() => {
+    if (!showOnMuni || onMuniData) return;
+    setOnMuniLoading(true);
+    fetch("/api/atlas/ontario-municipal")
+      .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+      .then(d => { if (d?.featureCollection) setOnMuniData(d.featureCollection); })
+      .catch(() => {})
+      .finally(() => setOnMuniLoading(false));
+  }, [showOnMuni, onMuniData]);
+
+  // BC ridings — lazy load on first toggle
+  useEffect(() => {
+    if (!showBCRidings || bcRidingsData) return;
+    setBcRidingsLoading(true);
+    fetch("/api/atlas/bc-ridings")
+      .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+      .then(d => { if (d?.featureCollection) setBcRidingsData(d.featureCollection); })
+      .catch(() => {})
+      .finally(() => setBcRidingsLoading(false));
+  }, [showBCRidings, bcRidingsData]);
+
+  // BC municipal — lazy load on first toggle
+  useEffect(() => {
+    if (!showBCMuni || bcMuniData) return;
+    setBcMuniLoading(true);
+    fetch("/api/atlas/bc-municipal")
+      .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+      .then(d => { if (d?.featureCollection) setBcMuniData(d.featureCollection); })
+      .catch(() => {})
+      .finally(() => setBcMuniLoading(false));
+  }, [showBCMuni, bcMuniData]);
+
+  // Address points — load all Toronto wards when toggled (lazy, one API call per ward)
+  useEffect(() => {
+    if (!showAddrPts || addrPtsData) return;
+    setAddrPtsLoading(true);
+    // Load ward index, then fetch all wards and merge into one FeatureCollection
+    fetch("/api/atlas/address-points?municipality=Toronto")
+      .then(r => r.ok ? (r.json() as Promise<{ wards: { wardId: string }[] }>) : null)
+      .then(async index => {
+        if (!index?.wards?.length) return;
+        const CHUNK = 5;
+        const allFeatures: Feature[] = [];
+        for (let i = 0; i < index.wards.length; i += CHUNK) {
+          const batch = index.wards.slice(i, i + CHUNK);
+          const results = await Promise.all(
+            batch.map(w =>
+              fetch(`/api/atlas/address-points?municipality=Toronto&ward=${encodeURIComponent(w.wardId)}`)
+                .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+                .catch(() => null)
+            )
+          );
+          for (const r of results) {
+            if (r?.featureCollection && "features" in r.featureCollection) {
+              allFeatures.push(...(r.featureCollection.features as Feature[]));
+            }
+          }
+        }
+        setAddrPtsData({ type: "FeatureCollection", features: allFeatures });
+      })
+      .catch(() => {})
+      .finally(() => setAddrPtsLoading(false));
+  }, [showAddrPts, addrPtsData]);
 
   // Grouped sidebar — homeMuni sorts first, others alphabetically
   const municipalityGroups = useMemo(() => {
@@ -1130,6 +1269,39 @@ export default function AtlasAllMapClient() {
             <Layer {...pdLineLayer} />
           </Source>
         )}
+
+        {/* Ontario municipal boundaries (OMAFRA) */}
+        {showOnMuni && onMuniData && (
+          <Source id="on-muni" type="geojson" data={onMuniData}>
+            <Layer {...onMuniFillLayer} />
+            <Layer {...onMuniLineLayer} />
+          </Source>
+        )}
+
+        {/* BC ridings (Elections BC) */}
+        {showBCRidings && bcRidingsData && (
+          <Source id="bc-ridings" type="geojson" data={bcRidingsData}>
+            <Layer {...bcRidingsFillLayer} />
+            <Layer {...bcRidingsLineLayer} />
+          </Source>
+        )}
+
+        {/* BC municipal boundaries */}
+        {showBCMuni && bcMuniData && (
+          <Source id="bc-muni" type="geojson" data={bcMuniData}>
+            <Layer {...bcMuniFillLayer} />
+            <Layer {...bcMuniLineLayer} />
+          </Source>
+        )}
+
+        {/* Address points — clustered civic addresses */}
+        {showAddrPts && addrPtsData && (
+          <Source id="addr-pts" type="geojson" data={addrPtsData} cluster clusterMaxZoom={14} clusterRadius={40}>
+            <Layer {...addrPtClusterLayer} />
+            <Layer {...addrPtClusterCountLayer} />
+            <Layer {...addrPtPointLayer} />
+          </Source>
+        )}
       </MapGL>
 
       {/* ── HEADER ───────────────────────────────────────────────────── */}
@@ -1216,55 +1388,57 @@ export default function AtlasAllMapClient() {
           </div>
         </div>
 
-        {/* Provincial Layers section — Elections Ontario */}
+        {/* Reference Layers section */}
         <div style={{ padding: "10px 14px 10px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <div style={{ ...labelStyle, marginBottom: 8 }}>
-            Provincial Layers
-            {(ridingsLoading || pdLoading) && (
+            Reference Layers
+            {(ridingsLoading || pdLoading || onMuniLoading || bcRidingsLoading || bcMuniLoading || addrPtsLoading) && (
               <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400, marginLeft: 6 }}>loading…</span>
             )}
           </div>
 
-          <div style={{ marginBottom: 6 }}>
-            <LayerToggle
-              icon="🏛️"
-              label="ON Ridings"
-              count={ridingsData?.features.length ?? 0}
-              active={showRidings}
-              onToggle={() => setShowRidings(v => !v)}
-              color="#3B82F6"
-            />
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle icon="🏛️" label="ON Ridings" count={ridingsData?.features.length ?? 0}
+              active={showRidings} onToggle={() => setShowRidings(v => !v)} color="#3B82F6" />
+          </div>
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle icon="📍"
+              label={selectedRidingEdId && selectedRidingName ? `Polling Divs — ${selectedRidingName}` : "Polling Divs"}
+              count={pdData?.features.length ?? 0}
+              active={showPDs} onToggle={() => setShowPDs(v => !v)} color="#8B5CF6" />
+          </div>
+          {showPDs && !selectedRidingEdId && (
+            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginBottom: 4, lineHeight: 1.5 }}>
+              Enable ON Ridings then click a riding to load its polling divisions.
+            </div>
+          )}
+
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle icon="🏙️" label="ON Municipal" count={onMuniData?.features.length ?? 0}
+              active={showOnMuni} onToggle={() => setShowOnMuni(v => !v)} color="#EF9F27" />
           </div>
 
           <div style={{ marginBottom: 4 }}>
-            <LayerToggle
-              icon="📍"
-              label={selectedRidingEdId && selectedRidingName ? `Polling Divs — ${selectedRidingName}` : "Polling Divs"}
-              count={pdData?.features.length ?? 0}
-              active={showPDs}
-              onToggle={() => {
-                setShowPDs(v => !v);
-                if (!showPDs && !selectedRidingEdId) {
-                  // Prompt to click a riding first
-                }
-              }}
-              color="#8B5CF6"
-            />
+            <LayerToggle icon="🌲" label="BC Ridings" count={bcRidingsData?.features.length ?? 0}
+              active={showBCRidings} onToggle={() => setShowBCRidings(v => !v)} color="#10B981" />
+          </div>
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle icon="🏔️" label="BC Municipal" count={bcMuniData?.features.length ?? 0}
+              active={showBCMuni} onToggle={() => setShowBCMuni(v => !v)} color="#0EA5E9" />
           </div>
 
-          {showPDs && !selectedRidingEdId && (
-            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 4, lineHeight: 1.5 }}>
-              Enable ON Ridings, then click a riding to load its polling divisions.
-            </div>
-          )}
-          {showPDs && selectedRidingEdId && !pdData && !pdLoading && (
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle icon="📌" label="Address Points" count={addrPtsData?.features.length ?? 0}
+              active={showAddrPts} onToggle={() => setShowAddrPts(v => !v)} color="#F97316" />
+          </div>
+          {showAddrPts && !addrPtsData && !addrPtsLoading && (
             <div style={{ color: "#E24B4A", fontSize: 10, marginTop: 4 }}>
-              No PD data. Run the import script first.
+              No address data. Run: npx tsx scripts/import-address-points.ts
             </div>
           )}
 
           <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, marginTop: 6 }}>
-            Source: Elections Ontario GE2022/GE2025
+            ON: Elections Ontario · OMAFRA · BC: Elections BC · BC Data Catalogue
           </div>
         </div>
       </motion.div>
@@ -1729,7 +1903,7 @@ export default function AtlasAllMapClient() {
 
       {/* ── LEGEND ───────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {(contactsOverlay && contactsOverlay.stats.totalContacts > 0) || showSigns || showPolling || showRidings || showPDs ? (
+        {(contactsOverlay && contactsOverlay.stats.totalContacts > 0) || showSigns || showPolling || showRidings || showPDs || showOnMuni || showBCRidings || showBCMuni || showAddrPts ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
             style={{ ...GL, position: "absolute", bottom: 16, left: 268, zIndex: 10, padding: "8px 12px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", maxWidth: "calc(100vw - 400px)" }}
@@ -1776,6 +1950,30 @@ export default function AtlasAllMapClient() {
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ width: 10, height: 3, background: "#8B5CF6", display: "inline-block", borderRadius: 1 }} />
                 <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>📍 Polling Division{selectedRidingName ? ` — ${selectedRidingName}` : ""}</span>
+              </div>
+            )}
+            {showOnMuni && onMuniData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 3, background: "#EF9F27", display: "inline-block", borderRadius: 1 }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🏙️ ON Municipality</span>
+              </div>
+            )}
+            {showBCRidings && bcRidingsData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 3, background: "#10B981", display: "inline-block", borderRadius: 1 }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🌲 BC Provincial Riding</span>
+              </div>
+            )}
+            {showBCMuni && bcMuniData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 3, background: "#0EA5E9", display: "inline-block", borderRadius: 1 }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🏔️ BC Municipality</span>
+              </div>
+            )}
+            {showAddrPts && addrPtsData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F97316", display: "inline-block" }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>📌 Address Points</span>
               </div>
             )}
           </motion.div>

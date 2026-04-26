@@ -9395,6 +9395,68 @@ model OntarioPollingDivisionLayer {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ONTARIO MUNICIPAL BOUNDARIES (OMAFRA lower/single-tier shapefiles)
+// All 444 Ontario municipalities — platform-wide reference data
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OntarioMunicipalBoundaryLayer {
+  id                String   @id @default(cuid())
+  featureCollection Json     // GeoJSON FeatureCollection — all lower/single-tier municipalities
+  municipalityCount Int      // unique MUNID count
+  tierType          String   // "lower_and_single" | "upper_and_district"
+  importedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([tierType])
+  @@map("ontario_municipal_boundary_layers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADDRESS POINTS (civic address database, per municipality + ward)
+// Row per ward — supports bbox-based loading for the Atlas map
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AddressPointLayer {
+  id                String   @id @default(cuid())
+  municipality      String   // "Toronto", "Whitby", etc.
+  wardId            String   // ward identifier from source data ("09", "Ward 1", etc.)
+  featureCollection Json     // GeoJSON FeatureCollection of Point features for this ward
+  pointCount        Int
+  importedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([municipality, wardId])
+  @@index([municipality])
+  @@map("address_point_layers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BC BOUNDARY LAYERS (Elections BC + BC Data Catalogue shapefiles)
+// Platform-wide reference data — not campaign-scoped
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BCRidingLayer {
+  id                String   @id @default(cuid())
+  featureCollection Json     // GeoJSON FeatureCollection — all BC provincial electoral districts
+  ridingCount       Int
+  electionYear      Int      // most recent election year
+  importedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("bc_riding_layers")
+}
+
+model BCMunicipalBoundaryLayer {
+  id                String   @id @default(cuid())
+  featureCollection Json     // GeoJSON FeatureCollection — all BC municipalities
+  municipalityCount Int
+  importedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("bc_municipal_boundary_layers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UNIFIED QR + FIELD OPS + FINANCE SYSTEM
 // Phase 1: Sign Events — audit trail for every field action on a sign
 // ─────────────────────────────────────────────────────────────────────────────
