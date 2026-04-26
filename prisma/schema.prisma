@@ -9363,6 +9363,38 @@ model WardBoundary {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ONTARIO PROVINCIAL BOUNDARY LAYERS (Elections Ontario shapefiles)
+// Platform-wide reference data — not campaign-scoped
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OntarioRidingLayer {
+  id              String   @id @default(cuid())
+  // Single row: the entire 124-riding FeatureCollection (reprojected to WGS84)
+  featureCollection Json   // GeoJSON FeatureCollection — all 124 ridings
+  ridingCount     Int      // 124 for 2022 redistribution
+  electionYear    Int      // 2022
+  importedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ontario_riding_layers")
+}
+
+model OntarioPollingDivisionLayer {
+  id              String   @id @default(cuid())
+  edId            Int      // Electoral District ID — foreign key to riding
+  edNameEnglish   String   // Riding name e.g. "Ajax"
+  featureCollection Json   // GeoJSON FeatureCollection — all PDs for this riding
+  pdCount         Int      // number of polling divisions
+  electionYear    Int      // 2025 (GE2025)
+  importedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([edId, electionYear])
+  @@index([edId])
+  @@map("ontario_polling_division_layers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UNIFIED QR + FIELD OPS + FINANCE SYSTEM
 // Phase 1: Sign Events — audit trail for every field action on a sign
 // ─────────────────────────────────────────────────────────────────────────────

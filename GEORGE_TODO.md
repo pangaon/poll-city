@@ -1160,6 +1160,55 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
 
 ---
 
+## 🗺️ ONTARIO PROVINCIAL BOUNDARIES — Atlas layers (ridings + polling divisions)
+
+- [ ] **86. Run `npx prisma db push` — adds OntarioRidingLayer + OntarioPollingDivisionLayer tables**
+
+  Two new models were added to support Elections Ontario shapefile data:
+  - `ontario_riding_layers` — holds the full 124-riding FeatureCollection (one row)
+  - `ontario_polling_division_layers` — holds PD FeatureCollections keyed by riding (124 rows)
+
+  ```bash
+  npx prisma db push
+  ```
+
+  Safe to run. Adds two new tables, no data changes.
+
+- [ ] **87. Download Elections Ontario shapefiles**
+
+  You need the official shapefile ZIPs from Elections Ontario:
+
+  1. **Electoral Districts (ridings):** Go to [elections.on.ca](https://www.elections.on.ca) → Open Data → Electoral District Boundaries → Download the ZIP containing `ELECTORAL_DISTRICT.shp`
+  2. **Polling Divisions:** Same page → Polling Division Boundaries → Download the ZIP containing `POLLING_DIVISION.shp`
+  3. Extract both ZIPs somewhere on your machine. Note the folder paths.
+
+  You need 4 files total from each ZIP:
+  - `ELECTORAL_DISTRICT.shp` + `.dbf` + `.prj` + `.shx`
+  - `POLLING_DIVISION.shp` + `.dbf` + `.prj` + `.shx`
+
+- [ ] **88. Run the provincial shapefile import script** (after items 86 + 87 are done)
+
+  ```bash
+  npx tsx scripts/import-provincial-shapefiles.ts \
+    --ridings "C:/path/to/ELECTORAL_DISTRICT.shp" \
+    --polling "C:/path/to/POLLING_DIVISION.shp"
+  ```
+
+  Replace the paths with the actual extracted locations from step 87.
+
+  **What it does:**
+  - Reads both shapefiles
+  - Reprojects from EO Lambert Conformal Conic → WGS84 (required for MapLibre)
+  - Bundles all 124 ridings into one row in `ontario_riding_layers`
+  - Bundles each riding's ~100-300 polling divisions into 124 rows in `ontario_polling_division_layers`
+  - Upserts safely — safe to re-run
+
+  **Expected output:** "✓ 124 ridings saved" + "✓ 10,704 polling divisions across 124 ridings saved"
+
+  After running, open Atlas → Map → enable "ON Ridings" or "Polling Divs" toggle to verify.
+
+---
+
 *This file is maintained by AI sessions. Last updated: 2026-04-25*
 *Format: [ ] = todo, [x] = done. AI sessions add steps here when new manual work is identified.*
 *`docs/GEORGE-ACTION-LIST.md` has been superseded by this file and can be deleted.*

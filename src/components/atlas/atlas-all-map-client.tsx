@@ -92,6 +92,15 @@ type ViewMode = "dots" | "heatmap" | "support" | "dnk";
 // Campaign layers = additional overlays toggled independently
 type CampaignLayer = "signs" | "polling";
 
+// Provincial layer data shape
+type ProvincialLayerResponse = {
+  featureCollection: FeatureCollection;
+  ridingCount?: number;
+  pdCount?: number;
+  edId?: number;
+  edNameEnglish?: string;
+};
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function computeBbox(fc: FeatureCollection): [[number, number], [number, number]] | null {
@@ -346,6 +355,30 @@ const pollingLayerSpec: Omit<CircleLayerSpecification, "source"> = {
   },
 };
 
+// Provincial boundary layers — Elections Ontario (reprojected to WGS84)
+const ridingsFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "prov-ridings-fill", type: "fill",
+  paint: { "fill-color": "#3B82F6", "fill-opacity": 0.08 },
+};
+const ridingsLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "prov-ridings-line", type: "line",
+  paint: { "line-color": "#3B82F6", "line-width": 1.8, "line-opacity": 0.7 },
+};
+const pdFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "prov-pd-fill", type: "fill",
+  paint: { "fill-color": "#8B5CF6", "fill-opacity": 0.1 },
+  minzoom: 10,
+};
+const pdLineLayer: Omit<LineLayerSpecification, "source"> = {
+  id: "prov-pd-line", type: "line",
+  paint: { "line-color": "#8B5CF6", "line-width": 1.2, "line-opacity": 0.65 },
+  minzoom: 10,
+};
+const ridingsClickFillLayer: Omit<FillLayerSpecification, "source"> = {
+  id: "prov-ridings-click", type: "fill",
+  paint: { "fill-color": "#3B82F6", "fill-opacity": 0 },
+};
+
 // ─── glass ───────────────────────────────────────────────────────────────────
 
 const G: React.CSSProperties = {
@@ -487,6 +520,16 @@ export default function AtlasAllMapClient() {
   // Campaign layer toggles
   const [showSigns, setShowSigns] = useState(false);
   const [showPolling, setShowPolling] = useState(false);
+
+  // Provincial boundary layers (Elections Ontario)
+  const [showRidings, setShowRidings] = useState(false);
+  const [ridingsData, setRidingsData] = useState<FeatureCollection | null>(null);
+  const [ridingsLoading, setRidingsLoading] = useState(false);
+  const [showPDs, setShowPDs] = useState(false);
+  const [pdData, setPdData] = useState<FeatureCollection | null>(null);
+  const [pdLoading, setPdLoading] = useState(false);
+  const [selectedRidingEdId, setSelectedRidingEdId] = useState<number | null>(null);
+  const [selectedRidingName, setSelectedRidingName] = useState<string | null>(null);
 
   // Ward state
   const [wards, setWards] = useState<FeatureCollection | null>(null);
@@ -708,6 +751,28 @@ export default function AtlasAllMapClient() {
     if (pollingOverlay && pollingOverlay.features.length > 0) setShowPolling(true);
   }, [pollingOverlay]);
 
+  // Fetch provincial ridings on demand (lazy — only when toggle turned on)
+  useEffect(() => {
+    if (!showRidings || ridingsData) return;
+    setRidingsLoading(true);
+    fetch("/api/atlas/provincial-ridings")
+      .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+      .then(d => { if (d?.featureCollection) setRidingsData(d.featureCollection); })
+      .catch(() => {})
+      .finally(() => setRidingsLoading(false));
+  }, [showRidings, ridingsData]);
+
+  // Fetch PDs for selected riding on demand
+  useEffect(() => {
+    if (!showPDs || selectedRidingEdId === null) return;
+    setPdLoading(true);
+    fetch(`/api/atlas/polling-divisions?edId=${selectedRidingEdId}`)
+      .then(r => r.ok ? (r.json() as Promise<ProvincialLayerResponse>) : null)
+      .then(d => { if (d?.featureCollection) setPdData(d.featureCollection); })
+      .catch(() => {})
+      .finally(() => setPdLoading(false));
+  }, [showPDs, selectedRidingEdId]);
+
   // Grouped sidebar — homeMuni sorts first, others alphabetically
   const municipalityGroups = useMemo(() => {
     if (!wards) return [];
@@ -768,7 +833,7 @@ export default function AtlasAllMapClient() {
       map.setFeatureState({ source: "wards", id }, { hover: true });
       setHoveredId(id);
       map.getCanvas().style.cursor = "pointer";
-    } else if (e.features?.some(f => ["addr-clusters", "addr-point", "addr-support-point", "addr-dnk-point", "signs-point", "polling-point"].includes(f.layer.id))) {
+    } else if (e.features?.some(f => ["addr-clusters", "addr-point", "addr-support-point", "addr-dnk-point", "signs-point", "polling-point", "prov-ridings-click"].includes(f.layer.id))) {
       map.getCanvas().style.cursor = "pointer";
     } else {
       if (hoveredId !== null) map.setFeatureState({ source: "wards", id: hoveredId }, { hover: false });
@@ -791,6 +856,19 @@ export default function AtlasAllMapClient() {
 
     const signF = e.features?.find(f => f.layer.id === "signs-point");
     if (signF) { setSelectedSign(signF.properties); setSelectedPolling(null); setSelectedAddress(null); return; }
+
+    // Provincial riding click → load that riding's polling divisions
+    const ridingF = e.features?.find(f => f.layer.id === "prov-ridings-click");
+    if (ridingF && showPDs) {
+      const edId = ridingF.properties?.ED_ID as number | undefined;
+      const edName = ridingF.properties?.ED_NAME_EN as string | undefined;
+      if (edId !== undefined) {
+        setSelectedRidingEdId(edId);
+        setSelectedRidingName(edName ?? null);
+        setPdData(null); // clear previous riding's PDs
+      }
+      return;
+    }
 
     const cluster = e.features?.find(f => f.layer.id === "addr-clusters");
     if (cluster) {
@@ -969,6 +1047,7 @@ export default function AtlasAllMapClient() {
       : []),
     ...(showSigns && hasSignsData ? ["signs-point"] : []),
     ...(showPolling && hasPollingData ? ["polling-point"] : []),
+    ...(showRidings && ridingsData ? ["prov-ridings-click"] : []),
   ];
 
   return (
@@ -1034,6 +1113,21 @@ export default function AtlasAllMapClient() {
         {showPolling && pollingOverlay && pollingOverlay.features.length > 0 && (
           <Source id="polling-overlay" type="geojson" data={pollingOverlay}>
             <Layer {...pollingLayerSpec} />
+          </Source>
+        )}
+
+        {/* Provincial boundary overlays — Elections Ontario */}
+        {showRidings && ridingsData && (
+          <Source id="prov-ridings" type="geojson" data={ridingsData}>
+            <Layer {...ridingsFillLayer} />
+            <Layer {...ridingsLineLayer} />
+            <Layer {...ridingsClickFillLayer} />
+          </Source>
+        )}
+        {showPDs && pdData && (
+          <Source id="prov-pds" type="geojson" data={pdData}>
+            <Layer {...pdFillLayer} />
+            <Layer {...pdLineLayer} />
           </Source>
         )}
       </MapGL>
@@ -1119,6 +1213,58 @@ export default function AtlasAllMapClient() {
           <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, lineHeight: 1.6 }}>
             {selectedWard ? "Click another ward to switch." : "Pan + click any ward to load doors."}<br />
             Data: Whitby GeoHub · Toronto Open Data · Markham · Pickering · Durham Region
+          </div>
+        </div>
+
+        {/* Provincial Layers section — Elections Ontario */}
+        <div style={{ padding: "10px 14px 10px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ ...labelStyle, marginBottom: 8 }}>
+            Provincial Layers
+            {(ridingsLoading || pdLoading) && (
+              <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400, marginLeft: 6 }}>loading…</span>
+            )}
+          </div>
+
+          <div style={{ marginBottom: 6 }}>
+            <LayerToggle
+              icon="🏛️"
+              label="ON Ridings"
+              count={ridingsData?.features.length ?? 0}
+              active={showRidings}
+              onToggle={() => setShowRidings(v => !v)}
+              color="#3B82F6"
+            />
+          </div>
+
+          <div style={{ marginBottom: 4 }}>
+            <LayerToggle
+              icon="📍"
+              label={selectedRidingEdId && selectedRidingName ? `Polling Divs — ${selectedRidingName}` : "Polling Divs"}
+              count={pdData?.features.length ?? 0}
+              active={showPDs}
+              onToggle={() => {
+                setShowPDs(v => !v);
+                if (!showPDs && !selectedRidingEdId) {
+                  // Prompt to click a riding first
+                }
+              }}
+              color="#8B5CF6"
+            />
+          </div>
+
+          {showPDs && !selectedRidingEdId && (
+            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 4, lineHeight: 1.5 }}>
+              Enable ON Ridings, then click a riding to load its polling divisions.
+            </div>
+          )}
+          {showPDs && selectedRidingEdId && !pdData && !pdLoading && (
+            <div style={{ color: "#E24B4A", fontSize: 10, marginTop: 4 }}>
+              No PD data. Run the import script first.
+            </div>
+          )}
+
+          <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 9, marginTop: 6 }}>
+            Source: Elections Ontario GE2022/GE2025
           </div>
         </div>
       </motion.div>
@@ -1583,7 +1729,7 @@ export default function AtlasAllMapClient() {
 
       {/* ── LEGEND ───────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {(contactsOverlay && contactsOverlay.stats.totalContacts > 0) || showSigns || showPolling ? (
+        {(contactsOverlay && contactsOverlay.stats.totalContacts > 0) || showSigns || showPolling || showRidings || showPDs ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
             style={{ ...GL, position: "absolute", bottom: 16, left: 268, zIndex: 10, padding: "8px 12px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", maxWidth: "calc(100vw - 400px)" }}
@@ -1618,6 +1764,18 @@ export default function AtlasAllMapClient() {
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#0A2342", border: "2px solid #EF9F27", display: "inline-block" }} />
                 <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🗳️ Polling Station</span>
+              </div>
+            )}
+            {showRidings && ridingsData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 3, background: "#3B82F6", display: "inline-block", borderRadius: 1 }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>🏛️ ON Provincial Riding</span>
+              </div>
+            )}
+            {showPDs && pdData && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 10, height: 3, background: "#8B5CF6", display: "inline-block", borderRadius: 1 }} />
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10 }}>📍 Polling Division{selectedRidingName ? ` — ${selectedRidingName}` : ""}</span>
               </div>
             )}
           </motion.div>

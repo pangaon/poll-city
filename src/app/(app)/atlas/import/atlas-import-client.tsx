@@ -134,6 +134,14 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ArcGIS / URL / file import state
+  const [urlInput, setUrlInput] = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
+  const [fileDragging, setFileDragging] = useState(false);
+  const [importResult, setImportResult] = useState<{ count: number; skipped: number; label: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Debounced autocomplete
   useEffect(() => {
     const q = municipality.trim();
@@ -231,6 +239,76 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
       toast.error((e instanceof Error ? e.message : "Failed to fetch addresses"));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUrlImport() {
+    const url = urlInput.trim();
+    if (!url) { toast.error("Paste a URL first"); return; }
+    setUrlLoading(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/address-prelist/fetch-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-campaign-id": campaignId },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { count?: number; skipped?: number; error?: string };
+      if (!res.ok) { toast.error(data.error ?? "Import failed"); return; }
+      const count = data.count ?? 0;
+      const skipped = data.skipped ?? 0;
+      setImportResult({ count, skipped, label: url.slice(0, 60) });
+      onSuccess({
+        id: `url-${Date.now()}`,
+        filename: url.slice(0, 60),
+        type: "Addr Pre-List",
+        records: count,
+        date: new Date().toISOString().slice(0, 10),
+        duration: "< 1s",
+        status: "Success",
+        detail: skipped > 0 ? `${skipped} features skipped` : undefined,
+      });
+      toast.success(`${count.toLocaleString()} addresses imported from URL`);
+      setUrlInput("");
+    } finally {
+      setUrlLoading(false);
+    }
+  }
+
+  async function handleFileUpload(file: File) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["geojson", "json"].includes(ext ?? "")) {
+      toast.error("Please upload a GeoJSON file (.geojson or .json)");
+      return;
+    }
+    setFileUploading(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/address-prelist/upload", {
+        method: "POST",
+        headers: { "x-campaign-id": campaignId },
+        body: fd,
+      });
+      const data = (await res.json()) as { count?: number; skipped?: number; error?: string };
+      if (!res.ok) { toast.error(data.error ?? "Upload failed"); return; }
+      const count = data.count ?? 0;
+      const skipped = data.skipped ?? 0;
+      setImportResult({ count, skipped, label: file.name });
+      onSuccess({
+        id: `file-${Date.now()}`,
+        filename: file.name,
+        type: "Addr Pre-List",
+        records: count,
+        date: new Date().toISOString().slice(0, 10),
+        duration: "< 1s",
+        status: "Success",
+        detail: skipped > 0 ? `${skipped} features skipped` : undefined,
+      });
+      toast.success(`${count.toLocaleString()} addresses imported from ${file.name}`);
+    } finally {
+      setFileUploading(false);
     }
   }
 
@@ -378,6 +456,101 @@ function PrelistPanel({ campaignId, onSuccess }: { campaignId: string; onSuccess
         </button>
       </div>
 
+      {/* ── Import by URL or file ─────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-800" />
+          <span className="text-xs text-slate-500 whitespace-nowrap">or import directly</span>
+          <div className="flex-1 h-px bg-slate-800" />
+        </div>
+
+        {/* URL input */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            Add by URL — ArcGIS Hub, GeoJSON endpoint, OGC WFS
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !urlLoading) void handleUrlImport(); }}
+              placeholder="https://public-townofcobourg.hub.arcgis.com/datasets/…"
+              className="flex-1 bg-[#0A1628] border border-slate-700 rounded-lg px-3 py-2.5 text-slate-200 text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30"
+            />
+            <button
+              onClick={() => void handleUrlImport()}
+              disabled={urlLoading || !urlInput.trim()}
+              className={cn(
+                "px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap",
+                urlLoading || !urlInput.trim()
+                  ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                  : "bg-amber-500 hover:bg-amber-400 text-slate-950"
+              )}
+            >
+              {urlLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {urlLoading ? "Fetching…" : "Import"}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-slate-600">Paste the ArcGIS Hub dataset URL — Poll City fetches the GeoJSON directly. No download needed.</p>
+        </div>
+
+        {/* File drop zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setFileDragging(true); }}
+          onDragLeave={() => setFileDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setFileDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleFileUpload(f); }}
+          onClick={() => !fileUploading && fileInputRef.current?.click()}
+          className={cn(
+            "border-2 border-dashed rounded-xl p-5 flex items-center gap-4 cursor-pointer transition-all",
+            fileDragging ? "border-amber-500 bg-amber-950/20" : "border-slate-800 hover:border-slate-700 bg-[#080F1C]",
+            fileUploading && "pointer-events-none opacity-60"
+          )}
+        >
+          {fileUploading
+            ? <Loader2 className="w-5 h-5 text-amber-400 animate-spin flex-shrink-0" />
+            : <Upload className={cn("w-5 h-5 flex-shrink-0", fileDragging ? "text-amber-400" : "text-slate-600")} />
+          }
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-slate-400 font-medium">
+              {fileUploading ? "Importing…" : "Or drop a GeoJSON file"}
+            </p>
+            <p className="text-xs text-slate-600 truncate">Address_Points.geojson · any ArcGIS Hub export</p>
+          </div>
+          {!fileUploading && (
+            <button className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors flex-shrink-0">
+              Browse
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".geojson,.json"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); }}
+          />
+        </div>
+
+        {/* Import success banner */}
+        <AnimatePresence>
+          {importResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-green-950/40 border border-green-800/40"
+            >
+              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+              <span className="text-green-300 font-medium">{importResult.count.toLocaleString()} addresses imported</span>
+              <span className="text-slate-500 text-xs truncate">from {importResult.label}</span>
+              {importResult.skipped > 0 && (
+                <span className="text-amber-400 text-xs ml-auto flex-shrink-0">{importResult.skipped} skipped</span>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Results */}
       <AnimatePresence>
         {result && (
@@ -483,7 +656,7 @@ function FileDropPanel({ sourceId, campaignId, onSuccess }: { sourceId: SourceId
 
   function handleFile(file: File | undefined) {
     if (!file) return;
-    if (sourceId === "boundaries") { handleBoundaryFile(file); return; }
+    if (sourceId === "boundaries") { void handleBoundaryFile(file); return; }
     toast.info("CSV import coming soon — use Import / Export for voter files");
   }
 
