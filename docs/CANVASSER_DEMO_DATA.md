@@ -4,6 +4,7 @@
 `/api/canvasser/missions` reads from `FieldAssignment` + `AssignmentStop`, **not** from `Turf` / `TurfStop` directly.
 
 If turfs exist but field assignments are missing, the mobile Canvassing tab can still look empty.
+Also, mission visibility now accepts assignments inherited from turf assignee fields (`Turf.assignedUserId` / `assignedVolunteerId`) when direct mission assignment fields are empty.
 
 ## Fix command
 

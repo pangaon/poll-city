@@ -32,6 +32,14 @@ async function ensureMissionAccess(params: {
       campaignId: params.campaignId,
       deletedAt: null,
     },
+    include: {
+      fieldUnit: {
+        select: {
+          assignedUserId: true,
+          assignedVolunteerId: true,
+        },
+      },
+    },
   });
   if (!mission) throw new Error("MISSION_NOT_FOUND");
 
@@ -39,7 +47,11 @@ async function ensureMissionAccess(params: {
 
   const assignedToUser = mission.assignedUserId === params.userId;
   const assignedToMembership = mission.assignedVolunteerId === params.membershipId;
-  if (!assignedToUser && !assignedToMembership) throw new Error("MISSION_FORBIDDEN");
+  const turfAssignedToUser = mission.fieldUnit?.assignedUserId === params.userId;
+  const turfAssignedToMembership = mission.fieldUnit?.assignedVolunteerId === params.membershipId;
+  if (!assignedToUser && !assignedToMembership && !turfAssignedToUser && !turfAssignedToMembership) {
+    throw new Error("MISSION_FORBIDDEN");
+  }
 
   return mission;
 }
@@ -80,7 +92,12 @@ export const missionService = {
       ...(isManagerRole(role)
         ? {}
         : {
-            OR: [{ assignedUserId: userId }, { assignedVolunteerId: membershipId }],
+            OR: [
+              { assignedUserId: userId },
+              { assignedVolunteerId: membershipId },
+              { fieldUnit: { assignedUserId: userId } },
+              { fieldUnit: { assignedVolunteerId: membershipId } },
+            ],
           }),
     };
 
