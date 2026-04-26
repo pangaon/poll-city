@@ -567,6 +567,7 @@ function LayerToggle({
 
 export default function AtlasAllMapClient() {
   const mapRef = useRef<MapRef>(null);
+  const hasFitBoundsRef = useRef(false);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // Address view mode
@@ -686,9 +687,10 @@ export default function AtlasAllMapClient() {
   }, []);
 
   useEffect(() => {
-    if (!mapLoaded || !wards || !mapRef.current) return;
+    if (!mapLoaded || !wards || !mapRef.current || hasFitBoundsRef.current) return;
     const bbox = computeBbox(wards);
     if (!bbox) return;
+    hasFitBoundsRef.current = true;
     try { mapRef.current.fitBounds(bbox, { padding: 60, duration: 1200, maxZoom: 10 }); } catch { /* ignore */ }
   }, [mapLoaded, wards]);
 

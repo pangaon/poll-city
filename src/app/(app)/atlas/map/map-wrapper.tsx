@@ -16,6 +16,17 @@ const AtlasAllMapClient = dynamic(
   },
 );
 
+// Break out of the app layout's padding wrapper and give the map a definite
+// height. Without this, height:100% inside AtlasAllMapClient resolves to 0
+// (the padding div has no explicit height), causing MapLibre's ResizeObserver
+// to loop continuously and the map to appear as if it never stops moving.
 export default function MapWrapper() {
-  return <AtlasAllMapClient />;
+  return (
+    <div
+      className="-m-3 sm:-m-4 md:-m-6"
+      style={{ height: "calc(100dvh - 3.5rem)" }}
+    >
+      <AtlasAllMapClient />
+    </div>
+  );
 }
