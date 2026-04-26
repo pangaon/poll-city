@@ -1,36 +1,54 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-26 (Elections Ontario provincial boundaries on Atlas)
+**Last updated:** 2026-04-26 (Atlas geographic layers batch 2 + address import endpoints)
 **Updated by:** Claude Sonnet 4.6
 
 ## CURRENT PLATFORM STATE
 
 ### Build
-`npm run build` exits 0. TypeScript clean. All commits on `origin/main`.
+`npm run build` exits 0. TypeScript clean. 908 tests passing. All commits on `origin/main`.
+
+### What shipped (2026-04-26 — Atlas layers batch 2 + ArcGIS import)
+
+| Commit | What changed |
+|---|---|
+| `140debd` | ON municipal, address points, BC ridings + BC municipal layers (schema + import scripts + API routes + Atlas UI) |
+| `30149e6` | GEORGE_TODO doc fix — `--file` flag in import-address-points command |
+| `0bc6df6` | Map height fix — break out of layout padding, set `calc(100dvh - 3.5rem)` |
+| `507997e` | fitBounds guard (`hasFitBoundsRef`) + ArcGIS address-prelist endpoints |
+
+**What is live (code deployed, data pending George's import runs):**
+- 4 new Prisma models: `OntarioMunicipalBoundaryLayer`, `AddressPointLayer`, `BCRidingLayer`, `BCMunicipalBoundaryLayer`
+- 4 new API routes (all auth-gated with getServerSession/apiAuth):
+  - `GET /api/atlas/ontario-municipal?tier=lower_and_single` — 444 ON municipalities
+  - `GET /api/atlas/address-points?municipality=Toronto[&ward=X]` — Toronto civic address points (525K, per-ward)
+  - `GET /api/atlas/bc-ridings` — BC provincial electoral districts
+  - `GET /api/atlas/bc-municipal` — BC municipal boundaries
+  - `POST /api/address-prelist/upload` — multipart GeoJSON → AddressPreList records (campaignId-scoped)
+  - `POST /api/address-prelist/fetch-url` — ArcGIS Hub URL → fetches + imports GeoJSON
+- 3 import scripts: `import-ontario-municipal-boundaries.ts`, `import-address-points.ts`, `import-bc-boundaries.ts`
+- **Atlas map** — "Reference Layers" section in left sidebar (7 toggles total):
+  - 🏛️ ON Ridings (blue) · 📍 Polling Divs (purple) · 🏙️ ON Municipal (amber)
+  - 🌲 BC Ridings (green) · 🏔️ BC Municipal (sky) · 📌 Address Points (orange clusters)
+- Map ResizeObserver loop fixed — map no longer moves continuously on load
+
+**Guard warning resolved:** `atlas-import-client.tsx` dead UI buttons (fetch-url, upload) now backed by real endpoints (`507997e`). No more 404s.
+
+**George needs to do before new layers show data (GEORGE_TODO 89–92):**
+1. `npx prisma db push` (item 89) — creates 4 new tables on Railway. Until this runs, all new Atlas layer toggles return 500.
+2. `npx tsx scripts/import-ontario-municipal-boundaries.ts --lower "C:/Users/14168/Downloads/MUNICIPAL_BOUNDARY_LOWER_AND_SINGLE_TIER/MUNICIPAL_BOUNDARY_LOWER_AND_SINGLE_TIER.shp"` (item 90)
+3. `npx tsx scripts/import-address-points.ts --file "C:/Users/14168/Downloads/ADDRESS_POINT_TORONTO.geojson" --municipality Toronto` (item 91)
+4. Download BC shapefiles from browser + run import (item 92 — BC Data Catalogue + Elections BC)
+
+**Existing layers already working (no action needed):**
+- 🏛️ ON Ridings + 📍 Polling Divs — data already imported from previous session
 
 ### What shipped (2026-04-26 — Elections Ontario provincial boundary layers)
 
 | Commit | What changed |
 |---|---|
 | `9480114` | Ontario provincial ridings + polling divisions as Atlas map layers |
-
-**What is live:**
-- `OntarioRidingLayer` + `OntarioPollingDivisionLayer` Prisma models (platform-wide, no campaignId)
-- `GET /api/atlas/provincial-ridings` — returns 124-riding FeatureCollection (auth-gated, any logged-in user)
-- `GET /api/atlas/polling-divisions?edId=X` — returns PD FeatureCollection for one riding (auth-gated)
-- `scripts/import-provincial-shapefiles.ts` — reads Elections Ontario .shp files, reprojects EO_LCC → WGS84 via `proj4`, upserts to DB. Run once with George's local shapefile paths.
-- **Atlas map** — "Provincial Layers" section in left sidebar with two toggles:
-  - 🏛️ **ON Ridings** — blue outlines, 124 Ontario provincial ridings, loads lazily on first toggle
-  - 📍 **Polling Divs** — purple outlines, ~100-300 per riding, loads on riding click
-- `GEORGE_TODO.md` items 86–88 with full step-by-step instructions
-
-**George needs to do before layers show data:**
-1. `npx prisma db push` (item 86) — creates the two new tables on Railway
-2. Download Elections Ontario shapefiles (item 87) — ridings (GE2022) + polling divisions (GE2025)
-3. Run: `npx tsx scripts/import-provincial-shapefiles.ts --ridings "path/to/ELECTORAL_DISTRICT.shp" --polling "path/to/POLLING_DIVISION.shp"` (item 88)
-
-**Guard warning (dead UI, non-blocking):** `atlas-import-client.tsx` has dead URL/file import buttons pointing to non-existent endpoints. Those buttons 404 — they need backend routes wired next session or the UI reverted.
 
 ### What shipped (2026-04-25 — Canvasser backend + mobile wiring)
 
