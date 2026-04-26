@@ -1,13 +1,36 @@
 # Session Handoff — Poll City
 ## The Army of One Coordination File
 
-**Last updated:** 2026-04-25 (canvasser backend + mobile wiring session)
+**Last updated:** 2026-04-26 (Elections Ontario provincial boundaries on Atlas)
 **Updated by:** Claude Sonnet 4.6
 
 ## CURRENT PLATFORM STATE
 
 ### Build
-`npm run build` exits 0. TypeScript clean (web + mobile). All commits on `origin/main`.
+`npm run build` exits 0. TypeScript clean. All commits on `origin/main`.
+
+### What shipped (2026-04-26 — Elections Ontario provincial boundary layers)
+
+| Commit | What changed |
+|---|---|
+| `9480114` | Ontario provincial ridings + polling divisions as Atlas map layers |
+
+**What is live:**
+- `OntarioRidingLayer` + `OntarioPollingDivisionLayer` Prisma models (platform-wide, no campaignId)
+- `GET /api/atlas/provincial-ridings` — returns 124-riding FeatureCollection (auth-gated, any logged-in user)
+- `GET /api/atlas/polling-divisions?edId=X` — returns PD FeatureCollection for one riding (auth-gated)
+- `scripts/import-provincial-shapefiles.ts` — reads Elections Ontario .shp files, reprojects EO_LCC → WGS84 via `proj4`, upserts to DB. Run once with George's local shapefile paths.
+- **Atlas map** — "Provincial Layers" section in left sidebar with two toggles:
+  - 🏛️ **ON Ridings** — blue outlines, 124 Ontario provincial ridings, loads lazily on first toggle
+  - 📍 **Polling Divs** — purple outlines, ~100-300 per riding, loads on riding click
+- `GEORGE_TODO.md` items 86–88 with full step-by-step instructions
+
+**George needs to do before layers show data:**
+1. `npx prisma db push` (item 86) — creates the two new tables on Railway
+2. Download Elections Ontario shapefiles (item 87) — ridings (GE2022) + polling divisions (GE2025)
+3. Run: `npx tsx scripts/import-provincial-shapefiles.ts --ridings "path/to/ELECTORAL_DISTRICT.shp" --polling "path/to/POLLING_DIVISION.shp"` (item 88)
+
+**Guard warning (dead UI, non-blocking):** `atlas-import-client.tsx` has dead URL/file import buttons pointing to non-existent endpoints. Those buttons 404 — they need backend routes wired next session or the UI reverted.
 
 ### What shipped (2026-04-25 — Canvasser backend + mobile wiring)
 
