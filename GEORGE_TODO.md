@@ -1239,7 +1239,7 @@ The geocoding infrastructure is built. Smart import auto-triggers a 500-househol
   You already have the GeoJSON in your Downloads folder. Run:
   ```bash
   npx tsx scripts/import-address-points.ts \
-    "C:/Users/14168/Downloads/ADDRESS_POINT_TORONTO.geojson" \
+    --file "C:/Users/14168/Downloads/ADDRESS_POINT_TORONTO.geojson" \
     --municipality Toronto
   ```
 
